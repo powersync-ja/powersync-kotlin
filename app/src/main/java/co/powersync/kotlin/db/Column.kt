@@ -1,28 +1,16 @@
 package co.powersync.kotlin.db
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 enum class ColumnType {
     TEXT,
     INTEGER,
     REAL
 }
 
-class ColumnOptions(
+@Serializable
+class Column (
     val name: String,
     val type: ColumnType?
 )
-
-class Column (
-    val options: ColumnOptions
-) {
-
-    val name
-        get () = options.name;
-
-    val type
-        get () = options.type;
-
-    fun toJSON() {
-        TODO("Implement")
-        // Maybe we can get away with using the @Serializable and data modifiers
-    }
-}

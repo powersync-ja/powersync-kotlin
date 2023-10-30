@@ -4,41 +4,60 @@ import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Context
 import co.powersync.kotlin.DatabaseHelper
+import co.powersync.kotlin.PowerSyncDatabase
 import co.powersync.kotlin.SupaBaseConnector
+import co.powersync.kotlin.db.Column
+import co.powersync.kotlin.db.ColumnType
+import co.powersync.kotlin.db.Index
+import co.powersync.kotlin.db.IndexedColumn
+import co.powersync.kotlin.db.Schema
+import co.powersync.kotlin.db.Table
 
 class EmployeeDatabase(context: Context) {
 
+    companion object {
+        private val SCHEMA: Schema = Schema( tables = arrayOf(
+            Table(
+                name = "todos",
+                columns = arrayOf(
+                    Column(name =  "list_id", type = ColumnType.TEXT ),
+                    Column(name =  "created_at", type = ColumnType.TEXT ),
+                    Column(name =  "completed_at", type = ColumnType.TEXT ),
+                    Column(name =  "description", type = ColumnType.TEXT ),
+                    Column(name =  "completed", type = ColumnType.INTEGER ),
+                    Column(name =  "created_by", type = ColumnType.TEXT ),
+                    Column(name =  "completed_by", type = ColumnType.TEXT)
+                ),
+                indexes = arrayOf(
+                    Index(
+                        name = "list",
+                        columns= arrayOf(
+                            IndexedColumn(name = "list_id")
+                        ))
+                )
+            ),
+            Table(
+                name= "lists",
+                columns = arrayOf(
+                    Column(name = "created_at", type =  ColumnType.TEXT),
+                    Column(name = "name", type =  ColumnType.TEXT),
+                    Column(name = "owner_id", type =  ColumnType.TEXT)
+                )
+            )
+        )
+        )
+    }
+
     private val databaseHelper = DatabaseHelper(context)
     private val supaBaseClient = SupaBaseConnector();
+    private val powerSyncDatabase = PowerSyncDatabase(database = databaseHelper.writableDatabase, schema = SCHEMA);
 
     fun init(){
-        getPowerSyncVersion();
+
     }
 
     fun addEmployee(employee: Employee){
         insert(employee.name, employee.code, employee.image);
-    }
-
-    fun getPowerSyncVersion(): List<String> {
-        val db = databaseHelper.readableDatabase;
-
-        val list = mutableListOf<String>()
-
-        // select all data from the table
-        val cursor = db.rawQuery("SELECT powersync_rs_version()", null)
-
-        // iterate through the cursor and add the data to the list
-        while (cursor.moveToNext()) {
-            val version = cursor.getString(0)
-            println("PowerSync version!!!!! Version set to $version");
-            list.add(version)
-        }
-
-        // close the cursor and database connection
-        cursor.close()
-        db.close()
-
-        return list
     }
 
     fun getAllEmployees(): List<Employee>{

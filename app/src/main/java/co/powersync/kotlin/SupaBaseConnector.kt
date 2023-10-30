@@ -5,9 +5,7 @@ import io.github.jan.supabase.gotrue.GoTrue
 import io.github.jan.supabase.gotrue.gotrue
 import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.postgrest.Postgrest
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
-import kotlinx.datetime.Instant
+import kotlinx.coroutines.runBlocking
 
 class SupaBaseConnector: PowerSyncBackendConnector() {
 
@@ -131,12 +129,11 @@ class SupaBaseConnector: PowerSyncBackendConnector() {
     init {
         supabaseClient = createClient()
 
-        GlobalScope.launch {
+        runBlocking {
             val loginRes = login();
             val creds = fetchCredentials();
-            println("GOT Login res")
+            println("Creds $creds")
+            println("login $loginRes")
         }
-//        login();
-        println("GOT TO HERE")
     }
 }

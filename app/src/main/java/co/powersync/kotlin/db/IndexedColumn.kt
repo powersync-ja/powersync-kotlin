@@ -1,14 +1,11 @@
 package co.powersync.kotlin.db
 
-class IndexColumnOptions (
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.Serializable
+
+@Serializable
+class IndexedColumn(
     val name: String,
-    val ascending: Boolean = true
+    @EncodeDefault val ascending: Boolean = true,
+    @EncodeDefault val type: ColumnType = ColumnType.TEXT
 )
-
-class IndexedColumn(val options: IndexColumnOptions) {
-    val name
-        get () = options.name;
-
-    val ascending
-        get () = options.ascending;
-}

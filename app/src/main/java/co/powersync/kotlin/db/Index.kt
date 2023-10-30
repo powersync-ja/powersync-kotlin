@@ -1,14 +1,10 @@
 package co.powersync.kotlin.db
 
-class IndexOptions (
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.Serializable
+
+@Serializable
+class Index(
     val name: String,
-    val columns: Array<IndexedColumn> = arrayOf<IndexedColumn>()
+    @EncodeDefault val columns: Array<IndexedColumn> = arrayOf<IndexedColumn>()
 )
-
-class Index(val options: IndexOptions) {
-    val name
-        get () = options.name
-
-    val columns
-        get () = options.columns
-}

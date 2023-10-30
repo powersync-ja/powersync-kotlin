@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    kotlin("plugin.serialization") version "1.4.30"
 }
 
 
@@ -94,9 +95,10 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-    implementation("androidx.recyclerview:recyclerview:1.3.1")
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("com.github.requery:sqlite-android:3.43.0")
     implementation("co.powersync:powersync-sqlite-core:0.1.4")
     implementation("io.github.jan-tennert.supabase:postgrest-kt:1.4.1")
     implementation("io.ktor:ktor-client-cio:2.3.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
 }

@@ -1,32 +1,14 @@
 package co.powersync.kotlin.db
 
-class TableOptions (
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.Serializable
+
+@Serializable
+class Table @OptIn(ExperimentalSerializationApi::class) constructor(
     val name: String,
     val columns: Array<Column>,
-    val indexes: Array<Index>?,
-    val localOnly: Boolean?,
-    val insertOnly: Boolean?,
+    @EncodeDefault val indexes: Array<Index> = arrayOf(),
+    @EncodeDefault val localOnly: Boolean = false,
+    @EncodeDefault val insertOnly: Boolean = false,
 )
-
-class Table(
-    val options: TableOptions
-) {
-    val name
-        get () = options.name;
-
-    val columns
-        get () = options.columns;
-
-    val indexes
-        get () = options.indexes;
-
-    val localOnly
-        get () = options.localOnly;
-
-    val insertOnly
-        get () = options.insertOnly;
-
-    fun toJSON() {
-        TODO("Implement")
-    }
-}

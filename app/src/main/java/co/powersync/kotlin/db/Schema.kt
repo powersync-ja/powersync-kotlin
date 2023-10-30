@@ -1,8 +1,6 @@
 package co.powersync.kotlin.db
 
-class Schema(val tables:Array<Table>) {
+import kotlinx.serialization.Serializable
 
-    fun toJSON() {
-        TODO("Implement")
-    }
-}
+@Serializable
+data class Schema(val tables:Array<Table>)
