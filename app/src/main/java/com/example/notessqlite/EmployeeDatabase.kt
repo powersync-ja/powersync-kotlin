@@ -12,6 +12,7 @@ import co.powersync.kotlin.db.Index
 import co.powersync.kotlin.db.IndexedColumn
 import co.powersync.kotlin.db.Schema
 import co.powersync.kotlin.db.Table
+import kotlinx.coroutines.runBlocking
 
 class EmployeeDatabase(context: Context) {
 
@@ -50,10 +51,12 @@ class EmployeeDatabase(context: Context) {
 
     private val databaseHelper = DatabaseHelper(context)
     private val supaBaseClient = SupaBaseConnector();
-    private val powerSyncDatabase = PowerSyncDatabase(database = databaseHelper.writableDatabase, schema = SCHEMA);
+    private val powerSyncDatabase = PowerSyncDatabase(database = databaseHelper.writableDatabase, schema = SCHEMA, connector = supaBaseClient);
 
     fun init(){
-
+        runBlocking {
+            powerSyncDatabase.connect();
+        }
     }
 
     fun addEmployee(employee: Employee){
