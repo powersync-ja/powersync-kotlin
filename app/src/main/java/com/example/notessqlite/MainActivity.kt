@@ -39,8 +39,8 @@ class MainActivity : Activity() {
         //database.addEmployee(EmployeeDatabase.Employee("Bob Johnson", "BJH003", getByteArrayFromDrawable(R.drawable.employee3)))
 
         // Get all employees from the database and display them in the RecyclerView
-        val employeeList = database.getAllEmployees()
-        employeeAdapter = EmployeeAdapter(employeeList)
+//        val employeeList = database.getAllEmployees()
+//        employeeAdapter = EmployeeAdapter(employeeList)
         employeeRecyclerView.adapter = employeeAdapter
         employeeRecyclerView.layoutManager = LinearLayoutManager(this)
 

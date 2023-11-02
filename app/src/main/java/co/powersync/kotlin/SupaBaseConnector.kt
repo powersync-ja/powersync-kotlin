@@ -21,6 +21,17 @@ class SupaBaseConnector: PowerSyncBackendConnector() {
 
     private val supabaseClient: SupabaseClient;
 
+    init {
+        supabaseClient = createClient()
+
+        runBlocking {
+            val loginRes = login();
+            val creds = fetchCredentials();
+            println("Creds $creds")
+            println("login $loginRes")
+        }
+    }
+
     private fun createClient(): SupabaseClient {
         val client = createSupabaseClient(
             supabaseUrl = SUPABASE_URL,
@@ -126,14 +137,5 @@ class SupaBaseConnector: PowerSyncBackendConnector() {
 //    }
 
 
-    init {
-        supabaseClient = createClient()
 
-        runBlocking {
-            val loginRes = login();
-            val creds = fetchCredentials();
-            println("Creds $creds")
-            println("login $loginRes")
-        }
-    }
 }
