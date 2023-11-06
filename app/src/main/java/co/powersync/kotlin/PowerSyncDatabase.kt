@@ -43,6 +43,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
 import java.util.Date
 
@@ -306,13 +307,14 @@ class PowerSyncDatabase(
     }
 
     suspend fun handleStreamingSyncData(jsonObj: JsonObject, state: HandleJSONInstructionResult): HandleJSONInstructionResult {
-        val data = Json.decodeFromJsonElement<SyncDataBucketJSON>(jsonObj.get("data")!!)
-        bucketStorageAdapter.saveSyncData(SyncDataBatch(buckets = arrayOf(SyncDataBucket.fromRow(data))))
+
+        val buckets = arrayOf(SyncDataBucket.fromRow(jsonObj["data"] as JsonObject))
+        bucketStorageAdapter.saveSyncData(SyncDataBatch(buckets))
         return state
     }
 
     suspend fun handleStreamingKeepalive(jsonObj: JsonObject, state: HandleJSONInstructionResult): HandleJSONInstructionResult {
-        val tokenExpiresIn = jsonObj.get("token_expires_in").toString().toInt()
+        val tokenExpiresIn = (jsonObj["token_expires_in"] as JsonPrimitive).content.toInt()
 
         if (tokenExpiresIn == 0) {
             // Connection would be closed automatically right after this

@@ -1,9 +1,8 @@
 package co.powersync.kotlin.bucket
 
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlin.reflect.jvm.internal.impl.load.kotlin.JvmType.Primitive
+import kotlinx.serialization.json.JsonPrimitive
 
 @Serializable
 data class OplogEntryJSON (
@@ -12,7 +11,7 @@ data class OplogEntryJSON (
     val object_type: String,
     val object_id: String,
     val checksum: Int,
-    val data: Map<String, String>,
+    val data: JsonObject,
     val subkey: String
 )
 
@@ -20,22 +19,30 @@ data class OplogEntryJSON (
 data class OplogEntry (
     val op_id: String,
     val op: OpType,
-    val checksum: Int,
+    val checksum: Long,
     val subkey: String,
     val object_type: String?,
     val object_id: String?,
-    val data: Map<String, String>?
+    val data: MutableMap<String, String>?
 ) {
     companion object {
-        fun fromRow (row: OplogEntryJSON): OplogEntry {
+        fun fromRow (row: JsonObject): OplogEntry {
+
+            val dataObj = row["data"] as JsonObject
+            val dataMap = mutableMapOf<String, String>()
+            dataObj.forEach{i -> dataMap[i.key] = (i.value as JsonPrimitive).content }
+
+            val opType: OpTypeEnum = OpTypeEnum.valueOf((row["op"] as JsonPrimitive).content);
+            val op = OpType(opType);
+
             return OplogEntry(
-                object_id = row.object_id,
-                checksum = row.checksum,
-                object_type = row.object_type,
-                op_id = row.op_id,
-                subkey = row.subkey,
-                data = row.data,
-                op = OpType(OpTypeEnum.valueOf(row.op))
+                object_id = (row["object_id"] as JsonPrimitive).content,
+                checksum = (row["checksum"] as JsonPrimitive).content.toLong(),
+                object_type = (row["object_type"] as JsonPrimitive).content,
+                op_id = (row["op_id"] as JsonPrimitive).content,
+                subkey = (row["subkey"] as JsonPrimitive).content,
+                data = dataMap,
+                op = op
             )
         }
     }

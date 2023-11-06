@@ -1,6 +1,9 @@
 package co.powersync.kotlin.bucket
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 @Serializable
 data class SyncDataBucketJSON(
@@ -32,13 +35,16 @@ data class SyncDataBucket(
 
 ) {
     companion object {
-        fun fromRow(row: SyncDataBucketJSON): SyncDataBucket {
+        fun fromRow(row: JsonObject): SyncDataBucket {
+            val data = (row["data"] as JsonArray).map { i -> OplogEntry.fromRow(i as JsonObject) }
+                .toTypedArray()
+
             return SyncDataBucket(
-                bucket = row.bucket,
-                data = row.data.map { i -> OplogEntry.fromRow(i) }.toTypedArray(),
-                after = row.after,
-                has_more = row.has_more,
-                next_after = row.next_after
+                bucket = (row["bucket"] as JsonPrimitive).content,
+                data = data,
+                after = (row["after"] as JsonPrimitive).content,
+                has_more = (row["has_more"] as JsonPrimitive).content.toBoolean(),
+                next_after = (row["next_after"] as JsonPrimitive).content
             )
         }
     }

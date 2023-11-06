@@ -3,7 +3,11 @@ package co.powersync.kotlin.bucket
 import android.content.ContentValues
 import android.database.Cursor
 import io.requery.android.database.sqlite.SQLiteDatabase
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.util.UUID
+
+val COMPACT_OPERATION_INTERVAL = 1_000;
 
 class KotlinBucketStorageAdapter(
     private val database: SQLiteDatabase,
@@ -18,6 +22,11 @@ class KotlinBucketStorageAdapter(
     private var _hasCompletedSync = false
     // TODO thread safe?!
     private var pendingBucketDeletes = false;
+
+    /**
+     * Count up, and do a compact on startup.
+     */
+    private var compactCounter = COMPACT_OPERATION_INTERVAL;
     override suspend fun init() {
         _hasCompletedSync = false
 
@@ -39,7 +48,34 @@ class KotlinBucketStorageAdapter(
     }
 
     override suspend fun saveSyncData(batch: SyncDataBatch) {
-        TODO("Not yet implemented")
+        database.beginTransaction()
+
+        try {
+            var count = 0
+            for (b in batch.buckets) {
+
+                val values = ContentValues().apply {
+                    put("op", "save")
+                    // TODO what prevents us from just using batch directly? instead of wrapping each bucket into each own batch
+                    put("data", Json.encodeToString(SyncDataBatch(arrayOf(b))))
+                }
+
+                val result = database.insert("powersync_operations",null,  values);
+                println("saveSyncData $result");
+
+                if(result == -1L){
+                    // Error occurred according to docs
+                    println("Something went wrong!")
+                }
+
+                count += b.data.size
+                compactCounter += count
+            }
+
+            database.setTransactionSuccessful()
+        } finally {
+            database.endTransaction()
+        }
     }
 
     override suspend fun removeBuckets(buckets: Array<String>) {
