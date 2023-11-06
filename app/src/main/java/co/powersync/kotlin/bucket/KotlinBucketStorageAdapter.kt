@@ -18,7 +18,7 @@ data class ValidatedCheckpointResult(
 
 class KotlinBucketStorageAdapter(
     private val database: SQLiteDatabase,
-    ): BucketStorageAdapter()  {
+) : BucketStorageAdapter() {
     companion object {
         private const val MAX_OP_ID = "9223372036854775807"
     }
@@ -27,6 +27,7 @@ class KotlinBucketStorageAdapter(
 
     // TODO thread safe?!
     private var _hasCompletedSync = false
+
     // TODO thread safe?!
     private var pendingBucketDeletes = false;
 
@@ -67,10 +68,10 @@ class KotlinBucketStorageAdapter(
                     put("data", Json.encodeToString(SyncDataBatch(arrayOf(b))))
                 }
 
-                val result = database.insert("powersync_operations",null,  values);
+                val result = database.insert("powersync_operations", null, values);
                 println("saveSyncData $result");
 
-                if(result == -1L){
+                if (result == -1L) {
                     // Error occurred according to docs
                     println("Something went wrong!")
                 }
@@ -86,12 +87,12 @@ class KotlinBucketStorageAdapter(
     }
 
     override suspend fun removeBuckets(buckets: Array<String>) {
-        for(bucket in buckets){
+        for (bucket in buckets) {
             deleteBucket(bucket)
         }
     }
 
-    suspend fun deleteBucket(bucket: String){
+    suspend fun deleteBucket(bucket: String) {
         // Delete a bucket, but allow it to be re-created.
         // To achieve this, we rename the bucket to a new temp name, and change all ops to remove.
         // By itself, this new bucket would ensure that the previous objects are deleted if they contain no more references.
@@ -107,30 +108,33 @@ class KotlinBucketStorageAdapter(
                 put("data", "NULL")
             }
 
-            val where = "op=${OpTypeEnum.PUT} AND superseded=0 AND bucket=?"
+            val where = "op=\"${OpTypeEnum.PUT}\" AND superseded=0 AND bucket=?"
 
             val args = arrayOf(bucket)
 
             val res = database.update("ps_oplog", values, where, args);
 
             // Rename the bucket to the new name
-            val res2 = database.update("ps_oplog",
+            val res2 = database.update(
+                "ps_oplog",
                 ContentValues().apply {
-                put("bucket", newName)
-            },
+                    put("bucket", newName)
+                },
                 "bucket=?",
-                arrayOf( bucket)
+                arrayOf(bucket)
             )
 
             val res3 = database.delete("ps_buckets", "name = ?", arrayOf(bucket))
 
             val res4Cursor = database.rawQuery(
-                "INSERT INTO ps_buckets(name, pending_delete, last_op) SELECT ?, 1, IFNULL(MAX(op_id), 0) FROM ps_oplog WHERE bucket = ?" ,
+                "INSERT INTO ps_buckets(name, pending_delete, last_op) SELECT ?, 1, IFNULL(MAX(op_id), 0) FROM ps_oplog WHERE bucket = ?",
                 arrayOf(newName, newName)
             )
 
 
-            database.setTransactionSuccessful();
+            database.setTransactionSuccessful()
+        }catch(e: Exception) {
+            println("deleteBucket Failed ${e.message}")
         } finally {
             database.endTransaction();
         }
@@ -148,7 +152,8 @@ class KotlinBucketStorageAdapter(
 
     override suspend fun getBucketStates(): Array<BucketState> {
         val buckets = mutableSetOf<BucketState>()
-        val query = "SELECT name as bucket, cast(last_op as TEXT) as op_id FROM ps_buckets WHERE pending_delete = 0"
+        val query =
+            "SELECT name as bucket, cast(last_op as TEXT) as op_id FROM ps_buckets WHERE pending_delete = 0"
         val cursor: Cursor = database.rawQuery(query, null)
         val bucketIndex = cursor.getColumnIndex("bucket")
         val opIdIndex = cursor.getColumnIndex("op_id")
@@ -166,7 +171,7 @@ class KotlinBucketStorageAdapter(
 
     suspend fun validateChecksums(checkpoint: Checkpoint): SyncLocalDatabaseResult {
         val query = "SELECT powersync_validate_checkpoint(?) as result"
-        val cursor = database.rawQuery(query, arrayOf( Json.encodeToString<Checkpoint>(checkpoint)))
+        val cursor = database.rawQuery(query, arrayOf(Json.encodeToString<Checkpoint>(checkpoint)))
         val resultIndex = cursor.getColumnIndex("result")
 
         val results = mutableListOf<ValidatedCheckpointResult>()
@@ -178,21 +183,21 @@ class KotlinBucketStorageAdapter(
 
         cursor.close()
 
-        if(results.size > 1){
+        if (results.size > 1) {
             TODO("React SDK only checks first entry, what do we do now?")
         }
 
-        if(results.isEmpty()){
+        if (results.isEmpty()) {
             return SyncLocalDatabaseResult(
                 checkpointValid = false,
-            ready = false,
-            failures = arrayOf()
+                ready = false,
+                failures = arrayOf()
             )
         }
 
         val firstEntry = results.first()
 
-        if(firstEntry.valid){
+        if (firstEntry.valid) {
             return SyncLocalDatabaseResult(
                 checkpointValid = true,
                 ready = true
@@ -208,6 +213,58 @@ class KotlinBucketStorageAdapter(
 
     override suspend fun syncLocalDatabase(checkpoint: Checkpoint): SyncLocalDatabaseResult {
         val r = validateChecksums(checkpoint);
+
+        if (!r.checkpointValid) {
+            // TODO error message here
+            println("Checksums failed for ${r.failures}")
+            if (r.failures?.isNotEmpty() == true) {
+                for (b in r.failures) {
+                    deleteBucket(b);
+                }
+            }
+
+            return SyncLocalDatabaseResult(
+                ready = false,
+                checkpointValid = false,
+                failures = r.failures
+            )
+        }
+
+        val bucketNames = checkpoint.buckets.map { b -> b.bucket }
+
+        database.beginTransaction()
+
+        try {
+            val query =
+                "UPDATE ps_buckets SET last_op = ? WHERE name IN (SELECT json_each.value FROM json_each(?))";
+            val bucketJson = Json.encodeToString(bucketNames)
+            database.rawQuery(
+                query,
+                arrayOf(checkpoint.last_op_id, bucketJson)
+            )
+
+            if (checkpoint.write_checkpoint?.isNotEmpty() == true) {
+                val query2 = "UPDATE ps_buckets SET last_op = ? WHERE name = '\$local'"
+                database.rawQuery(query2, arrayOf( checkpoint.write_checkpoint))
+            }
+
+            database.setTransactionSuccessful()
+        } finally {
+            database.endTransaction()
+        }
+
+        //    const valid = await this.updateObjectsFromBuckets(checkpoint);
+        //    if (!valid) {
+        //      this.logger.debug('Not at a consistent checkpoint - cannot update local db');
+        //      return { ready: false, checkpointValid: true };
+        //    }
+        //
+        //    await this.forceCompact();
+        //
+        //    return {
+        //      ready: true,
+        //      checkpointValid: true
+        //    };
 
         TODO("Not yet implemented")
     }
