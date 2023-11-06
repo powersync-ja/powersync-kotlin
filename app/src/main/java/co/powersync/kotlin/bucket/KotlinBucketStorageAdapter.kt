@@ -3,11 +3,18 @@ package co.powersync.kotlin.bucket
 import android.content.ContentValues
 import android.database.Cursor
 import io.requery.android.database.sqlite.SQLiteDatabase
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.UUID
 
 val COMPACT_OPERATION_INTERVAL = 1_000;
+
+@Serializable
+data class ValidatedCheckpointResult(
+    val valid: Boolean,
+    val failed_buckets: Array<String>
+)
 
 class KotlinBucketStorageAdapter(
     private val database: SQLiteDatabase,
@@ -157,7 +164,51 @@ class KotlinBucketStorageAdapter(
         return buckets.toTypedArray()
     }
 
+    suspend fun validateChecksums(checkpoint: Checkpoint): SyncLocalDatabaseResult {
+        val query = "SELECT powersync_validate_checkpoint(?) as result"
+        val cursor = database.rawQuery(query, arrayOf( Json.encodeToString<Checkpoint>(checkpoint)))
+        val resultIndex = cursor.getColumnIndex("result")
+
+        val results = mutableListOf<ValidatedCheckpointResult>()
+        while (cursor.moveToNext()) {
+            val resultStr = cursor.getString(resultIndex)
+            val parsed = Json.decodeFromString<ValidatedCheckpointResult>(resultStr);
+            results.add(parsed)
+        }
+
+        cursor.close()
+
+        if(results.size > 1){
+            TODO("React SDK only checks first entry, what do we do now?")
+        }
+
+        if(results.isEmpty()){
+            return SyncLocalDatabaseResult(
+                checkpointValid = false,
+            ready = false,
+            failures = arrayOf()
+            )
+        }
+
+        val firstEntry = results.first()
+
+        if(firstEntry.valid){
+            return SyncLocalDatabaseResult(
+                checkpointValid = true,
+                ready = true
+            )
+        }
+
+        return SyncLocalDatabaseResult(
+            checkpointValid = false,
+            ready = false,
+            failures = firstEntry.failed_buckets
+        )
+    }
+
     override suspend fun syncLocalDatabase(checkpoint: Checkpoint): SyncLocalDatabaseResult {
+        val r = validateChecksums(checkpoint);
+
         TODO("Not yet implemented")
     }
 

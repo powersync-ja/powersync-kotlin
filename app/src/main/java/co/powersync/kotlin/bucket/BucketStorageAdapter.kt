@@ -7,7 +7,7 @@ import kotlinx.serialization.json.Json
 class SyncLocalDatabaseResult (
     val checkpointValid: Boolean,
     val ready: Boolean,
-    val failures: Array<Any>?
+    val failures: Array<String> ?= null
 )
 
 @Serializable
