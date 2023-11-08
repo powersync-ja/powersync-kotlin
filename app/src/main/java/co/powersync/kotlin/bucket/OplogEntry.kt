@@ -1,6 +1,7 @@
 package co.powersync.kotlin.bucket
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -18,9 +19,12 @@ data class OplogEntryJSON (
 @Serializable
 data class OplogEntry (
     val op_id: String,
-    val op: OpType,
+    val op: OpTypeEnum,
     val checksum: Long,
-    val subkey: String,
+    /// Together with rowType and rowId, this uniquely identifies a source entry
+    /// per bucket in the oplog. There may be multiple source entries for a single
+    /// "rowType + rowId" combination.
+    val subkey: String?= null,
     val object_type: String?,
     val object_id: String?,
     val data: MutableMap<String, String>?
@@ -28,12 +32,15 @@ data class OplogEntry (
     companion object {
         fun fromRow (row: JsonObject): OplogEntry {
 
-            val dataObj = row["data"] as JsonObject
-            val dataMap = mutableMapOf<String, String>()
-            dataObj.forEach{i -> dataMap[i.key] = (i.value as JsonPrimitive).content }
+            var dataMap: MutableMap<String, String>? = null
+            if(row["data"] !is JsonNull){
+                dataMap= mutableMapOf()
+                val dataObj = row["data"] as JsonObject
+                dataObj.forEach{i -> dataMap[i.key] = (i.value as JsonPrimitive).content }
+            }
 
-            val opType: OpTypeEnum = OpTypeEnum.valueOf((row["op"] as JsonPrimitive).content);
-            val op = OpType(opType);
+            val opType: OpTypeEnum = OpTypeEnum.valueOf((row["op"] as JsonPrimitive).content)
+            val op = opType
 
             return OplogEntry(
                 object_id = (row["object_id"] as JsonPrimitive).content,

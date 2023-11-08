@@ -2,13 +2,13 @@ package co.powersync.kotlin.bucket
 
 import android.content.ContentValues
 import android.database.Cursor
-import io.requery.android.database.sqlite.SQLiteDatabase
+import co.powersync.kotlin.DatabaseHelper
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.UUID
 
-val COMPACT_OPERATION_INTERVAL = 1_000;
+val COMPACT_OPERATION_INTERVAL = 1_000
 
 @Serializable
 data class ValidatedCheckpointResult(
@@ -17,7 +17,7 @@ data class ValidatedCheckpointResult(
 )
 
 class KotlinBucketStorageAdapter(
-    private val database: SQLiteDatabase,
+    private val dbHelp: DatabaseHelper,
 ) : BucketStorageAdapter() {
     companion object {
         private const val MAX_OP_ID = "9223372036854775807"
@@ -29,12 +29,12 @@ class KotlinBucketStorageAdapter(
     private var _hasCompletedSync = false
 
     // TODO thread safe?!
-    private var pendingBucketDeletes = false;
+    private var pendingBucketDeletes = false
 
     /**
      * Count up, and do a compact on startup.
      */
-    private var compactCounter = COMPACT_OPERATION_INTERVAL;
+    private var compactCounter = COMPACT_OPERATION_INTERVAL
     override suspend fun init() {
         _hasCompletedSync = false
 
@@ -42,6 +42,7 @@ class KotlinBucketStorageAdapter(
     }
 
     private fun readTableNames() {
+        val database = dbHelp.readableDatabase
         tableNames.clear()
         // Query to get existing table names
         val query = "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB 'ps_data_*'"
@@ -56,22 +57,23 @@ class KotlinBucketStorageAdapter(
     }
 
     override suspend fun saveSyncData(batch: SyncDataBatch) {
+        val database = dbHelp.writableDatabase
         database.beginTransaction()
 
         try {
             var count = 0
             for (b in batch.buckets) {
 
+                val bucketJsonStr = Json.encodeToString(SyncDataBatch(arrayOf(b)))
                 val values = ContentValues().apply {
                     put("op", "save")
                     // TODO what prevents us from just using batch directly? instead of wrapping each bucket into each own batch
-                    put("data", Json.encodeToString(SyncDataBatch(arrayOf(b))))
+                    put("data", bucketJsonStr)
                 }
 
-                val result = database.insert("powersync_operations", null, values);
-                println("saveSyncData $result");
+                val insertId = database.insert("powersync_operations", null, values)
 
-                if (result == -1L) {
+                if (insertId == -1L) {
                     // Error occurred according to docs
                     println("Something went wrong!")
                 }
@@ -83,7 +85,10 @@ class KotlinBucketStorageAdapter(
             database.setTransactionSuccessful()
         } finally {
             database.endTransaction()
+            database.close()
         }
+
+        println("Finished inserting into powersync_operations")
     }
 
     override suspend fun removeBuckets(buckets: Array<String>) {
@@ -92,19 +97,20 @@ class KotlinBucketStorageAdapter(
         }
     }
 
-    suspend fun deleteBucket(bucket: String) {
+    fun deleteBucket(bucket: String) {
         // Delete a bucket, but allow it to be re-created.
         // To achieve this, we rename the bucket to a new temp name, and change all ops to remove.
         // By itself, this new bucket would ensure that the previous objects are deleted if they contain no more references.
         // If the old bucket is re-added, this new bucket would have no effect.
-        val newName = "\$delete_${bucket}_${UUID.randomUUID()}";
-        println("Deleting bucket  $bucket");
+        val newName = "\$delete_${bucket}_${UUID.randomUUID()}"
+        println("Deleting bucket  $bucket")
 
+        val database = dbHelp.writableDatabase
         database.beginTransaction()
 
         try {
             val values = ContentValues().apply {
-                put("op", OpTypeEnum.REMOVE.toString())
+                put("op", "\"${OpTypeEnum.REMOVE}\"")
                 put("data", "NULL")
             }
 
@@ -112,10 +118,10 @@ class KotlinBucketStorageAdapter(
 
             val args = arrayOf(bucket)
 
-            val res = database.update("ps_oplog", values, where, args);
+            database.update("ps_oplog", values, where, args)
 
             // Rename the bucket to the new name
-            val res2 = database.update(
+            database.update(
                 "ps_oplog",
                 ContentValues().apply {
                     put("bucket", newName)
@@ -124,22 +130,21 @@ class KotlinBucketStorageAdapter(
                 arrayOf(bucket)
             )
 
-            val res3 = database.delete("ps_buckets", "name = ?", arrayOf(bucket))
-
+            database.delete("ps_buckets", "name = ?", arrayOf(bucket))
             val res4Cursor = database.rawQuery(
                 "INSERT INTO ps_buckets(name, pending_delete, last_op) SELECT ?, 1, IFNULL(MAX(op_id), 0) FROM ps_oplog WHERE bucket = ?",
                 arrayOf(newName, newName)
             )
 
-
+            res4Cursor.close()
             database.setTransactionSuccessful()
         }catch(e: Exception) {
             println("deleteBucket Failed ${e.message}")
         } finally {
-            database.endTransaction();
+            database.endTransaction()
         }
         println("done deleting bucket")
-        pendingBucketDeletes = true;
+        pendingBucketDeletes = true
     }
 
     override suspend fun setTargetCheckpoint(checkpoint: Checkpoint) {
@@ -151,6 +156,8 @@ class KotlinBucketStorageAdapter(
     }
 
     override suspend fun getBucketStates(): Array<BucketState> {
+        val database = dbHelp.readableDatabase
+
         val buckets = mutableSetOf<BucketState>()
         val query =
             "SELECT name as bucket, cast(last_op as TEXT) as op_id FROM ps_buckets WHERE pending_delete = 0"
@@ -169,25 +176,15 @@ class KotlinBucketStorageAdapter(
         return buckets.toTypedArray()
     }
 
-    suspend fun validateChecksums(checkpoint: Checkpoint): SyncLocalDatabaseResult {
+    fun validateChecksums(checkpoint: Checkpoint): SyncLocalDatabaseResult {
+        val database = dbHelp.readableDatabase
+
         val query = "SELECT powersync_validate_checkpoint(?) as result"
-        val cursor = database.rawQuery(query, arrayOf(Json.encodeToString<Checkpoint>(checkpoint)))
-        val resultIndex = cursor.getColumnIndex("result")
+        val dataStrArr = arrayOf(Json.encodeToString(checkpoint))
 
-        val results = mutableListOf<ValidatedCheckpointResult>()
-        while (cursor.moveToNext()) {
-            val resultStr = cursor.getString(resultIndex)
-            val parsed = Json.decodeFromString<ValidatedCheckpointResult>(resultStr);
-            results.add(parsed)
-        }
+        val resJsonStr = database.stringForQuery(query, dataStrArr)
 
-        cursor.close()
-
-        if (results.size > 1) {
-            TODO("React SDK only checks first entry, what do we do now?")
-        }
-
-        if (results.isEmpty()) {
+        if (resJsonStr.isEmpty()) {
             return SyncLocalDatabaseResult(
                 checkpointValid = false,
                 ready = false,
@@ -195,9 +192,9 @@ class KotlinBucketStorageAdapter(
             )
         }
 
-        val firstEntry = results.first()
+        val result = Json.decodeFromString<ValidatedCheckpointResult>(resJsonStr)
 
-        if (firstEntry.valid) {
+        if (result.valid) {
             return SyncLocalDatabaseResult(
                 checkpointValid = true,
                 ready = true
@@ -207,19 +204,19 @@ class KotlinBucketStorageAdapter(
         return SyncLocalDatabaseResult(
             checkpointValid = false,
             ready = false,
-            failures = firstEntry.failed_buckets
+            failures = result.failed_buckets
         )
     }
 
     override suspend fun syncLocalDatabase(checkpoint: Checkpoint): SyncLocalDatabaseResult {
-        val r = validateChecksums(checkpoint);
+        val r = validateChecksums(checkpoint)
 
         if (!r.checkpointValid) {
             // TODO error message here
-            println("Checksums failed for ${r.failures}")
+            println("Checksums failed for ${r.failures?.joinToString( separator =", " )}")
             if (r.failures?.isNotEmpty() == true) {
                 for (b in r.failures) {
-                    deleteBucket(b);
+                    deleteBucket(b)
                 }
             }
 
@@ -230,13 +227,14 @@ class KotlinBucketStorageAdapter(
             )
         }
 
-        val bucketNames = checkpoint.buckets.map { b -> b.bucket }
+        val bucketNames: List<String>? = checkpoint.buckets?.map { b -> b.bucket }
 
+        val database = dbHelp.writableDatabase
         database.beginTransaction()
 
         try {
             val query =
-                "UPDATE ps_buckets SET last_op = ? WHERE name IN (SELECT json_each.value FROM json_each(?))";
+                "UPDATE ps_buckets SET last_op = ? WHERE name IN (SELECT json_each.value FROM json_each(?))"
             val bucketJson = Json.encodeToString(bucketNames)
             database.rawQuery(
                 query,
@@ -253,24 +251,62 @@ class KotlinBucketStorageAdapter(
             database.endTransaction()
         }
 
-        //    const valid = await this.updateObjectsFromBuckets(checkpoint);
-        //    if (!valid) {
-        //      this.logger.debug('Not at a consistent checkpoint - cannot update local db');
-        //      return { ready: false, checkpointValid: true };
-        //    }
-        //
-        //    await this.forceCompact();
-        //
-        //    return {
-        //      ready: true,
-        //      checkpointValid: true
-        //    };
+        val valid = updateObjectsFromBuckets()
+        if (!valid) {
+        println("Not at a consistent checkpoint - cannot update local db")
+              return SyncLocalDatabaseResult(
+                  ready = false,
+                  checkpointValid = true
+              )
+        }
 
-        TODO("Not yet implemented")
+        forceCompact()
+
+        return SyncLocalDatabaseResult(
+            ready = true,
+            checkpointValid = true
+        )
+    }
+
+    fun updateObjectsFromBuckets(): Boolean{
+        /**
+         * It's best to execute this on the same thread
+         * https://github.com/journeyapps/powersync-sqlite-core/blob/40554dc0e71864fe74a0cb00f1e8ca4e328ff411/crates/sqlite/sqlite/sqlite3.h#L2578
+         */
+
+        val database = dbHelp.writableDatabase
+        database.beginTransaction()
+        try {
+            val res = database.insert("powersync_operations", null, ContentValues().apply {
+                put("op", "sync_local")
+                put("data", "")
+            })
+
+            database.setTransactionSuccessful()
+
+            return res == 1L
+        }
+        catch (e:Exception){
+            // TODO proper error message
+            println("updateObjectsFromBuckets Error ${e.message}")
+        }
+        finally {
+            database.endTransaction()
+            database.close()
+        }
+
+        return false
     }
 
     override suspend fun hasCrud(): Boolean {
-        TODO("Not yet implemented")
+        val database = dbHelp.readableDatabase
+
+        val query = "SELECT 1 FROM ps_crud LIMIT 1"
+        val cursor: Cursor = database.rawQuery(query, null)
+
+        val hasCrud = cursor.count > 0
+        cursor.close()
+        return hasCrud
     }
 
     override suspend fun getCrudBatch(limit: Int?): CrudBatch? {
@@ -282,15 +318,92 @@ class KotlinBucketStorageAdapter(
     }
 
     override suspend fun updateLocalTarget(cb: suspend () -> String): Boolean {
+        val database = dbHelp.readableDatabase
+
+        val rs1Cursor = database.rawQuery(
+            "SELECT target_op FROM ps_buckets WHERE name = '\$local' AND target_op = ?",
+            arrayOf( MAX_OP_ID)
+        )
+
+        if (rs1Cursor.count == 0) {
+            rs1Cursor.close()
+            // Nothing to update
+            return false
+        }
+        rs1Cursor.close()
+
+        val rsCursor = database.rawQuery(
+            "SELECT seq FROM sqlite_sequence WHERE name = 'ps_crud'", arrayOf()
+        )
+
+        if (rsCursor.count == 0) {
+            rsCursor.close()
+            // Nothing to update
+            return false
+        }
+
+        rsCursor.moveToFirst()
+        val seqIndex = rsCursor.getColumnIndex("seq")
+        val seqBefore = rsCursor.getInt(seqIndex)
+
+        var opId = cb()
+
         TODO("Not yet implemented")
+    }
+
+    suspend fun deletePendingBuckets() {
+        if (pendingBucketDeletes != false) {
+            val database = dbHelp.writableDatabase
+
+            database.beginTransaction()
+            try {
+                database.execSQL("DELETE FROM ps_oplog WHERE bucket IN (SELECT name FROM ps_buckets WHERE pending_delete = 1 AND last_applied_op = last_op AND last_op >= target_op)")
+                database.execSQL("DELETE FROM ps_buckets WHERE pending_delete = 1 AND last_applied_op = last_op AND last_op >= target_op")
+
+                // Executed once after start-up, and again when there are pending deletes.
+                pendingBucketDeletes = false
+                database.setTransactionSuccessful()
+            }
+            finally {
+                database.endTransaction()
+                database.close()
+            }
+        }
+    }
+
+    private fun clearRemoveOps(){
+        if (compactCounter < COMPACT_OPERATION_INTERVAL) {
+            return;
+        }
+
+        val database = dbHelp.writableDatabase
+
+        database.beginTransaction()
+        try {
+            database.insert("powersync_operations", null,ContentValues().apply {
+                put("op", "clear_remove_ops")
+                put("data", "")
+            } )
+
+            compactCounter = 0
+            database.setTransactionSuccessful()
+        }
+        finally {
+            database.endTransaction()
+            database.close()
+        }
     }
 
     override suspend fun autoCompact() {
-        TODO("Not yet implemented")
+        deletePendingBuckets()
+        clearRemoveOps()
     }
 
     override suspend fun forceCompact() {
-        TODO("Not yet implemented")
+        compactCounter = COMPACT_OPERATION_INTERVAL
+        pendingBucketDeletes = true
+
+        autoCompact()
     }
 
     override fun getMaxOpId(): String {

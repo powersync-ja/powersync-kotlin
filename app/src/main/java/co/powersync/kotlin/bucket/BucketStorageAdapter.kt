@@ -21,21 +21,21 @@ data class BucketChecksum (
     /**
      * Count of operations - informational only.
      */
-    val count: Int
+    val count: Int ?= null
 )
 
 @Serializable
 data class Checkpoint (
     val last_op_id: String,
-    val buckets: Array<BucketChecksum>,
-    val write_checkpoint: String?
+    val buckets: Array<BucketChecksum> ?= null,
+    val write_checkpoint: String ?= null,
 ) {
     fun clone(): Checkpoint {
-        return Checkpoint(last_op_id, buckets.clone(), write_checkpoint)
+        return Checkpoint(last_op_id, buckets?.clone(), write_checkpoint)
     }
 
     override fun toString(): String {
-        return Json.encodeToString(this);
+        return Json.encodeToString(this)
     }
 }
 

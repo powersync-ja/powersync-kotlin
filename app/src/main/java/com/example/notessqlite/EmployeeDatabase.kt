@@ -50,7 +50,7 @@ class EmployeeDatabase(context: Context) {
     private val databaseHelper = DatabaseHelper(context)
     private val supaBaseClient = SupaBaseConnector();
     private val powerSyncDatabase = PowerSyncDatabase(
-        database = databaseHelper.writableDatabase,
+        dbHelper = databaseHelper,
         schema = SCHEMA,
         connector = supaBaseClient
     );

@@ -9,6 +9,3 @@ enum class OpTypeEnum {
     PUT,
     REMOVE
 }
-
-@Serializable
-data class OpType (val value: OpTypeEnum)

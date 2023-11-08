@@ -22,15 +22,15 @@ data class SyncDataBucket(
     /**
      * True if the response does not contain all the data for this bucket, and another request must be made.
      */
-    val has_more: Boolean,
+    val has_more: Boolean = false,
     /**
      * The `after` specified in the request.
      */
-    val after: String,
+    val after: String ?= null,
     /**
      * Use this for the next request.
      */
-    val next_after: String
+    val next_after: String ?= null
 
 
 ) {
