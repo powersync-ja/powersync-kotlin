@@ -57,6 +57,7 @@ class KotlinBucketStorageAdapter(
     }
 
     override suspend fun saveSyncData(batch: SyncDataBatch) {
+        hasCompletedSync()
         val database = dbHelp.writableDatabase
         database.beginTransaction()
 
@@ -88,6 +89,7 @@ class KotlinBucketStorageAdapter(
             database.close()
         }
 
+        hasCompletedSync()
         println("Finished inserting into powersync_operations")
     }
 
@@ -314,11 +316,25 @@ class KotlinBucketStorageAdapter(
     }
 
     override suspend fun hasCompletedSync(): Boolean {
-        TODO("Not yet implemented")
+        if (_hasCompletedSync) {
+            return true;
+        }
+
+        val database = dbHelp.readableDatabase;
+        val cursor = database.rawQuery("SELECT name, last_applied_op FROM ps_buckets WHERE last_applied_op > 0 LIMIT 1", null)
+
+        val completed = cursor.count > 0;
+
+        if (completed) {
+            this._hasCompletedSync = true;
+        }
+
+        database.close()
+        return completed;
     }
 
     override suspend fun updateLocalTarget(cb: suspend () -> String): Boolean {
-        val database = dbHelp.readableDatabase
+        val database = dbHelp.writableDatabase
 
         val rs1Cursor = database.rawQuery(
             "SELECT target_op FROM ps_buckets WHERE name = '\$local' AND target_op = ?",
@@ -327,6 +343,7 @@ class KotlinBucketStorageAdapter(
 
         if (rs1Cursor.count == 0) {
             rs1Cursor.close()
+            database.close()
             // Nothing to update
             return false
         }
@@ -338,6 +355,7 @@ class KotlinBucketStorageAdapter(
 
         if (rsCursor.count == 0) {
             rsCursor.close()
+            database.close()
             // Nothing to update
             return false
         }
@@ -346,7 +364,52 @@ class KotlinBucketStorageAdapter(
         val seqIndex = rsCursor.getColumnIndex("seq")
         val seqBefore = rsCursor.getInt(seqIndex)
 
-        var opId = cb()
+        val opId = cb()
+
+        println("[updateLocalTarget] Updating target to checkpoint $opId");
+
+        database.beginTransaction()
+
+        try {
+            val anyData = database.stringForQuery("SELECT 1 FROM ps_crud LIMIT 1", null)
+            if( anyData.isNotEmpty()) {
+                // if isNotEmpty
+                println("updateLocalTarget ps crud is not empty")
+                return false;
+            }
+
+            val cursor = database.rawQuery("SELECT seq FROM sqlite_sequence WHERE name = 'ps_crud'", null)
+
+            if(cursor.moveToFirst()){
+                // assert isNotEmpty
+                throw Exception("SQlite Sequence should not be empty")
+            }
+
+            val seqIndex = cursor.getColumnIndex("item")
+            val item = cursor.getInt(seqIndex)
+            val seqAfter = cursor.getInt(seqIndex)
+
+//            println("seqAfter ${Json.encodeToString()}", JSON.stringify(rs.rows?.item(0)));
+        }
+        catch (e: Exception){
+            throw e
+        }
+        finally {
+            database.endTransaction()
+            database.close()
+        }
+
+//            this.logger.debug('seqAfter', JSON.stringify(rs.rows?.item(0)));
+//            if (seqAfter != seqBefore) {
+//                this.logger.debug('seqAfter != seqBefore', seqAfter, seqBefore);
+//                // New crud data may have been uploaded since we got the checkpoint. Abort.
+//                return false;
+//            }
+//
+//            const response = await tx.executeAsync("UPDATE ps_buckets SET target_op = ? WHERE name='$local'", [opId]);
+//            this.logger.debug(['[updateLocalTarget] Response from updating target_op ', JSON.stringify(response)]);
+//            return true;
+//        });
 
         TODO("Not yet implemented")
     }

@@ -5,9 +5,8 @@ import android.os.StrictMode
 import co.powersync.kotlin.bucket.BucketChecksum
 import co.powersync.kotlin.bucket.BucketStorageAdapter
 import co.powersync.kotlin.bucket.Checkpoint
+import co.powersync.kotlin.bucket.CrudEntry
 import co.powersync.kotlin.bucket.KotlinBucketStorageAdapter
-import co.powersync.kotlin.bucket.OpTypeEnum
-import co.powersync.kotlin.bucket.OplogEntry
 import co.powersync.kotlin.bucket.SyncDataBatch
 import co.powersync.kotlin.bucket.SyncDataBucket
 import co.powersync.kotlin.db.Schema
@@ -37,7 +36,6 @@ import io.ktor.http.contentType
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.core.isEmpty
 import io.ktor.utils.io.core.readBytes
-import io.requery.android.database.sqlite.SQLiteDatabase
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -49,6 +47,8 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
 import java.util.Date
 
+
+class CrudTransaction()
 
 data class HandleJSONInstructionResult(
     var targetCheckpoint: Checkpoint?,
@@ -80,7 +80,48 @@ class PowerSyncDatabase(
         bucketStorageAdapter = KotlinBucketStorageAdapter(dbHelper)
     }
 
-    override suspend fun getNextCrudTransaction() {
+    /**
+     * Get the next recorded transaction to upload.
+     *
+     * Returns null if there is no data to upload.
+     *
+     * Use this from the [PowerSyncBackendConnector.uploadData]` callback.
+     *
+     * Once the data have been successfully uploaded, call [CrudTransaction.complete] before
+     * requesting the next transaction.
+     *
+     * Unlike [getCrudBatch], this only returns data from a single transaction at a time.
+     * All data for the transaction is loaded into memory.
+     */
+    override suspend fun getNextCrudTransaction(): CrudTransaction? {
+        val database = dbHelper.writableDatabase
+        database.beginTransaction()
+        try {
+            val cursor = database.rawQuery(
+                "SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC LIMIT 1",
+                null
+            )
+            if (!cursor.moveToFirst()) {
+                return null
+            }
+
+            val txIdIndex = cursor.getColumnIndex("tx_id")
+            val txId = cursor.getInt(txIdIndex)
+
+            val all: MutableList<CrudEntry> = mutableListOf()
+
+            println("$txId $all")
+
+            TODO("Not yet implemented")
+            database.setTransactionSuccessful()
+        } catch (e: Exception) {
+            throw e
+        } finally {
+            database.endTransaction()
+            database.close()
+        }
+
+
         TODO("Not yet implemented")
     }
 
@@ -88,9 +129,6 @@ class PowerSyncDatabase(
 
     private suspend fun init() {
         initCompleted = CompletableDeferred()
-
-        // TODO remember to remove this, only added to make sure we start clean
-        disconnectAndClear()
 
         readSdkVersion()
         applySchema()
@@ -151,6 +189,7 @@ class PowerSyncDatabase(
     }
 
     suspend fun connect() {
+        println("Powersync connecting")
         disconnect()
 
         // If isCompleted returns true, that means that init had completed (Failure also counts as completed)
@@ -158,7 +197,9 @@ class PowerSyncDatabase(
             initCompleted?.await()
         }
 
-        streamingSyncIteration()
+        GlobalScope.launch (Dispatchers.IO){
+            streamingSyncIteration()
+        }
     }
 
     private fun disconnect() {
@@ -176,7 +217,7 @@ class PowerSyncDatabase(
      *  The database can still be queried after this is called, but the tables
      *  would be empty.
      */
-    suspend fun disconnectAndClear() {
+    fun disconnectAndClear() {
         val database = dbHelper.writableDatabase
         disconnect()
 
@@ -203,7 +244,7 @@ class PowerSyncDatabase(
             }
 
             for (row in existingTableRows) {
-                database.delete(row, "1", arrayOf());
+                database.delete(row, "1", arrayOf())
             }
 
             database.setTransactionSuccessful()
@@ -238,7 +279,15 @@ class PowerSyncDatabase(
                 buckets = req,
                 include_checksum = true
             )
-        ).collect { value -> handleJSONInstruction(value, state) }
+        ).collect { value ->
+            run {
+                handleJSONInstruction(value, state)
+                if (state.retry == true) {
+                    // Disconnect the current connection and re-connect with new token
+                    connect()
+                }
+            }
+        }
     }
 
     // TODO use the return values e.g. {retry=true}, in react native sdk, the return values were for the locks, maybe whe need proper locks here as well
@@ -246,6 +295,7 @@ class PowerSyncDatabase(
         jsonString: String,
         state: HandleJSONInstructionResult
     ): HandleJSONInstructionResult {
+        println("Received Instruction: $jsonString")
         val obj: JsonObject = Json.parseToJsonElement(jsonString) as JsonObject
 
         when (true) {
@@ -309,6 +359,7 @@ class PowerSyncDatabase(
             // TODO: better back-off
             delay(50)
             state.retry = true
+            // TODO handle retries
             return state
         } else if (!result.ready) {
             // Checksums valid, but need more data for a consistent checkpoint.
@@ -338,8 +389,12 @@ class PowerSyncDatabase(
 
         val newBuckets = mutableMapOf<String, BucketChecksum>()
 
-        state.targetCheckpoint!!.buckets?.forEach { checksum -> newBuckets[checksum.bucket] = checksum }
-        checkpointDiff.updated_buckets.forEach { checksum -> newBuckets[checksum.bucket] = checksum }
+        state.targetCheckpoint!!.buckets?.forEach { checksum ->
+            newBuckets[checksum.bucket] = checksum
+        }
+        checkpointDiff.updated_buckets.forEach { checksum ->
+            newBuckets[checksum.bucket] = checksum
+        }
 
         checkpointDiff.removed_buckets.forEach { bucket -> newBuckets.remove(bucket) }
 
@@ -349,15 +404,15 @@ class PowerSyncDatabase(
             write_checkpoint = checkpointDiff.write_checkpoint
         )
 
-        state.targetCheckpoint = newCheckpoint;
+        state.targetCheckpoint = newCheckpoint
 
         state.bucketSet = newBuckets.keys.toMutableSet()
 
         val bucketsToDelete = checkpointDiff.removed_buckets.clone()
         if (bucketsToDelete.isNotEmpty()) {
-            println("Remove buckets $bucketsToDelete");
+            println("Remove buckets $bucketsToDelete")
         }
-        bucketStorageAdapter.removeBuckets(bucketsToDelete);
+        bucketStorageAdapter.removeBuckets(bucketsToDelete)
         bucketStorageAdapter.setTargetCheckpoint(state.targetCheckpoint!!)
 
         return state
@@ -381,7 +436,7 @@ class PowerSyncDatabase(
 
         if (tokenExpiresIn <= 0) {
             // Connection would be closed automatically right after this
-            println("Token expiring; reconnect")
+            println("Token expiring reconnect")
             state.retry = true
             return state
         }
@@ -449,42 +504,42 @@ class PowerSyncDatabase(
     fun updateSyncStatus(connected: Boolean, lastSyncedAt: Date? = null) {
         _lastSyncedAt = lastSyncedAt ?: _lastSyncedAt
         // TODO event firing and listeners
-        //iterateListeners((cb) => cb.statusChanged?.(new SyncStatus(connected, this.lastSyncedAt)));
+        //iterateListeners((cb) => cb.statusChanged?.(new SyncStatus(connected, this.lastSyncedAt)))
     }
 
     suspend fun triggerCrudUpload() {
         if (isUploadingCrud) {
-            return;
+            return
         }
-        _uploadAllCrud();
+        _uploadAllCrud()
     }
 
     // TODO make sure about thread safety
     suspend fun _uploadAllCrud() {
-        isUploadingCrud = true;
+        isUploadingCrud = true
         while (true) {
             try {
-                val done = uploadCrudBatch();
+                val done = uploadCrudBatch()
                 if (done) {
-                    isUploadingCrud = false;
-                    break;
+                    isUploadingCrud = false
+                    break
                 }
             } catch (ex: Exception) {
-                this.updateSyncStatus(false);
-                this.isUploadingCrud = false;
-                break;
+                this.updateSyncStatus(false)
+                this.isUploadingCrud = false
+                break
             }
         }
     }
 
-    suspend fun uploadCrudBatch(): Boolean {
-        val hasCrud = bucketStorageAdapter.hasCrud();
+    private suspend fun uploadCrudBatch(): Boolean {
+        val hasCrud = bucketStorageAdapter.hasCrud()
         if (hasCrud) {
-            uploadCrud();
-            return false;
+            uploadCrud()
+            return false
         } else {
-            bucketStorageAdapter.updateLocalTarget { getWriteCheckpoint() }
-            return true;
+            bucketStorageAdapter.updateLocalTarget(cb = suspend { getWriteCheckpoint() })
+            return true
         }
     }
 
@@ -507,7 +562,7 @@ class PowerSyncDatabase(
                 append(HttpHeaders.Authorization, "Token ${creds.token}")
                 append("User-Id", creds.userID)
             }
-        };
+        }
         return response.body() as String
     }
 }
