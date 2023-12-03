@@ -1,20 +1,19 @@
+import UIKit
 import SwiftUI
-import Shared
+import ComposeApp
+
+struct ComposeView: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> UIViewController {
+        MainViewControllerKt.MainViewController()
+    }
+
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
+}
 
 struct ContentView: View {
     var body: some View {
-        VStack {
-            Image(systemName: "swift")
-                .imageScale(.large)
-                .foregroundColor(.accentColor)
-            Text("SwiftUI: \(Greeting().greet())")
-        }
-        .padding()
+        ComposeView()
+                .ignoresSafeArea(.keyboard) // Compose has own keyboard handler
     }
 }
 
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
-    }
-}

@@ -1,3 +1,4 @@
+package co.powersync
 class Greeting {
     private val platform = getPlatform()
 

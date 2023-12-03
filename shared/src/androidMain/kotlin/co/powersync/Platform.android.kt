@@ -1,3 +1,5 @@
+package co.powersync
+
 import android.os.Build
 
 class AndroidPlatform : Platform {

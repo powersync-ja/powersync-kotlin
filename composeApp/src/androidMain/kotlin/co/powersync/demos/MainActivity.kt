@@ -1,6 +1,6 @@
-package co.powersync.kotlin
+package co.powersync.demos
 
-import App
+import co.powersync.demos.App
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent

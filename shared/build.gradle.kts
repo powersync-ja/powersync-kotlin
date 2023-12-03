@@ -31,7 +31,7 @@ kotlin {
 }
 
 android {
-    namespace = "co.powersync.kotlin.shared"
+    namespace = "co.powersync.shared"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()

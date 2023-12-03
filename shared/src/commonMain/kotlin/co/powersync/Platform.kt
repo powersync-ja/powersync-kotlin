@@ -1,3 +1,5 @@
+package co.powersync
+
 interface Platform {
     val name: String
 }

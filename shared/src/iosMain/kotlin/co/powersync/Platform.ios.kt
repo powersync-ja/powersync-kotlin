@@ -1,3 +1,5 @@
+package co.powersync
+
 import platform.UIKit.UIDevice
 
 class IOSPlatform: Platform {
