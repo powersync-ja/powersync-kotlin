@@ -1,17 +1,22 @@
+rootProject.name = "PowerSyncSDK"
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+
 pluginManagement {
+    repositories {
+        maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
+        google()
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        gradlePluginPortal()
+        maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
     }
 }
-//dependencyResolutionManagement {
-//    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-//    repositories {
-//        google()
-//        mavenCentral()
-//    }
-//}
 
-rootProject.name = "Notes SQLite"
-include(":app")
+include(":shared")
+include(":composeApp")
