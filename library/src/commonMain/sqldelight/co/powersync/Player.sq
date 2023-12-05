@@ -19,3 +19,8 @@ VALUES (?, ?);
 insertFullPlayerObject:
 INSERT INTO hockeyPlayer(player_number, full_name)
 VALUES ?;
+
+playerNameByNumber:
+SELECT full_name
+FROM hockeyPlayer
+WHERE player_number = ?;

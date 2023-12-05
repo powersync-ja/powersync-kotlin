@@ -46,7 +46,7 @@ kotlin {
 }
 
 android {
-    namespace = "co.powersync.shared"
+    namespace = "co.powersync.library"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()
@@ -59,5 +59,4 @@ sqldelight {
             packageName.set("co.powersync")
         }
     }
-    linkSqlite = true
 }
