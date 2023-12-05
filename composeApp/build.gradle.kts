@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsCompose)
+    alias(libs.plugins.sqldelight)
 }
 
 kotlin {
@@ -27,7 +28,6 @@ kotlin {
     }
 
     sourceSets {
-
         commonMain.dependencies {
             implementation(projects.library)
             implementation(compose.runtime)
@@ -35,6 +35,7 @@ kotlin {
             implementation(compose.material)
             @OptIn(ExperimentalComposeLibrary::class)
             implementation(compose.components.resources)
+            implementation(libs.powersync.sqlite.core)
         }
 
         androidMain.dependencies {
@@ -42,6 +43,11 @@ kotlin {
             implementation(libs.compose.ui)
             implementation(libs.compose.ui.tooling.preview)
             implementation(libs.androidx.activity.compose)
+            implementation(libs.sqldelight.android.driver)
+        }
+
+        iosMain.dependencies {
+            implementation(libs.sqldelight.native.driver)
         }
 
         commonTest.dependencies {

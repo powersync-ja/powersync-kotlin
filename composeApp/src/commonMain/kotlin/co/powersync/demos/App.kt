@@ -7,13 +7,14 @@ import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import co.powersync.Database
 import co.powersync.Greeting
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 
 @OptIn(ExperimentalResourceApi::class)
 @Composable
-fun App() {
+fun App(db: Database?) {
     MaterialTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
@@ -24,7 +25,7 @@ fun App() {
             LaunchedEffect(true) {
                 scope.launch {
                     text = try {
-                        Greeting().greet()
+                        Greeting().greet(db)
                     } catch (e: Exception) {
                         e.message ?: "error"
                     }
