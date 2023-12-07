@@ -7,15 +7,15 @@ import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import co.powersync.Database
 import co.powersync.DatabaseDriverFactory
 import co.powersync.Greeting
-import co.powersync.SDK
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 
 @OptIn(ExperimentalResourceApi::class)
 @Composable
-fun App() {
+fun App(driverFactory: DatabaseDriverFactory?) {
     MaterialTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
@@ -26,7 +26,8 @@ fun App() {
             LaunchedEffect(true) {
                 scope.launch {
                     text = try {
-                         Greeting().greet()
+                        val db = driverFactory?.let { Database(it)  }
+                         Greeting().greet() + " PowerSync version: " + db?.getPowersyncVersion()
                     } catch (e: Exception) {
                         e.message ?: "error"
                     }

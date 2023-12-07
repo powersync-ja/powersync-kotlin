@@ -15,13 +15,13 @@ kotlin {
     }
 
     listOf(
-        iosX64(),
+        //iosX64(), Uncomment if you want to build for non-M1 iOS
         iosArm64(),
         iosSimulatorArm64()
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "library"
-            isStatic = true
+            linkerOpts.add("-lsqlite3")
         }
     }
 
@@ -31,12 +31,12 @@ kotlin {
             implementation(libs.ktor.serialization.json)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
-            implementation(libs.powersync.sqlite.core)
         }
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.requery.sqlite.android)
             implementation(libs.sqldelight.android.driver)
+            implementation(libs.powersync.sqlite.core)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)

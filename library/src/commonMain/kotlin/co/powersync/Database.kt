@@ -14,7 +14,7 @@ class Database(databaseDriverFactory: DatabaseDriverFactory) {
     }
 
 
-    internal fun getPowersyncVersion():  String {
+    fun getPowersyncVersion():  String {
         return PowerSyncVersion() { cursor ->
             cursor.getString(0)!!
         }.executeAsOne()

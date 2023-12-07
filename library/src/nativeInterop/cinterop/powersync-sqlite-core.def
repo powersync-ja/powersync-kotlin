@@ -1,0 +1,3 @@
+language = Objective-C
+modules = powersync-sqlite-core
+package = powersync-sqlite-core

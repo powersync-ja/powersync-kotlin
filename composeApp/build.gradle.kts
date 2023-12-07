@@ -4,7 +4,6 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsCompose)
-    alias(libs.plugins.sqldelight)
 }
 
 kotlin {
@@ -17,25 +16,40 @@ kotlin {
     }
 
     listOf(
-        iosX64(),
+        //iosX64(), Uncomment if you want to build for non-M1 iOS
         iosArm64(),
         iosSimulatorArm64()
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
-            isStatic = true
+            linkerOpts.add("-lsqlite3")
         }
     }
 
+//    iosArm64() {
+//        compilations.getByName("main") {
+//            val powerSyncCore by cinterops.creating {
+//                // Path to .def file
+//                defFile("src/nativeInterop/cinterop/powersync-sqlite-core.def")
+//
+//                compilerOpts("-framework", "powersync-sqlite-core", "-F/powersync-sqlite-core.xcframework/ios-arm64/powersync-sqlite-core.framework")
+//            }
+//        }
+//
+//        binaries.all {
+//            // Tell the linker where the framework is located.
+//            linkerOpts("-framework", "powersync-sqlite-core", "-F/powersync-sqlite-core.xcframework/ios-arm64/powersync-sqlite-core.framework")
+//        }
+//    }
+
     sourceSets {
         commonMain.dependencies {
-            implementation(projects.library)
+            api(projects.library)
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material)
             @OptIn(ExperimentalComposeLibrary::class)
             implementation(compose.components.resources)
-            implementation(libs.powersync.sqlite.core)
         }
 
         androidMain.dependencies {
@@ -43,11 +57,6 @@ kotlin {
             implementation(libs.compose.ui)
             implementation(libs.compose.ui.tooling.preview)
             implementation(libs.androidx.activity.compose)
-            implementation(libs.sqldelight.android.driver)
-        }
-
-        iosMain.dependencies {
-            implementation(libs.sqldelight.native.driver)
         }
 
         commonTest.dependencies {
