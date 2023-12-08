@@ -18,7 +18,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "powersync-kotlin-sdk"
+rootProject.name = "powersync"
 
-include(":library")
-include(":composeApp")
+include(":core")
