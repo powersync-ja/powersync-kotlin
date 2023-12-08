@@ -4,6 +4,7 @@ import org.jetbrains.kotlin.ir.backend.js.compile
 
 plugins {
     alias(projectLibs.plugins.kotlinMultiplatform)
+    alias(projectLibs.plugins.kotlinCocoapods)
     alias(projectLibs.plugins.androidApplication)
     alias(projectLibs.plugins.jetbrainsCompose)
 }
@@ -16,18 +17,23 @@ kotlin {
             }
         }
     }
-    
-    listOf(
-        iosX64(),
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
+
+    iosX64()
+    iosArm64()
+    iosSimulatorArm64()
+    cocoapods {
+        version = "1.0.0"
+        summary = "A shared library for Hello PowerSync app"
+        homepage = "none"
+        ios.deploymentTarget = "15.2"
+
+        framework {
             baseName = "ComposeApp"
             linkerOpts("-lsqlite3")
+            export("co.powersync:core")
         }
     }
-    
+
     sourceSets {
         commonMain.dependencies {
             api("co.powersync:core")

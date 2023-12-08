@@ -1,8 +1,0 @@
-package = co.powersync.core.sqlite
-headers = sqlite3.h sqlite3ext.h PowerSyncSqlite.h
-linkerOpts = -lsqlite3
----
-
-int init_powersync_sqlite_plugin() {
-    return sqlite3_auto_extension((void (*)(void))&sqlite3_powersync_init);
-}
