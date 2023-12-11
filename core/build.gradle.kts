@@ -30,26 +30,21 @@ kotlin {
         summary = "A Kotlin Multiplatform library for PowerSync."
         homepage = "none"
         ios.deploymentTarget = "15.2"
+
+        pod("powersync-sqlite-core") {
+            linkOnly = true
+        }
     }
 
-//    iosX64() { configureIos() }
-    iosArm64 { configureIos() }
-    iosSimulatorArm64 { configureIos() }
+//    iosX64() Disabled for now, uncomment when we you are not on an M1 Mac
+    iosArm64()
+    iosSimulatorArm64()
 
-//    targets.withType<KotlinNativeTarget>().all {
-//        compilations.getByName("main") {
-//            cinterops.create("sqlite") {
-//                defFile("src/nativeInterop/cinterop/sqlite3.def")
-//            }
-//
-//            cinterops.create("PowerSyncSqlitePlugin") {
-//                includeDirs("$projectDir/src/include")
-//            }
-//        }
-//        binaries.withType<Framework> {
-//            linkerOpts.add("-lsqlite3")
-//        }
-//    }
+    targets.withType<KotlinNativeTarget> {
+        compilations.getByName("main") {
+            cinterops.create("powersync-sqlite-core")
+        }
+    }
 
     sourceSets {
         commonMain.dependencies {
@@ -95,23 +90,25 @@ fun KotlinNativeTarget.configureIos() {
     println("frameworkPath: $frameworkPath")
     compilations.getByName("main") {
         cinterops.create("powersync-sqlite-core") {
-            compilerOpts("-framework", "powersync-sqlite-core", "-F$frameworkPath")
+//            compilerOpts("-framework", "powersync-sqlite-core", "-F$frameworkPath")
         }
     }
 
-    binaries {
+//    binaries.withType<Framework> {
+//        linkerOpts.addAll(listOf("-lpowersync-sqlite-core"))
+//    }
 
-        getTest("DEBUG").apply {
-            linkerOpts(
-                "-framework",
-                "powersync-sqlite-core",
-                "-F$frameworkPath",
-                "-rpath",
-                "$frameworkPath",
-                "-ObjC"
-            )
-        }
-    }
+//    binaries {
+//        getTest("DEBUG").apply {
+//            linkerOpts(
+//                "-framework",
+//                "powersync-sqlite-core",
+//                "-F$frameworkPath",
+//                "-rpath",
+//                "$frameworkPath"
+//            )
+//        }
+//    }
 }
 
 fun File.resolveArchPath(target: KonanTarget, framework: String): File? {

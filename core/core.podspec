@@ -9,7 +9,7 @@ Pod::Spec.new do |spec|
     spec.vendored_frameworks      = 'build/cocoapods/framework/core.framework'
     spec.libraries                = 'c++'
     spec.ios.deployment_target = '15.2'
-                
+    spec.dependency 'powersync-sqlite-core'
                 
     if !Dir.exist?('build/cocoapods/framework/core.framework') || Dir.empty?('build/cocoapods/framework/core.framework')
         raise "
