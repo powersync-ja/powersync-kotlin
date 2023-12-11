@@ -1,0 +1,13 @@
+package = co.powersync.sqlite.core
+headers = sqlite3.h
+headerFilter = sqlite3.h
+linkerOpts = -lsqlite3
+---
+extern int sqlite3_powersync_init(sqlite3 *db, char **pzErrMsg,
+                                  const sqlite3_api_routines *pApi);
+
+static int installPlugin() {
+    int result =
+        sqlite3_auto_extension((void (*)(void)) &sqlite3_powersync_init);
+    return result;
+}

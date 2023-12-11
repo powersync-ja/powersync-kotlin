@@ -1,5 +1,7 @@
 import org.jetbrains.compose.ExperimentalComposeLibrary
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.jetbrains.kotlin.gradle.plugin.mpp.Framework
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.ir.backend.js.compile
 
 plugins {
@@ -18,7 +20,7 @@ kotlin {
         }
     }
 
-    iosX64()
+//    iosX64()
     iosArm64()
     iosSimulatorArm64()
     cocoapods {
@@ -26,11 +28,12 @@ kotlin {
         summary = "A shared library for Hello PowerSync app"
         homepage = "none"
         ios.deploymentTarget = "15.2"
+        podfile = project.file("../iosApp/Podfile")
 
         framework {
-            baseName = "ComposeApp"
-            linkerOpts("-lsqlite3")
+            baseName = "composeApp"
             export("co.powersync:core")
+            isStatic = false
         }
     }
 

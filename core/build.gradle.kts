@@ -26,28 +26,30 @@ kotlin {
         }
     }
 
-    iosX64()
-    iosArm64()
-    iosSimulatorArm64()
-
     cocoapods {
         summary = "A Kotlin Multiplatform library for PowerSync."
         homepage = "none"
         ios.deploymentTarget = "15.2"
     }
 
-    targets.withType<KotlinNativeTarget>().all {
-        compilations.getByName("main") {
-            cinterops.create("sqlite") {
-                defFile("src/nativeInterop/cinterop/sqlite3.def")
-            }
+//    iosX64() { configureIos() }
+    iosArm64 { configureIos() }
+    iosSimulatorArm64 { configureIos() }
 
-            cinterops.create("powersync-sqlite-plugin")
-        }
-        binaries.withType<Framework> {
-            linkerOpts.add("-lsqlite3")
-        }
-    }
+//    targets.withType<KotlinNativeTarget>().all {
+//        compilations.getByName("main") {
+//            cinterops.create("sqlite") {
+//                defFile("src/nativeInterop/cinterop/sqlite3.def")
+//            }
+//
+//            cinterops.create("PowerSyncSqlitePlugin") {
+//                includeDirs("$projectDir/src/include")
+//            }
+//        }
+//        binaries.withType<Framework> {
+//            linkerOpts.add("-lsqlite3")
+//        }
+//    }
 
     sourceSets {
         commonMain.dependencies {
@@ -87,44 +89,30 @@ sqldelight {
     linkSqlite = true
 }
 
-//fun KotlinNativeTarget.configureIos() {
-//    val frameworkPath = file("${rootDir}/frameworks/powersync-sqlite-core").resolveArchPath(konanTarget, "powersync-sqlite-core")
-//    println("frameworkPath: $frameworkPath");
-//    compilations.getByName("main") {
-//        cinterops.create("powersync-sqlite-plugin")
-//    }
-//
-//    binaries.all {
-//        // Tell the linker where the framework is located.
-//        linkerOpts.addAll(listOf( "-framework", "powersync-sqlite-core", "-F$frameworkPath","-rpath",
-//            "$frameworkPath",
-//            "-ObjC"))
-//    }
-//}
+fun KotlinNativeTarget.configureIos() {
+    val frameworkPath = file("${rootDir}/frameworks")
+        .resolveArchPath(konanTarget, "powersync-sqlite-core")
+    println("frameworkPath: $frameworkPath")
+    compilations.getByName("main") {
+        cinterops.create("powersync-sqlite-core") {
+            compilerOpts("-framework", "powersync-sqlite-core", "-F$frameworkPath")
+        }
+    }
 
-//fun org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget.configureIos() {
-//    val webRtcFrameworkPath = file("${layout.buildDirectory.get()}/cocoapods/synthetic/ios/Pods/powersync-sqlite-core")
-//        .resolveArchPath(konanTarget, "WebRTC")
-//    compilations.getByName("main") {
-//        cinterops.getByName("WebRTC") {
-//            compilerOpts("-framework", "WebRTC", "-F$webRtcFrameworkPath")
-//        }
-//    }
-//
-//    binaries {
-//        getTest("DEBUG").apply {
-//            linkerOpts(
-//                "-framework",
-//                "WebRTC",
-//                "-F$webRtcFrameworkPath",
-//                "-rpath",
-//                "$webRtcFrameworkPath",
-//                "-ObjC"
-//            )
-//        }
-//    }
-//}
+    binaries {
 
+        getTest("DEBUG").apply {
+            linkerOpts(
+                "-framework",
+                "powersync-sqlite-core",
+                "-F$frameworkPath",
+                "-rpath",
+                "$frameworkPath",
+                "-ObjC"
+            )
+        }
+    }
+}
 
 fun File.resolveArchPath(target: KonanTarget, framework: String): File? {
     val archPaths = resolve("$framework.xcframework")
