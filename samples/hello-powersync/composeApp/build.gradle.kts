@@ -30,10 +30,14 @@ kotlin {
         ios.deploymentTarget = "15.2"
         podfile = project.file("../iosApp/Podfile")
 
+        pod("powersync-sqlite-core") {
+            linkOnly = true
+        }
+
         framework {
             baseName = "composeApp"
+            isStatic = true
             export("co.powersync:core")
-            isStatic = false
         }
     }
 

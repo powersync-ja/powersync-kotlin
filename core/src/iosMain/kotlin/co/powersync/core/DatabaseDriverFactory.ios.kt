@@ -2,14 +2,14 @@ package co.powersync.core
 
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.native.NativeSqliteDriver
-//import co.powersync.sqlite.core.installPlugin
 import kotlinx.cinterop.ExperimentalForeignApi
+import co.powersync.sqlite.core.init_powersync_sqlite_extension
 
 @OptIn(ExperimentalForeignApi::class)
 actual class DatabaseDriverFactory {
 
     init {
-//        installPlugin()
+        init_powersync_sqlite_extension()
     }
 
     actual fun createDriver(): SqlDriver {

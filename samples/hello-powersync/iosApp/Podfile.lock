@@ -1,15 +1,22 @@
 PODS:
-  - composeApp (1.0.0)
+  - composeApp (1.0.0):
+    - powersync-sqlite-core
+  - powersync-sqlite-core (0.1.3)
 
 DEPENDENCIES:
   - composeApp (from `../composeApp`)
+
+SPEC REPOS:
+  trunk:
+    - powersync-sqlite-core
 
 EXTERNAL SOURCES:
   composeApp:
     :path: "../composeApp"
 
 SPEC CHECKSUMS:
-  composeApp: cb230a6eaa1e1f89611f2cac4a67e2fc32e1655a
+  composeApp: d4907701ff82fa92100d8460385b83c9b30955ba
+  powersync-sqlite-core: a8c9c0f5ddb25099973bece98776080400346fe3
 
 PODFILE CHECKSUM: 4680f51fbb293d1385fb2467ada435cc1f16ab3d
 
