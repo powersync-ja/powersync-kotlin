@@ -1,8 +1,10 @@
-package co.powersync
+package co.powersync.db
 
 import app.cash.sqldelight.Query
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlCursor
+import co.powersync.AppDatabase
+import co.powersync.HockeyPlayer
 
 class Database(databaseDriverFactory: DatabaseDriverFactory) {
     private val driver = databaseDriverFactory.createDriver();
@@ -24,11 +26,11 @@ class Database(databaseDriverFactory: DatabaseDriverFactory) {
     private inner class PowerSyncVersion<out T : Any>(
         mapper: (SqlCursor) -> T,
     ) : Query<T>(mapper) {
-        override fun addListener(listener: Query.Listener) {
+        override fun addListener(listener: Listener) {
             driver.addListener("hockeyPlayer", listener = listener)
         }
 
-        override fun removeListener(listener: Query.Listener) {
+        override fun removeListener(listener: Listener) {
             driver.removeListener("hockeyPlayer", listener = listener)
         }
 

@@ -1,5 +1,6 @@
-package co.powersync
+package co.powersync.db
 
+import co.powersync.AppDatabase
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.native.NativeSqliteDriver
 import kotlinx.cinterop.ExperimentalForeignApi

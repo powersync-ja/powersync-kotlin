@@ -1,4 +1,4 @@
-package co.powersync
+package co.powersync.db
 
 import app.cash.sqldelight.db.SqlDriver
 
