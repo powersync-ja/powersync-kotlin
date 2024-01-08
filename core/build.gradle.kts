@@ -1,4 +1,3 @@
-import org.jetbrains.kotlin.gradle.plugin.mpp.Framework
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 
 plugins {
@@ -32,9 +31,7 @@ kotlin {
             cinterops.create("sqlite") {
                 defFile = project.file("src/nativeInterop/cinterop/sqlite3.def")
             }
-            cinterops.create("powersync-sqlite-core") {
-                includeDirs(project.file("src/include"))
-            }
+            cinterops.create("powersync-sqlite-core")
         }
     }
 
@@ -65,7 +62,7 @@ kotlin {
 }
 
 android {
-    namespace = "co.powersync.core"
+    namespace = "co.powersync"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()
@@ -75,7 +72,7 @@ android {
 sqldelight {
     databases {
         create("AppDatabase") {
-            packageName.set("co.powersync.core")
+            packageName.set("co.powersync")
         }
     }
     linkSqlite = true

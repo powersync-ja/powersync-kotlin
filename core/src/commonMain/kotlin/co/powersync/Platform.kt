@@ -1,4 +1,4 @@
-package co.powersync.core
+package co.powersync
 
 interface Platform {
     val name: String

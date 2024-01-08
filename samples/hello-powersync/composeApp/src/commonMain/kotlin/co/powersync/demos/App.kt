@@ -7,9 +7,9 @@ import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import co.powersync.core.Database
-import co.powersync.core.DatabaseDriverFactory
-import co.powersync.core.Greeting
+import co.powersync.Database
+import co.powersync.DatabaseDriverFactory
+import co.powersync.Greeting
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 

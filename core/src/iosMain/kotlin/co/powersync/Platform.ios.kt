@@ -1,4 +1,4 @@
-package co.powersync.core
+package co.powersync
 
 import platform.UIKit.UIDevice
 

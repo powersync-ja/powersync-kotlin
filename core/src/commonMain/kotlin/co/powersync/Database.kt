@@ -1,4 +1,4 @@
-package co.powersync.core
+package co.powersync
 
 import app.cash.sqldelight.Query
 import app.cash.sqldelight.db.QueryResult

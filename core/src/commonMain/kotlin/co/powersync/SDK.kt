@@ -1,4 +1,4 @@
-package co.powersync.core
+package co.powersync
 
 class SDK (databaseDriverFactory: DatabaseDriverFactory) {
     private val database = Database(databaseDriverFactory)
