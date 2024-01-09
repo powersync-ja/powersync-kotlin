@@ -13,7 +13,7 @@ actual class DatabaseDriverFactory {
         init_powersync_sqlite_extension()
     }
 
-    actual fun createDriver(): SqlDriver {
-        return NativeSqliteDriver(AppDatabase.Schema, "test.db")
+    actual fun createDriver(options: DriverOptions): SqlDriver {
+        return NativeSqliteDriver(AppDatabase.Schema, options.dbFilename)
     }
 }

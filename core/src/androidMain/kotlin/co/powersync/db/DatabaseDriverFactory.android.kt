@@ -8,9 +8,9 @@ import io.requery.android.database.sqlite.RequerySQLiteOpenHelperFactory
 import io.requery.android.database.sqlite.SQLiteCustomExtension
 
 actual class DatabaseDriverFactory(private val context: Context) {
-    actual fun createDriver(): SqlDriver {
+    actual fun createDriver(options: DriverOptions): SqlDriver {
         return AndroidSqliteDriver(
-            AppDatabase.Schema, context, "test.db", factory = RequerySQLiteOpenHelperFactory(
+            AppDatabase.Schema, context, options.dbFilename, factory = RequerySQLiteOpenHelperFactory(
             listOf(RequerySQLiteOpenHelperFactory.ConfigurationOptions { config ->
                 config.customExtensions.add(SQLiteCustomExtension("libpowersync", "sqlite3_powersync_init"))
                 config
