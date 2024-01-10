@@ -3,6 +3,7 @@ package co.powersync.db
 import app.cash.sqldelight.db.SqlDriver
 
 import co.powersync.Closeable
+import co.powersync.sync.SyncStatus
 
 /**
  * A PowerSync managed database.
@@ -23,14 +24,17 @@ open class PowerSyncDatabase (config: PowerSyncDatabaseConfig
     override var closed: Boolean = false
 
     private val driver: SqlDriver
+    private val database: PsDatabase
 
     /**
      * The current sync status.
      */
-    val currentStatus: SyncStatus = SyncStatus()
+    val currentStatus: SyncStatus
 
     init {
         this.driver = config.driverFactory.createDriver(config)
+        this.database = PsDatabase(driver)
+        this.currentStatus = SyncStatus()
     }
 
     companion object {

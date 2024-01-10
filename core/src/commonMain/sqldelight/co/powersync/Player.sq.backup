@@ -1,6 +1,6 @@
 CREATE TABLE hockeyPlayer (
   player_number INTEGER PRIMARY KEY NOT NULL,
-  full_name TEXT NOT NULL
+      full_name TEXT NOT NULL
 );
 
 CREATE INDEX hockeyPlayer_full_name ON hockeyPlayer(full_name);

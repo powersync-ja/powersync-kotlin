@@ -1,4 +1,4 @@
-package co.powersync.db
+package co.powersync.sync
 
 import kotlinx.datetime.Instant
 

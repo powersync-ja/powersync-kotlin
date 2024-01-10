@@ -3,8 +3,7 @@ package co.powersync.db
 import app.cash.sqldelight.Query
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlCursor
-import co.powersync.AppDatabase
-import co.powersync.HockeyPlayer
+import co.powersync.db.PsDatabase
 
 class Database(databaseDriverFactory: DatabaseDriverFactory) {
     private val driver = databaseDriverFactory.createDriver();

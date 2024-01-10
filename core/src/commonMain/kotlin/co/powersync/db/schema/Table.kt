@@ -1,6 +1,6 @@
 package co.powersync.db.schema
 
-val invalidSqliteCharacters = Regex("""["'%,.#\\s\\[\\]]""")
+import co.powersync.invalidSqliteCharacters
 
 /**
  * A single table in the schema.

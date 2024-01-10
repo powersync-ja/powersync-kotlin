@@ -44,6 +44,7 @@ kotlin {
         commonMain.dependencies {
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.serialization.json)
+            implementation(libs.kotlinx.io)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
             implementation(libs.bundles.sqldelight.common)
@@ -71,8 +72,8 @@ android {
 
 sqldelight {
     databases {
-        create("AppDatabase") {
-            packageName.set("co.powersync")
+        create("PsDatabase") {
+            packageName.set("co.powersync.db")
         }
     }
     linkSqlite = true

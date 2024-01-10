@@ -36,7 +36,7 @@ data class CrudEntry (
      * Currently, this is only present when [PowerSyncDatabase.writeTransaction] is used.
      * This may change in the future.
      */
-    val transactionId: Int?,
+   val transactionId: Int?,
 
     /**
      * Data associated with the change.
@@ -54,10 +54,10 @@ data class CrudEntry (
             val data = row["data"] as? Map<String, Any>
             return CrudEntry(
                 id = row["id"] as String,
-                clientId = row["clientId"] as Int,
+                clientId = row["op_id"] as Int,
                 op = UpdateType.fromJsonChecked(row["op"] as String),
                 table = row["table"] as String,
-                transactionId = row["transactionId"] as? Int,
+                transactionId = row["tx_id"] as? Int,
                 opData = data?.get("data") as? Map<String, Any>
             )
         }
