@@ -5,6 +5,7 @@ import co.powersync.bucket.BucketRequest
 import co.powersync.bucket.BucketStorage
 import co.powersync.bucket.Checkpoint
 import co.powersync.connection.PowerSyncCredentials
+import co.touchlab.stately.concurrency.AtomicBoolean
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.timeout
@@ -15,11 +16,8 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
-import io.ktor.utils.io.ByteReadChannel
-import io.ktor.utils.io.core.String
-import io.ktor.utils.io.core.isEmpty
-import io.ktor.utils.io.core.readBytes
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import io.ktor.utils.io.*
+import io.ktor.utils.io.core.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -42,8 +40,9 @@ class SyncStream(private val bucketStorage: BucketStorage,
                  private val updateStream: Flow<Any>,
                  private val retryDelay: Long
 ) {
-    var lastStatus = SyncStatus()
-    private var isUploadingCrud = false //TODO Thread safe??
+    private var isUploadingCrud = AtomicBoolean(false)
+
+    private var lastStatus = SyncStatus()
     private val httpClient: HttpClient = HttpClient()
     private val _statusStreamController = MutableStateFlow(SyncStatus())
     val statusStream: StateFlow<SyncStatus> get() = _statusStreamController
@@ -191,7 +190,7 @@ class SyncStream(private val bucketStorage: BucketStorage,
             var buffer: ByteArray = byteArrayOf()
             while (!channel.isClosedForRead) {
 
-                val packet = channel.readRemaining(4096)
+                val packet = channel.readRemaining()
 
                 while (!packet.isEmpty) {
                     val bytes = packet.readBytes()
@@ -403,7 +402,7 @@ class SyncStream(private val bucketStorage: BucketStorage,
     }
 
     suspend fun triggerCrudUpload() {
-        if (isUploadingCrud) {
+        if (isUploadingCrud.value) {
             return
         }
         _uploadAllCrud()
@@ -412,16 +411,16 @@ class SyncStream(private val bucketStorage: BucketStorage,
 
     // TODO make sure about thread safety
     suspend fun _uploadAllCrud() {
-        isUploadingCrud = true
+        isUploadingCrud.value = true
         while (true) {
             try {
                 val done = uploadCrudBatch()
                 if (done) {
-                    isUploadingCrud = false
+                    isUploadingCrud.value =  false
                     break
                 }
             } catch (ex: Exception) {
-                this.isUploadingCrud = false
+                this.isUploadingCrud.value = false
                 break
             }
         }

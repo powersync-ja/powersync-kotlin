@@ -1,25 +1,62 @@
 package co.powersync.bucket
 
-import co.powersync.db.PsDatabase
+import co.powersync.db.PowerSyncDatabase
+import co.powersync.db.crud.CrudBatch
 import co.powersync.invalidSqliteCharacters
 import co.powersync.sync.SyncDataBatch
 import co.powersync.sync.SyncLocalDatabaseResult
+import co.touchlab.stately.concurrency.AtomicBoolean
 
-class BucketStorage(val db: PsDatabase) {
+class BucketStorage(val db: PowerSyncDatabase) {
 
-    val tableNames: Set<String> = setOf()
+    private val tableNames: MutableSet<String> = mutableSetOf()
+
+    private var _hasCompletedSync = AtomicBoolean(false)
+    private var pendingBucketDeletes = AtomicBoolean(false)
+    private var _checksumCache: ChecksumCache? = null
+
+    companion object {
+        const val MAX_OP_ID = "9223372036854775807"
+    }
 
     init {
+        readTableNames()
+    }
+
+    private fun readTableNames() {
+        tableNames.clear()
+        // Query to get existing table names
+        db.createQuery(
+            "readTableNames",
+            "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB 'ps_data_*'"
+        ) { cursor ->
+            val name = cursor.getString(0)!!
+            tableNames.add(name)
+        }.executeAsList()
+    }
+
+    fun startSession() {
+        _checksumCache = null;
     }
 
     fun hasCrud(): Boolean {
         // TODO: Implement
-        return true;
+        return db.createQuery("hasCrud", "SELECT 1 FROM ps_crud LIMIT 1") { cursor ->
+            cursor.getLong(0) == 1L
+        }.executeAsOne()
+    }
+
+    suspend fun getCrudBatch(): CrudBatch? {
+        TODO("Not implemented yet")
     }
 
     suspend fun updateLocalTarget(checkpointCallback: suspend () -> String): Boolean {
         // TODO: Implement
         return true;
+    }
+
+    suspend fun saveSyncData(syncDataBatch: SyncDataBatch) {
+        TODO("Not implemented yet")
     }
 
     suspend fun getBucketStates(): List<BucketState> {
@@ -37,12 +74,13 @@ class BucketStorage(val db: PsDatabase) {
         TODO("Not implemented yet")
     }
 
-    suspend fun saveSyncData(syncDataBatch: SyncDataBatch) {
-        TODO("Not implemented yet")
-    }
 
     fun setTargetCheckpoint(checkpoint: Checkpoint) {
         // No-op for now
+    }
+
+    suspend fun hasCompletedSync(): Boolean {
+        return true
     }
 
     /**
