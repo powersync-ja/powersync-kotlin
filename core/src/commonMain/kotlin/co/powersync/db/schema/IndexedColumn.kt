@@ -1,9 +1,12 @@
 package co.powersync.db.schema
 
+import kotlinx.serialization.Serializable
+
 /**
  * Describes an indexed column.
  */
-open class IndexedColumn (
+@Serializable
+data class IndexedColumn (
     /**
      * Name of the column to index.
      */

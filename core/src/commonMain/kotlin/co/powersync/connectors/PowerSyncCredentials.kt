@@ -1,4 +1,4 @@
-package co.powersync.connection
+package co.powersync.connectors
 
 import io.ktor.util.decodeBase64String
 import kotlinx.serialization.ExperimentalSerializationApi

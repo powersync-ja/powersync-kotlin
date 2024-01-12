@@ -1,6 +1,5 @@
 package co.powersync.demos
 
-
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
@@ -9,13 +8,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import co.powersync.db.DatabaseDriverFactory
 import co.powersync.Greeting
+import co.powersync.connectors.SupaBaseConnector
 import co.powersync.db.PowerSyncDatabase
 import co.powersync.db.PowerSyncDatabaseConfig
+import co.powersync.db.schema.Column
 import co.powersync.db.schema.Schema
+import co.powersync.db.schema.Table
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.resources.ExperimentalResourceApi
 
-@OptIn(ExperimentalResourceApi::class)
 @Composable
 fun App(driverFactory: DatabaseDriverFactory?) {
     MaterialTheme {
@@ -28,17 +28,37 @@ fun App(driverFactory: DatabaseDriverFactory?) {
             LaunchedEffect(true) {
                 scope.launch {
                     text = try {
-                        val db = driverFactory?.let { PowerSyncDatabase( config =
+                        val db = driverFactory?.let {
+                            PowerSyncDatabase(config =
                             object : PowerSyncDatabaseConfig {
                                 override val driverFactory: DatabaseDriverFactory = it
                                 override val schema: Schema
-                                    get() = TODO("Not yet implemented")
+                                    get() = Schema(
+                                        listOf(
+                                            Table(
+                                                "users",
+                                                listOf(
+                                                    Column.text("username"),
+                                                    Column.text("email")
+                                                )
+                                            )
+                                        )
+                                    )
                                 override val dbFilename: String
                                     get() = "powersync.db"
                             }
-                        )  }
-                         Greeting().greet() + " PowerSync version: " + db?.getPowersyncVersion()
+                            )
+                        }
+
+                        if (db != null) {
+                            val connector = SupaBaseConnector()
+
+                            db.connect(connector)
+                        }
+
+                        Greeting().greet() + " PowerSync version: " + db?.getPowersyncVersion()
                     } catch (e: Exception) {
+                        println("Error: ${e.message}")
                         e.message ?: "error"
                     }
                 }

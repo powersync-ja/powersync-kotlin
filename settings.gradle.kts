@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 rootProject.name = "powersync"
 
 include(":core")
+include(":connectors")

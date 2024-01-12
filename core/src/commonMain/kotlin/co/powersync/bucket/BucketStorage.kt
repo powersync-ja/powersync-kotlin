@@ -6,6 +6,8 @@ import co.powersync.invalidSqliteCharacters
 import co.powersync.sync.SyncDataBatch
 import co.powersync.sync.SyncLocalDatabaseResult
 import co.touchlab.stately.concurrency.AtomicBoolean
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 class BucketStorage(val db: PowerSyncDatabase) {
 
@@ -28,11 +30,12 @@ class BucketStorage(val db: PowerSyncDatabase) {
         // Query to get existing table names
         db.createQuery(
             "readTableNames",
-            "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB 'ps_data_*'"
-        ) { cursor ->
-            val name = cursor.getString(0)!!
-            tableNames.add(name)
-        }.executeAsList()
+            "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB 'ps_data_*'",
+            mapper = { cursor ->
+                val name = cursor.getString(0)!!
+                tableNames.add(name)
+            }
+        ).executeAsList()
     }
 
     fun startSession() {
@@ -41,9 +44,9 @@ class BucketStorage(val db: PowerSyncDatabase) {
 
     fun hasCrud(): Boolean {
         // TODO: Implement
-        return db.createQuery("hasCrud", "SELECT 1 FROM ps_crud LIMIT 1") { cursor ->
+        return db.createQuery("hasCrud", "SELECT 1 FROM ps_crud LIMIT 1", mapper = {cursor ->
             cursor.getLong(0) == 1L
-        }.executeAsOne()
+        }).executeAsOne()
     }
 
     suspend fun getCrudBatch(): CrudBatch? {
@@ -56,7 +59,14 @@ class BucketStorage(val db: PowerSyncDatabase) {
     }
 
     suspend fun saveSyncData(syncDataBatch: SyncDataBatch) {
-        TODO("Not implemented yet")
+        db.writeTransaction {
+            syncDataBatch.buckets.forEach {
+//                db.driver.execute(null, "INSERT INTO powersync_operations(op, data) VALUES(?, ?);", 2) {
+//                    bindString(0,"save")
+//                    bindString(1, Json.encodeToString(it))
+//                }
+            }
+        }
     }
 
     suspend fun getBucketStates(): List<BucketState> {

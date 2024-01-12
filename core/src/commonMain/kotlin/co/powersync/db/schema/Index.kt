@@ -1,6 +1,9 @@
 package co.powersync.db.schema
 
-open class Index(
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class Index(
     /**
      * Descriptive name of the index.
      */

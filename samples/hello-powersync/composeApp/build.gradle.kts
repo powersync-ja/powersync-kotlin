@@ -44,6 +44,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api("co.powersync:core")
+            api("co.powersync:connectors")
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material)

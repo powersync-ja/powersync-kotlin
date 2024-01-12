@@ -9,7 +9,7 @@ import kotlinx.serialization.json.JsonNames
 data class BucketChecksum(
     val bucket: String,
     val checksum: Int,
-    val count: Int?,
-    @JsonNames("last_op_id") val lastOpId: String?
+    val count: Int? = null,
+    @JsonNames("last_op_id") val lastOpId: String? = null
 ) {
 }

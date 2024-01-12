@@ -1,4 +1,7 @@
 package co.powersync.db.schema
 
-class Schema(val tables: List<Table>) {
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class Schema(val tables: List<Table>) {
 }

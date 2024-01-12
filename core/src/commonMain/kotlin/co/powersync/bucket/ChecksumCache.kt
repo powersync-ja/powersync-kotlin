@@ -1,6 +1,14 @@
 package co.powersync.bucket
 
 import co.powersync.bucket.BucketChecksum
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonNames
 
-data class ChecksumCache(val lostOpId: String, val checksums: Map<String, BucketChecksum>) {
+@Serializable
+@OptIn(ExperimentalSerializationApi::class)
+data class ChecksumCache(
+    @JsonNames("last_op_id") val lostOpId: String,
+    val checksums: Map<String, BucketChecksum>
+) {
 }

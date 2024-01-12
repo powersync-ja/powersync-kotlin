@@ -1,11 +1,14 @@
 package co.powersync.db.schema
 
 import co.powersync.invalidSqliteCharacters
+import kotlinx.serialization.Serializable
 
 /**
  * A single table in the schema.
  */
-open class Table(
+@Serializable
+
+data class Table  constructor(
     /**
      * The synced table name, matching sync rules.
      */

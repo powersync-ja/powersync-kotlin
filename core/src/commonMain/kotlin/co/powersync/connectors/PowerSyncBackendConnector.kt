@@ -1,4 +1,4 @@
-package co.powersync.connection
+package co.powersync.connectors
 
 import co.powersync.db.PowerSyncDatabase
 import kotlinx.coroutines.async
@@ -67,7 +67,7 @@ abstract class PowerSyncBackendConnector {
      *
      * This token is kept for the duration of a sync connection.
      */
-    abstract fun fetchCredentials(): PowerSyncCredentials?
+    abstract suspend fun fetchCredentials(): PowerSyncCredentials?
 
     /**
      * Upload local changes to the app backend.

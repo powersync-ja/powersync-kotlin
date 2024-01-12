@@ -1,7 +1,10 @@
 package co.powersync.db.schema
 
+import kotlinx.serialization.Serializable
+
 /** A single column in a table schema. */
-open class Column(
+@Serializable
+data class Column(
     /** Name of the column. */
     val name: String,
 

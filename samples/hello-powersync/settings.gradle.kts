@@ -29,5 +29,7 @@ includeBuild("../..") {
     dependencySubstitution {
         substitute(module("co.powersync:core"))
             .using(project(":core")).because("we want to auto-wire up sample dependency")
+        substitute(module("co.powersync:connectors"))
+            .using(project(":connectors")).because("we want to auto-wire up sample dependency")
     }
 }

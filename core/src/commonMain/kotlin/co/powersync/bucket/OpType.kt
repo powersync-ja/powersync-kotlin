@@ -1,20 +1,11 @@
 package co.powersync.bucket
 
-enum class OpType(val value: Int) {
-    CLEAR(1),
-    MOVE(2),
-    PUT(3),
-    REMOVE(4);
+import kotlinx.serialization.Serializable
 
-    companion object {
-        fun fromJson(json: String): OpType? {
-            return when (json) {
-                "CLEAR" -> CLEAR
-                "MOVE" -> MOVE
-                "PUT" -> PUT
-                "REMOVE" -> REMOVE
-                else -> null
-            }
-        }
-    }
+@Serializable
+enum class OpType {
+    CLEAR,
+    MOVE,
+    PUT,
+    REMOVE;
 }
