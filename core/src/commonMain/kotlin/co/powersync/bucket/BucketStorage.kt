@@ -6,6 +6,7 @@ import co.powersync.db.crud.CrudEntry
 import co.powersync.db.crud.CrudRow
 import co.powersync.invalidSqliteCharacters
 import co.powersync.sync.SyncDataBatch
+import co.powersync.sync.SyncDataBucket
 import co.powersync.sync.SyncLocalDatabaseResult
 import co.touchlab.stately.concurrency.AtomicBoolean
 import kotlinx.serialization.encodeToString
@@ -157,13 +158,20 @@ class BucketStorage(val db: PowerSyncDatabase) {
     suspend fun saveSyncData(syncDataBatch: SyncDataBatch) {
         db.writeTransaction {
             syncDataBatch.buckets.forEach {
-                db.createQuery(
+
+
+                val jsonString = Json.encodeToString(it);
+
+                val result = db.createQuery(
                     "INSERT INTO powersync_operations(op, data) VALUES(?, ?);",
+                    parameters = 2,
                     binders = {
                         bindString(0, "save")
-                        bindString(1, Json.encodeToString(it))
+                        bindString(1, jsonString)
                     },
                     mapper = { cursor -> cursor.getLong(0)!! }).executeAsOneOrNull()
+
+                println("[saveSyncData] Inserted $result rows into powersync_operations")
             }
         }
     }

@@ -1,10 +1,9 @@
 package co.powersync.connectors
 
 import io.ktor.util.decodeBase64String
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonNames
 import kotlinx.datetime.Instant
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -16,7 +15,6 @@ import kotlinx.serialization.json.long
  */
 
 @Serializable
-@OptIn(ExperimentalSerializationApi::class)
 data class PowerSyncCredentials(
     /**
      * PowerSync endpoint, e.g. "https://myinstance.powersync.co".
@@ -29,7 +27,7 @@ data class PowerSyncCredentials(
     /**
      * User ID.
      */
-    @JsonNames("user_id") val userId: String,
+    @SerialName("user_id") val userId: String,
     /**
      * When the token expires. Only use for debugging purposes.
      */

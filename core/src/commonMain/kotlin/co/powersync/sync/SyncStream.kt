@@ -179,281 +179,274 @@ class SyncStream(
 
         val bodyJson = Json.encodeToString(req)
 
-        val statement = httpClient.preparePost(uri) {
+        val request = httpClient.preparePost(uri) {
             contentType(ContentType.Application.Json)
             headers {
                 append(HttpHeaders.Authorization, "Token ${credentials.token}")
                 append("User-Id", credentials.userId)
             }
-            timeout {
-                requestTimeoutMillis = Long.MAX_VALUE
-            }
+            timeout { socketTimeoutMillis = Long.MAX_VALUE }
             setBody(bodyJson)
         }
 
-
-        var instructions: Array<String> = arrayOf()
-
-
-        statement.execute { httpResponse ->
+        request.execute { httpResponse ->
             val channel: ByteReadChannel = httpResponse.body()
 
             while (!channel.isClosedForRead) {
-
                 val line = channel.readUTF8Line()
                 if (line != null) {
                     emit(line)
-                } else {
-                    delay(1000)
-                }
                 }
             }
         }
-
-        suspend fun streamingSyncIteration() {
-            val bucketEntries = bucketStorage.getBucketStates()
-            val initialBuckets = mutableMapOf<String, String>()
-
-            val state = SyncStreamState(
-                targetCheckpoint = null,
-                validatedCheckpoint = null,
-                appliedCheckpoint = null,
-                bucketSet = initialBuckets.keys.toMutableSet(),
-                retry = false
-            )
-
-            bucketEntries.forEach { entry ->
-                run {
-                    initialBuckets[entry.bucket] = entry.opId
-                }
-            }
-
-            val req: List<BucketRequest> =
-                initialBuckets.map { (bucket, after) -> BucketRequest(bucket, after) }
-
-            streamingSyncRequest(
-                StreamingSyncRequest(
-                    buckets = req,
-                )
-            ).collect { value ->
-                run {
-                    handleInstruction(value, state)
-                }
-            }
-        }
-
-        private suspend fun handleInstruction(
-            jsonString: String,
-            state: SyncStreamState
-        ): SyncStreamState {
-            println("Received Instruction: $jsonString")
-            val json = Json { ignoreUnknownKeys = true }
-            val obj = json.parseToJsonElement(jsonString).jsonObject
-
-            when (true) {
-                isStreamingSyncCheckpoint(obj) -> return handleStreamingSyncCheckpoint(obj, state)
-                isStreamingSyncCheckpointComplete(obj) -> return handleStreamingSyncCheckpointComplete(
-                    obj,
-                    state
-                )
-
-                isStreamingSyncCheckpointDiff(obj) -> return handleStreamingSyncCheckpointDiff(
-                    obj,
-                    state
-                )
-
-                isStreamingSyncData(obj) -> return handleStreamingSyncData(obj, state)
-                isStreamingKeepAlive(obj) -> return handleStreamingKeepalive(obj, state)
-                else -> {
-                    // TODO throw error?
-                    println("Unhandled JSON instruction")
-                    return state
-                }
-            }
-        }
-
-        private suspend fun handleStreamingSyncCheckpoint(
-            jsonObj: JsonObject,
-            state: SyncStreamState
-        ): SyncStreamState {
-            val checkpoint =
-                Json.decodeFromJsonElement<Checkpoint>(jsonObj["checkpoint"] as JsonElement)
-
-            state.targetCheckpoint = checkpoint
-            val bucketsToDelete = state.bucketSet!!.toMutableList()
-            val newBuckets = mutableSetOf<String>()
-
-            checkpoint.checksums.forEach { checksum ->
-                run {
-                    newBuckets.add(checksum.bucket)
-                    bucketsToDelete.remove(checksum.bucket)
-                }
-            }
-
-            if (bucketsToDelete.size > 0) {
-                println("Removing buckets [${bucketsToDelete.joinToString(separator = ", ")}]")
-            }
-
-            state.bucketSet = newBuckets
-            bucketStorage.removeBuckets(bucketsToDelete)
-            bucketStorage.setTargetCheckpoint(checkpoint)
-
-            return state
-        }
-
-        private suspend fun handleStreamingSyncCheckpointComplete(
-            jsonObj: JsonObject,
-            state: SyncStreamState
-        ): SyncStreamState {
-            println("Checkpoint complete ${Json.encodeToString(state.targetCheckpoint)}")
-            val result = bucketStorage.syncLocalDatabase(state.targetCheckpoint!!)
-            if (!result.checkpointValid) {
-                // This means checksums failed. Start again with a new checkpoint.
-                // TODO: better back-off
-                delay(50)
-                state.retry = true
-                // TODO handle retries
-                return state
-            } else if (!result.ready) {
-                // Checksums valid, but need more data for a consistent checkpoint.
-                // Continue waiting.
-                // landing here the whole time
-            } else {
-                state.appliedCheckpoint = state.targetCheckpoint!!.clone()
-                println("validated checkpoint ${state.appliedCheckpoint}")
-            }
-
-            state.validatedCheckpoint = state.targetCheckpoint
-
-            return state
-        }
-
-        private suspend fun handleStreamingSyncCheckpointDiff(
-            jsonObj: JsonObject,
-            state: SyncStreamState
-        ): SyncStreamState {
-            // TODO: It may be faster to just keep track of the diff, instead of the entire checkpoint
-            if (state.targetCheckpoint == null) {
-                throw Exception("Checkpoint diff without previous checkpoint")
-            }
-            val checkpointDiff =
-                Json.decodeFromJsonElement<StreamingSyncCheckpointDiff>(jsonObj["checkpoint_diff"]!!)
-
-            val newBuckets = mutableMapOf<String, BucketChecksum>()
-
-            state.targetCheckpoint!!.checksums.forEach { checksum ->
-                newBuckets[checksum.bucket] = checksum
-            }
-            checkpointDiff.updatedBuckets.forEach { checksum ->
-                newBuckets[checksum.bucket] = checksum
-            }
-
-            checkpointDiff.removedBuckets.forEach { bucket -> newBuckets.remove(bucket) }
-
-            val newCheckpoint = Checkpoint(
-                lastOpId = checkpointDiff.lastOpId,
-                checksums = newBuckets.values.toList(),
-                writeCheckpoint = checkpointDiff.writeCheckpoint
-            )
-
-            state.targetCheckpoint = newCheckpoint
-
-            state.bucketSet = newBuckets.keys.toMutableSet()
-
-            val bucketsToDelete = checkpointDiff.removedBuckets
-            if (bucketsToDelete.isNotEmpty()) {
-                println("Remove buckets $bucketsToDelete")
-            }
-            bucketStorage.removeBuckets(bucketsToDelete)
-            bucketStorage.setTargetCheckpoint(state.targetCheckpoint!!)
-
-            return state
-        }
-
-        private suspend fun handleStreamingSyncData(
-            jsonObj: JsonObject,
-            state: SyncStreamState
-        ): SyncStreamState {
-
-            val syncBuckets = listOf<SyncDataBucket>( Json.decodeFromJsonElement(jsonObj["data"] as JsonElement) )
-
-            bucketStorage.saveSyncData(SyncDataBatch(syncBuckets))
-
-            return state
-        }
-
-        suspend fun handleStreamingKeepalive(
-            jsonObj: JsonObject,
-            state: SyncStreamState
-        ): SyncStreamState {
-            val tokenExpiresIn = (jsonObj["token_expires_in"] as JsonPrimitive).content.toInt()
-
-            if (tokenExpiresIn <= 0) {
-                // Connection would be closed automatically right after this
-                println("Token expiring reconnect")
-                state.retry = true
-                return state
-            }
-            triggerCrudUpload()
-            return state
-        }
-
-        suspend fun triggerCrudUpload() {
-            if (isUploadingCrud.value) {
-                return
-            }
-            _uploadAllCrud()
-        }
-
-
-        suspend fun _uploadAllCrud() {
-            isUploadingCrud.value = true
-            while (true) {
-                try {
-                    val done = uploadCrudBatch()
-                    if (done) {
-                        isUploadingCrud.value = false
-                        break
-                    }
-                } catch (ex: Exception) {
-                    this.isUploadingCrud.value = false
-                    break
-                }
-            }
-        }
-
-        private fun _updateStatus(
-            lastSyncedAt: Instant? = null,
-            connected: Boolean? = null,
-            connecting: Boolean? = null,
-            downloading: Boolean? = null,
-            uploading: Boolean? = null,
-            uploadError: Any? = null,
-            downloadError: Any? = null,
-        ) {
-            val c = connected ?: lastStatus.connected
-            val newStatus = SyncStatus(
-                connected = c,
-                connecting = !c && (connecting ?: lastStatus.connecting),
-                lastSyncedAt = lastSyncedAt ?: lastStatus.lastSyncedAt,
-                downloading = downloading ?: lastStatus.downloading,
-                uploading = uploading ?: lastStatus.uploading,
-                uploadError = if (uploadError == _noError) null else uploadError
-                    ?: lastStatus.uploadError,
-                downloadError = if (downloadError == _noError) null else downloadError
-                    ?: lastStatus.downloadError
-            )
-            lastStatus = newStatus
-            _statusStreamController.value = newStatus
-        }
-
     }
 
-    data class SyncStreamState(
-        var targetCheckpoint: Checkpoint?,
-        var validatedCheckpoint: Checkpoint?,
-        var appliedCheckpoint: Checkpoint?,
+    suspend fun streamingSyncIteration() {
+        val bucketEntries = bucketStorage.getBucketStates()
+        val initialBuckets = mutableMapOf<String, String>()
 
-        var bucketSet: MutableSet<String>?,
-        var retry: Boolean,
-    )
+        val state = SyncStreamState(
+            targetCheckpoint = null,
+            validatedCheckpoint = null,
+            appliedCheckpoint = null,
+            bucketSet = initialBuckets.keys.toMutableSet(),
+            retry = false
+        )
+
+        bucketEntries.forEach { entry ->
+            run {
+                initialBuckets[entry.bucket] = entry.opId
+            }
+        }
+
+        val req: List<BucketRequest> =
+            initialBuckets.map { (bucket, after) -> BucketRequest(bucket, after) }
+
+        streamingSyncRequest(
+            StreamingSyncRequest(
+                buckets = req,
+            )
+        ).collect { value ->
+            run {
+                handleInstruction(value, state)
+            }
+        }
+    }
+
+    private suspend fun handleInstruction(
+        jsonString: String,
+        state: SyncStreamState
+    ): SyncStreamState {
+        println("Received Instruction: $jsonString")
+        val json = Json { ignoreUnknownKeys = true }
+        val obj = json.parseToJsonElement(jsonString).jsonObject
+
+        // TODO: Clean up
+        when (true) {
+            isStreamingSyncCheckpoint(obj) -> return handleStreamingSyncCheckpoint(obj, state)
+            isStreamingSyncCheckpointComplete(obj) -> return handleStreamingSyncCheckpointComplete(
+                obj,
+                state
+            )
+
+            isStreamingSyncCheckpointDiff(obj) -> return handleStreamingSyncCheckpointDiff(
+                obj,
+                state
+            )
+
+            isStreamingSyncData(obj) -> return handleStreamingSyncData(obj, state)
+            isStreamingKeepAlive(obj) -> return handleStreamingKeepalive(obj, state)
+            else -> {
+                // TODO throw error?
+                println("Unhandled JSON instruction")
+                return state
+            }
+        }
+    }
+
+    private suspend fun handleStreamingSyncCheckpoint(
+        jsonObj: JsonObject,
+        state: SyncStreamState
+    ): SyncStreamState {
+        val checkpoint =
+            Json.decodeFromJsonElement<Checkpoint>(jsonObj["checkpoint"] as JsonElement)
+
+        state.targetCheckpoint = checkpoint
+        val bucketsToDelete = state.bucketSet!!.toMutableList()
+        val newBuckets = mutableSetOf<String>()
+
+        checkpoint.checksums.forEach { checksum ->
+            run {
+                newBuckets.add(checksum.bucket)
+                bucketsToDelete.remove(checksum.bucket)
+            }
+        }
+
+        if (bucketsToDelete.size > 0) {
+            println("Removing buckets [${bucketsToDelete.joinToString(separator = ", ")}]")
+        }
+
+        state.bucketSet = newBuckets
+        bucketStorage.removeBuckets(bucketsToDelete)
+        bucketStorage.setTargetCheckpoint(checkpoint)
+
+        return state
+    }
+
+    private suspend fun handleStreamingSyncCheckpointComplete(
+        jsonObj: JsonObject,
+        state: SyncStreamState
+    ): SyncStreamState {
+        println("Checkpoint complete ${Json.encodeToString(state.targetCheckpoint)}")
+        val result = bucketStorage.syncLocalDatabase(state.targetCheckpoint!!)
+        if (!result.checkpointValid) {
+            // This means checksums failed. Start again with a new checkpoint.
+            // TODO: better back-off
+            delay(50)
+            state.retry = true
+            // TODO handle retries
+            return state
+        } else if (!result.ready) {
+            // Checksums valid, but need more data for a consistent checkpoint.
+            // Continue waiting.
+            // landing here the whole time
+        } else {
+            state.appliedCheckpoint = state.targetCheckpoint!!.clone()
+            println("validated checkpoint ${state.appliedCheckpoint}")
+        }
+
+        state.validatedCheckpoint = state.targetCheckpoint
+
+        return state
+    }
+
+    private suspend fun handleStreamingSyncCheckpointDiff(
+        jsonObj: JsonObject,
+        state: SyncStreamState
+    ): SyncStreamState {
+        // TODO: It may be faster to just keep track of the diff, instead of the entire checkpoint
+        if (state.targetCheckpoint == null) {
+            throw Exception("Checkpoint diff without previous checkpoint")
+        }
+        val checkpointDiff =
+            Json.decodeFromJsonElement<StreamingSyncCheckpointDiff>(jsonObj["checkpoint_diff"]!!)
+
+        val newBuckets = mutableMapOf<String, BucketChecksum>()
+
+        state.targetCheckpoint!!.checksums.forEach { checksum ->
+            newBuckets[checksum.bucket] = checksum
+        }
+        checkpointDiff.updatedBuckets.forEach { checksum ->
+            newBuckets[checksum.bucket] = checksum
+        }
+
+        checkpointDiff.removedBuckets.forEach { bucket -> newBuckets.remove(bucket) }
+
+        val newCheckpoint = Checkpoint(
+            lastOpId = checkpointDiff.lastOpId,
+            checksums = newBuckets.values.toList(),
+            writeCheckpoint = checkpointDiff.writeCheckpoint
+        )
+
+        state.targetCheckpoint = newCheckpoint
+
+        state.bucketSet = newBuckets.keys.toMutableSet()
+
+        val bucketsToDelete = checkpointDiff.removedBuckets
+        if (bucketsToDelete.isNotEmpty()) {
+            println("Remove buckets $bucketsToDelete")
+        }
+        bucketStorage.removeBuckets(bucketsToDelete)
+        bucketStorage.setTargetCheckpoint(state.targetCheckpoint!!)
+
+        return state
+    }
+
+    private suspend fun handleStreamingSyncData(
+        jsonObj: JsonObject,
+        state: SyncStreamState
+    ): SyncStreamState {
+
+        val syncBuckets =
+            listOf<SyncDataBucket>(Json.decodeFromJsonElement(jsonObj["data"] as JsonElement))
+
+        bucketStorage.saveSyncData(SyncDataBatch(syncBuckets))
+
+        return state
+    }
+
+    suspend fun handleStreamingKeepalive(
+        jsonObj: JsonObject,
+        state: SyncStreamState
+    ): SyncStreamState {
+        val tokenExpiresIn = (jsonObj["token_expires_in"] as JsonPrimitive).content.toInt()
+
+        if (tokenExpiresIn <= 0) {
+            // Connection would be closed automatically right after this
+            println("Token expiring reconnect")
+            state.retry = true
+            return state
+        }
+        triggerCrudUpload()
+        return state
+    }
+
+    suspend fun triggerCrudUpload() {
+        if (isUploadingCrud.value) {
+            return
+        }
+        _uploadAllCrud()
+    }
+
+
+    suspend fun _uploadAllCrud() {
+        isUploadingCrud.value = true
+        while (true) {
+            try {
+                val done = uploadCrudBatch()
+                if (done) {
+                    isUploadingCrud.value = false
+                    break
+                }
+            } catch (ex: Exception) {
+                this.isUploadingCrud.value = false
+                break
+            }
+        }
+    }
+
+    private fun _updateStatus(
+        lastSyncedAt: Instant? = null,
+        connected: Boolean? = null,
+        connecting: Boolean? = null,
+        downloading: Boolean? = null,
+        uploading: Boolean? = null,
+        uploadError: Any? = null,
+        downloadError: Any? = null,
+    ) {
+        val c = connected ?: lastStatus.connected
+        val newStatus = SyncStatus(
+            connected = c,
+            connecting = !c && (connecting ?: lastStatus.connecting),
+            lastSyncedAt = lastSyncedAt ?: lastStatus.lastSyncedAt,
+            downloading = downloading ?: lastStatus.downloading,
+            uploading = uploading ?: lastStatus.uploading,
+            uploadError = if (uploadError == _noError) null else uploadError
+                ?: lastStatus.uploadError,
+            downloadError = if (downloadError == _noError) null else downloadError
+                ?: lastStatus.downloadError
+        )
+        lastStatus = newStatus
+        _statusStreamController.value = newStatus
+    }
+
+}
+
+data class SyncStreamState(
+    var targetCheckpoint: Checkpoint?,
+    var validatedCheckpoint: Checkpoint?,
+    var appliedCheckpoint: Checkpoint?,
+
+    var bucketSet: MutableSet<String>?,
+    var retry: Boolean,
+)
