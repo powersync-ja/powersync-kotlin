@@ -9,7 +9,7 @@ import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.runBlocking
 
-class SupaBaseConnector: PowerSyncBackendConnector() {
+class SupabaseConnector: PowerSyncBackendConnector() {
 
     companion object {
         // TODO this needs to be provided by the user/dev

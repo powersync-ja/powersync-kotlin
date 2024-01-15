@@ -8,7 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import co.powersync.db.DatabaseDriverFactory
 import co.powersync.Greeting
-import co.powersync.connectors.SupaBaseConnector
+import co.powersync.connectors.SupabaseConnector
 import co.powersync.db.PowerSyncDatabase
 import co.powersync.db.PowerSyncDatabaseConfig
 import co.powersync.db.schema.Column
@@ -51,7 +51,7 @@ fun App(driverFactory: DatabaseDriverFactory?) {
                         }
 
                         if (db != null) {
-                            val connector = SupaBaseConnector()
+                            val connector = SupabaseConnector()
 
                             db.connect(connector)
                         }

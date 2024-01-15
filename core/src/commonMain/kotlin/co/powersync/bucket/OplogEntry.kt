@@ -21,5 +21,4 @@ data class OplogEntry (
      */
     val subkey: String? = null,
     val data: Map<String, String>? = null
-) {
-}
+)

@@ -406,7 +406,6 @@ class SyncStream(
         }
 
 
-        // TODO make sure about thread safety
         suspend fun _uploadAllCrud() {
             isUploadingCrud.value = true
             while (true) {

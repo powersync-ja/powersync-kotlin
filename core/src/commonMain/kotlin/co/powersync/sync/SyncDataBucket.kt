@@ -16,5 +16,4 @@ data class SyncDataBucket (
     @JsonNames("has_more") val hasMore: Boolean = false,
     val after: String?,
     @JsonNames("next_after")val nextAfter: String?
-){
-}
+)

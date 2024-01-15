@@ -42,6 +42,7 @@ kotlin {
             }
         }
         commonMain.dependencies {
+            implementation(libs.uuid)
             implementation(libs.kotlin.stdlib)
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.contentnegotiation)

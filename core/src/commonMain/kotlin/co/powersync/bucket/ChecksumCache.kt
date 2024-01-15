@@ -10,5 +10,4 @@ import kotlinx.serialization.json.JsonNames
 data class ChecksumCache(
     @JsonNames("last_op_id") val lostOpId: String,
     val checksums: Map<String, BucketChecksum>
-) {
-}
+)

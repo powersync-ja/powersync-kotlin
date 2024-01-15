@@ -1,5 +1,9 @@
 package co.powersync.db.crud
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+
 /**
  * A single client-side change.
  */
@@ -50,15 +54,16 @@ data class CrudEntry (
     val opData: Map<String, Any>?
 ){
     companion object {
-        fun fromRow(row: HashMap<String, Any>): CrudEntry {
-            val data = row["data"] as? Map<String, Any>
+        fun fromRow(row: CrudRow): CrudEntry {
+        val data = Json.parseToJsonElement(row.data).jsonObject
+
             return CrudEntry(
-                id = row["id"] as String,
-                clientId = row["op_id"] as Int,
-                op = UpdateType.fromJsonChecked(row["op"] as String),
-                table = row["table"] as String,
-                transactionId = row["tx_id"] as? Int,
-                opData = data?.get("data") as? Map<String, Any>
+                id = data["id"]!!.jsonPrimitive.content,
+                clientId = row.id.toInt(),
+                op = UpdateType.fromJsonChecked(data["op"]!!.jsonPrimitive.content),
+                opData = data["data"]?.jsonObject,
+                table = data["type"]!!.jsonPrimitive.content,
+                transactionId = row.txId,
             )
         }
     }

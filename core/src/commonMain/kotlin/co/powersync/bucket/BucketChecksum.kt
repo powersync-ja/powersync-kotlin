@@ -11,5 +11,4 @@ data class BucketChecksum(
     val checksum: Int,
     val count: Int? = null,
     @JsonNames("last_op_id") val lastOpId: String? = null
-) {
-}
+)
