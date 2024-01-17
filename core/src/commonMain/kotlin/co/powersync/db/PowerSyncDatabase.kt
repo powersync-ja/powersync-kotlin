@@ -1,9 +1,8 @@
 package co.powersync.db
 
 import app.cash.sqldelight.ExecutableQuery
-import app.cash.sqldelight.Query
+import app.cash.sqldelight.SuspendingTransactionWithReturn
 import app.cash.sqldelight.TransactionWithReturn
-import app.cash.sqldelight.TransactionWithoutReturn
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlDriver
@@ -21,6 +20,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -62,19 +62,24 @@ open class PowerSyncDatabase(
         this.driver = config.driverFactory.createDriver(config)
         this.database = PsDatabase(driver)
         this.currentStatus = SyncStatus()
+
         this.bucketStorage = BucketStorage(this)
 
-        this.applySchema();
+        runBlocking {
+            applySchema();
+        }
     }
 
-    private fun applySchema() {
+    private suspend fun applySchema() {
         val json = Json { encodeDefaults = true }
         val schemaJson = json.encodeToString(this.config.schema)
         println("Serialized app schema: $schemaJson")
 
-        createQuery("SELECT powersync_replace_schema(?);", parameters = 1, binders = {
-            bindString(0, schemaJson)
-        }).executeAsOneOrNull()
+        this.writeTransaction {
+            createQuery("SELECT powersync_replace_schema(?);", parameters = 1, binders = {
+                bindString(0, schemaJson)
+            }).executeAsOneOrNull()
+        }
     }
 
     suspend fun connect(connector: PowerSyncBackendConnector) {
@@ -170,7 +175,7 @@ open class PowerSyncDatabase(
         ).executeAsOne()
     }
 
-    fun <R> writeTransaction(bodyWithReturn: TransactionWithReturn<R>.() -> R): R {
+    suspend fun <R> writeTransaction(bodyWithReturn: SuspendingTransactionWithReturn<R>.() -> R): R {
         return this.database.transactionWithResult(noEnclosing = true, bodyWithReturn)
     }
 

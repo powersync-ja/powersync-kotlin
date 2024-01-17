@@ -9,7 +9,6 @@ data class Checkpoint(
     @SerialName("buckets") val checksums: List<BucketChecksum>,
     @SerialName("write_checkpoint") val writeCheckpoint: String? = null
 ) {
-
     fun clone(): Checkpoint {
         return Checkpoint(lastOpId, checksums, writeCheckpoint)
     }

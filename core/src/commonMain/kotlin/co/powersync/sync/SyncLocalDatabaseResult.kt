@@ -1,9 +1,14 @@
 package co.powersync.sync
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class SyncLocalDatabaseResult(
-    val ready: Boolean = true,
-    val checkpointValid: Boolean = true,
-    val checkpointFailures: List<String>? = null
+    var ready: Boolean = true,
+    @SerialName("valid") val checkpointValid: Boolean = true,
+    @SerialName("failed_buckets") val checkpointFailures: List<String>? = null
 ) {
-    override fun toString() = "SyncLocalDatabaseResult<ready=$ready, checkpointValid=$checkpointValid, failures=$checkpointFailures>"
+    override fun toString() =
+        "SyncLocalDatabaseResult<ready=$ready, checkpointValid=$checkpointValid, failures=$checkpointFailures>"
 }

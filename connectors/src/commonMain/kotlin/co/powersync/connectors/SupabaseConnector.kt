@@ -9,13 +9,15 @@ import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.runBlocking
 
-class SupabaseConnector: PowerSyncBackendConnector() {
+class SupabaseConnector : PowerSyncBackendConnector() {
 
     companion object {
         // TODO this needs to be provided by the user/dev
-        private const val POWERSYNC_URL = "https://65a0e6bb4078d9a211d3cffb.powersync.journeyapps.com"
+        private const val POWERSYNC_URL =
+            "https://65a0e6bb4078d9a211d3cffb.powersync.journeyapps.com"
         private const val SUPABASE_URL = "https://wtilkjczshmzekrjelco.supabase.co"
-        private const val SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0aWxramN6c2htemVrcmplbGNvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDUwNDM2MTYsImV4cCI6MjAyMDYxOTYxNn0.E4DWa1ftn92_rQP-aLTsQHsZufouhMmzBfsCiX2p5eM"
+        private const val SUPABASE_KEY =
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0aWxramN6c2htemVrcmplbGNvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDUwNDM2MTYsImV4cCI6MjAyMDYxOTYxNn0.E4DWa1ftn92_rQP-aLTsQHsZufouhMmzBfsCiX2p5eM"
 
         private const val TEST_EMAIL = "hello@powersync.com";
         private const val TEST_PASSWORD = "@dYX0}72eS0kT=(YG@8(";
@@ -27,10 +29,9 @@ class SupabaseConnector: PowerSyncBackendConnector() {
         supabaseClient = createClient()
 
         runBlocking {
-            val loginRes = login();
-            val creds = fetchCredentials();
+            login()
+            val creds = fetchCredentials()
             println("Creds $creds")
-            println("login $loginRes")
         }
     }
 
@@ -47,7 +48,7 @@ class SupabaseConnector: PowerSyncBackendConnector() {
     }
 
     private suspend fun login(): Unit {
-        val res = supabaseClient.auth.signInWith(Email){
+        val res = supabaseClient.auth.signInWith(Email) {
             email = TEST_EMAIL
             password = TEST_PASSWORD
         }
@@ -62,8 +63,6 @@ class SupabaseConnector: PowerSyncBackendConnector() {
         if (session.user == null) {
             throw Exception("No user data")
         }
-
-        println("session expires at " + session.expiresAt);
 
         return PowerSyncCredentials(
             endpoint = POWERSYNC_URL,
@@ -131,7 +130,6 @@ class SupabaseConnector: PowerSyncBackendConnector() {
 //            }
 //        }
 //    }
-
 
 
 }

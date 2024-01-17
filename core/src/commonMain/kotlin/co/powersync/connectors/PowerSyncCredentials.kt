@@ -2,6 +2,8 @@ package co.powersync.connectors
 
 import io.ktor.util.decodeBase64String
 import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.json.Json
@@ -65,7 +67,11 @@ data class PowerSyncCredentials(
     }
 
     override fun toString(): String {
-        return "PowerSyncCredentials<endpoint: $endpoint userId: $userId expiresAt: $expiresAt>"
+        return "PowerSyncCredentials<endpoint: $endpoint userId: $userId expiresAt: ${
+            expiresAt?.toLocalDateTime(
+                TimeZone.UTC
+            )
+        }>"
     }
 
     fun endpointUri(path: String): String {

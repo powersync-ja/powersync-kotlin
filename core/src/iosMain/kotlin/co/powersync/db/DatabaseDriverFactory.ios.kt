@@ -1,5 +1,6 @@
 package co.powersync.db
 
+import app.cash.sqldelight.async.coroutines.synchronous
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.native.NativeSqliteDriver
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -13,6 +14,6 @@ actual class DatabaseDriverFactory {
     }
 
     actual fun createDriver(options: DriverOptions): SqlDriver {
-        return NativeSqliteDriver(PsDatabase.Schema, options.dbFilename)
+        return NativeSqliteDriver(PsDatabase.Schema.synchronous(), options.dbFilename)
     }
 }
