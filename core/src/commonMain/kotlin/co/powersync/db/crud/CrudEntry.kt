@@ -7,7 +7,7 @@ import kotlinx.serialization.json.jsonPrimitive
 /**
  * A single client-side change.
  */
-data class CrudEntry (
+data class CrudEntry(
 
     /**
      * ID of the changed row.
@@ -40,7 +40,7 @@ data class CrudEntry (
      * Currently, this is only present when [PowerSyncDatabase.writeTransaction] is used.
      * This may change in the future.
      */
-   val transactionId: Int?,
+    val transactionId: Int?,
 
     /**
      * Data associated with the change.
@@ -52,11 +52,10 @@ data class CrudEntry (
      * For DELETE, this is null.
      */
     val opData: Map<String, Any>?
-){
+) {
     companion object {
         fun fromRow(row: CrudRow): CrudEntry {
-        val data = Json.parseToJsonElement(row.data).jsonObject
-
+            val data = Json.parseToJsonElement(row.data).jsonObject
             return CrudEntry(
                 id = data["id"]!!.jsonPrimitive.content,
                 clientId = row.id.toInt(),

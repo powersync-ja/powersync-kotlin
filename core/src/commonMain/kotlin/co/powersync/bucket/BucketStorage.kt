@@ -1,5 +1,8 @@
 package co.powersync.bucket
 
+import app.cash.sqldelight.async.coroutines.awaitAsList
+import app.cash.sqldelight.async.coroutines.awaitAsOne
+import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import co.powersync.db.PowerSyncDatabase
 import co.powersync.db.crud.CrudBatch
 import co.powersync.db.crud.CrudEntry
@@ -52,63 +55,14 @@ class BucketStorage(val db: PowerSyncDatabase) {
         checksumCache = null;
     }
 
-    fun hasCrud(): Boolean {
-        return db.createQuery("SELECT 1 FROM ps_crud LIMIT 1", mapper = { cursor ->
-            cursor.getLong(0) == 1L
-        }).executeAsOneOrNull() ?: false
+    fun getMaxOpId(): String {
+        return MAX_OP_ID;
     }
 
-    /**
-     * For tests only. Others should use [PowerSyncDatabase.getCrudBatch].
-     */
-    suspend fun getCrudBatch(limit: Int = 100): CrudBatch? {
-        if (!hasCrud()) {
-            return null
-        }
-
-        val entries = db.createQuery(
-            "SELECT * FROM ps_crud ORDER BY id ASC LIMIT ?",
-            parameters = 1,
-            binders = { bindLong(0, limit.toLong()) },
-            mapper = { cursor ->
-                CrudEntry.fromRow(
-                    CrudRow(
-                        id = cursor.getString(0)!!,
-                        data = cursor.getString(1)!!,
-                        txId = cursor.getLong(2)?.toInt()
-                    )
-                )
-            }
-        ).executeAsList()
-
-        if (entries.isEmpty()) {
-            return null
-        }
-
-        val last = entries.last()
-        return CrudBatch(crud = entries, hasMore = true, complete = { writeCheckpoint ->
-            db.writeTransaction {
-                db.createQuery(
-                    "DELETE FROM ps_crud WHERE id <= ?",
-                    parameters = 1,
-                    binders = { bindString(0, last.id) }
-                ).executeAsOneOrNull()
-
-                if (writeCheckpoint != null && hasCrud()) {
-                    db.createQuery(
-                        "UPDATE ps_buckets SET target_op = ? WHERE name='\$local'",
-                        parameters = 1,
-                        binders = { bindString(0, writeCheckpoint) }
-                    ).executeAsOneOrNull()
-                } else {
-                    db.createQuery(
-                        "UPDATE ps_buckets SET target_op = ? WHERE name='\$local'",
-                        parameters = 1,
-                        binders = { bindString(0, MAX_OP_ID) }
-                    ).executeAsOneOrNull()
-                }
-            }
-        })
+    suspend fun hasCrud(): Boolean {
+        return db.createQuery("SELECT 1 FROM ps_crud LIMIT 1", mapper = { cursor ->
+            cursor.getLong(0) == 1L
+        }).awaitAsOneOrNull() ?: false
     }
 
     suspend fun updateLocalTarget(checkpointCallback: suspend () -> String): Boolean {
@@ -133,31 +87,33 @@ class BucketStorage(val db: PowerSyncDatabase) {
 
         println("[updateLocalTarget] Updating target to checkpoint $opId")
 
-
-        return db.writeTransaction {
+        return db.readTransaction {
             if (!hasCrud()) {
                 println("[updateLocalTarget] ps_crud is empty")
-                return@writeTransaction false
+                return@readTransaction false
             }
 
             val seqAfter = db.createQuery(
                 "SELECT seq FROM sqlite_sequence WHERE name = 'ps_crud'",
                 mapper = { cursor ->
                     cursor.getLong(0)!!
-                }).executeAsOneOrNull()
+                }).awaitAsOneOrNull()
                 ?: // assert isNotEmpty
                 throw AssertionError("Sqlite Sequence should not be empty")
 
             if (seqAfter != seqBefore) {
                 // New crud data may have been uploaded since we got the checkpoint. Abort.
-                return@writeTransaction false;
+                return@readTransaction false;
             }
 
-            db.createQuery("UPDATE ps_buckets SET target_op = ? WHERE name='\$local'", binders = {
-                bindString(0, opId)
-            }, parameters = 1, mapper = { cursor -> cursor.getLong(0)!! }).executeAsOne()
+            db.createQuery("UPDATE ps_buckets SET target_op = ? WHERE name='\$local'",
+                parameters = 1,
+                binders = {
+                    bindString(0, opId)
+                }
+            ).awaitAsOne()
 
-            return@writeTransaction true
+            return@readTransaction true
         }
     }
 
@@ -314,8 +270,8 @@ class BucketStorage(val db: PowerSyncDatabase) {
      * This includes creating new tables, dropping old tables, and copying data over from the oplog.
      */
     private suspend fun updateObjectsFromBuckets(checkpoint: Checkpoint): Boolean {
-        return db.writeTransaction {
-
+        var success = false
+        db.writeTransaction {
             val res = db.driver.execute(
                 null,
                 "INSERT INTO powersync_operations(op, data) VALUES(?, ?)",
@@ -324,8 +280,9 @@ class BucketStorage(val db: PowerSyncDatabase) {
                     bindString(0, "sync_local")
                     bindString(1, "")
                 })
-            return@writeTransaction res.value == 1L
+            success = res.value == 1L
         }
+        return success
     }
 
     suspend fun forceCompact() {

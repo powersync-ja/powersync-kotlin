@@ -1,12 +1,15 @@
 package co.powersync.connectors
 
 import co.powersync.db.PowerSyncDatabase
+import co.powersync.db.crud.CrudEntry
+import co.powersync.db.crud.UpdateType
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.gotrue.Auth
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.runBlocking
 
 class SupabaseConnector : PowerSyncBackendConnector() {
@@ -72,64 +75,56 @@ class SupabaseConnector : PowerSyncBackendConnector() {
         );
     }
 
+    /**
+     * Upload pending changes to Supabase.
+     *
+     * This function is called whenever there is data to upload, whether the device is online or offline.
+     * If this call throws an error, it is retried periodically.
+     */
     override suspend fun uploadData(database: PowerSyncDatabase) {
-//        val transaction = database.getNextCrudTransaction() ?: return
 
+        val transaction = database.getNextCrudTransaction() ?: return;
+
+        var lastEntry: CrudEntry? = null;
+        try {
+
+            for (entry in transaction.crud) {
+                lastEntry = entry;
+
+                val table = supabaseClient.from(entry.table)
+                val result = when (entry.op) {
+                    UpdateType.PUT -> {
+                        val data = entry.opData?.toMutableMap() ?: mutableMapOf()
+                        data["id"] = entry.id
+                        table.upsert(data)
+                    }
+
+                    UpdateType.PATCH -> {
+                        table.update(entry.opData!!) {
+                            filter {
+                                eq("id", entry.id)
+                            }
+                        }
+                    }
+
+                    UpdateType.DELETE -> {
+                        table.delete {
+                            filter {
+                                eq("id", entry.id)
+                            }
+                        }
+                    }
+                }
+
+                println("[SupabaseConnector::uploadData] $result")
+            }
+
+            transaction.complete(null);
+
+        } catch (e: Exception) {
+            // TODO add retry logic
+            println("Data upload error - discarding ${lastEntry!!}, $e")
+            throw e;
+        }
     }
-
-    // TODO implement uploadData
-//    suspend fun uploadData(database: AbstractPowerSyncDatabase): Promise<void> {
-//        const transaction = await database.getNextCrudTransaction();
-//
-//        if (!transaction) {
-//            return;
-//        }
-//
-//        let lastOp: CrudEntry | null = null;
-//        try {
-//            // Note: If transactional consistency is important, use database functions
-//            // or edge functions to process the entire transaction in a single call.
-//            for (let op of transaction.crud) {
-//                lastOp = op;
-//                const table = this.supabaseClient.from(op.table);
-//                switch (op.op) {
-//                    case UpdateType.PUT:
-//                    const record = { ...op.opData, id: op.id };
-//                    const { error } = await table.upsert(record);
-//                    if (error) {
-//                        throw new Error(`Could not upsert data to Supabase ${JSON.stringify(error)}`);
-//                    }
-//                    break;
-//                    case UpdateType.PATCH:
-//                    await table.update(op.opData).eq('id', op.id);
-//                    break;
-//                    case UpdateType.DELETE:
-//                    await table.delete().eq('id', op.id);
-//                    break;
-//                }
-//            }
-//
-//            await transaction.complete();
-//        } catch (ex: any) {
-//            console.debug(ex);
-//            if (typeof ex.code == 'string' && FATAL_RESPONSE_CODES.some((regex) => regex.test(ex.code))) {
-//                /**
-//                 * Instead of blocking the queue with these errors,
-//                 * discard the (rest of the) transaction.
-//                 *
-//                 * Note that these errors typically indicate a bug in the application.
-//                 * If protecting against data loss is important, save the failing records
-//                 * elsewhere instead of discarding, and/or notify the user.
-//                 */
-//                console.error(`Data upload error - discarding ${lastOp}`, ex);
-//                await transaction.complete();
-//            } else {
-//                // Error may be retryable - e.g. network error or temporary server error.
-//                // Throwing an error here causes this call to be retried after a delay.
-//                throw ex;
-//            }
-//        }
-//    }
-
-
 }

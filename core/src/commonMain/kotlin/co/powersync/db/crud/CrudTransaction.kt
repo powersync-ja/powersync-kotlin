@@ -21,7 +21,7 @@ data class CrudTransaction(
      *
      * [writeCheckpoint] is optional.
      */
-    val complete: (writeCheckpoint: String?) -> Unit
+    val complete: suspend (writeCheckpoint: String?) -> Unit
 ) {
     override fun toString() = "CrudTransaction<$transactionId, $crud>"
 }
