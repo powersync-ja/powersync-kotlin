@@ -4,6 +4,7 @@ import co.powersync.bucket.BucketChecksum
 import co.powersync.bucket.BucketRequest
 import co.powersync.bucket.BucketStorage
 import co.powersync.bucket.Checkpoint
+import co.powersync.bucket.WriteCheckpointResponse
 import co.powersync.connectors.PowerSyncCredentials
 import co.touchlab.stately.concurrency.AtomicBoolean
 import io.ktor.client.HttpClient
@@ -85,7 +86,7 @@ class SyncStream(
         crudLoop()
         var invalidCredentials = false
         while (true) {
-            _updateStatus(connecting = true)
+            updateStatus(connecting = true)
             try {
                 if (invalidCredentials && invalidCredentialsCallback != null) {
                     // This may error. In that case it will be retried again on the next
@@ -97,7 +98,7 @@ class SyncStream(
             } catch (e: Exception) {
                 println("Error streaming sync: $e")
                 invalidCredentials = true
-                _updateStatus(
+                updateStatus(
                     connected = false,
                     connecting = true,
                     downloading = false,
@@ -120,22 +121,22 @@ class SyncStream(
         while (true) {
             try {
                 val done = uploadCrudBatch()
-                _updateStatus(uploadError = _noError)
+                updateStatus(uploadError = _noError)
                 if (done) {
                     break
                 }
             } catch (e: Exception) {
-                println("Error uploading crud: $e")
-                _updateStatus(uploading = false, uploadError = e)
+                println("[SyncStream:: uploadAllCrud] Error uploading crud: $e")
+                updateStatus(uploading = false, uploadError = e)
                 delay(retryDelay)
             }
         }
-        _updateStatus(uploading = false)
+        updateStatus(uploading = false)
     }
 
     private suspend fun uploadCrudBatch(): Boolean {
         if (bucketStorage.hasCrud()) {
-            _updateStatus(uploading = true)
+            updateStatus(uploading = true)
             uploadCrud()
             return false
         } else {
@@ -166,9 +167,9 @@ class SyncStream(
         if (response.status.value != 200) {
             throw Exception("Error getting write checkpoint: ${response.status}")
         }
-        val json = Json { ignoreUnknownKeys = true }
-        val body = json.parseToJsonElement(response.body<String>()).jsonObject
-        return body["write_checkpoint"]!!.jsonPrimitive.content
+
+        val body = Json.decodeFromString<WriteCheckpointResponse>(response.body())
+        return body.data.writeCheckpoint
     }
 
     private suspend fun streamingSyncRequest(req: StreamingSyncRequest): Flow<String> = flow {
@@ -395,11 +396,6 @@ class SyncStream(
         if (isUploadingCrud.value) {
             return
         }
-        _uploadAllCrud()
-    }
-
-
-    suspend fun _uploadAllCrud() {
         isUploadingCrud.value = true
         while (true) {
             try {
@@ -409,13 +405,14 @@ class SyncStream(
                     break
                 }
             } catch (ex: Exception) {
+                println("[SyncStream::triggerCrudUpload] Error uploading crud: $ex")
                 this.isUploadingCrud.value = false
                 break
             }
         }
     }
 
-    private fun _updateStatus(
+    private fun updateStatus(
         lastSyncedAt: Instant? = null,
         connected: Boolean? = null,
         connecting: Boolean? = null,

@@ -68,11 +68,13 @@ class BucketStorage(val db: PowerSyncDatabase) {
     suspend fun updateLocalTarget(checkpointCallback: suspend () -> String): Boolean {
         db.createQuery(
             "SELECT target_op FROM ps_buckets WHERE name = '\$local' AND target_op = ?",
+            parameters = 1,
             binders = {
                 bindString(0, MAX_OP_ID)
 
             },
-            mapper = { cursor -> cursor.getLong(0)!! }).executeAsOneOrNull()
+            mapper = { cursor -> cursor.getLong(0)!! }
+        ).executeAsOneOrNull()
             ?: // Nothing to update
             return false
 

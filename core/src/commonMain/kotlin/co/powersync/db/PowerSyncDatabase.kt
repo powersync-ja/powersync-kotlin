@@ -83,9 +83,10 @@ open class PowerSyncDatabase(
 
     suspend fun connect(connector: PowerSyncBackendConnector) {
         this.syncStream =
-            SyncStream(this.bucketStorage, suspend { connector.getCredentialsCached() },
-                suspend { },
-                suspend { connector.uploadData(this) },
+            SyncStream(this.bucketStorage,
+                credentialsCallback = suspend { connector.getCredentialsCached() },
+                invalidCredentialsCallback = suspend { },
+                uploadCrud = suspend { connector.uploadData(this) },
                 flow {
 
                 })
@@ -169,8 +170,8 @@ open class PowerSyncDatabase(
                         CrudEntry.fromRow(
                             CrudRow(
                                 id = cursor.getString(0)!!,
-                                data = cursor.getString(1)!!,
-                                txId = cursor.getLong(2)?.toInt()
+                                txId = cursor.getLong(1)?.toInt(),
+                                data = cursor.getString(2)!!
                             )
                         )
                     }).awaitAsOneOrNull() ?: return@readTransaction null
@@ -189,8 +190,8 @@ open class PowerSyncDatabase(
                         CrudEntry.fromRow(
                             CrudRow(
                                 id = cursor.getString(0)!!,
-                                data = cursor.getString(1)!!,
-                                txId = cursor.getLong(2)?.toInt()
+                                txId = cursor.getLong(1)?.toInt(),
+                                data = cursor.getString(2)!!,
                             )
                         )
                     }).awaitAsList()

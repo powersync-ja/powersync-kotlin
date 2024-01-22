@@ -1,6 +1,8 @@
 package co.powersync.db.crud
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -51,7 +53,7 @@ data class CrudEntry(
      *
      * For DELETE, this is null.
      */
-    val opData: Map<String, Any>?
+    val opData: Map<String, String>?
 ) {
     companion object {
         fun fromRow(row: CrudRow): CrudEntry {
@@ -60,7 +62,7 @@ data class CrudEntry(
                 id = data["id"]!!.jsonPrimitive.content,
                 clientId = row.id.toInt(),
                 op = UpdateType.fromJsonChecked(data["op"]!!.jsonPrimitive.content),
-                opData = data["data"]?.jsonObject,
+                opData = data["data"]?.jsonObject?.mapValues { it.value.jsonPrimitive.content },
                 table = data["type"]!!.jsonPrimitive.content,
                 transactionId = row.txId,
             )
