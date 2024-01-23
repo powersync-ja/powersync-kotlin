@@ -12,13 +12,27 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            App(DatabaseDriverFactory(this))
+            App(PowerSync(DatabaseDriverFactory(this)))
         }
     }
 }
 
+
 @Preview
 @Composable
-fun AppAndroidPreview() {
-    App(null)
+fun ViewContentPreview() {
+    ViewContent("Preview", listOf(User("1", "John Doe", "john@example.com")), {}, {})
 }
+
+@Preview
+@Composable
+fun ViewContentPreview_ListItem() {
+    ListItem(user = User("1", "John Doe", "john@example.com"))
+}
+
+@Preview
+@Composable
+fun ViewContentPreview_MyButton() {
+    MyButton(label = "Preview Button", onClick = {})
+}
+

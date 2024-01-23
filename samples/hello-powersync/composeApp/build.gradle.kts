@@ -5,6 +5,7 @@ plugins {
     alias(projectLibs.plugins.kotlinCocoapods)
     alias(projectLibs.plugins.androidApplication)
     alias(projectLibs.plugins.jetbrainsCompose)
+    alias(projectLibs.plugins.sqldelight)
 }
 
 kotlin {
@@ -41,6 +42,7 @@ kotlin {
         commonMain.dependencies {
             api("co.powersync:core")
             api("co.powersync:connectors")
+            implementation(projectLibs.bundles.sqldelight)
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material)

@@ -1,10 +1,13 @@
 package co.powersync.db
 
 import app.cash.sqldelight.ExecutableQuery
+import app.cash.sqldelight.Query
 import app.cash.sqldelight.SuspendingTransactionWithReturn
 import app.cash.sqldelight.SuspendingTransactionWithoutReturn
 import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
+import app.cash.sqldelight.async.coroutines.await
+import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlDriver
@@ -16,6 +19,7 @@ import co.powersync.db.crud.CrudBatch
 import co.powersync.db.crud.CrudEntry
 import co.powersync.db.crud.CrudRow
 import co.powersync.db.crud.CrudTransaction
+import co.powersync.db.schema.Schema
 import co.powersync.sync.SyncStatus
 import co.powersync.sync.SyncStream
 import kotlinx.coroutines.Dispatchers
@@ -36,13 +40,18 @@ import kotlinx.serialization.json.Json
  *
  * All changes to local tables are automatically recorded, whether connected or not. Once connected, the changes are uploaded.
  */
-
-interface PowerSyncDatabaseConfig : DriverOptions {
-    val driverFactory: DatabaseDriverFactory
-}
-
 open class PowerSyncDatabase(
-    val config: PowerSyncDatabaseConfig
+    private val driverFactory: DatabaseDriverFactory,
+    /**
+     * Schema used for the local database.
+     */
+    val schema: Schema,
+
+    /**
+     * Filename for the database.
+     */
+    val dbFilename: String
+
 ) : Closeable {
     override var closed: Boolean = false
 
@@ -58,10 +67,11 @@ open class PowerSyncDatabase(
     private var syncStream: SyncStream? = null
 
     init {
-        this.driver = config.driverFactory.createDriver(config)
+        this.driver = driverFactory.createDriver(schema, dbFilename)
         this.database = PsDatabase(driver)
         this.currentStatus = SyncStatus()
 
+        this.database.powerSyncQueries.selectAll()
         this.bucketStorage = BucketStorage(this)
 
         runBlocking {
@@ -71,7 +81,7 @@ open class PowerSyncDatabase(
 
     private suspend fun applySchema() {
         val json = Json { encodeDefaults = true }
-        val schemaJson = json.encodeToString(this.config.schema)
+        val schemaJson = json.encodeToString(this.schema)
         println("Serialized app schema: $schemaJson")
 
         this.writeTransaction {
@@ -264,6 +274,27 @@ open class PowerSyncDatabase(
         return object : ExecutableQuery<T>(mapper) {
             override fun <R> execute(mapper: (SqlCursor) -> QueryResult<R>): QueryResult<R> {
                 return driver.executeQuery(null, query, mapper, parameters, binders)
+            }
+        }
+    }
+
+    fun <T : Any> watchQuery(
+        key: String, query: String,
+        mapper: (SqlCursor) -> T,
+        parameters: Int = 0,
+        binders: (SqlPreparedStatement.() -> Unit)? = null,
+    ): Query<T> {
+        return object : Query<T>(mapper) {
+            override fun <R> execute(mapper: (SqlCursor) -> QueryResult<R>): QueryResult<R> {
+                return driver.executeQuery(null, query, mapper, parameters, binders);
+            }
+
+            override fun addListener(listener: Listener) {
+                driver.addListener(key, listener = listener)
+            }
+
+            override fun removeListener(listener: Listener) {
+                driver.removeListener(key, listener = listener)
             }
         }
     }

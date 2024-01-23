@@ -1,6 +1,8 @@
 package co.powersync.demos
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -28,82 +30,44 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
-import co.powersync.db.DatabaseDriverFactory
-import co.powersync.Greeting
-import co.powersync.connectors.SupabaseConnector
-import co.powersync.db.PowerSyncDatabase
-import co.powersync.db.PowerSyncDatabaseConfig
-import co.powersync.db.schema.Column
-import co.powersync.db.schema.Schema
-import co.powersync.db.schema.Table
 import kotlinx.coroutines.launch
 
 @Composable
-fun App(driverFactory: DatabaseDriverFactory?) {
+fun App(powerSync: PowerSync) {
+    var version by remember { mutableStateOf("Loading") }
+    val scope = rememberCoroutineScope()
+    val users by powerSync.users.collectAsState(emptyList())
+
     MaterialTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colors.background
         ) {
-            val scope = rememberCoroutineScope()
-            var text by remember { mutableStateOf("Loading") }
-            var users by remember { mutableStateOf(listOf<String>()) }
-            var db by remember { mutableStateOf<PowerSyncDatabase?>(null) }
-            LaunchedEffect(true) {
-
+            LaunchedEffect(powerSync) {
                 scope.launch {
-                    text = Greeting().greet();
-                    try {
-                        db = driverFactory?.let {
-                            PowerSyncDatabase(config =
-                            object : PowerSyncDatabaseConfig {
-                                override val driverFactory: DatabaseDriverFactory = it
-                                override val schema: Schema
-                                    get() = Schema(
-                                        listOf(
-                                            Table(
-                                                "users",
-                                                listOf(
-                                                    Column.text("name"),
-                                                    Column.text("email")
-                                                )
-                                            )
-                                        )
-                                    )
-                                override val dbFilename: String
-                                    get() = "powersync.db"
-                            }
-                            )
-                        }
-                        if (db != null) {
-                            val connector = SupabaseConnector()
-
-                            db!!.connect(connector)
-
-                            text += " PowerSync version: " + db!!.getPowersyncVersion()
-
-                            users =
-                                db!!.createQuery(
-                                    "SELECT name, email FROM users",
-                                    mapper = { cursor ->
-                                        cursor.getString(0)!!
-                                    }).executeAsList()
-                        }
-
-                    } catch (e: Exception) {
-                        println("Error: ${e.message}")
-                        text = e.message ?: "error"
-                    }
+                    version = """PowerSync version: ${powerSync.getPowersyncVersion()}"""
                 }
+                powerSync.activate()
             }
-            GreetingView(text, users, db)
+
+            ViewContent(version,
+                users = users,
+                onCreate = {
+                    scope.launch {
+                        powerSync.createUser("John Doe", "joe@example.com")
+                    }
+                },
+                onDelete = {
+                    scope.launch {
+                        powerSync.deleteUser()
+                    }
+                })
         }
     }
 }
 
 @Composable
-fun GreetingView(text: String, users: List<String>, db: PowerSyncDatabase? = null) {
-    val coroutineScope = rememberCoroutineScope()
+fun ViewContent(version: String, users: List<User>, onCreate: () -> Unit, onDelete: () -> Unit) {
     val layoutDirection = LocalLayoutDirection.current
     Scaffold(
         modifier = Modifier,
@@ -127,9 +91,10 @@ fun GreetingView(text: String, users: List<String>, db: PowerSyncDatabase? = nul
                 ) {
                     item {
                         Box(modifier = Modifier.padding(24.dp)) {
-                            Text(text)
+                            Text(version)
                         }
                     }
+
                     items(users) {
                         ListItem(it)
                     }
@@ -137,19 +102,22 @@ fun GreetingView(text: String, users: List<String>, db: PowerSyncDatabase? = nul
                     item {
                         Spacer(Modifier.height(24.dp))
 
-                        Column {
-                            MyButton(label = "Create User") {
-                                coroutineScope.launch {
-                                    val result = db?.createQuery(
-                                        "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
-                                        parameters = 2,
-                                        binders = {
-                                            bindString(0, "John")
-                                            bindString(1, "john@example.com")
-                                        })?.executeAsOneOrNull()
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceAround
+                        ) {
+                            Column {
+                                MyButton(label = "Create User") {
+                                    onCreate()
+                                }
+                            }
+                            Column {
+                                MyButton(label = "Delete User") {
+                                    onDelete()
                                 }
                             }
                         }
+
                     }
                 }
             }
@@ -160,14 +128,19 @@ fun GreetingView(text: String, users: List<String>, db: PowerSyncDatabase? = nul
 }
 
 @Composable
-private fun ListItem(text: String, modifier: Modifier = Modifier) {
+fun ListItem(user: User, modifier: Modifier = Modifier) {
     Box(modifier = modifier) {
         Box {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Row(modifier = Modifier.padding(horizontal = 16.dp)) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text
+                            user.name
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            user.email
                         )
                     }
                 }
@@ -183,7 +156,7 @@ private fun ListItem(text: String, modifier: Modifier = Modifier) {
 
 
 @Composable
-private fun MyButton(
+fun MyButton(
     modifier: Modifier = Modifier,
     label: String,
     onClick: () -> Unit,
@@ -192,14 +165,17 @@ private fun MyButton(
         modifier =
         modifier
             .clip(MaterialTheme.shapes.large)
-            .clickable(onClick = onClick)
+            .clickable(onClick = onClick).border(
+                width = 1.dp,
+                color = MaterialTheme.colors.primarySurface
+            )
             .padding(horizontal = 16.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             label,
             style = MaterialTheme.typography.button,
-            color = MaterialTheme.colors.primarySurface
+            color = MaterialTheme.colors.primarySurface,
         )
     }
 }

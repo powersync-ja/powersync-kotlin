@@ -51,7 +51,7 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
             implementation(libs.stately.concurrency)
-            implementation(libs.bundles.sqldelight.common)
+            implementation(libs.bundles.sqldelight)
         }
         androidMain.dependencies {
             implementation(libs.powersync.sqlite.core)
