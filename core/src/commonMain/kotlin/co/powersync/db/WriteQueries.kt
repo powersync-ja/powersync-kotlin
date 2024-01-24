@@ -1,7 +1,6 @@
 package co.powersync.db
 
 import app.cash.sqldelight.SuspendingTransactionWithReturn
-import app.cash.sqldelight.SuspendingTransactionWithoutReturn
 
 interface WriteQueries {
 
@@ -10,6 +9,6 @@ interface WriteQueries {
      */
     suspend fun execute(sql: String, parameters: List<Any>? = listOf()): Long
 
-    suspend fun writeTransaction(bodyNoReturn: suspend SuspendingTransactionWithoutReturn.() -> Unit)
+    suspend fun <R> writeTransaction(body: suspend SuspendingTransactionWithReturn<R>.() -> R): R
 
 }

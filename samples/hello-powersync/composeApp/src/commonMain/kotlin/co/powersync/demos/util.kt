@@ -17,7 +17,7 @@ fun generateRandomPerson(): Pair<String, String> {
     val name = names[random.nextInt(names.size)]
     val domain = domains[random.nextInt(domains.size)]
 
-    val email = "$name${num + 1}@$domain"
+    val email = "${name.lowercase()}${num + 1}@$domain"
 
     return Pair(name, email)
 }

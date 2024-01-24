@@ -24,7 +24,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.retryWhen
 import kotlinx.datetime.Instant
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -32,7 +32,6 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
 
 class SyncStream(
@@ -47,9 +46,7 @@ class SyncStream(
 
     private var lastStatus = SyncStatus()
     private val httpClient: HttpClient;
-    private val _statusStreamController = MutableStateFlow(SyncStatus())
-    val statusStream: StateFlow<SyncStatus> get() = _statusStreamController
-
+    private val statusStreamController = MutableStateFlow(SyncStatus())
 
     init {
         this.httpClient = HttpClient() {
@@ -212,22 +209,20 @@ class SyncStream(
         )
 
         bucketEntries.forEach { entry ->
-            run {
-                initialBuckets[entry.bucket] = entry.opId
-            }
+            initialBuckets[entry.bucket] = entry.opId
         }
 
-        val req: List<BucketRequest> =
-            initialBuckets.map { (bucket, after) -> BucketRequest(bucket, after) }
+        val req = StreamingSyncRequest(
+            buckets = initialBuckets.map { (bucket, after) -> BucketRequest(bucket, after) },
+        )
 
-        streamingSyncRequest(
-            StreamingSyncRequest(
-                buckets = req,
-            )
-        ).collect { value ->
-            run {
-                handleInstruction(value, state)
-            }
+        streamingSyncRequest(req).retryWhen { cause, attempt ->
+            println("Error streaming sync: $cause")
+            delay(retryDelay)
+            println("Retrying attempt: $attempt")
+            true
+        }.collect { value ->
+            handleInstruction(value, state)
         }
     }
 
@@ -431,7 +426,7 @@ class SyncStream(
                 ?: lastStatus.downloadError
         )
         lastStatus = newStatus
-        _statusStreamController.value = newStatus
+        statusStreamController.value = newStatus
     }
 
 }

@@ -43,7 +43,7 @@ interface ReadQueries {
     ): Flow<RowType>
 
 
-    suspend fun <R> readTransaction(bodyWithReturn: suspend SuspendingTransactionWithReturn<R>.() -> R): R
+    suspend fun <R> readTransaction(body: suspend SuspendingTransactionWithReturn<R>.() -> R): R
 
 }
 

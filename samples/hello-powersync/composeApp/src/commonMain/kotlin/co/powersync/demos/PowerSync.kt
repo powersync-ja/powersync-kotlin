@@ -31,32 +31,9 @@ class PowerSync(databaseDriverFactory: DatabaseDriverFactory) {
         }
     }
 
-    suspend fun activate() {
-        observe()
-    }
 
     suspend fun getPowersyncVersion(): String {
         return database.getPowersyncVersion()
-    }
-
-    private suspend fun observe() {
-        sqlDelightDB.userQueries.selectAll().asFlow()
-            .mapToList(Dispatchers.IO)
-            .collect { userList ->
-                mutableUsers.update { userList }
-            }
-    }
-
-    suspend fun getUsers(): List<Users> {
-        return database.sqlDatabase.getAll(
-            "SELECT * FROM users",
-            mapper = { cursor ->
-                Users(
-                    id = cursor.getString(0)!!,
-                    name = cursor.getString(1)!!,
-                    email = cursor.getString(2)!!
-                )
-            })
     }
 
     fun watchUsers(): Flow<List<Users>> {

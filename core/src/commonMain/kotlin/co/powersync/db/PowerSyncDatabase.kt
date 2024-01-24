@@ -231,6 +231,14 @@ open class PowerSyncDatabase(
     }
 
     suspend fun getPowersyncVersion(): String {
+        val sqliteVersion = get(
+            "SELECT sqlite_version()",
+            mapper = { cursor ->
+                cursor.getString(0)!!
+            }
+        )
+        println("SQLiteVersion: $sqliteVersion")
+        
         return get(
             "SELECT powersync_rs_version()",
             mapper = { cursor ->
@@ -271,16 +279,17 @@ open class PowerSyncDatabase(
         return sqlDatabase.watch(sql, parameters, mapper)
     }
 
-    override suspend fun <R> readTransaction(bodyWithReturn: suspend SuspendingTransactionWithReturn<R>.() -> R): R {
-        return sqlDatabase.readTransaction(bodyWithReturn)
+
+    override suspend fun <R> readTransaction(body: suspend SuspendingTransactionWithReturn<R>.() -> R): R {
+        return sqlDatabase.readTransaction(body)
+    }
+
+    override suspend fun <R> writeTransaction(body: suspend SuspendingTransactionWithReturn<R>.() -> R): R {
+        return sqlDatabase.writeTransaction(body)
     }
 
     override suspend fun execute(sql: String, parameters: List<Any>?): Long {
         return sqlDatabase.execute(sql, parameters)
-    }
-
-    override suspend fun writeTransaction(bodyNoReturn: suspend SuspendingTransactionWithoutReturn.() -> Unit) {
-        return sqlDatabase.writeTransaction(bodyNoReturn)
     }
 
     override suspend fun close() {

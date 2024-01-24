@@ -11,13 +11,14 @@ import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.db.SqlPreparedStatement
+import co.powersync.db.PsDatabase
 import co.powersync.db.ReadQueries
 import co.powersync.db.WriteQueries
 import kotlinx.coroutines.flow.Flow
 
 class SqlDatabase(val driver: SqlDriver) : ReadQueries, WriteQueries {
 
-    private val transactor = SqlTransactor(driver)
+    private val transactor = PsDatabase(driver)
     override suspend fun execute(
         sql: String,
         parameters: List<Any>?
@@ -120,12 +121,12 @@ class SqlDatabase(val driver: SqlDriver) : ReadQueries, WriteQueries {
         }
     }
 
-    override suspend fun <R> readTransaction(bodyWithReturn: suspend SuspendingTransactionWithReturn<R>.() -> R): R {
-        return transactor.transactionWithResult(noEnclosing = true, bodyWithReturn)
+    override suspend fun <R> readTransaction(body: suspend SuspendingTransactionWithReturn<R>.() -> R): R {
+        return transactor.transactionWithResult(noEnclosing = true, body)
     }
 
-    override suspend fun writeTransaction(bodyNoReturn: suspend SuspendingTransactionWithoutReturn.() -> Unit) {
-        transactor.transaction(noEnclosing = true, bodyNoReturn)
+    override suspend fun <R> writeTransaction(body: suspend SuspendingTransactionWithReturn<R>.() -> R): R {
+        return transactor.transactionWithResult(noEnclosing = true, body)
     }
 
     /**

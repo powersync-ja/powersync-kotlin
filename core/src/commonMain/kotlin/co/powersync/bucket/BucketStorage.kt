@@ -247,7 +247,6 @@ class BucketStorage(val db: SqlDatabase) {
      * This includes creating new tables, dropping old tables, and copying data over from the oplog.
      */
     private suspend fun updateObjectsFromBuckets(checkpoint: Checkpoint): Boolean {
-        var success = false
 
         val tableNames = db.getAll(
             "SELECT row_type FROM ps_oplog WHERE op_id = ?",
@@ -256,22 +255,18 @@ class BucketStorage(val db: SqlDatabase) {
                 cursor.getString(0)!!
             }).toSet().toTypedArray()
 
-        db.writeTransaction {
-            val res = db.driver.execute(
-                null,
+        return db.readTransaction {
+            val res = db.execute(
                 "INSERT INTO powersync_operations(op, data) VALUES(?, ?)",
-                parameters = 2,
-                binders = {
-                    bindString(0, "sync_local")
-                    bindString(1, "")
-                })
-            success = res.value == 1L
+                listOf("sync_local", "")
+            )
 
             this.afterCommit {
                 db.driver.notifyListeners(queryKeys = tableNames)
             }
+
+            return@readTransaction res == 1L
         }
-        return success
     }
 
     suspend fun forceCompact() {
