@@ -20,6 +20,7 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.Divider
+import androidx.compose.material.LocalTextStyle
 import androidx.compose.material.Scaffold
 import androidx.compose.material.TopAppBar
 import androidx.compose.material.primarySurface
@@ -29,6 +30,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
@@ -36,7 +39,7 @@ import kotlinx.coroutines.launch
 fun App(powerSync: PowerSync) {
     var version by remember { mutableStateOf("Loading") }
     val scope = rememberCoroutineScope()
-    val users by powerSync.users.collectAsState(emptyList())
+    val users by powerSync.watchUsers().collectAsState(emptyList())
 
     MaterialTheme {
         Surface(
@@ -47,14 +50,14 @@ fun App(powerSync: PowerSync) {
                 scope.launch {
                     version = """PowerSync version: ${powerSync.getPowersyncVersion()}"""
                 }
-                powerSync.activate()
             }
 
             ViewContent(version,
                 users = users,
                 onCreate = {
                     scope.launch {
-                        powerSync.createUser("John Doe", "joe@example.com")
+                        val person = generateRandomPerson()
+                        powerSync.createUser(person.first, person.second)
                     }
                 },
                 onDelete = {
@@ -90,13 +93,16 @@ fun ViewContent(version: String, users: List<Users>, onCreate: () -> Unit, onDel
                     ),
                 ) {
                     item {
-                        Box(modifier = Modifier.padding(24.dp)) {
-                            Text(version)
-                        }
-                    }
 
+                        ListItem(
+                            "Name",
+                            "Email",
+                            style = TextStyle(fontWeight = FontWeight.Bold),
+                            modifier = Modifier.padding(bottom = 8.dp), divider = false
+                        )
+                    }
                     items(users) {
-                        ListItem(it)
+                        ListItem(it.name, it.email)
                     }
 
                     item {
@@ -120,6 +126,10 @@ fun ViewContent(version: String, users: List<Users>, onCreate: () -> Unit, onDel
 
                     }
                 }
+                // This box should be at the bottom of the screen
+                Box(modifier = Modifier.padding(24.dp).align(Alignment.BottomEnd)) {
+                    Text(version)
+                }
             }
 
         },
@@ -128,29 +138,34 @@ fun ViewContent(version: String, users: List<Users>, onCreate: () -> Unit, onDel
 }
 
 @Composable
-fun ListItem(user: Users, modifier: Modifier = Modifier) {
+fun ListItem(
+    vararg cols: String,
+    modifier: Modifier = Modifier,
+    style: TextStyle? = null,
+    divider: Boolean = true,
+) {
     Box(modifier = modifier) {
         Box {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Row(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    cols.forEach {
                         Text(
-                            user.name
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            user.email
+                            it,
+                            modifier = Modifier.weight(1f),
+                            style = style ?: LocalTextStyle.current
                         )
                     }
                 }
             }
+
+            if (divider) {
+                Divider(
+                    color = Color.Black,
+                    modifier = Modifier.align(Alignment.BottomStart)
+                )
+            }
         }
 
-        Divider(
-            color = Color.Black,
-            modifier = Modifier.align(Alignment.BottomStart)
-        )
     }
 }
 

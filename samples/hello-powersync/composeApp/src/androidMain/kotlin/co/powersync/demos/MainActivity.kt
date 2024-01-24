@@ -27,7 +27,7 @@ fun ViewContentPreview() {
 @Preview
 @Composable
 fun ViewContentPreview_ListItem() {
-    ListItem(user = Users("1", "John Doe", "john@example.com"))
+    ListItem(cols = arrayOf("John Doe", "john@example.com"))
 }
 
 @Preview

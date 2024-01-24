@@ -40,7 +40,6 @@ class PowerSync(databaseDriverFactory: DatabaseDriverFactory) {
     }
 
     private suspend fun observe() {
-
         sqlDelightDB.userQueries.selectAll().asFlow()
             .mapToList(Dispatchers.IO)
             .collect { userList ->
@@ -60,17 +59,8 @@ class PowerSync(databaseDriverFactory: DatabaseDriverFactory) {
             })
     }
 
-    suspend fun watchUsers(): Flow<List<Users>> {
-        val q = database.sqlDatabase.watchQuery("users",
-            "SELECT * FROM users",
-            mapper = { cursor ->
-                Users(
-                    id = cursor.getString(0)!!,
-                    name = cursor.getString(1)!!,
-                    email = cursor.getString(2)!!
-                )
-            })
-        return q.asFlow()
+    fun watchUsers(): Flow<List<Users>> {
+        return sqlDelightDB.userQueries.selectAll().asFlow()
             .mapToList(Dispatchers.IO)
     }
 

@@ -44,6 +44,7 @@ kotlin {
             api("co.powersync:core")
             api("co.powersync:connectors")
             implementation(projectLibs.bundles.sqldelight)
+            implementation(projectLibs.kotlinx.datetime)
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material)
