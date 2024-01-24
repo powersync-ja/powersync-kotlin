@@ -1,0 +1,154 @@
+package co.powersync.db
+
+import app.cash.sqldelight.ExecutableQuery
+import app.cash.sqldelight.Query
+import app.cash.sqldelight.async.coroutines.awaitAsList
+import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
+import app.cash.sqldelight.db.QueryResult
+import app.cash.sqldelight.db.SqlCursor
+import app.cash.sqldelight.db.SqlDriver
+import app.cash.sqldelight.db.SqlPreparedStatement
+import kotlinx.coroutines.flow.Flow
+
+class SqlDatabase(val driver: SqlDriver) : ReadContext, WriteContext {
+    override suspend fun execute(
+        sql: String,
+        parameters: List<Any>?
+    ): Long {
+        val numParams = parameters?.size ?: 0
+        return driver.execute(
+            null,
+            sql,
+            parameters = numParams,
+            binders = getBindersFromParams(parameters)
+        ).await()
+    }
+
+    override suspend fun <RowType : Any> get(
+        sql: String,
+        parameters: List<Any>?,
+        mapper: (SqlCursor) -> RowType
+    ): RowType {
+        return this.createQuery(
+            query = sql,
+            parameters = parameters?.size ?: 0,
+            binders = getBindersFromParams(parameters),
+            mapper = mapper
+        ).awaitAsOneOrNull()!!
+    }
+
+    override suspend fun <RowType : Any> getAll(
+        sql: String,
+        parameters: List<Any>?,
+        mapper: (SqlCursor) -> RowType
+    ): List<RowType> {
+        return this.createQuery(
+            query = sql,
+            parameters = parameters?.size ?: 0,
+            binders = getBindersFromParams(parameters),
+            mapper = mapper
+        ).awaitAsList()
+    }
+
+    override suspend fun <RowType : Any> getOptional(
+        sql: String,
+        parameters: List<Any>?,
+        mapper: (SqlCursor) -> RowType
+    ): RowType? {
+        return this.createQuery(
+            query = sql,
+            parameters = parameters?.size ?: 0,
+            binders = getBindersFromParams(parameters),
+            mapper = mapper
+        ).awaitAsOneOrNull()
+    }
+
+    override suspend fun <RowType : Any> watch(
+        sql: String,
+        parameters: List<Any>?,
+        mapper: (SqlCursor) -> RowType
+    ): Flow<RowType> {
+        TODO("Not yet implemented")
+    }
+
+
+    fun createQuery(
+        query: String,
+        parameters: Int = 0,
+        binders: (SqlPreparedStatement.() -> Unit)? = null,
+    ): ExecutableQuery<Long> {
+        return createQuery(query, { cursor -> cursor.getLong(0)!! }, parameters, binders)
+    }
+
+    fun <T : Any> createQuery(
+        query: String,
+        mapper: (SqlCursor) -> T,
+        parameters: Int = 0,
+        binders: (SqlPreparedStatement.() -> Unit)? = null,
+    ): ExecutableQuery<T> {
+        return object : ExecutableQuery<T>(mapper) {
+            override fun <R> execute(mapper: (SqlCursor) -> QueryResult<R>): QueryResult<R> {
+                return driver.executeQuery(null, query, mapper, parameters, binders)
+            }
+        }
+    }
+
+    fun <T : Any> watchQuery(
+        key: String, query: String,
+        mapper: (SqlCursor) -> T,
+        parameters: Int = 0,
+        binders: (SqlPreparedStatement.() -> Unit)? = null,
+    ): Query<T> {
+        return object : Query<T>(mapper) {
+            override fun <R> execute(mapper: (SqlCursor) -> QueryResult<R>): QueryResult<R> {
+                return driver.executeQuery(null, query, mapper, parameters, binders);
+            }
+
+            override fun addListener(listener: Listener) {
+                driver.addListener(key, listener = listener)
+            }
+
+            override fun removeListener(listener: Listener) {
+                driver.removeListener(key, listener = listener)
+            }
+        }
+    }
+
+
+    /**
+     * Given a SELECT query, return the tables that the query depends on.
+     */
+    private suspend fun getSourceTablesText(sql: String): Set<String> {
+        val re = Regex("^(SCAN|SEARCH)( TABLE)? (.+?)( USING .+)?$")
+
+        val rows = this.createQuery("EXPLAIN QUERY PLAN $sql", mapper = { cursor ->
+            val details = cursor.getString(2)!!
+            println("details: $details")
+            details
+        }).executeAsList()
+
+        return rows.mapNotNull {
+            re.find(it)?.groupValues?.get(3)
+        }.toSet()
+
+    }
+}
+
+
+fun getBindersFromParams(parameters: List<Any>?): (SqlPreparedStatement.() -> Unit)? {
+    if (parameters.isNullOrEmpty()) {
+        return null
+    }
+    return {
+        parameters.forEachIndexed { index, parameter ->
+            when (parameter) {
+                is Boolean -> bindBoolean(index, parameter)
+                is String -> bindString(index, parameter)
+                is Long -> bindLong(index, parameter)
+                is Double -> bindDouble(index, parameter)
+                is ByteArray -> bindBytes(index, parameter)
+                else -> throw IllegalArgumentException("Unsupported parameter type: ${parameter::class}, at index $index")
+            }
+        }
+    }
+}

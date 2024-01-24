@@ -1,12 +1,8 @@
 package co.powersync.bucket
 
 import app.cash.sqldelight.async.coroutines.awaitAsList
-import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import co.powersync.db.PowerSyncDatabase
-import co.powersync.db.crud.CrudBatch
-import co.powersync.db.crud.CrudEntry
-import co.powersync.db.crud.CrudRow
 import co.powersync.sync.SyncDataBatch
 import co.powersync.sync.SyncLocalDatabaseResult
 import co.touchlab.stately.concurrency.AtomicBoolean
@@ -17,7 +13,6 @@ import com.benasher44.uuid.uuid4
 class BucketStorage(val db: PowerSyncDatabase) {
 
     private val tableNames: MutableSet<String> = mutableSetOf()
-
     private var hasCompletedSync = AtomicBoolean(false)
     private var checksumCache: ChecksumCache? = null
     private var pendingBucketDeletes = AtomicBoolean(false)
@@ -60,9 +55,10 @@ class BucketStorage(val db: PowerSyncDatabase) {
     }
 
     suspend fun hasCrud(): Boolean {
-        return db.createQuery("SELECT 1 FROM ps_crud LIMIT 1", mapper = { cursor ->
-            cursor.getLong(0) == 1L
-        }).awaitAsOneOrNull() ?: false
+        val result = db.createQuery(
+            "SELECT 1 FROM ps_crud LIMIT 1"
+        ).awaitAsOneOrNull()
+        return result == 1L
     }
 
     suspend fun updateLocalTarget(checkpointCallback: suspend () -> String): Boolean {
@@ -90,8 +86,8 @@ class BucketStorage(val db: PowerSyncDatabase) {
         println("[updateLocalTarget] Updating target to checkpoint $opId")
 
         return db.readTransaction {
-            if (!hasCrud()) {
-                println("[updateLocalTarget] ps_crud is empty")
+            if (hasCrud()) {
+                println("[updateLocalTarget] ps crud is not empty")
                 return@readTransaction false
             }
 
@@ -108,12 +104,14 @@ class BucketStorage(val db: PowerSyncDatabase) {
                 return@readTransaction false;
             }
 
-            db.createQuery("UPDATE ps_buckets SET target_op = ? WHERE name='\$local'",
+            val res = db.createQuery("UPDATE ps_buckets SET target_op = ? WHERE name='\$local'",
                 parameters = 1,
                 binders = {
                     bindString(0, opId)
                 }
-            ).awaitAsOne()
+            ).awaitAsOneOrNull()
+
+            println("[updateLocalTarget] Update result $res");
 
             return@readTransaction true
         }
@@ -129,7 +127,7 @@ class BucketStorage(val db: PowerSyncDatabase) {
                     bindString(0, "save")
                     bindString(1, jsonString)
                 }
-            ).executeAsOneOrNull()
+            ).awaitAsOneOrNull()
         }
         this.compactCounter += syncDataBatch.buckets.map { it.data.size }.sum()
     }
@@ -142,7 +140,7 @@ class BucketStorage(val db: PowerSyncDatabase) {
                     bucket = cursor.getString(0)!!,
                     opId = cursor.getString(1)!!
                 )
-            }).executeAsList()
+            }).awaitAsList()
     }
 
     suspend fun removeBuckets(bucketsToDelete: List<String>) {
@@ -273,6 +271,17 @@ class BucketStorage(val db: PowerSyncDatabase) {
      */
     private suspend fun updateObjectsFromBuckets(checkpoint: Checkpoint): Boolean {
         var success = false
+
+        val tableNames = db.createQuery(
+            "SELECT row_type FROM ps_oplog WHERE op_id = ?",
+            parameters = 1,
+            binders = {
+                bindLong(0, checkpoint.lastOpId.toLong())
+            },
+            mapper = { cursor ->
+                cursor.getString(0)!!
+            }).awaitAsList().toSet().toTypedArray();
+
         db.writeTransaction {
             val res = db.driver.execute(
                 null,
@@ -283,6 +292,10 @@ class BucketStorage(val db: PowerSyncDatabase) {
                     bindString(1, "")
                 })
             success = res.value == 1L
+
+            this.afterCommit {
+                db.driver.notifyListeners(queryKeys = tableNames)
+            }
         }
         return success
     }

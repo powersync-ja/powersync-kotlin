@@ -141,10 +141,7 @@ class SyncStream(
             return false
         } else {
             // This isolate is the only one triggering
-            val updated = bucketStorage.updateLocalTarget { getWriteCheckpoint() }
-            if (updated) {
-                TODO("Emit change")
-            }
+            bucketStorage.updateLocalTarget { getWriteCheckpoint() }
             return true
         }
     }

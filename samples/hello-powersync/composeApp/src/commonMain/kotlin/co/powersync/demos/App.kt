@@ -67,7 +67,7 @@ fun App(powerSync: PowerSync) {
 }
 
 @Composable
-fun ViewContent(version: String, users: List<User>, onCreate: () -> Unit, onDelete: () -> Unit) {
+fun ViewContent(version: String, users: List<Users>, onCreate: () -> Unit, onDelete: () -> Unit) {
     val layoutDirection = LocalLayoutDirection.current
     Scaffold(
         modifier = Modifier,
@@ -128,7 +128,7 @@ fun ViewContent(version: String, users: List<User>, onCreate: () -> Unit, onDele
 }
 
 @Composable
-fun ListItem(user: User, modifier: Modifier = Modifier) {
+fun ListItem(user: Users, modifier: Modifier = Modifier) {
     Box(modifier = modifier) {
         Box {
             Column(modifier = Modifier.fillMaxWidth()) {

@@ -98,3 +98,14 @@ android {
     }
 }
 
+sqldelight {
+    databases {
+        create("AppDatabase") {
+            packageName.set("co.powersync.demos")
+            generateAsync = true
+            dialect(projectLibs.sqldelight.dialect.sqlite.get().toString())
+        }
+    }
+    linkSqlite = true
+}
+

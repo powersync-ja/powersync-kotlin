@@ -41,7 +41,7 @@ import kotlinx.serialization.json.Json
  * All changes to local tables are automatically recorded, whether connected or not. Once connected, the changes are uploaded.
  */
 open class PowerSyncDatabase(
-    private val driverFactory: DatabaseDriverFactory,
+    driverFactory: DatabaseDriverFactory,
     /**
      * Schema used for the local database.
      */
@@ -55,23 +55,19 @@ open class PowerSyncDatabase(
 ) : Closeable {
     override var closed: Boolean = false
 
-    val driver: SqlDriver
-    val database: PsDatabase
+    val driver: SqlDriver = driverFactory.createDriver(schema, dbFilename)
+    val database: PsDatabase = PsDatabase(driver)
+    val sqlDatabase: SqlDatabase = SqlDatabase(driver)
     private val bucketStorage: BucketStorage
 
     /**
      * The current sync status.
      */
-    val currentStatus: SyncStatus
+    val currentStatus: SyncStatus = SyncStatus()
 
     private var syncStream: SyncStream? = null
 
     init {
-        this.driver = driverFactory.createDriver(schema, dbFilename)
-        this.database = PsDatabase(driver)
-        this.currentStatus = SyncStatus()
-
-        this.database.powerSyncQueries.selectAll()
         this.bucketStorage = BucketStorage(this)
 
         runBlocking {
@@ -262,7 +258,7 @@ open class PowerSyncDatabase(
         parameters: Int = 0,
         binders: (SqlPreparedStatement.() -> Unit)? = null,
     ): ExecutableQuery<Long> {
-        return createQuery(query, { cursor -> cursor.getLong(0)!! }, parameters, binders)
+        return sqlDatabase.createQuery(query, parameters, binders)
     }
 
     fun <T : Any> createQuery(
@@ -271,32 +267,7 @@ open class PowerSyncDatabase(
         parameters: Int = 0,
         binders: (SqlPreparedStatement.() -> Unit)? = null,
     ): ExecutableQuery<T> {
-        return object : ExecutableQuery<T>(mapper) {
-            override fun <R> execute(mapper: (SqlCursor) -> QueryResult<R>): QueryResult<R> {
-                return driver.executeQuery(null, query, mapper, parameters, binders)
-            }
-        }
-    }
-
-    fun <T : Any> watchQuery(
-        key: String, query: String,
-        mapper: (SqlCursor) -> T,
-        parameters: Int = 0,
-        binders: (SqlPreparedStatement.() -> Unit)? = null,
-    ): Query<T> {
-        return object : Query<T>(mapper) {
-            override fun <R> execute(mapper: (SqlCursor) -> QueryResult<R>): QueryResult<R> {
-                return driver.executeQuery(null, query, mapper, parameters, binders);
-            }
-
-            override fun addListener(listener: Listener) {
-                driver.addListener(key, listener = listener)
-            }
-
-            override fun removeListener(listener: Listener) {
-                driver.removeListener(key, listener = listener)
-            }
-        }
+        return sqlDatabase.createQuery(query, mapper, parameters, binders)
     }
 
     override suspend fun close() {

@@ -21,13 +21,13 @@ class MainActivity : ComponentActivity() {
 @Preview
 @Composable
 fun ViewContentPreview() {
-    ViewContent("Preview", listOf(User("1", "John Doe", "john@example.com")), {}, {})
+    ViewContent("Preview", listOf(Users("1", "John Doe", "john@example.com")), {}, {})
 }
 
 @Preview
 @Composable
 fun ViewContentPreview_ListItem() {
-    ListItem(user = User("1", "John Doe", "john@example.com"))
+    ListItem(user = Users("1", "John Doe", "john@example.com"))
 }
 
 @Preview

@@ -1,7 +1,5 @@
 package co.powersync.demos
 
-import app.cash.sqldelight.Query
-import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
@@ -10,6 +8,7 @@ import co.powersync.connectors.SupabaseConnector
 import co.powersync.db.DatabaseDriverFactory
 import co.powersync.db.PowerSyncDatabase
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,14 +19,15 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
 class PowerSync(databaseDriverFactory: DatabaseDriverFactory) {
-    private val backgroundDispatcher = Dispatchers.Default
+    private val backgroundDispatcher = Dispatchers.IO
     private val database = PowerSyncDatabase(
         databaseDriverFactory, dbFilename = "powersync.db", schema = AppSchema
     )
     private val connector: PowerSyncBackendConnector = SupabaseConnector()
+    private val sqlDelightDB = AppDatabase(database.driver)
 
-    private val mutableUsers: MutableStateFlow<List<User>> = MutableStateFlow(emptyList())
-    val users: StateFlow<List<User>> = mutableUsers.asStateFlow()
+    private val mutableUsers: MutableStateFlow<List<Users>> = MutableStateFlow(emptyList())
+    val users: StateFlow<List<Users>> = mutableUsers.asStateFlow()
 
     init {
         runBlocking {
@@ -40,32 +40,35 @@ class PowerSync(databaseDriverFactory: DatabaseDriverFactory) {
     }
 
     private suspend fun observe() {
-        watchUsers().collect { userList ->
-            mutableUsers.update { userList }
-        }
+
+        sqlDelightDB.userQueries.selectAll().asFlow()
+            .mapToList(Dispatchers.IO)
+            .collect { userList ->
+                mutableUsers.update { userList }
+            }
     }
 
     fun getPowersyncVersion(): String {
         return database.getPowersyncVersion()
     }
 
-    suspend fun getUsers(): List<User> {
-        return database.createQuery(
+    suspend fun getUsers(): List<Users> {
+        return database.sqlDatabase.getAll(
             "SELECT * FROM users",
             mapper = { cursor ->
-                User(
+                Users(
                     id = cursor.getString(0)!!,
                     name = cursor.getString(1)!!,
                     email = cursor.getString(2)!!
                 )
-            }).awaitAsList()
+            })
     }
 
-    suspend fun watchUsers(): Flow<List<User>> {
-        val q = database.watchQuery("users",
+    suspend fun watchUsers(): Flow<List<Users>> {
+        val q = database.sqlDatabase.watchQuery("users",
             "SELECT * FROM users",
             mapper = { cursor ->
-                User(
+                Users(
                     id = cursor.getString(0)!!,
                     name = cursor.getString(1)!!,
                     email = cursor.getString(2)!!
@@ -76,19 +79,18 @@ class PowerSync(databaseDriverFactory: DatabaseDriverFactory) {
             println("SELECT Query changed")
         })
         return q.asFlow()
-            .mapToList(Dispatchers.Default).flowOn(backgroundDispatcher)
+            .mapToList(Dispatchers.IO)
     }
 
     suspend fun createUser(name: String, email: String) {
-        withContext(backgroundDispatcher) {
-            database.createQuery(
-                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
-                parameters = 2,
-                binders = {
-                    bindString(0, name)
-                    bindString(1, email)
-                }).awaitAsOneOrNull()
-        }
+
+        sqlDelightDB.userQueries.insertUser(name, email)
+
+//        withContext(backgroundDispatcher) {
+//            database.sqlDatabase.execute(
+//                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)", listOf(name, email)
+//            )
+//        }
     }
 
     suspend fun deleteUser(id: String? = null) {
