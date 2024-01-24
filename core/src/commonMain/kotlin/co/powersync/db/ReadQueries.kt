@@ -1,9 +1,10 @@
 package co.powersync.db
 
+import app.cash.sqldelight.SuspendingTransactionWithReturn
 import app.cash.sqldelight.db.SqlCursor
 import kotlinx.coroutines.flow.Flow
 
-interface ReadContext {
+interface ReadQueries {
 
     /**
      * Execute a read-only (SELECT) query and return a single result.
@@ -41,6 +42,8 @@ interface ReadContext {
         mapper: (SqlCursor) -> RowType
     ): Flow<RowType>
 
+
+    suspend fun <R> readTransaction(bodyWithReturn: suspend SuspendingTransactionWithReturn<R>.() -> R): R
 
 }
 

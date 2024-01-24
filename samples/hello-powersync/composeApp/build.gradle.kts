@@ -6,6 +6,7 @@ plugins {
     alias(projectLibs.plugins.androidApplication)
     alias(projectLibs.plugins.jetbrainsCompose)
     alias(projectLibs.plugins.sqldelight)
+    alias(projectLibs.plugins.skie)
 }
 
 kotlin {

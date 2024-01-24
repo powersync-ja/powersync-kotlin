@@ -19,12 +19,14 @@ import co.powersync.db.crud.CrudBatch
 import co.powersync.db.crud.CrudEntry
 import co.powersync.db.crud.CrudRow
 import co.powersync.db.crud.CrudTransaction
+import co.powersync.db.internal.SqlDatabase
 import co.powersync.db.schema.Schema
 import co.powersync.sync.SyncStatus
 import co.powersync.sync.SyncStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -52,11 +54,9 @@ open class PowerSyncDatabase(
      */
     val dbFilename: String
 
-) : Closeable {
+) : Closeable, ReadQueries, WriteQueries {
     override var closed: Boolean = false
-
     val driver: SqlDriver = driverFactory.createDriver(schema, dbFilename)
-    val database: PsDatabase = PsDatabase(driver)
     val sqlDatabase: SqlDatabase = SqlDatabase(driver)
     private val bucketStorage: BucketStorage
 
@@ -68,7 +68,7 @@ open class PowerSyncDatabase(
     private var syncStream: SyncStream? = null
 
     init {
-        this.bucketStorage = BucketStorage(this)
+        this.bucketStorage = BucketStorage(sqlDatabase)
 
         runBlocking {
             applySchema();
@@ -81,9 +81,7 @@ open class PowerSyncDatabase(
         println("Serialized app schema: $schemaJson")
 
         this.writeTransaction {
-            createQuery("SELECT powersync_replace_schema(?);", parameters = 1, binders = {
-                bindString(0, schemaJson)
-            }).awaitAsOneOrNull()
+            execute("SELECT powersync_replace_schema(?)", listOf(schemaJson))
         }
     }
 
@@ -124,10 +122,9 @@ open class PowerSyncDatabase(
             return null
         }
 
-        val entries = createQuery(
+        val entries = getAll(
             "SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC LIMIT ?",
-            parameters = 1,
-            binders = { bindLong(0, (limit + 1).toLong()) },
+            listOf((limit + 1).toLong()),
             mapper = { cursor ->
                 CrudEntry.fromRow(
                     CrudRow(
@@ -137,7 +134,7 @@ open class PowerSyncDatabase(
                     )
                 )
             }
-        ).awaitAsList()
+        )
 
         if (entries.isEmpty()) {
             return null
@@ -170,7 +167,7 @@ open class PowerSyncDatabase(
     suspend fun getNextCrudTransaction(): CrudTransaction? {
         return this.readTransaction {
             val first =
-                createQuery(
+                getOptional(
                     "SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC LIMIT 1",
                     mapper = { cursor ->
                         CrudEntry.fromRow(
@@ -180,7 +177,8 @@ open class PowerSyncDatabase(
                                 data = cursor.getString(2)!!
                             )
                         )
-                    }).awaitAsOneOrNull() ?: return@readTransaction null
+                    })
+                    ?: return@readTransaction null
 
 
             val txId = first.transactionId
@@ -188,10 +186,9 @@ open class PowerSyncDatabase(
             if (txId == null) {
                 entries = listOf(first)
             } else {
-                entries = createQuery(
+                entries = getAll(
                     "SELECT id, tx_id, data FROM ps_crud WHERE tx_id = ? ORDER BY id ASC",
-                    parameters = 1,
-                    binders = { bindLong(0, txId.toLong()) },
+                    listOf(txId.toLong()),
                     mapper = { cursor ->
                         CrudEntry.fromRow(
                             CrudRow(
@@ -200,7 +197,7 @@ open class PowerSyncDatabase(
                                 data = cursor.getString(2)!!,
                             )
                         )
-                    }).awaitAsList()
+                    })
             }
 
             return@readTransaction CrudTransaction(
@@ -214,60 +211,76 @@ open class PowerSyncDatabase(
 
     private suspend fun handleWriteCheckpoint(lastTransactionId: Int, writeCheckpoint: String?) {
         writeTransaction {
-            createQuery(
+            execute(
                 "DELETE FROM ps_crud WHERE id <= ?",
-                parameters = 1,
-                binders = { bindLong(0, lastTransactionId.toLong()) }
-            ).awaitAsOneOrNull()
+                listOf(lastTransactionId.toLong()),
+            )
 
             if (writeCheckpoint != null && bucketStorage.hasCrud()) {
-                createQuery(
+                execute(
                     "UPDATE ps_buckets SET target_op = ? WHERE name='\$local'",
-                    parameters = 1,
-                    binders = { bindString(0, writeCheckpoint) }
-                ).awaitAsOneOrNull()
+                    listOf(writeCheckpoint),
+                )
             } else {
-                createQuery(
+                execute(
                     "UPDATE ps_buckets SET target_op = ? WHERE name='\$local'",
-                    parameters = 1,
-                    binders = { bindString(0, bucketStorage.getMaxOpId()) }
-                ).awaitAsOneOrNull()
+                    listOf(bucketStorage.getMaxOpId()),
+                )
             }
         }
     }
 
-    fun getPowersyncVersion(): String {
-        return createQuery(
+    suspend fun getPowersyncVersion(): String {
+        return get(
             "SELECT powersync_rs_version()",
             mapper = { cursor ->
                 cursor.getString(0)!!
             }
-        ).executeAsOne()
+        )
     }
 
-    suspend fun <R> readTransaction(bodyWithReturn: suspend SuspendingTransactionWithReturn<R>.() -> R): R {
-        return this.database.transactionWithResult(noEnclosing = true, bodyWithReturn)
+    override suspend fun <RowType : Any> get(
+        sql: String,
+        parameters: List<Any>?,
+        mapper: (SqlCursor) -> RowType
+    ): RowType {
+        return sqlDatabase.get(sql, parameters, mapper)
     }
 
-    suspend fun writeTransaction(bodyNoReturn: suspend SuspendingTransactionWithoutReturn.() -> Unit) {
-        this.database.transaction(noEnclosing = true, bodyNoReturn)
+    override suspend fun <RowType : Any> getAll(
+        sql: String,
+        parameters: List<Any>?,
+        mapper: (SqlCursor) -> RowType
+    ): List<RowType> {
+        return sqlDatabase.getAll(sql, parameters, mapper)
     }
 
-    fun createQuery(
-        query: String,
-        parameters: Int = 0,
-        binders: (SqlPreparedStatement.() -> Unit)? = null,
-    ): ExecutableQuery<Long> {
-        return sqlDatabase.createQuery(query, parameters, binders)
+    override suspend fun <RowType : Any> getOptional(
+        sql: String,
+        parameters: List<Any>?,
+        mapper: (SqlCursor) -> RowType
+    ): RowType? {
+        return sqlDatabase.getOptional(sql, parameters, mapper)
     }
 
-    fun <T : Any> createQuery(
-        query: String,
-        mapper: (SqlCursor) -> T,
-        parameters: Int = 0,
-        binders: (SqlPreparedStatement.() -> Unit)? = null,
-    ): ExecutableQuery<T> {
-        return sqlDatabase.createQuery(query, mapper, parameters, binders)
+    override suspend fun <RowType : Any> watch(
+        sql: String,
+        parameters: List<Any>?,
+        mapper: (SqlCursor) -> RowType
+    ): Flow<RowType> {
+        return sqlDatabase.watch(sql, parameters, mapper)
+    }
+
+    override suspend fun <R> readTransaction(bodyWithReturn: suspend SuspendingTransactionWithReturn<R>.() -> R): R {
+        return sqlDatabase.readTransaction(bodyWithReturn)
+    }
+
+    override suspend fun execute(sql: String, parameters: List<Any>?): Long {
+        return sqlDatabase.execute(sql, parameters)
+    }
+
+    override suspend fun writeTransaction(bodyNoReturn: suspend SuspendingTransactionWithoutReturn.() -> Unit) {
+        return sqlDatabase.writeTransaction(bodyNoReturn)
     }
 
     override suspend fun close() {

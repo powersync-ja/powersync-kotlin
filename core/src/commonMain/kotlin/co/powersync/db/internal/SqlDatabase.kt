@@ -1,27 +1,33 @@
-package co.powersync.db
+package co.powersync.db.internal
 
 import app.cash.sqldelight.ExecutableQuery
 import app.cash.sqldelight.Query
+import app.cash.sqldelight.SuspendingTransactionWithReturn
+import app.cash.sqldelight.SuspendingTransactionWithoutReturn
 import app.cash.sqldelight.async.coroutines.awaitAsList
+import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.db.SqlPreparedStatement
+import co.powersync.db.ReadQueries
+import co.powersync.db.WriteQueries
 import kotlinx.coroutines.flow.Flow
 
-class SqlDatabase(val driver: SqlDriver) : ReadContext, WriteContext {
+class SqlDatabase(val driver: SqlDriver) : ReadQueries, WriteQueries {
+
+    private val transactor = SqlTransactor(driver)
     override suspend fun execute(
         sql: String,
         parameters: List<Any>?
     ): Long {
         val numParams = parameters?.size ?: 0
-        return driver.execute(
-            null,
+        return createQuery(
             sql,
             parameters = numParams,
             binders = getBindersFromParams(parameters)
-        ).await()
+        ).awaitAsOneOrNull() ?: 0
     }
 
     override suspend fun <RowType : Any> get(
@@ -114,6 +120,13 @@ class SqlDatabase(val driver: SqlDriver) : ReadContext, WriteContext {
         }
     }
 
+    override suspend fun <R> readTransaction(bodyWithReturn: suspend SuspendingTransactionWithReturn<R>.() -> R): R {
+        return transactor.transactionWithResult(noEnclosing = true, bodyWithReturn)
+    }
+
+    override suspend fun writeTransaction(bodyNoReturn: suspend SuspendingTransactionWithoutReturn.() -> Unit) {
+        transactor.transaction(noEnclosing = true, bodyNoReturn)
+    }
 
     /**
      * Given a SELECT query, return the tables that the query depends on.
@@ -125,12 +138,11 @@ class SqlDatabase(val driver: SqlDriver) : ReadContext, WriteContext {
             val details = cursor.getString(2)!!
             println("details: $details")
             details
-        }).executeAsList()
+        }).awaitAsList()
 
         return rows.mapNotNull {
             re.find(it)?.groupValues?.get(3)
         }.toSet()
-
     }
 }
 

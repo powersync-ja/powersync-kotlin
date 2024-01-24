@@ -1,6 +1,5 @@
 package co.powersync.demos
 
-import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import co.powersync.connectors.PowerSyncBackendConnector
@@ -13,13 +12,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 
 class PowerSync(databaseDriverFactory: DatabaseDriverFactory) {
-    private val backgroundDispatcher = Dispatchers.IO
     private val database = PowerSyncDatabase(
         databaseDriverFactory, dbFilename = "powersync.db", schema = AppSchema
     )
@@ -39,6 +35,10 @@ class PowerSync(databaseDriverFactory: DatabaseDriverFactory) {
         observe()
     }
 
+    suspend fun getPowersyncVersion(): String {
+        return database.getPowersyncVersion()
+    }
+
     private suspend fun observe() {
 
         sqlDelightDB.userQueries.selectAll().asFlow()
@@ -46,10 +46,6 @@ class PowerSync(databaseDriverFactory: DatabaseDriverFactory) {
             .collect { userList ->
                 mutableUsers.update { userList }
             }
-    }
-
-    fun getPowersyncVersion(): String {
-        return database.getPowersyncVersion()
     }
 
     suspend fun getUsers(): List<Users> {
@@ -74,38 +70,21 @@ class PowerSync(databaseDriverFactory: DatabaseDriverFactory) {
                     email = cursor.getString(2)!!
                 )
             })
-
-        q.addListener(listener = {
-            println("SELECT Query changed")
-        })
         return q.asFlow()
             .mapToList(Dispatchers.IO)
     }
 
     suspend fun createUser(name: String, email: String) {
-
         sqlDelightDB.userQueries.insertUser(name, email)
-
-//        withContext(backgroundDispatcher) {
-//            database.sqlDatabase.execute(
-//                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)", listOf(name, email)
-//            )
-//        }
     }
 
     suspend fun deleteUser(id: String? = null) {
-        withContext(backgroundDispatcher) {
-            val targetId =
-                id ?: database.createQuery("SELECT id FROM users LIMIT 1", mapper = { cursor ->
-                    cursor.getString(0)!!
-                }).executeAsOneOrNull()
-                ?: return@withContext
-            database.createQuery(
-                "DELETE FROM users WHERE id = ?",
-                parameters = 1,
-                binders = {
-                    bindString(0, targetId)
-                }).awaitAsOneOrNull()
-        }
+        val targetId =
+            id ?: database.getOptional("SELECT id FROM users LIMIT 1", mapper = { cursor ->
+                cursor.getString(0)!!
+            })
+            ?: return
+
+        sqlDelightDB.userQueries.deleteUser(targetId)
     }
 }
