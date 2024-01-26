@@ -51,7 +51,7 @@ open class PowerSyncDatabase(
     val driver: SqlDriver = driverFactory.createDriver(schema, dbFilename)
     private val transactor = PsDatabase(driver)
     private val sqlDatabase: SqlDatabase = SqlDatabase(driver, transactor)
-    private val coreQueries = transactor.coreQueries
+    private val queries = transactor.powersyncQueries
     private val bucketStorage: BucketStorage = BucketStorage(sqlDatabase)
 
     /**
@@ -74,7 +74,7 @@ open class PowerSyncDatabase(
         println("Serialized app schema: $schemaJson")
 
         this.writeTransaction {
-            coreQueries.replaceSchema(schemaJson).awaitAsOne()
+            queries.replaceSchema(schemaJson).awaitAsOne()
         }
     }
 
@@ -224,10 +224,10 @@ open class PowerSyncDatabase(
     }
 
     suspend fun getPowerSyncVersion(): String {
-        val sqliteVersion = coreQueries.sqliteVersion().awaitAsOne()
+        val sqliteVersion = queries.sqliteVersion().awaitAsOne()
         println("SQLiteVersion: $sqliteVersion")
 
-        return coreQueries.powerSyncVersion().awaitAsOne()
+        return queries.powerSyncVersion().awaitAsOne()
     }
 
     override suspend fun <RowType : Any> get(

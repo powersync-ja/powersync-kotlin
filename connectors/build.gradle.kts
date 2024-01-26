@@ -4,12 +4,6 @@ plugins {
     alias(libs.plugins.androidLibrary)
 }
 
-val GROUP: String by project
-val VERSION_NAME: String by project
-
-group = GROUP
-version = VERSION_NAME
-
 kotlin {
     androidTarget {
         compilations.all {

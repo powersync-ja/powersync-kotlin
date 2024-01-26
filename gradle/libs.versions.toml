@@ -4,6 +4,7 @@ android-minSdk = "24"
 android-targetSdk = "34"
 android-compileSdk = "34"
 java = "21"
+idea = "222.4459.24" # Flamingo | 2022.2.1 (see https://plugins.jetbrains.com/docs/intellij/android-studio-releases-list.html)
 
 # Dependencies
 kotlin = "1.9.21"
@@ -98,6 +99,7 @@ kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref =
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 skie = { id = "co.touchlab.skie", version.ref = "skie" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqlDelight" }
+grammarKitComposer = { id = "com.alecstrong.grammar.kit.composer", version = "0.1.12" }
 org-jetbrains-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "org-jetbrains-kotlin-jvm" }
 
 [bundles]

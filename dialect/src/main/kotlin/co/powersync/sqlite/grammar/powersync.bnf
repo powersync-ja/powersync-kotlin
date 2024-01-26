@@ -1,0 +1,46 @@
+{
+  // Specify the parent parser.
+  overrides="com.alecstrong.sql.psi.core.SqlParser"
+  elementTypeClass = "com.alecstrong.sql.psi.core.SqlElementType"
+
+  implements="com.alecstrong.sql.psi.core.psi.SqlCompositeElement"
+  extends="com.alecstrong.sql.psi.core.psi.SqlCompositeElementImpl"
+  psiClassPrefix = "SqlitePowersync"
+
+  parserImports=[
+    "static com.alecstrong.sql.psi.core.psi.SqlTypes.AS"
+    "static com.alecstrong.sql.psi.core.psi.SqlTypes.BY"
+    "static com.alecstrong.sql.psi.core.psi.SqlTypes.COMMA"
+    "static com.alecstrong.sql.psi.core.psi.SqlTypes.DOT"
+    "static com.alecstrong.sql.psi.core.psi.SqlTypes.INDEXED"
+    "static com.alecstrong.sql.psi.core.psi.SqlTypes.LP"
+    "static com.alecstrong.sql.psi.core.psi.SqlTypes.NOT"
+    "static com.alecstrong.sql.psi.core.psi.SqlTypes.RP"
+  ]
+}
+overrides ::= table_or_subquery
+| bind_parameter
+
+bind_parameter ::= DEFAULT | ( '?' | ':' {identifier} ) {
+  mixin = "app.cash.sqldelight.dialect.grammar.mixins.BindParameterMixin"
+  extends = "com.alecstrong.sql.psi.core.psi.impl.SqlBindParameterImpl"
+  implements = "com.alecstrong.sql.psi.core.psi.SqlBindParameter"
+  override = true
+}
+
+table_or_subquery ::= ( ps_function_name LP <<expr '-1'>> ( COMMA <<expr '-1'>> ) * RP
+                      | [ {database_name} DOT ] {table_name} [ [ AS ] {table_alias} ] [ INDEXED BY {index_name} | NOT INDEXED ]
+                      | LP ( {table_or_subquery} ( COMMA {table_or_subquery} ) * | {join_clause} ) RP
+                      | LP {compound_select_stmt} RP [ [ AS ] {table_alias} ] ) {
+  mixin = "co.powersync.sqlite.grammar.mixins.TableOrSubqueryMixin"
+  implements = "com.alecstrong.sql.psi.core.psi.SqlTableOrSubquery"
+  override = true
+}
+
+ps_function_name ::= 'sqlite_version' | 'powersync_rs_version' | 'powersync_replace_schema' {
+  mixin = "co.powersync.sqlite.grammar.mixins.PowerSyncFunctionNameMixin"
+  implements = [
+    "com.alecstrong.sql.psi.core.psi.NamedElement";
+    "com.alecstrong.sql.psi.core.psi.SqlCompositeElement"
+  ]
+}

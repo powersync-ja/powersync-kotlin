@@ -7,8 +7,14 @@ import app.cash.sqldelight.dialect.api.TypeResolver
 import app.cash.sqldelight.dialects.sqlite_3_35.SqliteTypeResolver
 import app.cash.sqldelight.dialects.sqlite_3_38.SqliteDialect
 import com.alecstrong.sql.psi.core.psi.SqlFunctionExpr
+import co.powersync.sqlite.grammar.PowersyncParserUtil
 
 class PowerSyncDialect : SqlDelightDialect by SqliteDialect() {
+    override fun setup() {
+        PowersyncParserUtil.reset()
+        PowersyncParserUtil.overrideSqlParser()
+    }
+
     override fun typeResolver(parentResolver: TypeResolver): TypeResolver =
         PowerSyncTypeResolver(parentResolver)
 }
@@ -23,6 +29,4 @@ private class PowerSyncTypeResolver(private val parentResolver: TypeResolver) :
         }
         return parentResolver.functionType(functionExpr)
     }
-
-
 }
