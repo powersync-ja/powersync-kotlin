@@ -79,7 +79,8 @@ sqldelight {
         create("PsDatabase") {
             packageName.set("co.powersync.db")
             generateAsync = true
-            dialect(libs.sqldelight.dialect.sqlite.get().toString())
+            dialect(project(":dialect"))
+//            dialect(libs.sqldelight.dialect.sqlite338.get().toString())
         }
     }
     linkSqlite = true

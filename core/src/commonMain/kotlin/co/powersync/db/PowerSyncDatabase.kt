@@ -1,17 +1,9 @@
 package co.powersync.db
 
-import app.cash.sqldelight.ExecutableQuery
-import app.cash.sqldelight.Query
 import app.cash.sqldelight.SuspendingTransactionWithReturn
-import app.cash.sqldelight.SuspendingTransactionWithoutReturn
-import app.cash.sqldelight.async.coroutines.awaitAsList
-import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
-import app.cash.sqldelight.async.coroutines.await
-import app.cash.sqldelight.coroutines.asFlow
-import app.cash.sqldelight.db.QueryResult
+import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlDriver
-import app.cash.sqldelight.db.SqlPreparedStatement
 import co.powersync.Closeable
 import co.powersync.bucket.BucketStorage
 import co.powersync.connectors.PowerSyncBackendConnector
@@ -57,8 +49,10 @@ open class PowerSyncDatabase(
 ) : Closeable, ReadQueries, WriteQueries {
     override var closed: Boolean = false
     val driver: SqlDriver = driverFactory.createDriver(schema, dbFilename)
-    val sqlDatabase: SqlDatabase = SqlDatabase(driver)
-    private val bucketStorage: BucketStorage
+    private val transactor = PsDatabase(driver)
+    private val sqlDatabase: SqlDatabase = SqlDatabase(driver, transactor)
+    private val coreQueries = transactor.coreQueries
+    private val bucketStorage: BucketStorage = BucketStorage(sqlDatabase)
 
     /**
      * The current sync status.
@@ -68,7 +62,6 @@ open class PowerSyncDatabase(
     private var syncStream: SyncStream? = null
 
     init {
-        this.bucketStorage = BucketStorage(sqlDatabase)
 
         runBlocking {
             applySchema();
@@ -81,7 +74,7 @@ open class PowerSyncDatabase(
         println("Serialized app schema: $schemaJson")
 
         this.writeTransaction {
-            execute("SELECT powersync_replace_schema(?)", listOf(schemaJson))
+            coreQueries.replaceSchema(schemaJson).awaitAsOne()
         }
     }
 
@@ -230,21 +223,11 @@ open class PowerSyncDatabase(
         }
     }
 
-    suspend fun getPowersyncVersion(): String {
-        val sqliteVersion = get(
-            "SELECT sqlite_version()",
-            mapper = { cursor ->
-                cursor.getString(0)!!
-            }
-        )
+    suspend fun getPowerSyncVersion(): String {
+        val sqliteVersion = coreQueries.sqliteVersion().awaitAsOne()
         println("SQLiteVersion: $sqliteVersion")
-        
-        return get(
-            "SELECT powersync_rs_version()",
-            mapper = { cursor ->
-                cursor.getString(0)!!
-            }
-        )
+
+        return coreQueries.powerSyncVersion().awaitAsOne()
     }
 
     override suspend fun <RowType : Any> get(

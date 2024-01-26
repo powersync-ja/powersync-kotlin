@@ -2,23 +2,22 @@ package co.powersync.db.internal
 
 import app.cash.sqldelight.ExecutableQuery
 import app.cash.sqldelight.Query
+import app.cash.sqldelight.SuspendingTransacter
 import app.cash.sqldelight.SuspendingTransactionWithReturn
-import app.cash.sqldelight.SuspendingTransactionWithoutReturn
 import app.cash.sqldelight.async.coroutines.awaitAsList
-import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.db.SqlPreparedStatement
-import co.powersync.db.PsDatabase
 import co.powersync.db.ReadQueries
 import co.powersync.db.WriteQueries
 import kotlinx.coroutines.flow.Flow
 
-class SqlDatabase(val driver: SqlDriver) : ReadQueries, WriteQueries {
+class SqlDatabase(val driver: SqlDriver, private val transactor: SuspendingTransacter) :
+    ReadQueries,
+    WriteQueries {
 
-    private val transactor = PsDatabase(driver)
     override suspend fun execute(
         sql: String,
         parameters: List<Any>?

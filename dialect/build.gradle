@@ -1,0 +1,9 @@
+plugins {
+    alias(libs.plugins.kotlin.jvm)
+}
+
+dependencies {
+    api(libs.sqldelight.dialect.sqlite335)
+    api(libs.sqldelight.dialect.sqlite338)
+    compileOnly(libs.sqldelight.compiler.env)
+}

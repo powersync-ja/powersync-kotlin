@@ -105,7 +105,7 @@ sqldelight {
         create("AppDatabase") {
             packageName.set("co.powersync.demos")
             generateAsync = true
-            dialect(projectLibs.sqldelight.dialect.sqlite.get().toString())
+//            dialect(projectLibs.sqldelight.dialect.sqlite338.get().toString())
         }
     }
     linkSqlite = true

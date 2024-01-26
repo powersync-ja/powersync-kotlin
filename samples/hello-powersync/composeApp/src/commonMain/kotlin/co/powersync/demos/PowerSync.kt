@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.runBlocking
 
 class PowerSync(databaseDriverFactory: DatabaseDriverFactory) {
@@ -33,7 +32,7 @@ class PowerSync(databaseDriverFactory: DatabaseDriverFactory) {
 
 
     suspend fun getPowersyncVersion(): String {
-        return database.getPowersyncVersion()
+        return database.getPowerSyncVersion()
     }
 
     fun watchUsers(): Flow<List<Users>> {
