@@ -32,7 +32,7 @@ table_or_subquery ::= ( ps_function_name LP <<expr '-1'>> ( COMMA <<expr '-1'>> 
                       | [ {database_name} DOT ] {table_name} [ [ AS ] {table_alias} ] [ INDEXED BY {index_name} | NOT INDEXED ]
                       | LP ( {table_or_subquery} ( COMMA {table_or_subquery} ) * | {join_clause} ) RP
                       | LP {compound_select_stmt} RP [ [ AS ] {table_alias} ] ) {
-  mixin = "co.powersync.sqlite.grammar.mixins.TableOrSubqueryMixin"
+  extends = "com.alecstrong.sql.psi.core.psi.impl.SqlTableOrSubqueryImpl"
   implements = "com.alecstrong.sql.psi.core.psi.SqlTableOrSubquery"
   override = true
 }

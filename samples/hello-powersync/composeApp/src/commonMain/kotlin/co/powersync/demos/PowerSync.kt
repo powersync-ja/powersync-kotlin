@@ -9,9 +9,6 @@ import co.powersync.db.PowerSyncDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.runBlocking
 
 class PowerSync(databaseDriverFactory: DatabaseDriverFactory) {
@@ -21,15 +18,11 @@ class PowerSync(databaseDriverFactory: DatabaseDriverFactory) {
     private val connector: PowerSyncBackendConnector = SupabaseConnector()
     private val sqlDelightDB = AppDatabase(database.driver)
 
-    private val mutableUsers: MutableStateFlow<List<Users>> = MutableStateFlow(emptyList())
-    val users: StateFlow<List<Users>> = mutableUsers.asStateFlow()
-
     init {
         runBlocking {
             database.connect(connector)
         }
     }
-
 
     suspend fun getPowersyncVersion(): String {
         return database.getPowerSyncVersion()

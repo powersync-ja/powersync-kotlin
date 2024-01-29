@@ -8,7 +8,7 @@ idea = "222.4459.24" # Flamingo | 2022.2.1 (see https://plugins.jetbrains.com/do
 
 # Dependencies
 kotlin = "1.9.21"
-android-gradle-plugin = "8.2.0"
+android-gradle-plugin = "8.2.2"
 cinteropt = "1.6.0"
 coroutines = "1.7.3"
 kotlinx-datetime = "0.5.0"
@@ -21,22 +21,23 @@ requerySqliteAndroid = "3.43.0"
 grammerKit = "0.1.12"
 
 sqlDelight = "2.0.1"
+sqlPsi = "0.4.8"
 stately = "2.0.6"
 supabase = "2.0.4"
 junit = "4.13.2"
 
 compose = "1.5.4"
-compose-compiler = "1.5.5"
+compose-compiler = "1.5.8"
 compose-plugin = "1.5.11"
 
 # Sample - Android
 androidx-core = "1.12.0"
-androidx-activity-compose = "1.8.1"
+androidx-activity-compose = "1.8.2"
 
 androidx-appcompat = "1.6.1"
 androidx-constraintlayout = "2.1.4"
 androidx-espresso-core = "3.5.1"
-androidx-material = "1.10.0"
+androidx-material = "1.11.0"
 androidx-test-junit = "1.1.5"
 org-jetbrains-kotlin-jvm = "1.9.22"
 
@@ -60,7 +61,6 @@ ktor-client-ios = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" 
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 ktor-client-contentnegotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
-
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 
 sqldelight-driver-ios = { module = "app.cash.sqldelight:native-driver", version.ref = "sqlDelight" }
@@ -68,10 +68,9 @@ sqldelight-driver-android = { module = "app.cash.sqldelight:android-driver", ver
 requery-sqlite-android = { module = "com.github.requery:sqlite-android", version.ref = "requerySqliteAndroid" }
 sqldelight-coroutines = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqlDelight" }
 sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqlDelight" }
-sqldelight-compiler-env = { module = "app.cash.sqldelight:compiler-env", version.ref = "sqlDelight" }
 sqldelight-dialect-sqlite338 = { module = "app.cash.sqldelight:sqlite-3-38-dialect", version.ref = "sqlDelight" }
 sqldelight-dialect-sqlite335 = { module = "app.cash.sqldelight:sqlite-3-35-dialect", version.ref = "sqlDelight" }
-sqldelight-dialect-api = { module = "app.cash.sqldelight:dialect-api", version.ref = "sqlDelight" }
+sqldelight-compilerEnv = { module = "app.cash.sqldelight:compiler-env", version.ref = "sqlDelight" }
 
 stately-concurrency = { module = "co.touchlab:stately-concurrency", version.ref = "stately" }
 supabase-client = { module = "io.github.jan-tennert.supabase:postgrest-kt", version.ref = "supabase" }

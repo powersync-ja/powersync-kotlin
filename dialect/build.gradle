@@ -11,7 +11,7 @@ dependencies {
     api(libs.sqldelight.dialect.sqlite335)
     api(libs.sqldelight.dialect.sqlite338)
 
-    compileOnly(libs.sqldelight.compiler.env)
+    compileOnly(libs.sqldelight.compilerEnv)
 }
 
 kotlin {
