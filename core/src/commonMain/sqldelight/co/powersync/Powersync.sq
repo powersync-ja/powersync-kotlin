@@ -1,3 +1,30 @@
+-- Until version 2.1.0 of SQLDelight is released, adding support for predefined tables,
+-- we create the internal SQLite and PowerSync tables here
+CREATE TABLE IF NOT EXISTS sqlite_master (
+    type TEXT,
+    name TEXT,
+    tbl_name TEXT,
+    rootpage INTEGER,
+    sql TEXT
+);
+
+CREATE TABLE IF NOT EXISTS sqlite_sequence (
+    name TEXT NOT NULL,
+    seq INTEGER NOT NULL
+);
+
+-- PowerSync internal tables
+CREATE TABLE IF NOT EXISTS powersync_operations(
+    op TEXT NOT NULL,
+    data TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ps_crud (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    data TEXT, tx_id INTEGER
+);
+
+-- Core queries
 sqliteVersion:
 SELECT sqlite_version();
 
@@ -6,3 +33,13 @@ SELECT powersync_rs_version();
 
 replaceSchema:
 SELECT powersync_replace_schema(?);
+
+allDataTableNames:
+SELECT name FROM sqlite_master WHERE type='table' AND name GLOB 'ps_data_*';
+
+powerSyncOperation:
+INSERT INTO powersync_operations(op, data) VALUES(?, ?);
+
+-- BucketStorage and CRUD queries
+hasCrud:
+SELECT 1 FROM ps_crud LIMIT 1;

@@ -1,5 +1,7 @@
 package co.powersync.bucket
 
+import app.cash.sqldelight.async.coroutines.awaitAsList
+import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import co.powersync.db.internal.SqlDatabase
 import co.powersync.sync.SyncDataBatch
 import co.powersync.sync.SyncLocalDatabaseResult
@@ -35,14 +37,7 @@ class BucketStorage(val db: SqlDatabase) {
     private suspend fun readTableNames() {
         tableNames.clear()
         // Query to get existing table names
-        val names =
-            db.getAll("SELECT name FROM sqlite_master WHERE type='table' AND name GLOB 'ps_data_*'",
-                mapper = { cursor ->
-                    cursor.getString(0)!!
-                }
-            )
-
-        tableNames.addAll(names)
+        tableNames.addAll(db.queries.allDataTableNames().awaitAsList().mapNotNull { it.name })
 
         println("[BucketStorage::tableNames] Found tables: $tableNames")
     }
@@ -56,13 +51,7 @@ class BucketStorage(val db: SqlDatabase) {
     }
 
     suspend fun hasCrud(): Boolean {
-        val result = db.getOptional(
-            "SELECT 1 FROM ps_crud LIMIT 1",
-            mapper = { cursor ->
-                cursor.getLong(0)!!
-            }
-        )
-        return result == 1L
+        return db.queries.hasCrud().awaitAsOneOrNull() == 1L
     }
 
     suspend fun updateLocalTarget(checkpointCallback: suspend () -> String): Boolean {
@@ -115,10 +104,7 @@ class BucketStorage(val db: SqlDatabase) {
     suspend fun saveSyncData(syncDataBatch: SyncDataBatch) {
         db.writeTransaction {
             val jsonString = Json.encodeToString(syncDataBatch);
-            db.execute(
-                "INSERT INTO powersync_operations(op, data) VALUES(?, ?)",
-                listOf("save", jsonString)
-            )
+            db.queries.powerSyncOperation("save", jsonString)
         }
         this.compactCounter += syncDataBatch.buckets.sumOf { it.data.size }
     }

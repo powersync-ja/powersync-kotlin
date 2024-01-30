@@ -49,10 +49,8 @@ open class PowerSyncDatabase(
 ) : Closeable, ReadQueries, WriteQueries {
     override var closed: Boolean = false
     val driver: SqlDriver = driverFactory.createDriver(schema, dbFilename)
-    private val transactor = PsDatabase(driver)
-    private val sqlDatabase: SqlDatabase = SqlDatabase(driver, transactor)
-    private val queries = transactor.powersyncQueries
-    private val bucketStorage: BucketStorage = BucketStorage(sqlDatabase)
+    private val internalDb = SqlDatabase(driver, PsDatabase(driver))
+    private val bucketStorage: BucketStorage = BucketStorage(internalDb)
 
     /**
      * The current sync status.
@@ -74,7 +72,7 @@ open class PowerSyncDatabase(
         println("Serialized app schema: $schemaJson")
 
         this.writeTransaction {
-            queries.replaceSchema(schemaJson).awaitAsOne()
+            internalDb.queries.replaceSchema(schemaJson).awaitAsOne()
         }
     }
 
@@ -224,10 +222,10 @@ open class PowerSyncDatabase(
     }
 
     suspend fun getPowerSyncVersion(): String {
-        val sqliteVersion = queries.sqliteVersion().awaitAsOne()
+        val sqliteVersion = internalDb.queries.sqliteVersion().awaitAsOne()
         println("SQLiteVersion: $sqliteVersion")
 
-        return queries.powerSyncVersion().awaitAsOne()
+        return internalDb.queries.powerSyncVersion().awaitAsOne()
     }
 
     override suspend fun <RowType : Any> get(
@@ -235,7 +233,7 @@ open class PowerSyncDatabase(
         parameters: List<Any>?,
         mapper: (SqlCursor) -> RowType
     ): RowType {
-        return sqlDatabase.get(sql, parameters, mapper)
+        return internalDb.get(sql, parameters, mapper)
     }
 
     override suspend fun <RowType : Any> getAll(
@@ -243,7 +241,7 @@ open class PowerSyncDatabase(
         parameters: List<Any>?,
         mapper: (SqlCursor) -> RowType
     ): List<RowType> {
-        return sqlDatabase.getAll(sql, parameters, mapper)
+        return internalDb.getAll(sql, parameters, mapper)
     }
 
     override suspend fun <RowType : Any> getOptional(
@@ -251,7 +249,7 @@ open class PowerSyncDatabase(
         parameters: List<Any>?,
         mapper: (SqlCursor) -> RowType
     ): RowType? {
-        return sqlDatabase.getOptional(sql, parameters, mapper)
+        return internalDb.getOptional(sql, parameters, mapper)
     }
 
     override suspend fun <RowType : Any> watch(
@@ -259,20 +257,20 @@ open class PowerSyncDatabase(
         parameters: List<Any>?,
         mapper: (SqlCursor) -> RowType
     ): Flow<RowType> {
-        return sqlDatabase.watch(sql, parameters, mapper)
+        return internalDb.watch(sql, parameters, mapper)
     }
 
 
     override suspend fun <R> readTransaction(body: suspend SuspendingTransactionWithReturn<R>.() -> R): R {
-        return sqlDatabase.readTransaction(body)
+        return internalDb.readTransaction(body)
     }
 
     override suspend fun <R> writeTransaction(body: suspend SuspendingTransactionWithReturn<R>.() -> R): R {
-        return sqlDatabase.writeTransaction(body)
+        return internalDb.writeTransaction(body)
     }
 
     override suspend fun execute(sql: String, parameters: List<Any>?): Long {
-        return sqlDatabase.execute(sql, parameters)
+        return internalDb.execute(sql, parameters)
     }
 
     override suspend fun close() {
