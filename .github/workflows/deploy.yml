@@ -22,6 +22,8 @@ jobs:
         include:
           - target: publishIosArm64PublicationToSonatypeRepository
             os: macos-latest
+          - target: publishAndroidDebugPublicationToSonatypeRepository
+            os: ubuntu-latest
           - target: publishAndroidReleasePublicationToSonatypeRepository
             os: ubuntu-latest
           - target: publishKotlinMultiplatformPublicationToSonatypeRepository
