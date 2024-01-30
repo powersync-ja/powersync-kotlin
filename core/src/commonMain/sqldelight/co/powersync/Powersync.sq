@@ -1,5 +1,5 @@
 -- Until version 2.1.0 of SQLDelight is released, adding support for predefined tables,
--- we create the internal SQLite and PowerSync tables here
+-- we create the internal SQLite and PowerSync tables here (https://github.com/cashapp/sqldelight/pull/4006)
 CREATE TABLE IF NOT EXISTS sqlite_master (
     type TEXT,
     name TEXT,
@@ -21,7 +21,29 @@ CREATE TABLE IF NOT EXISTS powersync_operations(
 
 CREATE TABLE IF NOT EXISTS ps_crud (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    data TEXT, tx_id INTEGER
+    data TEXT,
+    tx_id INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS ps_buckets (
+    name TEXT PRIMARY KEY,
+    last_applied_op INTEGER NOT NULL DEFAULT 0,
+    last_op INTEGER NOT NULL DEFAULT 0,
+    target_op INTEGER NOT NULL DEFAULT 0,
+    add_checksum INTEGER NOT NULL DEFAULT 0,
+    pending_delete INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE ps_oplog(
+    bucket TEXT NOT NULL,
+    op_id INTEGER NOT NULL,
+    op INTEGER NOT NULL,
+    row_type TEXT,
+    row_id TEXT,
+    key TEXT,
+    data TEXT,
+    hash INTEGER NOT NULL,
+    superseded INTEGER NOT NULL
 );
 
 -- Core queries
@@ -43,3 +65,12 @@ INSERT INTO powersync_operations(op, data) VALUES(?, ?);
 -- BucketStorage and CRUD queries
 hasCrud:
 SELECT 1 FROM ps_crud LIMIT 1;
+
+pendingBucketOperation:
+SELECT target_op FROM ps_buckets WHERE name = ? AND target_op = ?;
+
+getCrudSequence:
+SELECT seq FROM sqlite_sequence WHERE name = 'ps_crud';
+
+getBucketStates:
+SELECT name AS bucket, CAST(last_op AS TEXT) AS op_id FROM ps_buckets WHERE pending_delete = 0;

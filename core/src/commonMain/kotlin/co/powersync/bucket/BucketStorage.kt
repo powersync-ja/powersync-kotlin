@@ -55,19 +55,11 @@ class BucketStorage(val db: SqlDatabase) {
     }
 
     suspend fun updateLocalTarget(checkpointCallback: suspend () -> String): Boolean {
-        db.getOptional(
-            "SELECT target_op FROM ps_buckets WHERE name = '\$local' AND target_op = ?",
-            parameters = listOf(MAX_OP_ID),
-            mapper = { cursor -> cursor.getLong(0)!! }
-        )
+        db.queries.pendingBucketOperation("\$local", MAX_OP_ID.toLong()).awaitAsOneOrNull()
             ?: // Nothing to update
             return false
 
-        val seqBefore = db.getOptional(
-            "SELECT seq FROM sqlite_sequence WHERE name = 'ps_crud'",
-            mapper = { cursor ->
-                cursor.getLong(0)!!
-            })
+        val seqBefore = db.queries.getCrudSequence().awaitAsOneOrNull()
             ?: // Nothing to update
             return false
 
@@ -81,11 +73,7 @@ class BucketStorage(val db: SqlDatabase) {
                 return@readTransaction false
             }
 
-            val seqAfter = db.getOptional(
-                "SELECT seq FROM sqlite_sequence WHERE name = 'ps_crud'",
-                mapper = { cursor ->
-                    cursor.getLong(0)!!
-                })
+            val seqAfter = db.queries.getCrudSequence().awaitAsOneOrNull()
                 ?: // assert isNotEmpty
                 throw AssertionError("Sqlite Sequence should not be empty")
 
@@ -95,7 +83,7 @@ class BucketStorage(val db: SqlDatabase) {
             }
 
             val numRowsUpdated =
-                db.execute("UPDATE ps_buckets SET target_op = ? WHERE name='\$local'", listOf(opId))
+                db.queries.pendingBucketOperation("\$local", opId.toLong()).awaitAsOneOrNull() ?: 0
             println("[BucketStorage::updateLocalTarget] $numRowsUpdated updated")
             return@readTransaction true
         }
@@ -110,14 +98,12 @@ class BucketStorage(val db: SqlDatabase) {
     }
 
     suspend fun getBucketStates(): List<BucketState> {
-        return db.getAll(
-            "SELECT name as bucket, cast(last_op as TEXT) as op_id FROM ps_buckets WHERE pending_delete = 0",
-            mapper = { cursor ->
-                BucketState(
-                    bucket = cursor.getString(0)!!,
-                    opId = cursor.getString(1)!!
-                )
-            })
+        return db.queries.getBucketStates().awaitAsList().map {
+            BucketState(
+                bucket = it.bucket,
+                opId = it.op_id
+            )
+        }
     }
 
     suspend fun removeBuckets(bucketsToDelete: List<String>) {
