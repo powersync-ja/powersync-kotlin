@@ -24,10 +24,6 @@ jobs:
             os: macos-latest
           - target: publishAndroidReleasePublicationToSonatypeRepository
             os: ubuntu-latest
-          - target: publishJvmPublicationToSonatypeRepository
-            os: ubuntu-latest
-          - target: publishLinuxX64PublicationToSonatypeRepository
-            os: ubuntu-latest
           - target: publishKotlinMultiplatformPublicationToSonatypeRepository
             os: ubuntu-latest
     runs-on: ${{ matrix.os }}
