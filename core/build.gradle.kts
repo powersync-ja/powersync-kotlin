@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.sqldelight)
+    id("module.publication")
 }
 
 kotlin {
@@ -56,6 +57,10 @@ kotlin {
         iosMain.dependencies {
             implementation(libs.ktor.client.ios)
             implementation(libs.sqldelight.driver.ios)
+        }
+
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
         }
     }
 }

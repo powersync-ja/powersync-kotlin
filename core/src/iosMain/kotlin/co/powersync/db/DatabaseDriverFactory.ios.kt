@@ -7,6 +7,7 @@ import co.powersync.db.schema.Schema
 import kotlinx.cinterop.ExperimentalForeignApi
 import co.powersync.sqlite.core.init_powersync_sqlite_extension
 
+@Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 @OptIn(ExperimentalForeignApi::class)
 actual class DatabaseDriverFactory {
 
