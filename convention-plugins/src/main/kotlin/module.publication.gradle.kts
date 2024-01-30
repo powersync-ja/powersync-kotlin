@@ -18,9 +18,9 @@ publishing {
 
         // Provide artifacts information required by Maven Central
         pom {
-            name.set("Kotlin Multiplatform library template")
-            description.set("Dummy library to test deployment to Maven Central")
-            url.set("https://github.com/Kotlin/multiplatform-library-template")
+            name.set("PowerSync Kotlin Multiplatform SDK")
+            description.set("PowerSync KMP SDK")
+            url.set("https://github.com/powersync-ja/powersync-kotlin-sdk")
 
             licenses {
                 license {
@@ -30,14 +30,14 @@ publishing {
             }
             developers {
                 developer {
-                    id.set("JetBrains")
-                    name.set("JetBrains Team")
-                    organization.set("JetBrains")
-                    organizationUrl.set("https://www.jetbrains.com")
+                    id.set("PowerSync")
+                    name.set("PowerSync Team")
+                    organization.set("PowerSync")
+                    organizationUrl.set("https://powersync.co/")
                 }
             }
             scm {
-                url.set("https://github.com/Kotlin/multiplatform-library-template")
+                url.set("https://github.com/powersync-ja/powersync-kotlin-sdk")
             }
         }
     }

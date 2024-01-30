@@ -101,8 +101,6 @@ kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", versio
 skie = { id = "co.touchlab.skie", version.ref = "skie" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqlDelight" }
 grammarKitComposer = { id = "com.alecstrong.grammar.kit.composer", version.ref = "grammerKit" }
-org-jetbrains-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "org-jetbrains-kotlin-jvm" }
-nexusPublish = { id = "io.github.gradle-nexus.publish-plugin", version.ref = "nexus-publish" }
 
 [bundles]
 sqldelight = [
