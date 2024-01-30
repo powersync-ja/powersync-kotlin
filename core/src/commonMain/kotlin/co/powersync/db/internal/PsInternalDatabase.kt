@@ -14,10 +14,11 @@ import co.powersync.db.ReadQueries
 import co.powersync.db.WriteQueries
 import kotlinx.coroutines.flow.Flow
 
-class SqlDatabase(val driver: SqlDriver, private val transactor: PsDatabase) :
+class PsInternalDatabase(val driver: SqlDriver) :
     ReadQueries,
     WriteQueries {
 
+    private val transactor: PsDatabase = PsDatabase(driver)
     val queries = transactor.powersyncQueries
 
     override suspend fun execute(
@@ -128,23 +129,6 @@ class SqlDatabase(val driver: SqlDriver, private val transactor: PsDatabase) :
 
     override suspend fun <R> writeTransaction(body: suspend SuspendingTransactionWithReturn<R>.() -> R): R {
         return transactor.transactionWithResult(noEnclosing = true, body)
-    }
-
-    /**
-     * Given a SELECT query, return the tables that the query depends on.
-     */
-    private suspend fun getSourceTablesText(sql: String): Set<String> {
-        val re = Regex("^(SCAN|SEARCH)( TABLE)? (.+?)( USING .+)?$")
-
-        val rows = this.createQuery("EXPLAIN QUERY PLAN $sql", mapper = { cursor ->
-            val details = cursor.getString(2)!!
-            println("details: $details")
-            details
-        }).awaitAsList()
-
-        return rows.mapNotNull {
-            re.find(it)?.groupValues?.get(3)
-        }.toSet()
     }
 }
 

@@ -11,7 +11,7 @@ import co.powersync.db.crud.CrudBatch
 import co.powersync.db.crud.CrudEntry
 import co.powersync.db.crud.CrudRow
 import co.powersync.db.crud.CrudTransaction
-import co.powersync.db.internal.SqlDatabase
+import co.powersync.db.internal.PsInternalDatabase
 import co.powersync.db.schema.Schema
 import co.powersync.sync.SyncStatus
 import co.powersync.sync.SyncStream
@@ -48,8 +48,8 @@ open class PowerSyncDatabase(
 
 ) : Closeable, ReadQueries, WriteQueries {
     override var closed: Boolean = false
-    val driver: SqlDriver = driverFactory.createDriver(schema, dbFilename)
-    private val internalDb = SqlDatabase(driver, PsDatabase(driver))
+    public val driver = driverFactory.createDriver(schema, dbFilename)
+    private val internalDb = PsInternalDatabase(driver)
     private val bucketStorage: BucketStorage = BucketStorage(internalDb)
 
     /**

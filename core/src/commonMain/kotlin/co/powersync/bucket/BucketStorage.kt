@@ -1,8 +1,6 @@
 package co.powersync.bucket
 
-import app.cash.sqldelight.async.coroutines.awaitAsList
-import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
-import co.powersync.db.internal.SqlDatabase
+import co.powersync.db.internal.PsInternalDatabase
 import co.powersync.sync.SyncDataBatch
 import co.powersync.sync.SyncLocalDatabaseResult
 import co.touchlab.stately.concurrency.AtomicBoolean
@@ -11,7 +9,7 @@ import kotlinx.serialization.json.Json
 import com.benasher44.uuid.uuid4
 import kotlinx.coroutines.runBlocking
 
-class BucketStorage(val db: SqlDatabase) {
+class BucketStorage(val db: PsInternalDatabase) {
 
     private val tableNames: MutableSet<String> = mutableSetOf()
     private var hasCompletedSync = AtomicBoolean(false)
@@ -37,8 +35,14 @@ class BucketStorage(val db: SqlDatabase) {
     private suspend fun readTableNames() {
         tableNames.clear()
         // Query to get existing table names
-        tableNames.addAll(db.queries.allDataTableNames().awaitAsList().mapNotNull { it.name })
+        val names =
+            db.getAll("SELECT name FROM sqlite_master WHERE type='table' AND name GLOB 'ps_data_*'",
+                mapper = { cursor ->
+                    cursor.getString(0)!!
+                }
+            )
 
+        tableNames.addAll(names)
         println("[BucketStorage::tableNames] Found tables: $tableNames")
     }
 
@@ -51,15 +55,29 @@ class BucketStorage(val db: SqlDatabase) {
     }
 
     suspend fun hasCrud(): Boolean {
-        return db.queries.hasCrud().awaitAsOneOrNull() == 1L
+        val result = db.getOptional(
+            "SELECT 1 FROM ps_crud LIMIT 1",
+            mapper = { cursor ->
+                cursor.getLong(0)!!
+            }
+        )
+        return result == 1L
     }
 
     suspend fun updateLocalTarget(checkpointCallback: suspend () -> String): Boolean {
-        db.queries.pendingBucketOperation("\$local", MAX_OP_ID.toLong()).awaitAsOneOrNull()
+        db.getOptional(
+            "SELECT target_op FROM ps_buckets WHERE name = '\$local' AND target_op = ?",
+            parameters = listOf(MAX_OP_ID),
+            mapper = { cursor -> cursor.getLong(0)!! }
+        )
             ?: // Nothing to update
             return false
 
-        val seqBefore = db.queries.getCrudSequence().awaitAsOneOrNull()
+        val seqBefore = db.getOptional(
+            "SELECT seq FROM sqlite_sequence WHERE name = 'ps_crud'",
+            mapper = { cursor ->
+                cursor.getLong(0)!!
+            })
             ?: // Nothing to update
             return false
 
@@ -73,7 +91,11 @@ class BucketStorage(val db: SqlDatabase) {
                 return@readTransaction false
             }
 
-            val seqAfter = db.queries.getCrudSequence().awaitAsOneOrNull()
+            val seqAfter = db.getOptional(
+                "SELECT seq FROM sqlite_sequence WHERE name = 'ps_crud'",
+                mapper = { cursor ->
+                    cursor.getLong(0)!!
+                })
                 ?: // assert isNotEmpty
                 throw AssertionError("Sqlite Sequence should not be empty")
 
@@ -83,7 +105,7 @@ class BucketStorage(val db: SqlDatabase) {
             }
 
             val numRowsUpdated =
-                db.queries.pendingBucketOperation("\$local", opId.toLong()).awaitAsOneOrNull() ?: 0
+                db.execute("UPDATE ps_buckets SET target_op = ? WHERE name='\$local'", listOf(opId))
             println("[BucketStorage::updateLocalTarget] $numRowsUpdated updated")
             return@readTransaction true
         }
@@ -92,18 +114,23 @@ class BucketStorage(val db: SqlDatabase) {
     suspend fun saveSyncData(syncDataBatch: SyncDataBatch) {
         db.writeTransaction {
             val jsonString = Json.encodeToString(syncDataBatch);
-            db.queries.powerSyncOperation("save", jsonString)
+            db.execute(
+                "INSERT INTO powersync_operations(op, data) VALUES(?, ?)",
+                listOf("save", jsonString)
+            )
         }
         this.compactCounter += syncDataBatch.buckets.sumOf { it.data.size }
     }
 
     suspend fun getBucketStates(): List<BucketState> {
-        return db.queries.getBucketStates().awaitAsList().map {
-            BucketState(
-                bucket = it.bucket,
-                opId = it.op_id
-            )
-        }
+        return db.getAll(
+            "SELECT name as bucket, cast(last_op as TEXT) as op_id FROM ps_buckets WHERE pending_delete = 0",
+            mapper = { cursor ->
+                BucketState(
+                    bucket = cursor.getString(0)!!,
+                    opId = cursor.getString(1)!!
+                )
+            })
     }
 
     suspend fun removeBuckets(bucketsToDelete: List<String>) {
@@ -118,7 +145,7 @@ class BucketStorage(val db: SqlDatabase) {
 
         db.writeTransaction {
             db.execute(
-                "UPDATE ps_oplog SET op=3, data=NULL WHERE op=1 AND superseded=0 AND bucket=?",
+                "UPDATE ps_oplog SET op=${OpType.REMOVE}, data=NULL WHERE op=${OpType.PUT} AND superseded=0 AND bucket=?",
                 listOf(bucketName)
             )
 
