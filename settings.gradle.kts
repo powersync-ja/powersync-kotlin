@@ -3,7 +3,7 @@ pluginManagement {
         google()
         gradlePluginPortal()
         mavenCentral()
-
+        includeBuild("convention-plugins")
     }
 }
 
