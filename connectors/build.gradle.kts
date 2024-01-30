@@ -19,7 +19,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(project(":core"))
+            api(project(":core"))
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.supabase.client)
             implementation(libs.supabase.gotrue)
