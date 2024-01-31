@@ -67,7 +67,7 @@ kotlin {
 }
 
 android {
-    namespace = "co.powersync"
+    namespace = "com.powersync"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()
@@ -77,7 +77,7 @@ android {
 sqldelight {
     databases {
         create("PsDatabase") {
-            packageName.set("co.powersync.db")
+            packageName.set("com.powersync.db")
             generateAsync = true
             dialect(project(":dialect"))
 //            dialect(libs.sqldelight.dialect.sqlite338.get().toString())

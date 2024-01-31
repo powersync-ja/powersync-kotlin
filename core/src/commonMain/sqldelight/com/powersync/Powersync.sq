@@ -1,0 +1,9 @@
+-- Core queries
+sqliteVersion:
+SELECT sqlite_version();
+
+powerSyncVersion:
+SELECT powersync_rs_version();
+
+replaceSchema:
+SELECT powersync_replace_schema(?);

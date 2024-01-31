@@ -1,0 +1,15 @@
+CREATE TABLE users (
+id TEXT NOT NULL PRIMARY KEY,
+name TEXT NOT NULL,
+email TEXT NOT NULL
+);
+
+selectAll:
+SELECT * FROM users;
+
+insertUser:
+INSERT OR IGNORE INTO users(id, name, email)
+VALUES (uuid(), ?, ?);
+
+deleteUser:
+DELETE FROM users WHERE id = ?;

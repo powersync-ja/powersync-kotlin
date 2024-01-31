@@ -1,4 +1,4 @@
-package = co.powersync.sqlite.core
+package = com.powersync.sqlite.core
 headers = sqlite3.h
 headerFilter = sqlite3.h
 linkerOpts = -lsqlite3

@@ -14,7 +14,7 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
-        maven("https://jitpack.io" )
+        maven("https://jitpack.io")
     }
     versionCatalogs {
         create("projectLibs") {
@@ -23,13 +23,15 @@ dependencyResolutionManagement {
     }
 }
 
+rootProject.name = "hello-powersync"
+
 include(":composeApp")
 
 includeBuild("../..") {
     dependencySubstitution {
-        substitute(module("co.powersync:core"))
+        substitute(module("com.powersync:core"))
             .using(project(":core")).because("we want to auto-wire up sample dependency")
-        substitute(module("co.powersync:connectors"))
+        substitute(module("com.powersync:connectors"))
             .using(project(":connectors")).because("we want to auto-wire up sample dependency")
     }
 }

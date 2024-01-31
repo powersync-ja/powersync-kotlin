@@ -35,14 +35,14 @@ kotlin {
         framework {
             baseName = "composeApp"
             isStatic = true
-            export("co.powersync:core")
+            export("com.powersync:core")
         }
     }
 
     sourceSets {
         commonMain.dependencies {
-            api("co.powersync:core")
-            api("co.powersync:connectors")
+            api("com.powersync:core")
+            api("com.powersync:connectors")
             implementation(projectLibs.bundles.sqldelight)
             implementation(projectLibs.kotlinx.datetime)
             implementation(compose.runtime)
@@ -61,7 +61,7 @@ kotlin {
 }
 
 android {
-    namespace = "co.powersync.demos"
+    namespace = "com.powersync.demos"
     compileSdk = projectLibs.versions.android.compileSdk.get().toInt()
 
     sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
@@ -69,7 +69,7 @@ android {
     sourceSets["main"].resources.srcDirs("src/commonMain/resources")
 
     defaultConfig {
-        applicationId = "co.powersync.demos"
+        applicationId = "com.powersync.demos"
         minSdk = projectLibs.versions.android.minSdk.get().toInt()
         targetSdk = projectLibs.versions.android.targetSdk.get().toInt()
         versionCode = 1
@@ -103,7 +103,7 @@ android {
 sqldelight {
     databases {
         create("AppDatabase") {
-            packageName.set("co.powersync.demos")
+            packageName.set("com.powersync.demos")
             generateAsync = true
         }
     }
