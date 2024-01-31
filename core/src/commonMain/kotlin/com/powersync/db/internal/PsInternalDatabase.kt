@@ -5,6 +5,8 @@ import app.cash.sqldelight.Query
 import app.cash.sqldelight.SuspendingTransactionWithReturn
 import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
+import app.cash.sqldelight.coroutines.asFlow
+import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlDriver
@@ -12,6 +14,8 @@ import app.cash.sqldelight.db.SqlPreparedStatement
 import com.powersync.db.PsDatabase
 import com.powersync.db.ReadQueries
 import com.powersync.db.WriteQueries
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 
 class PsInternalDatabase(val driver: SqlDriver) :
@@ -76,10 +80,15 @@ class PsInternalDatabase(val driver: SqlDriver) :
         sql: String,
         parameters: List<Any>?,
         mapper: (SqlCursor) -> RowType
-    ): Flow<RowType> {
-        TODO("Not yet implemented")
+    ): Flow<List<RowType>> {
+        return this.watchQuery(
+            key = sql,
+            query = sql,
+            parameters = parameters?.size ?: 0,
+            binders = getBindersFromParams(parameters),
+            mapper = mapper
+        ).asFlow().mapToList(Dispatchers.IO)
     }
-
 
     fun createQuery(
         query: String,

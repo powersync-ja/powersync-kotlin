@@ -1,6 +1,6 @@
 package com.powersync.connectors
 
-import com.powersync.db.PowerSyncDatabase
+import com.powersync.PowerSyncDatabase
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.UpdateType
 import io.github.jan.supabase.SupabaseClient

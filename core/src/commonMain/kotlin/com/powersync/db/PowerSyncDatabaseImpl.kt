@@ -4,7 +4,8 @@ import app.cash.sqldelight.SuspendingTransactionWithReturn
 import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlDriver
-import com.powersync.Closeable
+import com.powersync.DatabaseDriverFactory
+import com.powersync.PowerSyncDatabase
 import com.powersync.bucket.BucketStorage
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.crud.CrudBatch
@@ -15,6 +16,7 @@ import com.powersync.db.internal.PsInternalDatabase
 import com.powersync.db.schema.Schema
 import com.powersync.sync.SyncStatus
 import com.powersync.sync.SyncStream
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.IO
@@ -24,6 +26,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlin.js.ExperimentalJsFileName
 
 /**
  * A PowerSync managed database.
@@ -34,30 +37,22 @@ import kotlinx.serialization.json.Json
  *
  * All changes to local tables are automatically recorded, whether connected or not. Once connected, the changes are uploaded.
  */
-open class PowerSyncDatabase(
-    driverFactory: DatabaseDriverFactory,
-    /**
-     * Schema used for the local database.
-     */
+internal class PowerSyncDatabaseImpl(
     val schema: Schema,
-
-    /**
-     * Filename for the database.
-     */
-    val dbFilename: String
-
-) : Closeable, ReadQueries, WriteQueries {
-    override var closed: Boolean = false
-    public val driver = driverFactory.createDriver(schema, dbFilename)
+    val scope: CoroutineScope,
+    val factory: DatabaseDriverFactory,
+    private val dbFilename: String,
+    override val driver: SqlDriver = factory.createDriver(dbFilename),
+) : PowerSyncDatabase {
     private val internalDb = PsInternalDatabase(driver)
     private val bucketStorage: BucketStorage = BucketStorage(internalDb)
 
     /**
      * The current sync status.
      */
-    val currentStatus: SyncStatus = SyncStatus()
+    override val currentStatus: SyncStatus = SyncStatus()
 
-    private var syncStream: SyncStream? = null
+    override var syncStream: SyncStream? = null
 
     init {
 
@@ -68,7 +63,7 @@ open class PowerSyncDatabase(
 
     private suspend fun applySchema() {
         val json = Json { encodeDefaults = true }
-        val schemaJson = json.encodeToString(this.schema)
+        val schemaJson = json.encodeToString(schema)
         println("Serialized app schema: $schemaJson")
 
         this.writeTransaction {
@@ -76,7 +71,7 @@ open class PowerSyncDatabase(
         }
     }
 
-    suspend fun connect(connector: PowerSyncBackendConnector) {
+    override suspend fun connect(connector: PowerSyncBackendConnector) {
         this.syncStream =
             SyncStream(this.bucketStorage,
                 credentialsCallback = suspend { connector.getCredentialsCached() },
@@ -86,29 +81,12 @@ open class PowerSyncDatabase(
 
                 })
 
-        GlobalScope.launch(Dispatchers.IO) {
+        scope.launch(Dispatchers.IO) {
             syncStream!!.streamingSyncIteration()
         }
     }
 
-    /**
-     * Get a batch of crud data to upload.
-     *
-     * Returns null if there is no data to upload.
-     *
-     * Use this from the [PowerSyncBackendConnector.uploadData]` callback.
-     *
-     * Once the data have been successfully uploaded, call [CrudBatch.complete] before
-     * requesting the next batch.
-     *
-     * Use [limit] to specify the maximum number of updates to return in a single
-     * batch.
-     *
-     * This method does include transaction ids in the result, but does not group
-     * data by transaction. One batch may contain data from multiple transactions,
-     * and a single transaction may be split over multiple batches.
-     */
-    suspend fun getCrudBatch(limit: Int = 100): CrudBatch? {
+    override suspend fun getCrudBatch(limit: Int): CrudBatch? {
         if (!bucketStorage.hasCrud()) {
             return null
         }
@@ -141,21 +119,7 @@ open class PowerSyncDatabase(
         })
     }
 
-    /**
-     * Get the next recorded transaction to upload.
-     *
-     * Returns null if there is no data to upload.
-     *
-     * Use this from the [PowerSyncBackendConnector.uploadData]` callback.
-     *
-     * Once the data have been successfully uploaded, call [CrudTransaction.complete] before
-     * requesting the next transaction.
-     *
-     * Unlike [getCrudBatch], this only returns data from a single transaction at a time.
-     * All data for the transaction is loaded into memory.
-     */
-
-    suspend fun getNextCrudTransaction(): CrudTransaction? {
+    override suspend fun getNextCrudTransaction(): CrudTransaction? {
         return this.readTransaction {
             val first =
                 getOptional(
@@ -200,28 +164,7 @@ open class PowerSyncDatabase(
         }
     }
 
-    private suspend fun handleWriteCheckpoint(lastTransactionId: Int, writeCheckpoint: String?) {
-        writeTransaction {
-            execute(
-                "DELETE FROM ps_crud WHERE id <= ?",
-                listOf(lastTransactionId.toLong()),
-            )
-
-            if (writeCheckpoint != null && bucketStorage.hasCrud()) {
-                execute(
-                    "UPDATE ps_buckets SET target_op = ? WHERE name='\$local'",
-                    listOf(writeCheckpoint),
-                )
-            } else {
-                execute(
-                    "UPDATE ps_buckets SET target_op = ? WHERE name='\$local'",
-                    listOf(bucketStorage.getMaxOpId()),
-                )
-            }
-        }
-    }
-
-    suspend fun getPowerSyncVersion(): String {
+    override suspend fun getPowerSyncVersion(): String {
         val sqliteVersion = internalDb.queries.sqliteVersion().awaitAsOne()
         println("SQLiteVersion: $sqliteVersion")
 
@@ -256,7 +199,7 @@ open class PowerSyncDatabase(
         sql: String,
         parameters: List<Any>?,
         mapper: (SqlCursor) -> RowType
-    ): Flow<RowType> {
+    ): Flow<List<RowType>> {
         return internalDb.watch(sql, parameters, mapper)
     }
 
@@ -273,7 +216,24 @@ open class PowerSyncDatabase(
         return internalDb.execute(sql, parameters)
     }
 
-    override suspend fun close() {
-        closed = true
+    private suspend fun handleWriteCheckpoint(lastTransactionId: Int, writeCheckpoint: String?) {
+        writeTransaction {
+            execute(
+                "DELETE FROM ps_crud WHERE id <= ?",
+                listOf(lastTransactionId.toLong()),
+            )
+
+            if (writeCheckpoint != null && bucketStorage.hasCrud()) {
+                execute(
+                    "UPDATE ps_buckets SET target_op = ? WHERE name='\$local'",
+                    listOf(writeCheckpoint),
+                )
+            } else {
+                execute(
+                    "UPDATE ps_buckets SET target_op = ? WHERE name='\$local'",
+                    listOf(bucketStorage.getMaxOpId()),
+                )
+            }
+        }
     }
 }

@@ -1,6 +1,6 @@
 package com.powersync.connectors
 
-import com.powersync.db.PowerSyncDatabase
+import com.powersync.PowerSyncDatabase
 import kotlinx.coroutines.async
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -17,6 +17,7 @@ import kotlinx.coroutines.GlobalScope
 abstract class PowerSyncBackendConnector {
     private var cachedCredentials: PowerSyncCredentials? = null
     private var fetchRequest: Deferred<PowerSyncCredentials?>? = null
+
     /**
      * Get credentials current cached, or fetch new credentials if none are
      * available.

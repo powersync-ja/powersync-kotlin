@@ -2,21 +2,22 @@ package com.powersync.demos
 
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
-import com.powersync.connectors.PowerSyncBackendConnector
+import com.powersync.DatabaseDriverFactory
+import com.powersync.PowerSyncBuilder
+import com.powersync.PowerSyncDatabase
 import com.powersync.connectors.SupabaseConnector
-import com.powersync.db.DatabaseDriverFactory
-import com.powersync.db.PowerSyncDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.runBlocking
 
-class PowerSync(databaseDriverFactory: DatabaseDriverFactory) {
-    private val database = PowerSyncDatabase(
-        databaseDriverFactory, dbFilename = "powersync.db", schema = AppSchema
-    )
-    private val connector: PowerSyncBackendConnector = SupabaseConnector()
-    private val sqlDelightDB = AppDatabase(database.driver)
+class PowerSync(
+    driverFactory: DatabaseDriverFactory,
+) {
+    private val connector = SupabaseConnector()
+    private val database: PowerSyncDatabase =
+        PowerSyncBuilder.from(driverFactory, AppSchema).build();
+    private val userQueries = AppDatabase(database.driver).userQueries
 
     init {
         runBlocking {
@@ -29,12 +30,12 @@ class PowerSync(databaseDriverFactory: DatabaseDriverFactory) {
     }
 
     fun watchUsers(): Flow<List<Users>> {
-        return sqlDelightDB.userQueries.selectAll().asFlow()
+        return userQueries.selectAll().asFlow()
             .mapToList(Dispatchers.IO)
     }
 
     suspend fun createUser(name: String, email: String) {
-        sqlDelightDB.userQueries.insertUser(name, email)
+        userQueries.insertUser(name, email)
     }
 
     suspend fun deleteUser(id: String? = null) {
@@ -44,6 +45,6 @@ class PowerSync(databaseDriverFactory: DatabaseDriverFactory) {
             })
             ?: return
 
-        sqlDelightDB.userQueries.deleteUser(targetId)
+        userQueries.deleteUser(targetId)
     }
 }

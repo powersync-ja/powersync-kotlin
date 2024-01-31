@@ -34,13 +34,13 @@ interface ReadQueries {
     ): RowType?
 
     /**
-     * Execute a read-only (SELECT) query every time the source tables are modified and return the results as a [Flow].
+     * Execute a read-only (SELECT) query every time the source tables are modified and return the results as a List in [Flow].
      */
     suspend fun <RowType : Any> watch(
         sql: String,
         parameters: List<Any>? = listOf(),
         mapper: (SqlCursor) -> RowType
-    ): Flow<RowType>
+    ): Flow<List<RowType>>
 
 
     suspend fun <R> readTransaction(body: suspend SuspendingTransactionWithReturn<R>.() -> R): R
