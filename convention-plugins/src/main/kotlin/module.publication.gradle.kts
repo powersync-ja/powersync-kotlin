@@ -33,7 +33,7 @@ publishing {
                     id.set("PowerSync")
                     name.set("PowerSync Team")
                     organization.set("PowerSync")
-                    organizationUrl.set("https://powersync.co/")
+                    organizationUrl.set("https://powersync.com/")
                 }
             }
             scm {
