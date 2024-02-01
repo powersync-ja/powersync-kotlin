@@ -1,6 +1,5 @@
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.tasks.bundling.Jar
-import org.gradle.kotlin.dsl.`maven-publish`
 
 plugins {
     `maven-publish`
@@ -20,7 +19,6 @@ publishing {
         pom {
             name.set("PowerSync Kotlin Multiplatform SDK")
             description.set("PowerSync KMP SDK")
-            url.set("https://github.com/powersync-ja/powersync-kotlin-sdk")
 
             licenses {
                 license {

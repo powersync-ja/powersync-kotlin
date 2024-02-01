@@ -1,8 +1,10 @@
+import com.vanniktech.maven.publish.SonatypeHost
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.androidLibrary)
-    id("module.publication")
+    alias(libs.plugins.mavenPublishPlugin)
 }
 
 kotlin {
@@ -33,5 +35,3 @@ android {
         jvmToolchain(17)
     }
 }
-
-

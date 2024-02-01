@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.sqldelight)
-    id("module.publication")
+    alias(libs.plugins.mavenPublishPlugin)
 }
 
 kotlin {

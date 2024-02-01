@@ -1,6 +1,5 @@
 pluginManagement {
     repositories {
-        includeBuild("convention-plugins")
         google()
         gradlePluginPortal()
         mavenCentral()
@@ -16,10 +15,10 @@ dependencyResolutionManagement {
     }
 }
 
-enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 rootProject.name = "powersync"
 
 include(":core")
 include(":connectors")
 include(":dialect")
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")

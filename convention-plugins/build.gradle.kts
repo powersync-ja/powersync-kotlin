@@ -1,7 +1,4 @@
 plugins {
     `kotlin-dsl`
-}
-
-dependencies {
-    implementation(libs.nexus.publish)
+    alias(libs.plugins.maven.publish.plugin)
 }
