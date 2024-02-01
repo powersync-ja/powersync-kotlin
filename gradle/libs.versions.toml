@@ -3,18 +3,18 @@
 android-minSdk = "24"
 android-targetSdk = "34"
 android-compileSdk = "34"
-java = "21"
+java = "17"
 idea = "222.4459.24" # Flamingo | 2022.2.1 (see https://plugins.jetbrains.com/docs/intellij/android-studio-releases-list.html)
 
 # Dependencies
-kotlin = "1.9.21"
+kotlin = "1.9.22"
 android-gradle-plugin = "8.2.2"
 cinteropt = "1.6.0"
 coroutines = "1.7.3"
 kotlinx-datetime = "0.5.0"
 kotlinx-io = "0.3.0"
 ktor = "2.3.7"
-skie = "0.5.6"
+skie = "0.6.1"
 uuid = "0.8.2"
 powersync-core = "0.1.5"
 requerySqliteAndroid = "3.43.0"
@@ -22,14 +22,13 @@ grammerKit = "0.1.12"
 nexus-publish = "2.0.0-rc-1"
 
 sqlDelight = "2.0.1"
-sqlPsi = "0.4.8"
 stately = "2.0.6"
 supabase = "2.0.4"
 junit = "4.13.2"
 
-compose = "1.5.4"
+compose = "1.5.12"
+compose-preview = "1.6.0"
 compose-compiler = "1.5.8"
-compose-plugin = "1.5.11"
 
 # Sample - Android
 androidx-core = "1.12.0"
@@ -84,16 +83,12 @@ androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity-compose" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "androidx-espresso-core" }
 androidx-material = { group = "com.google.android.material", name = "material", version.ref = "androidx-material" }
-compose-foundation = { module = "androidx.compose.foundation:foundation", version.ref = "compose" }
-compose-material = { module = "androidx.compose.material:material", version.ref = "compose" }
-compose-ui = { module = "androidx.compose.ui:ui", version.ref = "compose" }
-compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling", version.ref = "compose" }
-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "compose" }
+compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "compose-preview" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "android-gradle-plugin" }
 androidLibrary = { id = "com.android.library", version.ref = "android-gradle-plugin" }
-jetbrainsCompose = { id = "org.jetbrains.compose", version.ref = "compose-plugin" }
+jetbrainsCompose = { id = "org.jetbrains.compose", version.ref = "compose" }
 kotlinCocoapods = { id = "org.jetbrains.kotlin.native.cocoapods", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }

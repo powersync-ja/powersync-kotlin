@@ -8,11 +8,6 @@ plugins {
 kotlin {
     androidTarget {
         publishLibraryVariants("release", "debug")
-        compilations.all {
-            kotlinOptions {
-                jvmTarget = "1.8"
-            }
-        }
     }
 
     iosArm64()
@@ -33,6 +28,9 @@ android {
     compileSdk = libs.versions.android.compileSdk.get().toInt()
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()
+    }
+    kotlin {
+        jvmToolchain(17)
     }
 }
 

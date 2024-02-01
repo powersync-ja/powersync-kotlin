@@ -10,13 +10,7 @@ plugins {
 }
 
 kotlin {
-    androidTarget {
-        compilations.all {
-            kotlinOptions {
-                jvmTarget = "1.8"
-            }
-        }
-    }
+    androidTarget()
 
 //    iosX64()
     iosArm64()
@@ -92,11 +86,12 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
-    dependencies {
-        debugImplementation(projectLibs.compose.ui.tooling)
+
+    kotlin {
+        jvmToolchain(17)
     }
 }
 
