@@ -79,7 +79,6 @@ sqldelight {
             packageName.set("com.powersync.db")
             generateAsync = true
             dialect(project(":dialect"))
-//            dialect(libs.sqldelight.dialect.sqlite338.get().toString())
         }
     }
     linkSqlite = true
