@@ -84,3 +84,7 @@ sqldelight {
     }
     linkSqlite = true
 }
+
+sonatypePublishing {
+    setupGithubRepository()
+}

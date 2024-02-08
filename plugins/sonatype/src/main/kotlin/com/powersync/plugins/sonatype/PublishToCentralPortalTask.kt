@@ -1,11 +1,12 @@
 package com.powersync.plugins.sonatype
 
+import com.powersync.plugins.sonatype.SonatypeCentralExtension.Companion.COMPONENT_BUNDLE_TASK_NAME
 import org.gradle.api.DefaultTask
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.TaskAction
-import org.gradle.api.tasks.bundling.AbstractArchiveTask
+import org.gradle.api.tasks.bundling.Zip
 import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
@@ -15,9 +16,7 @@ import java.net.URISyntaxException
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.Base64
-import java.util.Objects
-
-abstract class PublishToCentralPortal() : DefaultTask() {
+abstract class PublishToCentralPortalTask : DefaultTask() {
     @get:Input
     @get:Optional
     abstract val username: Property<String?>
@@ -26,21 +25,9 @@ abstract class PublishToCentralPortal() : DefaultTask() {
     @get:Optional
     abstract val password: Property<String?>
 
-    private var archive: AbstractArchiveTask? = null
-
-    fun upload(archive: AbstractArchiveTask) {
-        if(this.archive != null) {
-            throw IllegalStateException("Archive hsa already set")
-        }
-        dependsOn(archive)
-        this.archive = archive
-    }
-
-    open fun outputFile(): File {
-        if (archive == null) {
-            throw IllegalStateException("Archive has not set")
-        }
-        return archive!!.archiveFile.get().asFile
+    private fun outputFile(): File {
+        val archive = project.tasks.getByName(COMPONENT_BUNDLE_TASK_NAME) as Zip
+        return archive.archiveFile.get().asFile
     }
 
     companion object {
@@ -55,20 +42,14 @@ abstract class PublishToCentralPortal() : DefaultTask() {
 
         val extension = project.extensions.getByType(SonatypeCentralExtension::class.java)
 
-        val username = this.username.getOrNull() ?: extension.username.getOrNull() ?: Objects.toString(
-            project.findProperty("centralPortal.username"),
-            null
-        )
+        val username = this.username.getOrNull() ?: extension.username.getOrNull() ?: project.findOptionalProperty(SonatypeCentralExtension.SONATYPE_USERNAME_KEY)
         ?: throw IOException(
-            "Missing PublishToCentralPortal's `username` and `centralPortal.username` value and `centralPortal.username` property"
+            "Missing PublishToCentralPortal's `username` and `${SonatypeCentralExtension.SONATYPE_USERNAME_KEY}` value and `${SonatypeCentralExtension.SONATYPE_USERNAME_KEY}` property"
         )
 
-        val password = this.password.getOrNull() ?: extension.password.getOrNull() ?: Objects.toString(
-            project.findProperty("centralPortal.password"),
-            null
-        )
+        val password = this.password.getOrNull() ?: extension.password.getOrNull() ?: project.findOptionalProperty(SonatypeCentralExtension.SONATYPE_PASSWORD_KEY)
         ?: throw IOException(
-            "Missing PublishToCentralPortal's `password` and centralPortal.password` value and `centralPortal.password` property"
+            "Missing PublishToCentralPortal's `password` and `${SonatypeCentralExtension.SONATYPE_PASSWORD_KEY}` value and `${SonatypeCentralExtension.SONATYPE_PASSWORD_KEY}` property"
         )
 
         val outputFile = this.outputFile();

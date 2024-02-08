@@ -34,3 +34,7 @@ android {
         jvmToolchain(17)
     }
 }
+
+sonatypePublishing {
+    setupGithubRepository()
+}
