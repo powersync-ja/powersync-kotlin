@@ -10,38 +10,20 @@ import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
-import kotlinx.coroutines.runBlocking
 
-class SupabaseConnector : com.powersync.connectors.PowerSyncBackendConnector() {
+class SupabaseConnector(
+    val supabaseUrl: String,
+    val supabaseKey: String,
+    val powerSyncEndpoint: String,
+) : PowerSyncBackendConnector() {
 
-    companion object {
-        // TODO this needs to be provided by the user/dev
-        private const val POWERSYNC_URL =
-            "https://65a0e6bb4078d9a211d3cffb.powersync.journeyapps.com"
-        private const val SUPABASE_URL = "https://wtilkjczshmzekrjelco.supabase.co"
-        private const val SUPABASE_KEY =
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0aWxramN6c2htemVrcmplbGNvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDUwNDM2MTYsImV4cCI6MjAyMDYxOTYxNn0.E4DWa1ftn92_rQP-aLTsQHsZufouhMmzBfsCiX2p5eM"
-
-        private const val TEST_EMAIL = "hello@powersync.com";
-        private const val TEST_PASSWORD = "@dYX0}72eS0kT=(YG@8(";
-    }
-
-    private val supabaseClient: SupabaseClient;
-
-    init {
-        supabaseClient = createClient()
-
-        runBlocking {
-            login()
-            val creds = fetchCredentials()
-            println("Creds $creds")
-        }
-    }
+    private var loggedIn: Boolean = false
+    private val supabaseClient: SupabaseClient = createClient()
 
     private fun createClient(): SupabaseClient {
         val client = createSupabaseClient(
-            supabaseUrl = com.powersync.connectors.SupabaseConnector.Companion.SUPABASE_URL,
-            supabaseKey = com.powersync.connectors.SupabaseConnector.Companion.SUPABASE_KEY
+            supabaseUrl = supabaseUrl,
+            supabaseKey = supabaseKey
         ) {
             install(Auth)
             install(Postgrest)
@@ -50,16 +32,19 @@ class SupabaseConnector : com.powersync.connectors.PowerSyncBackendConnector() {
         return client
     }
 
-    private suspend fun login(): Unit {
-        val res = supabaseClient.auth.signInWith(Email) {
-            email = com.powersync.connectors.SupabaseConnector.Companion.TEST_EMAIL
-            password = com.powersync.connectors.SupabaseConnector.Companion.TEST_PASSWORD
+    suspend fun login(email: String, password: String) {
+        supabaseClient.auth.signInWith(Email) {
+            this.email = email
+            this.password = password
         }
-
-        return res;
+        this.loggedIn = true
+        fetchCredentials()
     }
 
-    override suspend fun fetchCredentials(): com.powersync.connectors.PowerSyncCredentials {
+    override suspend fun fetchCredentials(): PowerSyncCredentials {
+        if (!loggedIn) {
+            throw Exception("Not logged in")
+        }
         val session = supabaseClient.auth.currentSessionOrNull()
             ?: throw Exception("Could not fetch Supabase credentials");
 
@@ -67,8 +52,8 @@ class SupabaseConnector : com.powersync.connectors.PowerSyncBackendConnector() {
             throw Exception("No user data")
         }
 
-        return com.powersync.connectors.PowerSyncCredentials(
-            endpoint = com.powersync.connectors.SupabaseConnector.Companion.POWERSYNC_URL,
+        return PowerSyncCredentials(
+            endpoint = powerSyncEndpoint,
             token = session.accessToken,
             expiresAt = session.expiresAt,
             userId = session.user!!.id
@@ -122,9 +107,9 @@ class SupabaseConnector : com.powersync.connectors.PowerSyncBackendConnector() {
             transaction.complete(null);
 
         } catch (e: Exception) {
-            // TODO add retry logic
+            // TODO implement discard logic
             println("Data upload error - discarding ${lastEntry!!}, $e")
-            throw e;
+            throw e
         }
     }
 }

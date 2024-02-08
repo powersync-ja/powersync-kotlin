@@ -14,13 +14,31 @@ import kotlinx.coroutines.runBlocking
 class PowerSync(
     driverFactory: DatabaseDriverFactory,
 ) {
-    private val connector = SupabaseConnector()
+
+    companion object {
+        // TODO this needs to be provided by the user/dev
+        private const val POWERSYNC_URL =
+            "https://65a0e6bb4078d9a211d3cffb.powersync.journeyapps.com"
+        private const val SUPABASE_URL = "https://wtilkjczshmzekrjelco.supabase.co"
+        private const val SUPABASE_KEY =
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0aWxramN6c2htemVrcmplbGNvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDUwNDM2MTYsImV4cCI6MjAyMDYxOTYxNn0.E4DWa1ftn92_rQP-aLTsQHsZufouhMmzBfsCiX2p5eM"
+
+        private const val TEST_EMAIL = "hello@powersync.com"
+        private const val TEST_PASSWORD = "@dYX0}72eS0kT=(YG@8("
+    }
+
+    private val connector = SupabaseConnector(
+        supabaseUrl = SUPABASE_URL,
+        supabaseKey = SUPABASE_KEY,
+        powerSyncEndpoint = POWERSYNC_URL
+    )
     private val database: PowerSyncDatabase =
         PowerSyncBuilder.from(driverFactory, AppSchema).build();
     private val userQueries = AppDatabase(database.driver).userQueries
 
     init {
         runBlocking {
+            connector.login(TEST_EMAIL, TEST_PASSWORD)
             database.connect(connector)
         }
     }
