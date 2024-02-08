@@ -3,7 +3,7 @@ package com.powersync
 import app.cash.sqldelight.async.coroutines.synchronous
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.native.NativeSqliteDriver
-import com.powersync.db.PsDatabase
+import com.powersync.db.internal.PsInternalSchema
 import com.powersync.sqlite.core.init_powersync_sqlite_extension
 import kotlinx.cinterop.ExperimentalForeignApi
 
@@ -18,6 +18,6 @@ actual class DatabaseDriverFactory {
     actual fun createDriver(
         dbFilename: String
     ): SqlDriver {
-        return NativeSqliteDriver(PsDatabase.Schema.synchronous(), dbFilename)
+        return NativeSqliteDriver(PsInternalSchema.synchronous(), dbFilename)
     }
 }

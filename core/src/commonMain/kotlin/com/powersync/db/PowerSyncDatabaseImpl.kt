@@ -1,7 +1,12 @@
 package com.powersync.db
 
 import app.cash.sqldelight.SuspendingTransactionWithReturn
+import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOne
+import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
+import app.cash.sqldelight.coroutines.asFlow
+import app.cash.sqldelight.coroutines.mapToList
+import app.cash.sqldelight.coroutines.mapToOneNotNull
 import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlDriver
 import com.powersync.DatabaseDriverFactory
@@ -72,18 +77,27 @@ internal class PowerSyncDatabaseImpl(
     }
 
     override suspend fun connect(connector: PowerSyncBackendConnector) {
+
+        val entriesFlow = internalDb.queries.getCrudEntries(100).asFlow()
+            .mapToList(Dispatchers.IO)
+
         this.syncStream =
-            SyncStream(this.bucketStorage,
+            SyncStream(
+                this.bucketStorage,
                 credentialsCallback = suspend { connector.getCredentialsCached() },
                 invalidCredentialsCallback = suspend { },
                 uploadCrud = suspend { connector.uploadData(this) },
-                flow {
-
-                })
+                updateStream = entriesFlow
+            )
 
         scope.launch(Dispatchers.IO) {
-            syncStream!!.streamingSyncIteration()
+            syncStream!!.streamingSync()
         }
+        scope.launch(Dispatchers.IO) {
+            syncStream!!.crudLoop()
+        }
+
+        println("Set up sync stream")
     }
 
     override suspend fun getCrudBatch(limit: Int): CrudBatch? {
@@ -91,19 +105,15 @@ internal class PowerSyncDatabaseImpl(
             return null
         }
 
-        val entries = getAll(
-            "SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC LIMIT ?",
-            listOf((limit + 1).toLong()),
-            mapper = { cursor ->
-                CrudEntry.fromRow(
-                    CrudRow(
-                        id = cursor.getString(0)!!,
-                        data = cursor.getString(1)!!,
-                        txId = cursor.getLong(2)?.toInt()
-                    )
+        val entries = internalDb.queries.getCrudEntries((limit + 1).toLong()).awaitAsList().map {
+            CrudEntry.fromRow(
+                CrudRow(
+                    id = it.id.toString(),
+                    data = it.data_!!,
+                    txId = it.tx_id?.toInt()
                 )
-            }
-        )
+            )
+        }
 
         if (entries.isEmpty()) {
             return null
@@ -121,38 +131,31 @@ internal class PowerSyncDatabaseImpl(
 
     override suspend fun getNextCrudTransaction(): CrudTransaction? {
         return this.readTransaction {
-            val first =
-                getOptional(
-                    "SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC LIMIT 1",
-                    mapper = { cursor ->
-                        CrudEntry.fromRow(
-                            CrudRow(
-                                id = cursor.getString(0)!!,
-                                txId = cursor.getLong(1)?.toInt(),
-                                data = cursor.getString(2)!!
-                            )
-                        )
-                    })
-                    ?: return@readTransaction null
+            val firstEntry = internalDb.queries.getCrudFirstEntry().awaitAsOneOrNull()
+                ?: return@readTransaction null
 
+            val first = CrudEntry.fromRow(
+                CrudRow(
+                    id = firstEntry.id.toString(),
+                    data = firstEntry.data_!!,
+                    txId = firstEntry.tx_id?.toInt()
+                )
+            )
 
             val txId = first.transactionId
             val entries: List<CrudEntry>
             if (txId == null) {
                 entries = listOf(first)
             } else {
-                entries = getAll(
-                    "SELECT id, tx_id, data FROM ps_crud WHERE tx_id = ? ORDER BY id ASC",
-                    listOf(txId.toLong()),
-                    mapper = { cursor ->
-                        CrudEntry.fromRow(
-                            CrudRow(
-                                id = cursor.getString(0)!!,
-                                txId = cursor.getLong(1)?.toInt(),
-                                data = cursor.getString(2)!!,
-                            )
+                entries = internalDb.queries.getCrudEntryByTxId(txId.toLong()).awaitAsList().map {
+                    CrudEntry.fromRow(
+                        CrudRow(
+                            id = it.id.toString(),
+                            data = it.data_!!,
+                            txId = it.tx_id?.toInt()
                         )
-                    })
+                    )
+                }
             }
 
             return@readTransaction CrudTransaction(
@@ -218,10 +221,7 @@ internal class PowerSyncDatabaseImpl(
 
     private suspend fun handleWriteCheckpoint(lastTransactionId: Int, writeCheckpoint: String?) {
         writeTransaction {
-            execute(
-                "DELETE FROM ps_crud WHERE id <= ?",
-                listOf(lastTransactionId.toLong()),
-            )
+            internalDb.queries.deleteEntriesWithIdLessThan(lastTransactionId.toLong())
 
             if (writeCheckpoint != null && bucketStorage.hasCrud()) {
                 execute(

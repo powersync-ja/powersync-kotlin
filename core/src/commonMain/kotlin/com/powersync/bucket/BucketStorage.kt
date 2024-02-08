@@ -1,5 +1,6 @@
 package com.powersync.bucket
 
+import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import com.powersync.db.internal.PsInternalDatabase
 import com.powersync.sync.SyncDataBatch
 import com.powersync.sync.SyncLocalDatabaseResult
@@ -55,13 +56,7 @@ class BucketStorage(val db: PsInternalDatabase) {
     }
 
     suspend fun hasCrud(): Boolean {
-        val result = db.getOptional(
-            "SELECT 1 FROM ps_crud LIMIT 1",
-            mapper = { cursor ->
-                cursor.getLong(0)!!
-            }
-        )
-        return result == 1L
+        return db.queries.hasCrud().awaitAsOneOrNull() == 1L
     }
 
     suspend fun updateLocalTarget(checkpointCallback: suspend () -> String): Boolean {
@@ -73,11 +68,7 @@ class BucketStorage(val db: PsInternalDatabase) {
             ?: // Nothing to update
             return false
 
-        val seqBefore = db.getOptional(
-            "SELECT seq FROM sqlite_sequence WHERE name = 'ps_crud'",
-            mapper = { cursor ->
-                cursor.getLong(0)!!
-            })
+        val seqBefore = db.queries.getCrudSequence().awaitAsOneOrNull()
             ?: // Nothing to update
             return false
 
@@ -91,11 +82,7 @@ class BucketStorage(val db: PsInternalDatabase) {
                 return@readTransaction false
             }
 
-            val seqAfter = db.getOptional(
-                "SELECT seq FROM sqlite_sequence WHERE name = 'ps_crud'",
-                mapper = { cursor ->
-                    cursor.getLong(0)!!
-                })
+            val seqAfter = db.queries.getCrudSequence().awaitAsOneOrNull()
                 ?: // assert isNotEmpty
                 throw AssertionError("Sqlite Sequence should not be empty")
 

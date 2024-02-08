@@ -20,6 +20,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.utils.io.*
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -80,7 +81,6 @@ class SyncStream(
     }
 
     suspend fun streamingSync() {
-        crudLoop()
         var invalidCredentials = false
         while (true) {
             updateStatus(connecting = true)
@@ -106,10 +106,10 @@ class SyncStream(
         }
     }
 
-    private suspend fun crudLoop() {
+    suspend fun crudLoop() {
         uploadAllCrud()
-
         updateStream.collect {
+            println("[SyncStream::crudLoop] Crud flow update")
             uploadAllCrud()
         }
     }
@@ -123,7 +123,7 @@ class SyncStream(
                     break
                 }
             } catch (e: Exception) {
-                println("[SyncStream:: uploadAllCrud] Error uploading crud: $e")
+                println("[SyncStream::uploadAllCrud] Error uploading crud: $e")
                 updateStatus(uploading = false, uploadError = e)
                 delay(retryDelay)
             }

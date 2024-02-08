@@ -4,7 +4,7 @@ import android.content.Context
 import app.cash.sqldelight.async.coroutines.synchronous
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.android.AndroidSqliteDriver
-import com.powersync.db.PsDatabase
+import com.powersync.db.internal.PsInternalSchema
 import io.requery.android.database.sqlite.RequerySQLiteOpenHelperFactory
 import io.requery.android.database.sqlite.SQLiteCustomExtension
 
@@ -14,7 +14,7 @@ actual class DatabaseDriverFactory(private val context: Context) {
         dbFilename: String
     ): SqlDriver {
         return AndroidSqliteDriver(
-            PsDatabase.Schema.synchronous(),
+            PsInternalSchema.synchronous(),
             context,
             dbFilename,
             factory = RequerySQLiteOpenHelperFactory(
