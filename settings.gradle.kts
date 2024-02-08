@@ -4,6 +4,7 @@ pluginManagement {
         gradlePluginPortal()
         mavenCentral()
     }
+    includeBuild("plugins")
 }
 
 dependencyResolutionManagement {
@@ -15,10 +16,10 @@ dependencyResolutionManagement {
     }
 }
 
-
 rootProject.name = "powersync"
 
 include(":core")
 include(":connectors")
 include(":dialect")
+
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")

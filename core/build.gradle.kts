@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.sqldelight)
     alias(libs.plugins.mavenPublishPlugin)
+    id("com.powersync.plugins.sonatype")
 }
 
 kotlin {

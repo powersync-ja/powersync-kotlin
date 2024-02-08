@@ -1,10 +1,9 @@
-import com.vanniktech.maven.publish.SonatypeHost
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.androidLibrary)
-    alias(libs.plugins.mavenPublishPlugin)
+    id("com.powersync.plugins.sonatype")
 }
 
 kotlin {
