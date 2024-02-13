@@ -1,5 +1,3 @@
-
-
 -- Core queries
 sqliteVersion:
 SELECT sqlite_version();
@@ -29,7 +27,7 @@ SELECT id, tx_id, data FROM ps_crud WHERE tx_id = ? ORDER BY id ASC;
 deleteEntriesWithIdLessThan:
 DELETE FROM ps_crud WHERE id <= ?;
 
--- Internal tables used by Sqlite and PowerSync. Once (https://github.com/cashapp/sqldelight/pull/4006/files) is merged,
+-- Internal tables used by Sqlite and PowerSync. Once (https://github.com/cashapp/sqldelight/pull/4006) is merged,
 -- we can define interal tables as part of the dialect.
 CREATE TABLE sqlite_master(type text, name text, tbl_name text, rootpage integer, sql text);
 
