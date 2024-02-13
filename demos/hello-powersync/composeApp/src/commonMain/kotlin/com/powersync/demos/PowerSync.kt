@@ -34,6 +34,7 @@ class PowerSync(
     )
     private val database: PowerSyncDatabase =
         PowerSyncBuilder.from(driverFactory, AppSchema).build();
+
     private val userQueries = AppDatabase(database.driver).userQueries
 
     init {
@@ -47,9 +48,18 @@ class PowerSync(
         return database.getPowerSyncVersion()
     }
 
-    fun watchUsers(): Flow<List<Users>> {
-        return userQueries.selectAll().asFlow()
-            .mapToList(Dispatchers.IO)
+    suspend fun watchUsers(): Flow<List<Users>> {
+        return database.watch("SELECT * FROM users", mapper = { cursor ->
+            Users(
+                id = cursor.getString(0)!!,
+                name = cursor.getString(1)!!,
+                email = cursor.getString(2)!!
+            )
+        })
+
+
+//        return userQueries.selectAll().asFlow()
+//            .mapToList(Dispatchers.IO)
     }
 
     suspend fun createUser(name: String, email: String) {

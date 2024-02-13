@@ -1,14 +1,44 @@
-This is a Kotlin Multiplatform project targeting Android, iOS.
+<p align="center">
+  <a href="https://www.powersync.com" target="_blank"><img src="https://github.com/powersync-ja/.github/assets/19345049/602bafa0-41ce-4cee-a432-56848c278722"/></a>
+</p>
 
-* `/composeApp` is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - `commonMain` is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    `iosMain` would be the right folder for such calls.
+PowerSync is a service and set of SDKs that keeps Postgres databases in sync with on-device SQLite
+databases.
 
-* `/iosApp` contains iOS applications. Even if you’re sharing your UI with Compose Multiplatform, 
-  you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
+# PowerSync Kotlin Multiplatform SDKs
 
+## Structure: Packages
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+- [core](./core/README.md)
+
+    - Kotlin Multiplatform SDK implementation
+
+- [connectors](./connectors/README.md)
+
+    - Supabase connector
+
+## Demo Apps / Example Projects
+
+Demo applications are located in the [`demos/`](./demos) directory.
+
+- [demos/hello-powersync](./demos/hello-powersync/README.md): A minimal example demonstrating the
+  use of the PowerSync Kotlin Multiplatform SDK.
+
+- [demos/supabase-todolist](./demos/supabase-todolist/README.md): A simple to-do list application
+  that uses the PowerSync Kotlin Multiplatform SDK and the Supabase connector.
+
+## Getting Started
+
+### Installation
+
+### Usage
+
+1. Define your schema
+2. Implement a `PowerSyncBackendConnector` to connect to your backend
+3. Initialize and connect a PowerSync database with your connector
+
+## Development
+
+### Build
+
+### Publishing
