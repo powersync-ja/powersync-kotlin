@@ -1,13 +1,9 @@
 package com.powersync.demos
 
-import app.cash.sqldelight.coroutines.asFlow
-import app.cash.sqldelight.coroutines.mapToList
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncBuilder
 import com.powersync.PowerSyncDatabase
 import com.powersync.connectors.SupabaseConnector
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.runBlocking
 
@@ -48,7 +44,7 @@ class PowerSync(
         return database.getPowerSyncVersion()
     }
 
-    suspend fun watchUsers(): Flow<List<Users>> {
+    fun watchUsers(): Flow<List<Users>> {
         return database.watch("SELECT * FROM users", mapper = { cursor ->
             Users(
                 id = cursor.getString(0)!!,
@@ -56,14 +52,15 @@ class PowerSync(
                 email = cursor.getString(2)!!
             )
         })
-
-
-//        return userQueries.selectAll().asFlow()
-//            .mapToList(Dispatchers.IO)
     }
 
     suspend fun createUser(name: String, email: String) {
-        userQueries.insertUser(name, email)
+        database.writeTransaction {
+            database.execute(
+                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                listOf(name, email)
+            )
+        }
     }
 
     suspend fun deleteUser(id: String? = null) {

@@ -14,27 +14,39 @@ import app.cash.sqldelight.db.SqlPreparedStatement
 import com.powersync.db.PsDatabase
 import com.powersync.db.ReadQueries
 import com.powersync.db.WriteQueries
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
-class PsInternalDatabase(val driver: SqlDriver) :
+class PsInternalDatabase(val driver: SqlDriver, private val scope: CoroutineScope) :
     ReadQueries,
     WriteQueries {
 
     private val transactor: PsDatabase = PsDatabase(driver)
     val queries = transactor.powersyncQueries
 
+    companion object {
+        const val POWERSYNC_TABLE_MATCH = "(^ps_data__|^ps_data_local__)"
+    }
+
     override suspend fun execute(
         sql: String,
         parameters: List<Any>?
     ): Long {
         val numParams = parameters?.size ?: 0
-        return createQuery(
+
+        val result = createQuery(
             sql,
             parameters = numParams,
             binders = getBindersFromParams(parameters)
         ).awaitAsOneOrNull() ?: 0
+
+        val tables = getSourceTables(sql, parameters, transformer = ::dataTableToFriendlyName)
+        if (tables.isNotEmpty()) {
+            driver.notifyListeners(queryKeys = (listOf("ps_crud") + tables).toTypedArray())
+        }
+        return result
     }
 
     override suspend fun <RowType : Any> get(
@@ -76,21 +88,25 @@ class PsInternalDatabase(val driver: SqlDriver) :
         ).awaitAsOneOrNull()
     }
 
-    override suspend fun <RowType : Any> watch(
+    override fun <RowType : Any> watch(
         sql: String,
         parameters: List<Any>?,
         mapper: (SqlCursor) -> RowType
     ): Flow<List<RowType>> {
-        return this.watchQuery(
-            key = sql,
+
+        val tables = getSourceTables(sql, parameters, transformer = ::dataTableToFriendlyName)
+
+        return watchQuery(
             query = sql,
             parameters = parameters?.size ?: 0,
             binders = getBindersFromParams(parameters),
-            mapper = mapper
-        ).asFlow().mapToList(Dispatchers.IO)
+            mapper = mapper,
+            tables = tables
+        ).asFlow().mapToList(scope.coroutineContext)
     }
 
-    fun createQuery(
+
+    private fun createQuery(
         query: String,
         parameters: Int = 0,
         binders: (SqlPreparedStatement.() -> Unit)? = null,
@@ -98,7 +114,7 @@ class PsInternalDatabase(val driver: SqlDriver) :
         return createQuery(query, { cursor -> cursor.getLong(0)!! }, parameters, binders)
     }
 
-    fun <T : Any> createQuery(
+    private fun <T : Any> createQuery(
         query: String,
         mapper: (SqlCursor) -> T,
         parameters: Int = 0,
@@ -111,23 +127,25 @@ class PsInternalDatabase(val driver: SqlDriver) :
         }
     }
 
-    fun <T : Any> watchQuery(
-        key: String, query: String,
+    private fun <T : Any> watchQuery(
+        query: String,
         mapper: (SqlCursor) -> T,
         parameters: Int = 0,
         binders: (SqlPreparedStatement.() -> Unit)? = null,
+        tables: Set<String> = setOf()
     ): Query<T> {
+
         return object : Query<T>(mapper) {
             override fun <R> execute(mapper: (SqlCursor) -> QueryResult<R>): QueryResult<R> {
                 return driver.executeQuery(null, query, mapper, parameters, binders);
             }
 
             override fun addListener(listener: Listener) {
-                driver.addListener(key, listener = listener)
+                driver.addListener(queryKeys = tables.toTypedArray(), listener = listener)
             }
 
             override fun removeListener(listener: Listener) {
-                driver.removeListener(key, listener = listener)
+                driver.removeListener(queryKeys = tables.toTypedArray(), listener = listener)
             }
         }
     }
@@ -139,8 +157,62 @@ class PsInternalDatabase(val driver: SqlDriver) :
     override suspend fun <R> writeTransaction(body: suspend SuspendingTransactionWithReturn<R>.() -> R): R {
         return transactor.transactionWithResult(noEnclosing = true, body)
     }
-}
 
+    private fun getSourceTables(
+        sql: String,
+        parameters: List<Any>?,
+        transformer: ((value: String) -> String)?
+    ): Set<String> {
+        val rows = createQuery(
+            query = "EXPLAIN $sql",
+            parameters = parameters?.size ?: 0,
+            binders = getBindersFromParams(parameters),
+            mapper = {
+                ExplainQueryResult(
+                    addr = it.getString(0)!!,
+                    opcode = it.getString(1)!!,
+                    p1 = it.getLong(2)!!,
+                    p2 = it.getLong(3)!!,
+                    p3 = it.getLong(4)!!
+                )
+            }
+        ).executeAsList()
+
+        val rootPages = mutableListOf<Long>()
+        for (row in rows) {
+            if ((row.opcode == "OpenRead" || row.opcode == "OpenWrite") && row.p3 == 0L && row.p2 != 0L) {
+                rootPages.add(row.p2)
+            }
+        }
+        val params = listOf(Json.encodeToString(rootPages))
+        val tableRows = createQuery(
+            "SELECT tbl_name FROM sqlite_master WHERE rootpage IN (SELECT json_each.value FROM json_each(?))",
+            parameters = params.size,
+            binders = {
+                bindString(0, params[0])
+            }, mapper = { it.getString(0)!! }
+        ).executeAsList()
+
+        return tableRows.map { transformer?.invoke(it) ?: it }.filter { it.isNotEmpty() }.toSet()
+    }
+
+    private fun dataTableToFriendlyName(table: String): String {
+        // Return table name that match the regex and replace it with empty string
+        val regex = POWERSYNC_TABLE_MATCH.toRegex()
+        if (regex.containsMatchIn(table)) {
+            return table.replace(regex, "")
+        }
+        return ""
+    }
+
+    internal data class ExplainQueryResult(
+        val addr: String,
+        val opcode: String,
+        val p1: Long,
+        val p2: Long,
+        val p3: Long,
+    )
+}
 
 fun getBindersFromParams(parameters: List<Any>?): (SqlPreparedStatement.() -> Unit)? {
     if (parameters.isNullOrEmpty()) {

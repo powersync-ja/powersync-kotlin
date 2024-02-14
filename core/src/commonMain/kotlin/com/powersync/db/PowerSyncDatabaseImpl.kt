@@ -23,15 +23,12 @@ import com.powersync.sync.SyncStatus
 import com.powersync.sync.SyncStream
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlin.js.ExperimentalJsFileName
 
 /**
  * A PowerSync managed database.
@@ -49,7 +46,7 @@ internal class PowerSyncDatabaseImpl(
     private val dbFilename: String,
     override val driver: SqlDriver = factory.createDriver(dbFilename),
 ) : PowerSyncDatabase {
-    private val internalDb = PsInternalDatabase(driver)
+    private val internalDb = PsInternalDatabase(driver, scope)
     private val bucketStorage: BucketStorage = BucketStorage(internalDb)
 
     /**
@@ -79,7 +76,7 @@ internal class PowerSyncDatabaseImpl(
     override suspend fun connect(connector: PowerSyncBackendConnector) {
 
         val entriesFlow = internalDb.queries.getCrudEntries(100).asFlow()
-            .mapToList(Dispatchers.IO)
+            .mapToList(scope.coroutineContext)
 
         this.syncStream =
             SyncStream(
@@ -90,14 +87,12 @@ internal class PowerSyncDatabaseImpl(
                 updateStream = entriesFlow
             )
 
-        scope.launch(Dispatchers.IO) {
+        scope.launch {
             syncStream!!.streamingSync()
         }
-        scope.launch(Dispatchers.IO) {
+        scope.launch {
             syncStream!!.crudLoop()
         }
-
-        println("Set up sync stream")
     }
 
     override suspend fun getCrudBatch(limit: Int): CrudBatch? {
@@ -198,7 +193,7 @@ internal class PowerSyncDatabaseImpl(
         return internalDb.getOptional(sql, parameters, mapper)
     }
 
-    override suspend fun <RowType : Any> watch(
+    override fun <RowType : Any> watch(
         sql: String,
         parameters: List<Any>?,
         mapper: (SqlCursor) -> RowType

@@ -36,7 +36,7 @@ interface ReadQueries {
     /**
      * Execute a read-only (SELECT) query every time the source tables are modified and return the results as a List in [Flow].
      */
-    suspend fun <RowType : Any> watch(
+    fun <RowType : Any> watch(
         sql: String,
         parameters: List<Any>? = listOf(),
         mapper: (SqlCursor) -> RowType
