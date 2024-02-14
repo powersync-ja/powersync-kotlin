@@ -64,6 +64,8 @@ internal class PowerSyncDatabaseImpl(
     }
 
     private suspend fun applySchema() {
+        println("PowerSync version ${getPowerSyncVersion()}")
+
         val json = Json { encodeDefaults = true }
         val schemaJson = json.encodeToString(schema)
         println("Serialized app schema: $schemaJson")

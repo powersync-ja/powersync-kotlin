@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.sqldelight) apply false
     alias(libs.plugins.grammarKitComposer) apply false
     alias(libs.plugins.mavenPublishPlugin) apply false
+    alias(libs.plugins.downloadPlugin) apply false
 }
 
 val GROUP: String by project

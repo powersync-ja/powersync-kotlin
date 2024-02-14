@@ -1,3 +1,4 @@
+import de.undercouch.gradle.tasks.download.Download
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 
 plugins {
@@ -6,7 +7,70 @@ plugins {
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.sqldelight)
     alias(libs.plugins.mavenPublishPlugin)
+    alias(libs.plugins.downloadPlugin)
     id("com.powersync.plugins.sonatype")
+}
+
+// List of flags we use to compile SQLite.
+// See: https://www.sqlite.org/compile.html
+// TODO(b/310681164): Validate these flags and compare to other platforms.
+val SQLITE_COMPILE_FLAGS = listOf(
+    "-DHAVE_USLEEP=1",
+    "-DSQLITE_DEFAULT_MEMSTATUS=0",
+    "-DSQLITE_ENABLE_COLUMN_METADATA=1",
+    "-DSQLITE_ENABLE_FTS3=1",
+    "-DSQLITE_ENABLE_FTS3_PARENTHESIS=1",
+    "-DSQLITE_ENABLE_FTS4=1",
+    "-DSQLITE_ENABLE_FTS5=1",
+    "-DSQLITE_ENABLE_JSON1=1",
+    "-DSQLITE_ENABLE_LOAD_EXTENSION=1",
+    "-DSQLITE_ENABLE_NORMALIZE=1",
+    "-DSQLITE_ENABLE_RBU=1",
+    "-DSQLITE_ENABLE_RTREE=1",
+    "-DSQLITE_ENABLE_STAT4=1",
+    "-DSQLITE_OMIT_PROGRESS_CALLBACK=0",
+    "-DSQLITE_THREADSAFE=2",
+)
+
+val sqliteVersion = "3380500"
+val sqliteReleaseYear = "2022"
+
+val sqliteSrcFolder =
+    project.layout.buildDirectory.dir("cinterop").get()
+val sqliteAmalgFolder = sqliteSrcFolder.dir("sqlite-amalgamation-$sqliteVersion")
+
+val downloadSQLiteSources by tasks.registering(Download::class) {
+    src("https://www.sqlite.org/$sqliteReleaseYear/sqlite-amalgamation-$sqliteVersion.zip")
+    val destination =
+        project.layout.buildDirectory.file("${sqliteAmalgFolder.asFile.path}.zip").get().asFile
+    dest(destination)
+    overwrite(false)
+}
+
+val unzipSQLiteSources by tasks.registering(Copy::class) {
+    dependsOn(downloadSQLiteSources)
+
+    from(zipTree(downloadSQLiteSources.get().dest))
+    into(sqliteSrcFolder)
+}
+
+val buildCInteropDef by tasks.registering {
+
+    dependsOn(unzipSQLiteSources)
+
+    val cFile = sqliteAmalgFolder.file("sqlite3.c").asFile
+    val defFile = sqliteSrcFolder.file("sqlite3.def").asFile
+
+    doFirst {
+        defFile.writeText(
+            """
+            package = com.powersync.sqlite3
+            ---
+            
+        """.trimIndent() + cFile.readText()
+        )
+    }
+    outputs.files(defFile)
 }
 
 kotlin {
@@ -21,7 +85,10 @@ kotlin {
     targets.withType<KotlinNativeTarget> {
         compilations.getByName("main") {
             cinterops.create("sqlite") {
-                defFile = project.file("src/nativeInterop/cinterop/sqlite3.def")
+                val cInteropTask = tasks[interopProcessingTaskName]
+                cInteropTask.dependsOn(buildCInteropDef)
+
+                defFile = buildCInteropDef.get().outputs.files.singleFile
             }
             cinterops.create("powersync-sqlite-core")
         }

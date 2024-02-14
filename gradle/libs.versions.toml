@@ -30,6 +30,7 @@ compose-compiler = "1.5.8"
 # plugins
 android-gradle-plugin = "8.2.2"
 maven-publish = "0.27.0"
+download-plugin = "4.0.4"
 
 # Sample - Android
 androidx-core = "1.12.0"
@@ -98,6 +99,7 @@ skie = { id = "co.touchlab.skie", version.ref = "skie" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqlDelight" }
 grammarKitComposer = { id = "com.alecstrong.grammar.kit.composer", version.ref = "grammerKit" }
 mavenPublishPlugin = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }
+downloadPlugin = { id = "de.undercouch.download", version.ref = "download-plugin" }
 
 [bundles]
 sqldelight = [
