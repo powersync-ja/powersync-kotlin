@@ -15,7 +15,7 @@ ktor = "2.3.7"
 skie = "0.6.1"
 uuid = "0.8.2"
 powersync-core = "0.1.5"
-requerySqliteAndroid = "3.43.0"
+sqlite-android = "3.45.0"
 grammerKit = "0.1.12"
 
 sqlDelight = "2.0.1"
@@ -68,7 +68,7 @@ kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-c
 
 sqldelight-driver-ios = { module = "app.cash.sqldelight:native-driver", version.ref = "sqlDelight" }
 sqldelight-driver-android = { module = "app.cash.sqldelight:android-driver", version.ref = "sqlDelight" }
-requery-sqlite-android = { module = "com.github.requery:sqlite-android", version.ref = "requerySqliteAndroid" }
+requery-sqlite-android = { module = "com.github.requery:sqlite-android", version.ref = "sqlite-android" }
 sqldelight-coroutines = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqlDelight" }
 sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqlDelight" }
 sqldelight-dialect-sqlite338 = { module = "app.cash.sqldelight:sqlite-3-38-dialect", version.ref = "sqlDelight" }

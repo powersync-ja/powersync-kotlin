@@ -13,10 +13,12 @@ actual class DatabaseDriverFactory(private val context: Context) {
     actual fun createDriver(
         dbFilename: String
     ): SqlDriver {
+        val schema = PsInternalSchema.synchronous()
+
         return AndroidSqliteDriver(
-            PsInternalSchema.synchronous(),
-            context,
-            dbFilename,
+            context = context,
+            schema = schema,
+            name = dbFilename,
             factory = RequerySQLiteOpenHelperFactory(
                 listOf(RequerySQLiteOpenHelperFactory.ConfigurationOptions { config ->
                     config.customExtensions.add(

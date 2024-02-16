@@ -1,5 +1,6 @@
 import de.undercouch.gradle.tasks.download.Download
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+import org.jetbrains.kotlin.konan.target.KonanTarget
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -36,21 +37,29 @@ val sqliteVersion = "3380500"
 val sqliteReleaseYear = "2022"
 
 val sqliteSrcFolder =
-    project.layout.buildDirectory.dir("cinterop").get()
-val sqliteAmalgFolder = sqliteSrcFolder.dir("sqlite-amalgamation-$sqliteVersion")
+    project.layout.buildDirectory.dir("interop/sqlite").get()
 
 val downloadSQLiteSources by tasks.registering(Download::class) {
-    src("https://www.sqlite.org/$sqliteReleaseYear/sqlite-amalgamation-$sqliteVersion.zip")
-    val destination =
-        project.layout.buildDirectory.file("${sqliteAmalgFolder.asFile.path}.zip").get().asFile
+    val zipFileName = "sqlite-amalgamation-$sqliteVersion.zip"
+    src("https://www.sqlite.org/$sqliteReleaseYear/${zipFileName}")
+    val destination = sqliteSrcFolder.file(zipFileName).asFile
     dest(destination)
+    onlyIfNewer(true)
     overwrite(false)
 }
 
 val unzipSQLiteSources by tasks.registering(Copy::class) {
     dependsOn(downloadSQLiteSources)
 
-    from(zipTree(downloadSQLiteSources.get().dest))
+    from(zipTree(downloadSQLiteSources.get().dest).matching {
+        include("*/sqlite3.*")
+        exclude {
+            it.isDirectory
+        }
+        eachFile {
+            this.path = this.name
+        }
+    })
     into(sqliteSrcFolder)
 }
 
@@ -58,7 +67,7 @@ val buildCInteropDef by tasks.registering {
 
     dependsOn(unzipSQLiteSources)
 
-    val cFile = sqliteAmalgFolder.file("sqlite3.c").asFile
+    val cFile = sqliteSrcFolder.file("sqlite3.c").asFile
     val defFile = sqliteSrcFolder.file("sqlite3.def").asFile
 
     doFirst {
@@ -129,15 +138,30 @@ kotlin {
     }
 }
 
+
 android {
+    kotlin {
+        jvmToolchain(17)
+    }
+
     namespace = "com.powersync"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()
+
+        externalNativeBuild {
+            cmake {
+                arguments.addAll(
+                    listOf("-DSQLITE3_SRC_DIR=${sqliteSrcFolder.asFile.absolutePath}")
+                )
+            }
+        }
     }
 
-    kotlin {
-        jvmToolchain(17)
+    externalNativeBuild {
+        cmake {
+            path = project.file("src/androidMain/cpp/CMakeLists.txt")
+        }
     }
 }
 
