@@ -62,20 +62,6 @@ abstract class SonatypeCentralExtension(
             it.description = "Publishes the bundle to Sonatype Central Portal"
             it.dependsOn(project.tasks.named(COMPONENT_BUNDLE_TASK_NAME))
         }
-
-    }
-
-    /** Sets up repository for publishing to Github Packages
-     * username and password (a personal Github access token) should be specified as `githubPackagesUsername` and `githubPackagesPassword` Gradle properties or
-     * alternatively as `ORG_GRADLE_PROJECT_githubPackagesUsername` and `ORG_GRADLE_PROJECT_githubPackagesPassword` environment variables
-     */
-    fun setupGithubRepository() {
-        project.logger.info("Setting up the `githubPackages` repository")
-        project.gradlePublishing.repositories.maven {
-            it.name = "githubPackages"
-            it.url = project.uri("https://maven.pkg.github.com/powersync-ja/powersync-kotlin-sdk")
-            it.credentials(PasswordCredentials::class.java)
-        }
     }
 }
 

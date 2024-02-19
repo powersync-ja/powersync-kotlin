@@ -35,6 +35,4 @@ android {
     }
 }
 
-sonatypePublishing {
-    setupGithubRepository()
-}
+addGithubPackagesRepository()

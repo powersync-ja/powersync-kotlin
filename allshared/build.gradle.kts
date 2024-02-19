@@ -22,18 +22,14 @@ kotlin {
         commonMain.dependencies {
             implementation(project(":core"))
         }
-    }
-}
 
-publishing {
-    repositories {
-        maven {
-            name = "githubPackages"
-            url = project.uri("https://maven.pkg.github.com/powersync-ja/powersync-kotlin-sdk")
-            credentials(PasswordCredentials::class)
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
         }
     }
 }
+
+addGithubPackagesRepository()
 
 kmmbridge {
     mavenPublishArtifacts()

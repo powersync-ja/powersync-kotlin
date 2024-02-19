@@ -173,6 +173,9 @@ sqldelight {
     linkSqlite = true
 }
 
-sonatypePublishing {
-    setupGithubRepository()
-}
+/**
+ * Helper function to support GitHub Packages publishing. Use with https://github.com/touchlab/KMMBridgeGithubWorkflow
+ * or pass in a valid GitHub token with GITHUB_PUBLISH_TOKEN. Defaults user to "cirunner", which can be overridden with
+ * GITHUB_PUBLISH_USER.
+ */
+addGithubPackagesRepository()
