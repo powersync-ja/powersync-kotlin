@@ -20,5 +20,9 @@ jobs:
       jvmVersion: 17
       versionBaseProperty: LIBRARY_VERSION
       publishTask: kmmBridgePublish publishKotlinMultiplatformPublicationToGitHubPackagesRepository publishAndroidDebugPublicationToGitHubPackagesRepository publishAndroidReleasePublicationToGitHubPackagesRepository
-#    secrets:
+    secrets:
+      gradle_params: |
+        -PsigningInMemoryKey=${{ secrets.SIGNING_PASSWORD }}
+        -PsigningInMemoryKeyId=${{ secrets.SIGNING_KEY_ID }}
+        -PsigningInMemoryKeyPassword=${{ secrets.SIGNING_PASSWORD }}
 #      PODSPEC_SSH_KEY: ${{ secrets.PODSPEC_SSH_KEY }}
