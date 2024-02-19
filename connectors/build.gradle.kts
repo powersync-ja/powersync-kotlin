@@ -8,7 +8,7 @@ plugins {
 
 kotlin {
     androidTarget {
-        publishLibraryVariants("release", "debug")
+        publishAllLibraryVariants()
     }
 
     iosArm64()

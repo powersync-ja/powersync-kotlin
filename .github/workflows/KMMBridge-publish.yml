@@ -1,4 +1,4 @@
-name: All Publish
+name: iOS Publish
 on:
   workflow_dispatch:
 #  push:
@@ -13,6 +13,5 @@ jobs:
     with:
       jvmVersion: 17
       versionBaseProperty: LIBRARY_VERSION
-      publishTask: kmmBridgePublish publishKotlinMultiplatformPublicationToGitHubPackagesRepository publishAndroidDebugPublicationToGitHubPackagesRepository publishAndroidReleasePublicationToGitHubPackagesRepository
 #    secrets:
 #      PODSPEC_SSH_KEY: ${{ secrets.PODSPEC_SSH_KEY }}

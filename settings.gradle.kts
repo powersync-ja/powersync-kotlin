@@ -18,8 +18,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "powersync"
 
-include(":core")
-include(":connectors")
+include("core", "connectors", "allshared")
 include(":dialect")
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")

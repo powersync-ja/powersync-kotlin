@@ -3,7 +3,9 @@ plugins {
     alias(libs.plugins.androidApplication) apply false
     alias(libs.plugins.androidLibrary) apply false
     alias(libs.plugins.kotlinMultiplatform) apply false
-    alias(libs.plugins.kotlinCocoapods) apply false
+    alias(libs.plugins.cocoapods) apply false
+    alias(libs.plugins.kmmbridge) apply false
+    alias(libs.plugins.skie) apply false
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.sqldelight) apply false
     alias(libs.plugins.grammarKitComposer) apply false
@@ -11,8 +13,6 @@ plugins {
     alias(libs.plugins.downloadPlugin) apply false
 }
 
-val GROUP: String by project
-val VERSION_NAME: String by project
 
 allprojects {
     repositories {
@@ -41,6 +41,15 @@ allprojects {
         exclude(group = "ai.grazie.nlp")
     }
 
+}
+subprojects {
+    val GROUP: String by project
+    val LIBRARY_VERSION: String by project
+
     group = GROUP
-    version = VERSION_NAME
+    version = LIBRARY_VERSION
+}
+
+tasks.register<Delete>("clean") {
+    delete(rootProject.layout.buildDirectory)
 }

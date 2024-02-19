@@ -63,7 +63,7 @@ val buildCInteropDef by tasks.registering {
 
 kotlin {
     androidTarget {
-        publishLibraryVariants("release", "debug")
+        publishAllLibraryVariants()
     }
 
     //    iosX64() Disabled for now, uncomment when we you are not on an M1 Mac

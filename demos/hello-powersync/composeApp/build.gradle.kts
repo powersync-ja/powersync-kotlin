@@ -2,7 +2,7 @@ import org.jetbrains.compose.ExperimentalComposeLibrary
 
 plugins {
     alias(projectLibs.plugins.kotlinMultiplatform)
-    alias(projectLibs.plugins.kotlinCocoapods)
+    alias(projectLibs.plugins.cocoapods)
     alias(projectLibs.plugins.androidApplication)
     alias(projectLibs.plugins.jetbrainsCompose)
     alias(projectLibs.plugins.sqldelight)

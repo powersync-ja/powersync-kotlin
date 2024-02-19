@@ -12,11 +12,9 @@ coroutines = "1.7.3"
 kotlinx-datetime = "0.5.0"
 kotlinx-io = "0.3.0"
 ktor = "2.3.7"
-skie = "0.6.1"
 uuid = "0.8.2"
 powersync-core = "0.1.5"
 sqlite-android = "3.45.0"
-grammerKit = "0.1.12"
 
 sqlDelight = "2.0.1"
 stately = "2.0.6"
@@ -29,8 +27,11 @@ compose-compiler = "1.5.8"
 
 # plugins
 android-gradle-plugin = "8.2.2"
+kmmBridge = "0.5.1"
+skie = "0.6.1"
 maven-publish = "0.27.0"
 download-plugin = "4.0.4"
+grammerKit = "0.1.12"
 
 # Sample - Android
 androidx-core = "1.12.0"
@@ -91,11 +92,12 @@ compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview"
 androidApplication = { id = "com.android.application", version.ref = "android-gradle-plugin" }
 androidLibrary = { id = "com.android.library", version.ref = "android-gradle-plugin" }
 jetbrainsCompose = { id = "org.jetbrains.compose", version.ref = "compose" }
-kotlinCocoapods = { id = "org.jetbrains.kotlin.native.cocoapods", version.ref = "kotlin" }
+cocoapods = { id = "org.jetbrains.kotlin.native.cocoapods", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 skie = { id = "co.touchlab.skie", version.ref = "skie" }
+kmmbridge = { id = "co.touchlab.kmmbridge", version.ref = "kmmBridge" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqlDelight" }
 grammarKitComposer = { id = "com.alecstrong.grammar.kit.composer", version.ref = "grammerKit" }
 mavenPublishPlugin = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }
