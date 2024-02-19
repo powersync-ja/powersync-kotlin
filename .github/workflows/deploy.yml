@@ -5,12 +5,19 @@ on:
 #    branches:
 #      - "main"
 
-env:
-  ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
-  ORG_GRADLE_PROJECT_signingInMemoryKeyId : ${{ secrets.SIGNING_KEY_ID }}
-  ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
-
 jobs:
+  import-gpg:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.SIGNING_KEY }}
+          passphrase: ${{ secrets.SIGNING_PASSWORD }}
+      - name: List keys
+        run: gpg -K
   call-kmmbridge-publish:
     permissions:
       contents: write
@@ -20,9 +27,8 @@ jobs:
       jvmVersion: 17
       versionBaseProperty: LIBRARY_VERSION
       publishTask: kmmBridgePublish publishKotlinMultiplatformPublicationToGitHubPackagesRepository publishAndroidDebugPublicationToGitHubPackagesRepository publishAndroidReleasePublicationToGitHubPackagesRepository
-    secrets:
-      gradle_params: |
-        -PsigningInMemoryKey=${{ secrets.SIGNING_PASSWORD }}
-        -PsigningInMemoryKeyId=${{ secrets.SIGNING_KEY_ID }}
-        -PsigningInMemoryKeyPassword=${{ secrets.SIGNING_PASSWORD }}
+#    secrets:
+#      gradle_params: |
+#        -Psigning.gnupg.keyName=${{ secrets.SIGNING_KEY_ID }}
+#        -Psigning.gnupg.passphrase=${{ secrets.SIGNING_PASSWORD }}
 #      PODSPEC_SSH_KEY: ${{ secrets.PODSPEC_SSH_KEY }}
