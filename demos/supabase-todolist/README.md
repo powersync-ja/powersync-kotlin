@@ -1,8 +1,10 @@
 # TodoApp (lite version)
 
+*** This demo app is a work in progress - it's not ready to be used yet. ***
+
 A simplified version of the [TodoApp example](https://github.com/JetBrains/compose-jb/tree/master/examples/todoapp), fully based on Jetpack Compose and without using any third-party libraries.
 
-Supported targets: Android, Desktop and iOS.
+Supported targets: Android and iOS.
 
 ## Setting up your development environment
 

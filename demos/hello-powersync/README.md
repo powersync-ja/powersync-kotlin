@@ -1,8 +1,43 @@
-# Hello-PowerSync demo app
+# Hello-PowerSync Demo App
 
-## Getting Started
+This is a simple demo app demonstrating use of the [PowerSync Kotlin Mutiplatform SDK](#) together with [Supabase](https://supabase.com/). 
 
-This is a Kotlin Multiplatform project targeting Android, iOS.
+## Alpha release
+
+The Kotlin Multiplatform SDK is currently in an alpha release. If you find a bug or issue, please open a [GitHub issue](https://github.com/powersync-ja/powersync-kotlin-sdk/issues). Questions or feedback can be posted on our [community Discord](https://discord.gg/powersync) - we'd love to hear from you.
+
+## Getting started
+TODO: These instructions need to be adapted for Kotlin:
+
+In your terminal, switch into the demo's directory:
+
+```
+cd demos/hello-powersync
+```
+
+Set up the necessary environment variables. Copy the .env.local.template file:
+
+```
+cp .env.local.template .env.local
+```
+
+And then edit .env.local to insert your credentials for Supabase and your PowerSync instance.
+
+Run on Android:
+
+```
+pnpm android
+```
+
+Run on iOS:
+
+```
+pnpm ios
+```
+
+## Project structure
+
+This is a Kotlin Multiplatform project targeting Android and iOS. 
 
 * `/composeApp` is for code that will be shared across your Compose Multiplatform applications.
   It contains several subfolders:
@@ -17,4 +52,4 @@ This is a Kotlin Multiplatform project targeting Android, iOS.
   your project.
 
 Learn more
-about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)
