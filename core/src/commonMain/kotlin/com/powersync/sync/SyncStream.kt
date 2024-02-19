@@ -109,7 +109,7 @@ class SyncStream(
     suspend fun crudLoop() {
         uploadAllCrud()
         updateStream.collect {
-            println("[SyncStream::crudLoop] Crud flow update")
+            println("[SyncStream::crudLoop] Table updates, $it")
             uploadAllCrud()
         }
     }

@@ -21,10 +21,11 @@ import com.powersync.db.internal.PsInternalDatabase
 import com.powersync.db.schema.Schema
 import com.powersync.sync.SyncStatus
 import com.powersync.sync.SyncStream
+import com.powersync.tableNameFlow
+import com.powersync.tableUpdates
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
@@ -77,23 +78,23 @@ internal class PowerSyncDatabaseImpl(
 
     override suspend fun connect(connector: PowerSyncBackendConnector) {
 
-        val entriesFlow = internalDb.queries.getCrudEntries(100).asFlow()
-            .mapToList(scope.coroutineContext)
-
         this.syncStream =
             SyncStream(
                 this.bucketStorage,
                 credentialsCallback = suspend { connector.getCredentialsCached() },
                 invalidCredentialsCallback = suspend { },
                 uploadCrud = suspend { connector.uploadData(this) },
-                updateStream = entriesFlow
+                updateStream = flow { }
             )
 
         scope.launch {
             syncStream!!.streamingSync()
         }
         scope.launch {
-            syncStream!!.crudLoop()
+            internalDb.driver.tableUpdates().collect {
+                println("Table updates: $it")
+            }
+//            syncStream!!.crudLoop()
         }
     }
 

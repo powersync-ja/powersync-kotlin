@@ -126,6 +126,7 @@ kotlin {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.requery.sqlite.android)
             implementation(libs.sqldelight.driver.android)
+//            implementation("com.facebook.fbjni:fbjni:0.6.0")
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.ios)
@@ -137,7 +138,6 @@ kotlin {
         }
     }
 }
-
 
 android {
     kotlin {
@@ -152,7 +152,9 @@ android {
         externalNativeBuild {
             cmake {
                 arguments.addAll(
-                    listOf("-DSQLITE3_SRC_DIR=${sqliteSrcFolder.asFile.absolutePath}")
+                    listOf(
+                        "-DSQLITE3_SRC_DIR=${sqliteSrcFolder.asFile.absolutePath}"
+                    )
                 )
             }
         }
@@ -162,6 +164,24 @@ android {
         cmake {
             path = project.file("src/androidMain/cpp/CMakeLists.txt")
         }
+    }
+}
+
+
+afterEvaluate {
+    val buildTasks = tasks.matching {
+        val taskName = it.name
+        if (taskName.contains("Clean")) {
+            return@matching false
+        }
+        if (taskName.contains("externalNative") || taskName.contains("CMake") || taskName.contains("generateJsonModel")) {
+            return@matching true
+        }
+        return@matching false
+    }
+
+    buildTasks.forEach {
+        it.dependsOn(buildCInteropDef)
     }
 }
 

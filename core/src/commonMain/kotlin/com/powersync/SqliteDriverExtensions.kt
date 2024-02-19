@@ -5,11 +5,10 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 
 val SqlDriver.tableNameFlow: MutableSharedFlow<String>
-    get() = MutableSharedFlow()
+    get() = MutableSharedFlow(replay = 1)
 
-val SqlDriver.updateHook: (action: Int, databaseName: String, tableName: String, rowId: Long) -> Unit
-    get() = { _, _, tableName, _ ->
-        tableNameFlow.tryEmit(tableName)
-    }
+fun SqlDriver.updateHook(operationType: Int, databaseName: String, tableName: String, rowId: Long) {
+    tableNameFlow.tryEmit(tableName)
+}
 
 fun SqlDriver.tableUpdates() = tableNameFlow.asSharedFlow()

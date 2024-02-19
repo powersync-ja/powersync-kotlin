@@ -18,16 +18,21 @@ import kotlinx.cinterop.toKString
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 @OptIn(ExperimentalForeignApi::class)
 actual class DatabaseDriverFactory {
+    private var driver: SqlDriver? = null
 
     init {
         init_powersync_sqlite_extension()
+    }
+
+    private fun onUpdate(opType: Int, databaseName: String, tableName: String, rowId: Long) {
+        driver?.updateHook(opType, databaseName, tableName, rowId)
     }
 
     actual fun createDriver(
         dbFilename: String
     ): SqlDriver {
         val schema = PsInternalSchema.synchronous()
-        return NativeSqliteDriver(
+        this.driver = NativeSqliteDriver(
             configuration = DatabaseConfiguration(
                 name = dbFilename,
                 version = schema.version.toInt(),
@@ -49,7 +54,7 @@ actual class DatabaseDriverFactory {
                                         rowId
                                     )
                                 },
-                                StableRef.create(driver.updateHook).asCPointer()
+                                StableRef.create(::onUpdate).asCPointer()
                             )
                             schema.create(driver)
                         }
@@ -64,5 +69,6 @@ actual class DatabaseDriverFactory {
                 )
             )
         )
+        return this.driver as SqlDriver
     }
 }
