@@ -40,7 +40,6 @@ update_hook_callback(void *pData, int opCode, char const *pDbName, char const *p
     }
 
     if (g_ctx.bindingsClz) {
-
         jmethodID updateId = env->GetMethodID(
                 g_ctx.bindingsClz, "onUpdate", "(ILjava/lang/String;Ljava/lang/String;J)V");
 

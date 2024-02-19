@@ -1,7 +1,6 @@
 package com.powersync
 
 import com.powersync.db.PowerSyncDatabaseImpl
-import com.powersync.db.internal.PsInternalDatabase
 import com.powersync.db.schema.Schema
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.GlobalScope

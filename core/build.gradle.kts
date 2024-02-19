@@ -12,27 +12,6 @@ plugins {
     id("com.powersync.plugins.sonatype")
 }
 
-// List of flags we use to compile SQLite.
-// See: https://www.sqlite.org/compile.html
-// TODO(b/310681164): Validate these flags and compare to other platforms.
-val SQLITE_COMPILE_FLAGS = listOf(
-    "-DHAVE_USLEEP=1",
-    "-DSQLITE_DEFAULT_MEMSTATUS=0",
-    "-DSQLITE_ENABLE_COLUMN_METADATA=1",
-    "-DSQLITE_ENABLE_FTS3=1",
-    "-DSQLITE_ENABLE_FTS3_PARENTHESIS=1",
-    "-DSQLITE_ENABLE_FTS4=1",
-    "-DSQLITE_ENABLE_FTS5=1",
-    "-DSQLITE_ENABLE_JSON1=1",
-    "-DSQLITE_ENABLE_LOAD_EXTENSION=1",
-    "-DSQLITE_ENABLE_NORMALIZE=1",
-    "-DSQLITE_ENABLE_RBU=1",
-    "-DSQLITE_ENABLE_RTREE=1",
-    "-DSQLITE_ENABLE_STAT4=1",
-    "-DSQLITE_OMIT_PROGRESS_CALLBACK=0",
-    "-DSQLITE_THREADSAFE=2",
-)
-
 val sqliteVersion = "3380500"
 val sqliteReleaseYear = "2022"
 
@@ -96,7 +75,6 @@ kotlin {
             cinterops.create("sqlite") {
                 val cInteropTask = tasks[interopProcessingTaskName]
                 cInteropTask.dependsOn(buildCInteropDef)
-
                 defFile = buildCInteropDef.get().outputs.files.singleFile
             }
             cinterops.create("powersync-sqlite-core")
@@ -126,7 +104,6 @@ kotlin {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.requery.sqlite.android)
             implementation(libs.sqldelight.driver.android)
-//            implementation("com.facebook.fbjni:fbjni:0.6.0")
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.ios)
