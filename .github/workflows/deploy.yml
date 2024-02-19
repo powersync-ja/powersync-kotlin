@@ -19,6 +19,7 @@ jobs:
       - name: List keys
         run: gpg -K
   call-kmmbridge-publish:
+    needs: import-gpg
     permissions:
       contents: write
       packages: write
