@@ -30,12 +30,3 @@ kmmbridge {
     mavenPublishArtifacts()
     spm()
 }
-
-signing {
-    val inMemoryKey = project.findProperty("signingInMemoryKey")?.toString()
-    if (inMemoryKey != null) {
-        val inMemoryKeyId = project.findProperty("signingInMemoryKeyId")?.toString()
-        val inMemoryKeyPassword = project.findProperty("signingInMemoryKeyPassword")?.toString().orEmpty()
-        useInMemoryPgpKeys(inMemoryKeyId, inMemoryKey, inMemoryKeyPassword)
-    }
-}
