@@ -19,6 +19,8 @@ This SDK is currently in an alpha release. If you find a bug or issue, please op
 * Supports one write and many reads concurrently.
 * No need for client-side database migrations — these are handled automatically.
 
+Supported targets: Android and iOS.
+
 ## Structure: Packages
 
 - [core](./core/README.md)
