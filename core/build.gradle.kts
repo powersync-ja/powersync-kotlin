@@ -66,7 +66,7 @@ kotlin {
         publishAllLibraryVariants()
     }
 
-    //    iosX64() Disabled for now, uncomment when we you are not on an M1 Mac
+    iosX64()
     iosArm64()
     iosSimulatorArm64()
 

@@ -6,9 +6,8 @@ plugins {
 }
 
 kotlin {
-
     listOf(
-//        iosX64(),
+        iosX64(),
         iosArm64(),
         iosSimulatorArm64()
     ).forEach {
@@ -20,11 +19,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(project(":core"))
-        }
-
-        commonTest.dependencies {
-            implementation(libs.kotlin.test)
+            api(project(":core"))
         }
     }
 }
