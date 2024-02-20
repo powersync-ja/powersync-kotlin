@@ -1,14 +1,9 @@
-name: All Publish
+name: Publish iOS Swift
 on:
   workflow_dispatch:
 #  push:
 #    branches:
 #      - "main"
-
-env:
-  ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
-  ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.SIGNING_KEY_ID }}
-  ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
 
 jobs:
   call-kmmbridge-publish:
