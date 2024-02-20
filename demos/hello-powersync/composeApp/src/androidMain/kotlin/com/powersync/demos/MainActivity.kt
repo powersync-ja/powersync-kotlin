@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
 @Preview
 @Composable
 fun ViewContentPreview() {
-    ViewContent("Preview", listOf(Users("1", "John Doe", "john@example.com")), {}, {})
+    ViewContent("Preview", listOf(User("1", "John Doe", "john@example.com")), {}, {})
 }
 
 @Preview

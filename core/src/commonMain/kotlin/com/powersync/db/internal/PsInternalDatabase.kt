@@ -44,7 +44,7 @@ class PsInternalDatabase(val driver: SqlDriver, private val scope: CoroutineScop
 
         val tables = getSourceTables(sql, parameters, transformer = ::dataTableToFriendlyName)
         if (tables.isNotEmpty()) {
-            driver.notifyListeners(queryKeys = (listOf("ps_crud") + tables).toTypedArray())
+            driver.notifyListeners(queryKeys = tables.toTypedArray())
         }
         return result
     }
