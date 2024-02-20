@@ -20,10 +20,11 @@ val sqliteSrcFolder =
 
 val downloadSQLiteSources by tasks.registering(Download::class) {
     val zipFileName = "sqlite-amalgamation-$sqliteVersion.zip"
-    src("https://www.sqlite.org/$sqliteReleaseYear/${zipFileName}")
     val destination = sqliteSrcFolder.file(zipFileName).asFile
+    src("https://www.sqlite.org/$sqliteReleaseYear/${zipFileName}")
     dest(destination)
     onlyIfNewer(true)
+    onlyIfModified(true)
     overwrite(false)
 }
 
@@ -43,7 +44,6 @@ val unzipSQLiteSources by tasks.registering(Copy::class) {
 }
 
 val buildCInteropDef by tasks.registering {
-
     dependsOn(unzipSQLiteSources)
 
     val cFile = sqliteSrcFolder.file("sqlite3.c").asFile
