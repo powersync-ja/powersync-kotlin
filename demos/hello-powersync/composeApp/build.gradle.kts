@@ -5,7 +5,6 @@ plugins {
     alias(projectLibs.plugins.cocoapods)
     alias(projectLibs.plugins.androidApplication)
     alias(projectLibs.plugins.jetbrainsCompose)
-    alias(projectLibs.plugins.sqldelight)
     alias(projectLibs.plugins.skie)
 }
 
@@ -94,14 +93,3 @@ android {
         jvmToolchain(17)
     }
 }
-
-sqldelight {
-    databases {
-        create("AppDatabase") {
-            packageName.set("com.powersync.demos")
-            generateAsync = true
-        }
-    }
-    linkSqlite = true
-}
-

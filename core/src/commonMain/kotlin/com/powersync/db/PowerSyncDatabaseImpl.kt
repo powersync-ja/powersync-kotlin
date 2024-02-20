@@ -4,9 +4,6 @@ import app.cash.sqldelight.SuspendingTransactionWithReturn
 import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
-import app.cash.sqldelight.coroutines.asFlow
-import app.cash.sqldelight.coroutines.mapToList
-import app.cash.sqldelight.coroutines.mapToOneNotNull
 import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlDriver
 import com.powersync.DatabaseDriverFactory
@@ -23,7 +20,8 @@ import com.powersync.sync.SyncStatus
 import com.powersync.sync.SyncStream
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
@@ -76,21 +74,21 @@ internal class PowerSyncDatabaseImpl(
 
     override suspend fun connect(connector: PowerSyncBackendConnector) {
 
-        driver.addListener("ps_crud") {
-            println("Table update: 'ps_crud'")
-        }
-
         this.syncStream =
             SyncStream(
-                this.bucketStorage,
-                credentialsCallback = suspend { connector.getCredentialsCached() },
-                invalidCredentialsCallback = suspend { },
+                bucketStorage = bucketStorage,
+                connector = connector,
                 uploadCrud = suspend { connector.uploadData(this) },
-                updateStream = flow { }
             )
 
         scope.launch {
             syncStream!!.streamingSync()
+        }
+
+        driver.addListener("ps_crud") {
+            scope.launch {
+                syncStream?.triggerCrudUpload()
+            }
         }
     }
 

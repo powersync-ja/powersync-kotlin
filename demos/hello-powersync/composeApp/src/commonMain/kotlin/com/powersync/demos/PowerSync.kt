@@ -31,8 +31,6 @@ class PowerSync(
     private val database: PowerSyncDatabase =
         PowerSyncBuilder.from(driverFactory, AppSchema).build();
 
-    private val userQueries = AppDatabase(database.driver).userQueries
-
     init {
         runBlocking {
             connector.login(TEST_EMAIL, TEST_PASSWORD)
@@ -44,9 +42,9 @@ class PowerSync(
         return database.getPowerSyncVersion()
     }
 
-    fun watchUsers(): Flow<List<Users>> {
+    fun watchUsers(): Flow<List<User>> {
         return database.watch("SELECT * FROM users", mapper = { cursor ->
-            Users(
+            User(
                 id = cursor.getString(0)!!,
                 name = cursor.getString(1)!!,
                 email = cursor.getString(2)!!
@@ -70,6 +68,8 @@ class PowerSync(
             })
             ?: return
 
-        userQueries.deleteUser(targetId)
+        database.writeTransaction {
+            database.execute("DELETE FROM users WHERE id = ?", listOf(targetId))
+        }
     }
 }

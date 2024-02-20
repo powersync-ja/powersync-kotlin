@@ -70,7 +70,7 @@ fun App(powerSync: PowerSync) {
 }
 
 @Composable
-fun ViewContent(version: String, users: List<Users>, onCreate: () -> Unit, onDelete: () -> Unit) {
+fun ViewContent(version: String, users: List<User>, onCreate: () -> Unit, onDelete: () -> Unit) {
     val layoutDirection = LocalLayoutDirection.current
     Scaffold(
         modifier = Modifier,

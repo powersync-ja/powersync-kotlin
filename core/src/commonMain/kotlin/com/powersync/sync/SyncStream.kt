@@ -7,6 +7,7 @@ import com.powersync.bucket.Checkpoint
 import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.connectors.PowerSyncCredentials
 import co.touchlab.stately.concurrency.AtomicBoolean
+import com.powersync.connectors.PowerSyncBackendConnector
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpTimeout
@@ -37,24 +38,18 @@ import kotlinx.serialization.json.decodeFromJsonElement
 
 class SyncStream(
     private val bucketStorage: BucketStorage,
-    private val credentialsCallback: suspend () -> PowerSyncCredentials?,
-    private val invalidCredentialsCallback: (suspend () -> Unit)?,
+    private val connector: PowerSyncBackendConnector,
     private val uploadCrud: suspend () -> Unit,
-    private val updateStream: Flow<Any>,
     private val retryDelay: Long = 1000L
 ) {
     private var isUploadingCrud = AtomicBoolean(false)
 
     private var lastStatus = SyncStatus()
-    private val httpClient: HttpClient;
+    private val httpClient: HttpClient = HttpClient {
+        install(HttpTimeout)
+        install(ContentNegotiation)
+    };
     private val statusStreamController = MutableStateFlow(SyncStatus())
-
-    init {
-        this.httpClient = HttpClient() {
-            install(HttpTimeout)
-            install(ContentNegotiation)
-        }
-    }
 
     companion object {
         private val _noError = Any()
@@ -85,10 +80,10 @@ class SyncStream(
         while (true) {
             updateStatus(connecting = true)
             try {
-                if (invalidCredentials && invalidCredentialsCallback != null) {
+                if (invalidCredentials) {
                     // This may error. In that case it will be retried again on the next
                     // iteration.
-                    invalidCredentialsCallback.invoke()
+                    connector.invalidateCredentials()
                     invalidCredentials = false
                 }
                 streamingSyncIteration()
@@ -106,12 +101,13 @@ class SyncStream(
         }
     }
 
-    suspend fun crudLoop() {
-        uploadAllCrud()
-        updateStream.collect {
-            println("[SyncStream::crudLoop] Table updates, $it")
-            uploadAllCrud()
+    suspend fun triggerCrudUpload() {
+        if (isUploadingCrud.value) {
+            return
         }
+        isUploadingCrud.value = true
+        uploadAllCrud()
+        isUploadingCrud.value = false
     }
 
     private suspend fun uploadAllCrud() {
@@ -126,6 +122,7 @@ class SyncStream(
                 println("[SyncStream::uploadAllCrud] Error uploading crud: $e")
                 updateStatus(uploading = false, uploadError = e)
                 delay(retryDelay)
+                break
             }
         }
         updateStatus(uploading = false)
@@ -144,7 +141,7 @@ class SyncStream(
     }
 
     private suspend fun getWriteCheckpoint(): String {
-        val credentials = credentialsCallback()
+        val credentials = connector.getCredentialsCached()
         require(credentials != null) { "Not logged in" }
         val uri = credentials.endpointUri("write-checkpoint2.json")
 
@@ -156,7 +153,7 @@ class SyncStream(
             }
         }
         if (response.status.value == 401) {
-            invalidCredentialsCallback?.invoke()
+            connector.invalidateCredentials()
         }
         if (response.status.value != 200) {
             throw Exception("Error getting write checkpoint: ${response.status}")
@@ -167,7 +164,7 @@ class SyncStream(
     }
 
     private suspend fun streamingSyncRequest(req: StreamingSyncRequest): Flow<String> = flow {
-        val credentials = credentialsCallback()
+        val credentials = connector.getCredentialsCached()
         require(credentials != null) { "Not logged in" }
 
         val uri = credentials.endpointUri("sync/stream")
@@ -196,7 +193,7 @@ class SyncStream(
         }
     }
 
-    suspend fun streamingSyncIteration() {
+    private suspend fun streamingSyncIteration() {
         val bucketEntries = bucketStorage.getBucketStates()
         val initialBuckets = mutableMapOf<String, String>()
 
@@ -382,26 +379,6 @@ class SyncStream(
         }
         triggerCrudUpload()
         return state
-    }
-
-    suspend fun triggerCrudUpload() {
-        if (isUploadingCrud.value) {
-            return
-        }
-        isUploadingCrud.value = true
-        while (true) {
-            try {
-                val done = uploadCrudBatch()
-                if (done) {
-                    isUploadingCrud.value = false
-                    break
-                }
-            } catch (ex: Exception) {
-                println("[SyncStream::triggerCrudUpload] Error uploading crud: $ex")
-                this.isUploadingCrud.value = false
-                break
-            }
-        }
     }
 
     private fun updateStatus(

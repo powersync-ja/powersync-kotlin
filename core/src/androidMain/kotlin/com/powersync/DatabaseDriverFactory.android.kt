@@ -21,7 +21,6 @@ actual class DatabaseDriverFactory(private val context: Context) {
         tableName: String,
         rowId: Long
     ) {
-        println("DatabaseDriverFactory.android table update: $tableName")
         driver?.updateHook(opType, databaseName, tableName, rowId)
     }
 
