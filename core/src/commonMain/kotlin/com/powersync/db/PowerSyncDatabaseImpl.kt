@@ -73,12 +73,11 @@ internal class PowerSyncDatabaseImpl(
     }
 
     override suspend fun connect(connector: PowerSyncBackendConnector) {
-
         this.syncStream =
             SyncStream(
                 bucketStorage = bucketStorage,
                 connector = connector,
-                uploadCrud = suspend { connector.uploadData(this) },
+                uploadCrud = suspend { connector.uploadData(this) }
             )
 
         scope.launch {
