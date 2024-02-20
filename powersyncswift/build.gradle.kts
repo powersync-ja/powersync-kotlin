@@ -1,3 +1,5 @@
+import co.touchlab.faktory.versionmanager.TimestampVersionManager
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.kmmbridge)
@@ -29,4 +31,5 @@ addGithubPackagesRepository()
 kmmbridge {
     mavenPublishArtifacts()
     spm()
+    versionManager.set(TimestampVersionManager)
 }
