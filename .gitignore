@@ -11,6 +11,7 @@ captures
 .externalNativeBuild
 **/.cxx
 *.xcodeproj/*
+**/.swiftpm
 !*.xcodeproj/project.pbxproj
 !*.xcodeproj/xcshareddata/
 !*.xcodeproj/project.xcworkspace/

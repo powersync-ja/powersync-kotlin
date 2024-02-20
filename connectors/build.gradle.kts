@@ -1,3 +1,4 @@
+import com.powersync.plugins.sonatype.setupGithubRepository
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -8,7 +9,7 @@ plugins {
 
 kotlin {
     androidTarget {
-        publishAllLibraryVariants()
+        publishLibraryVariants("release", "debug")
     }
 
     iosX64()
@@ -36,4 +37,10 @@ android {
     }
 }
 
-addGithubPackagesRepository()
+if (System.getenv().containsKey("CI")) {
+    // Setup github publishing based on GitHub action variables
+    addGithubPackagesRepository()
+} else {
+    // Setup github publishing from local dev
+    setupGithubRepository()
+}

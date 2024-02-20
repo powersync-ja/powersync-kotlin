@@ -1,6 +1,6 @@
 import de.undercouch.gradle.tasks.download.Download
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
-import org.jetbrains.kotlin.konan.target.KonanTarget
+import com.powersync.plugins.sonatype.setupGithubRepository
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -24,7 +24,6 @@ val downloadSQLiteSources by tasks.registering(Download::class) {
     src("https://www.sqlite.org/$sqliteReleaseYear/${zipFileName}")
     dest(destination)
     onlyIfNewer(true)
-    onlyIfModified(true)
     overwrite(false)
 }
 
@@ -63,7 +62,7 @@ val buildCInteropDef by tasks.registering {
 
 kotlin {
     androidTarget {
-        publishAllLibraryVariants()
+        publishLibraryVariants("release", "debug")
     }
 
     iosX64()
@@ -173,9 +172,11 @@ sqldelight {
     linkSqlite = true
 }
 
-/**
- * Helper function to support GitHub Packages publishing. Use with https://github.com/touchlab/KMMBridgeGithubWorkflow
- * or pass in a valid GitHub token with GITHUB_PUBLISH_TOKEN. Defaults user to "cirunner", which can be overridden with
- * GITHUB_PUBLISH_USER.
- */
-addGithubPackagesRepository()
+if (System.getenv().containsKey("CI")) {
+    // Setup github publishing based on GitHub action variables
+    addGithubPackagesRepository()
+} else {
+    // Setup github publishing from local dev
+    setupGithubRepository()
+}
+

@@ -26,7 +26,10 @@ kotlin {
     }
 }
 
-addGithubPackagesRepository()
+if (System.getenv().containsKey("CI")) {
+    // Setup github publishing based on GitHub action variables
+    addGithubPackagesRepository()
+}
 
 kmmbridge {
     mavenPublishArtifacts()
