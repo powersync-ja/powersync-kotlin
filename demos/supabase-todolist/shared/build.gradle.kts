@@ -11,7 +11,7 @@ version = "1.0-SNAPSHOT"
 kotlin {
     androidTarget()
 
-    jvm("desktop")
+//    jvm("desktop")
 
     listOf(
         iosX64(),
@@ -53,11 +53,11 @@ kotlin {
         val iosSimulatorArm64Main by getting {
             dependsOn(iosMain)
         }
-        val desktopMain by getting {
-            dependencies {
-                implementation(compose.desktop.common)
-            }
-        }
+//        val desktopMain by getting {
+//            dependencies {
+//                implementation(compose.desktop.common)
+//            }
+//        }
     }
 }
 
