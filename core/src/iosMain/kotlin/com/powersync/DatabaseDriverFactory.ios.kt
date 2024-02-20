@@ -25,6 +25,7 @@ actual class DatabaseDriverFactory {
     }
 
     private fun onUpdate(opType: Int, databaseName: String, tableName: String, rowId: Long) {
+        println("DatabaseDriverFactory.ios table update: $tableName")
         driver?.updateHook(opType, databaseName, tableName, rowId)
     }
 

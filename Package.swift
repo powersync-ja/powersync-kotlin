@@ -1,7 +1,7 @@
 // swift-tools-version:5.3
 import PackageDescription
 
-let packageName = "powersync-swift"
+let packageName = "powersyncswift"
 
 let package = Package(
     name: packageName,
@@ -17,7 +17,7 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: packageName,
-            path: "./powersync-swift/build/XCFrameworks/debug/\(packageName).xcframework"
+            path: "./powersyncswift/build/XCFrameworks/debug/\(packageName).xcframework"
         )
         ,
     ]

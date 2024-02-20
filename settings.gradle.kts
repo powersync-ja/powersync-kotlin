@@ -18,7 +18,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "powersync"
 
-include(":core", ":connectors", ":powersync-swift")
+include(":core", ":connectors", ":powersyncswift")
 include(":dialect")
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
