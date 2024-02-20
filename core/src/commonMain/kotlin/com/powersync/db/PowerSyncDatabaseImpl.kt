@@ -21,8 +21,6 @@ import com.powersync.db.internal.PsInternalDatabase
 import com.powersync.db.schema.Schema
 import com.powersync.sync.SyncStatus
 import com.powersync.sync.SyncStream
-import com.powersync.tableNameFlow
-import com.powersync.tableUpdates
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -78,6 +76,10 @@ internal class PowerSyncDatabaseImpl(
 
     override suspend fun connect(connector: PowerSyncBackendConnector) {
 
+        driver.addListener("ps_crud") {
+            println("Table update: 'ps_crud'")
+        }
+
         this.syncStream =
             SyncStream(
                 this.bucketStorage,
@@ -89,12 +91,6 @@ internal class PowerSyncDatabaseImpl(
 
         scope.launch {
             syncStream!!.streamingSync()
-        }
-        scope.launch {
-            internalDb.driver.tableUpdates().collect {
-                println("Table updates: $it")
-            }
-//            syncStream!!.crudLoop()
         }
     }
 

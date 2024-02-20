@@ -25,7 +25,6 @@ actual class DatabaseDriverFactory {
     }
 
     private fun onUpdate(opType: Int, databaseName: String, tableName: String, rowId: Long) {
-        println("DatabaseDriverFactory.ios table update: $tableName")
         driver?.updateHook(opType, databaseName, tableName, rowId)
     }
 
@@ -40,23 +39,24 @@ actual class DatabaseDriverFactory {
                 create = { connection -> wrapConnection(connection) { schema.create(it) } },
                 lifecycleConfig = DatabaseConfiguration.Lifecycle(
                     onCreateConnection = { connection ->
+                        val ptr = connection.getDbPointer().getPointer(MemScope())
+                        sqlite3_update_hook(
+                            ptr,
+                            staticCFunction { usrPtr, updateType, dbName, tableName, rowId ->
+                                val callback =
+                                    usrPtr!!.asStableRef<(Int, String, String, Long) -> Unit>()
+                                        .get()
+                                callback(
+                                    updateType,
+                                    dbName!!.toKString(),
+                                    tableName!!.toKString(),
+                                    rowId
+                                )
+                            },
+                            StableRef.create(::onUpdate).asCPointer()
+                        )
+
                         wrapConnection(connection) { driver ->
-                            val ptr = connection.getDbPointer().getPointer(MemScope())
-                            sqlite3_update_hook(
-                                ptr,
-                                staticCFunction { usrPtr, updateType, dbName, tableName, rowId ->
-                                    val callback =
-                                        usrPtr!!.asStableRef<(Int, String, String, Long) -> Unit>()
-                                            .get()
-                                    callback(
-                                        updateType,
-                                        dbName!!.toKString(),
-                                        tableName!!.toKString(),
-                                        rowId
-                                    )
-                                },
-                                StableRef.create(::onUpdate).asCPointer()
-                            )
                             schema.create(driver)
                         }
                     },
