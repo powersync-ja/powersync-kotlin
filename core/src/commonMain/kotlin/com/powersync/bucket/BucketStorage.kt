@@ -304,6 +304,7 @@ class BucketStorage(val db: PsInternalDatabase) {
         this.compactCounter = 0;
     }
 
+    @Suppress("UNUSED_PARAMETER")
     fun setTargetCheckpoint(checkpoint: Checkpoint) {
         // No-op for now
     }

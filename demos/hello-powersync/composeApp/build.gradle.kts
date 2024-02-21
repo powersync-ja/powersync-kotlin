@@ -100,7 +100,7 @@ android {
 
 buildkonfig {
     packageName = "com.powersync.demos"
-    objectName = "SupabaseConfig"
+    objectName = "Config"
 
     defaultConfigs {
         buildConfigField(STRING, "POWERSYNC_URL", readLocalProperty("POWERSYNC_URL"))

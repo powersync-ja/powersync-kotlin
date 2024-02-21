@@ -3,6 +3,7 @@ package com.powersync
 import com.powersync.db.PowerSyncDatabaseImpl
 import com.powersync.db.schema.Schema
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 
 interface PowerSyncBuilder {
@@ -45,6 +46,7 @@ internal class PowerSyncBuilderImpl(
         return this
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     override fun build(): PowerSyncDatabase = PowerSyncDatabaseImpl(
         schema = schema,
         factory = factory,

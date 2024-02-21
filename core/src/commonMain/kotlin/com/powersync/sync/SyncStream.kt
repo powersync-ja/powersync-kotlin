@@ -5,7 +5,6 @@ import com.powersync.bucket.BucketRequest
 import com.powersync.bucket.BucketStorage
 import com.powersync.bucket.Checkpoint
 import com.powersync.bucket.WriteCheckpointResponse
-import com.powersync.connectors.PowerSyncCredentials
 import co.touchlab.stately.concurrency.AtomicBoolean
 import com.powersync.connectors.PowerSyncBackendConnector
 import io.ktor.client.HttpClient
@@ -21,7 +20,6 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.utils.io.*
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -235,7 +233,6 @@ class SyncStream(
         when (true) {
             isStreamingSyncCheckpoint(obj) -> return handleStreamingSyncCheckpoint(obj, state)
             isStreamingSyncCheckpointComplete(obj) -> return handleStreamingSyncCheckpointComplete(
-                obj,
                 state
             )
 
@@ -284,7 +281,6 @@ class SyncStream(
     }
 
     private suspend fun handleStreamingSyncCheckpointComplete(
-        jsonObj: JsonObject,
         state: SyncStreamState
     ): SyncStreamState {
         println("Checkpoint complete ${Json.encodeToString(state.targetCheckpoint)}")

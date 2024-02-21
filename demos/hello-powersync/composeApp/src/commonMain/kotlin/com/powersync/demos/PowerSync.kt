@@ -4,9 +4,9 @@ import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncBuilder
 import com.powersync.PowerSyncDatabase
 import com.powersync.connectors.SupabaseConnector
-import com.powersync.demos.SupabaseConfig.POWERSYNC_URL
-import com.powersync.demos.SupabaseConfig.SUPABASE_KEY
-import com.powersync.demos.SupabaseConfig.SUPABASE_URL
+import com.powersync.demos.Config.POWERSYNC_URL
+import com.powersync.demos.Config.SUPABASE_KEY
+import com.powersync.demos.Config.SUPABASE_URL
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.runBlocking
 
