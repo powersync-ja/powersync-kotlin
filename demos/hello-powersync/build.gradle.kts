@@ -4,4 +4,5 @@ plugins {
     alias(projectLibs.plugins.jetbrainsCompose) apply false
     alias(projectLibs.plugins.kotlinMultiplatform) apply false
     alias(projectLibs.plugins.cocoapods) apply false
+    alias(libs.plugins.buildKonfig) apply false
 }

@@ -1,4 +1,6 @@
 import org.jetbrains.compose.ExperimentalComposeLibrary
+import java.util.Properties
+import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING
 
 plugins {
     alias(projectLibs.plugins.kotlinMultiplatform)
@@ -6,6 +8,7 @@ plugins {
     alias(projectLibs.plugins.androidApplication)
     alias(projectLibs.plugins.jetbrainsCompose)
     alias(projectLibs.plugins.skie)
+    alias(libs.plugins.buildKonfig)
 }
 
 kotlin {
@@ -93,3 +96,23 @@ android {
         jvmToolchain(17)
     }
 }
+
+
+buildkonfig {
+    packageName = "com.powersync.demos"
+    objectName = "SupabaseConfig"
+
+    defaultConfigs {
+        buildConfigField(STRING, "POWERSYNC_URL", readLocalProperty("POWERSYNC_URL"))
+        buildConfigField(STRING, "SUPABASE_URL", readLocalProperty("SUPABASE_URL"))
+        buildConfigField(STRING, "SUPABASE_KEY", readLocalProperty("SUPABASE_KEY"))
+    }
+}
+
+fun readLocalProperty(name: String): String = Properties().apply {
+    try {
+        load(rootProject.file("local.properties").reader())
+    } catch (ignored: java.io.IOException) {
+        throw Error("local.properties file not found")
+    }
+}.getProperty(name)
