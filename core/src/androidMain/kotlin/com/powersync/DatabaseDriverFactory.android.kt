@@ -11,7 +11,7 @@ import io.requery.android.database.sqlite.SQLiteCustomExtension
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 actual class DatabaseDriverFactory(private val context: Context) {
-    private var driver: SqlDriver? = null
+    private var driver: PsSqliteDriver? = null
     private external fun setupSqliteUpdateHook()
 
     @Suppress("unused")
@@ -26,10 +26,10 @@ actual class DatabaseDriverFactory(private val context: Context) {
 
     actual fun createDriver(
         dbFilename: String
-    ): SqlDriver {
+    ): PsSqliteDriver {
         val schema = PsInternalSchema.synchronous()
 
-        this.driver = AndroidSqliteDriver(
+        this.driver = PsSqliteDriver(AndroidSqliteDriver(
             context = context,
             schema = schema,
             name = dbFilename,
@@ -56,9 +56,9 @@ actual class DatabaseDriverFactory(private val context: Context) {
                     super.onConfigure(db)
                 }
             }
-        )
+        ))
         setupSqliteUpdateHook()
-        return this.driver as SqlDriver
+        return this.driver as PsSqliteDriver
     }
 
 

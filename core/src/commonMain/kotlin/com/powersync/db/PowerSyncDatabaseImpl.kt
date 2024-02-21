@@ -5,9 +5,9 @@ import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import app.cash.sqldelight.db.SqlCursor
-import app.cash.sqldelight.db.SqlDriver
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
+import com.powersync.PsSqliteDriver
 import com.powersync.bucket.BucketStorage
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.crud.CrudBatch
@@ -20,8 +20,6 @@ import com.powersync.sync.SyncStatus
 import com.powersync.sync.SyncStream
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
@@ -41,7 +39,7 @@ internal class PowerSyncDatabaseImpl(
     val scope: CoroutineScope,
     val factory: DatabaseDriverFactory,
     private val dbFilename: String,
-    override val driver: SqlDriver = factory.createDriver(dbFilename),
+    override val driver: PsSqliteDriver = factory.createDriver(dbFilename),
 ) : PowerSyncDatabase {
     private val internalDb = PsInternalDatabase(driver, scope)
     private val bucketStorage: BucketStorage = BucketStorage(internalDb)
@@ -84,9 +82,9 @@ internal class PowerSyncDatabaseImpl(
             syncStream!!.streamingSync()
         }
 
-        driver.addListener("ps_crud") {
+        driver.tableUpdates("ps_crud") {
             scope.launch {
-                syncStream?.triggerCrudUpload()
+                syncStream!!.triggerCrudUpload()
             }
         }
     }

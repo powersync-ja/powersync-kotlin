@@ -1,7 +1,6 @@
 package com.powersync
 
 import app.cash.sqldelight.async.coroutines.synchronous
-import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.native.NativeSqliteDriver
 import app.cash.sqldelight.driver.native.wrapConnection
 import co.touchlab.sqliter.DatabaseConfiguration
@@ -18,7 +17,7 @@ import kotlinx.cinterop.toKString
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 @OptIn(ExperimentalForeignApi::class)
 actual class DatabaseDriverFactory {
-    private var driver: SqlDriver? = null
+    private var driver: PsSqliteDriver? = null
 
     init {
         init_powersync_sqlite_extension()
@@ -30,9 +29,9 @@ actual class DatabaseDriverFactory {
 
     actual fun createDriver(
         dbFilename: String
-    ): SqlDriver {
+    ): PsSqliteDriver {
         val schema = PsInternalSchema.synchronous()
-        this.driver = NativeSqliteDriver(
+        this.driver = PsSqliteDriver(NativeSqliteDriver(
             configuration = DatabaseConfiguration(
                 name = dbFilename,
                 version = schema.version.toInt(),
@@ -70,6 +69,7 @@ actual class DatabaseDriverFactory {
                 )
             )
         )
-        return this.driver as SqlDriver
+        )
+        return this.driver as PsSqliteDriver
     }
 }
