@@ -1,7 +1,6 @@
 package com.powersync.plugins.sonatype
 
 import org.gradle.api.Project
-import org.gradle.api.artifacts.repositories.PasswordCredentials
 import org.gradle.api.publish.PublishingExtension
 import java.net.URI
 
@@ -10,26 +9,36 @@ inline val Project.gradlePublishing: PublishingExtension
 
 fun Project.findOptionalProperty(propertyName: String) = findProperty(propertyName)?.toString()
 
-/** Sets up repository for publishing to Github Packages
- * username and password (a personal Github access token) should be specified as `githubPackagesUsername` and `githubPackagesPassword` Gradle properties or
- * alternatively as `ORG_GRADLE_PROJECT_githubPackagesUsername` and `ORG_GRADLE_PROJECT_githubPackagesPassword` environment variables
+
+/** Sets up repository for publishing to Github Packages to GITHUB_REPO property
+ * username and password (a personal Github access token) should be specified as
+ * `GITHUB_PUBLISH_USER` and `GITHUB_PUBLISH_TOKEN` gradle properties
  */
 @Suppress("unused")
 fun Project.setupGithubRepository() {
     gradlePublishing.apply {
-        val githubRepo = githubRepoOrNull ?: ""
-        if (githubRepo.isEmpty()) {
-            logger.error("GITHUB_REPO property missing")
-            return
-        }
+        val githubRepo = githubRepoOrNull ?: throw Error("GITHUB_REPO property missing")
+
+        val githubPublishToken =
+            githubPublishTokenOrNull ?: throw Error("GITHUB_PUBLISH_TOKEN property missing")
+        val githubPublishUser = project.githubPublishUser ?: "cirunner"
 
         repositories.maven {
             it.name = "githubPackages"
             it.url = URI.create("https://maven.pkg.github.com/$githubRepo")
-            it.credentials(PasswordCredentials::class.java)
+            it.credentials { cred ->
+                cred.username = githubPublishUser
+                cred.password = githubPublishToken
+            }
         }
     }
 }
+
+internal val Project.githubPublishUser: String?
+    get() = project.findOptionalProperty("GITHUB_PUBLISH_USER")
+
+internal val Project.githubPublishTokenOrNull: String?
+    get() = project.findOptionalProperty("GITHUB_PUBLISH_TOKEN")
 
 internal val Project.githubRepoOrNull: String?
     get() {

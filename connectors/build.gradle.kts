@@ -37,10 +37,4 @@ android {
     }
 }
 
-if (System.getenv().containsKey("CI")) {
-    // Setup github publishing based on GitHub action variables
-    addGithubPackagesRepository()
-} else {
-    // Setup github publishing from local dev
-    setupGithubRepository()
-}
+setupGithubRepository()

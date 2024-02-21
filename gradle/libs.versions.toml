@@ -30,7 +30,7 @@ android-gradle-plugin = "8.2.2"
 kmmBridge = "0.5.1"
 skie = "0.6.1"
 maven-publish = "0.27.0"
-download-plugin = "4.0.4"
+download-plugin = "5.5.0"
 grammerKit = "0.1.12"
 
 # Sample - Android
