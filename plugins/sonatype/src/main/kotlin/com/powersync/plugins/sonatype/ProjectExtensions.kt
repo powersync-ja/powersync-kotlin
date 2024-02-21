@@ -17,10 +17,10 @@ fun Project.findOptionalProperty(propertyName: String) = findProperty(propertyNa
 @Suppress("unused")
 fun Project.setupGithubRepository() {
     gradlePublishing.apply {
-        val githubRepo = githubRepoOrNull ?: throw Error("GITHUB_REPO property missing")
+        val githubRepo = githubRepoOrNull ?: return
 
         val githubPublishToken =
-            githubPublishTokenOrNull ?: throw Error("GITHUB_PUBLISH_TOKEN property missing")
+            githubPublishTokenOrNull ?: return
         val githubPublishUser = project.githubPublishUser ?: "cirunner"
 
         repositories.maven {
