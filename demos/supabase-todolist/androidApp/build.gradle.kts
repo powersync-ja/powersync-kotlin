@@ -20,7 +20,7 @@ android {
     namespace = "com.powersync.demos"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
     defaultConfig {
-        applicationId = "org.jetbrains.TodoAppLite"
+        applicationId = "com.powersync.demos.TodoAppLite"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
