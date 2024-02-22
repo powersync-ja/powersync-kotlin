@@ -23,9 +23,9 @@ kotlin {
         iosTarget.binaries.framework {
             baseName = "shared"
             isStatic = true
+            export(libs.powersync.core)
         }
     }
-
     sourceSets {
         commonMain.dependencies {
             api(libs.powersync.core)
