@@ -7,10 +7,6 @@ plugins {
 kotlin {
     androidTarget()
     sourceSets {
-        commonMain.dependencies {
-            api("com.powersync:core")
-            api("com.powersync:connectors")
-        }
         val androidMain by getting {
             dependencies {
                 implementation(project(":shared"))
@@ -21,12 +17,12 @@ kotlin {
 }
 
 android {
-    compileSdk = 34
-    namespace = "example.todoapp.lite"
+    namespace = "com.powersync.demos"
+    compileSdk = libs.versions.android.compileSdk.get().toInt()
     defaultConfig {
         applicationId = "org.jetbrains.TodoAppLite"
-        minSdk = 26
-        targetSdk = 34
+        minSdk = libs.versions.android.minSdk.get().toInt()
+        targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
     }
@@ -35,6 +31,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlin {
-        jvmToolchain(17)
+        jvmToolchain(libs.versions.java.get().toInt())
     }
 }

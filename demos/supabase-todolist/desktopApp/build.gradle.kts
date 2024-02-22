@@ -1,25 +1,23 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
-    kotlin("multiplatform")
-    id("org.jetbrains.compose")
+    alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.jetbrainsCompose)
 }
 
 kotlin {
     jvm {}
     sourceSets {
-        val jvmMain by getting  {
-            dependencies {
-                implementation(compose.desktop.currentOs)
-                implementation(project(":shared"))
-            }
+        jvmMain.dependencies {
+            implementation(compose.desktop.currentOs)
+            implementation(project(":shared"))
         }
     }
 }
 
 compose.desktop {
     application {
-        mainClass = "example.todoapp.lite.MainKt"
+        mainClass = "com.powersync.demos.MainKt"
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)

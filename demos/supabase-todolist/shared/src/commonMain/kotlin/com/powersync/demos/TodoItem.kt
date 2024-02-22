@@ -1,4 +1,4 @@
-package example.todoapp.lite.common
+package com.powersync.demos
 
 internal data class TodoItem(
     val id: Long = 0L,

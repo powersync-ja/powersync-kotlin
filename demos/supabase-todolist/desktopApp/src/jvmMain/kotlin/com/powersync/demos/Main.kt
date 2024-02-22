@@ -1,4 +1,4 @@
-package example.todoapp.lite
+package com.powersync.demos
 
 import MainView
 import androidx.compose.material.MaterialTheme

@@ -6,8 +6,8 @@
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.ComposeUIViewController
-import example.todoapp.lite.common.RootContent
 import platform.UIKit.UIViewController
+import com.powersync.demos.RootContent
 
 fun MainViewController() : UIViewController = ComposeUIViewController {
     RootContent(modifier = Modifier.fillMaxSize())

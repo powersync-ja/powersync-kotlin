@@ -6,7 +6,6 @@ import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
-import com.powersync.DatabaseDriverFactory
 
 class MainActivity : AppCompatActivity() {
 

@@ -1,6 +1,4 @@
-@file:JvmName("Utils")
-
-package example.todoapp.lite.common
+package com.powersync.demos
 
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
@@ -23,4 +21,3 @@ internal actual fun VerticalScrollbar(
 ) {
     // no-op
 }
-

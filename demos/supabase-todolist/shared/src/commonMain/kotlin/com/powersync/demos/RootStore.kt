@@ -1,4 +1,4 @@
-package example.todoapp.lite.common
+package com.powersync.demos
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf

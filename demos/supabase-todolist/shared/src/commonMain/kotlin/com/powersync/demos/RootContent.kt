@@ -1,11 +1,11 @@
-package example.todoapp.lite.common
+package com.powersync.demos
 
 import androidx.compose.foundation.background
 import androidx.compose.material.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import example.todoapp.lite.common.RootStore.RootState
+import com.powersync.demos.RootStore.RootState
 
 @Composable
 fun RootContent(modifier: Modifier = Modifier) {

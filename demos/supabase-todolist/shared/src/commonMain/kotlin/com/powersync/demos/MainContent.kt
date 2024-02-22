@@ -1,4 +1,4 @@
-package example.todoapp.lite.common
+package com.powersync.demos
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box

@@ -1,7 +1,7 @@
 plugins {
-    alias(projectLibs.plugins.androidApplication) apply false
-    alias(projectLibs.plugins.androidLibrary) apply false
-    alias(projectLibs.plugins.jetbrainsCompose) apply false
-    alias(projectLibs.plugins.kotlinMultiplatform) apply false
-    alias(projectLibs.plugins.kotlinCocoapods) apply false
+    alias(libs.plugins.androidApplication) apply false
+    alias(libs.plugins.androidLibrary) apply false
+    alias(libs.plugins.jetbrainsCompose) apply false
+    alias(libs.plugins.kotlinMultiplatform) apply false
+    alias(libs.plugins.cocoapods) apply false
 }
