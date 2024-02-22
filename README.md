@@ -25,13 +25,15 @@ Supported KMP targets: Android and iOS.
 
 ## Structure: Packages
 
-- [core](./core/README.md)
+- [core](./core/)
 
-    - Kotlin Multiplatform SDK implementation
+    - This is the Kotlin Multiplatform SDK implementation.
 
-- [connectors](./connectors/README.md)
+- [connectors](./connectors/)
 
-    - Supabase connector
+    - [SupabaseConnector.kt](./connectors/src/commonMain/kotlin/com/powersync/connectors/SupabaseConnector.kt) An example connector implementation tailed for Supabase. The backend connector provides the connection between your application backend and the PowerSync managed database. It is used to: 
+      1. Retrieve a token to connect to the PowerSync service.
+      2. Apply local changes on your backend application server (and from there, to Postgres).
 
 ## Demo Apps / Example Projects
 
@@ -39,17 +41,16 @@ The easiest way to test the PowerSync KMP SDK is to run one of our demo applicat
 
 Demo applications are located in the [`demos/`](./demos) directory. See their respective README's for testing instructions:
 
-- [demos/hello-powersync](./demos/hello-powersync/README.md): A minimal example demonstrating the use of the PowerSync Kotlin Multiplatform SDK.
+- [demos/hello-powersync](./demos/hello-powersync/README.md): A minimal example demonstrating the use of the PowerSync Kotlin Multiplatform SDK and the Supabase connector.
 
 - [demos/supabase-todolist](./demos/supabase-todolist/README.md): ** Currently a work in progress **
-  A simple to-do list application that uses the PowerSync Kotlin Multiplatform SDK and the Supabase connector.
+  A simple to-do list application demonstrating the use of the PowerSync Kotlin Multiplatform SDK and the Supabase connector.
 
 ## Limitations
 
-The PowerSync Kotlin Multiplatform SDK is currently in alpha release and is not yet suitable for production use.
+The PowerSync Kotlin Multiplatform SDK is currently in an alpha release and is not yet suitable for production use.
 
 - Integration with SQLDelight schema and API generation is not yet supported.
-- Sqlite database migration is not yet supported.
 - Configurable logging is not yet implemented.
 
 ## Getting Started
@@ -108,9 +109,7 @@ available [here](https://docs.powersync.com/integration-guides/supabase-+-powers
   steps required for this, and find database specific
   instructions [here](https://docs.powersync.com/usage/installation/database-setup). Existing users: start the onboarding wizard by navigating to Help > Start guide in the top-right corner.
 
-#### Implement a backend connector and initialize the PowerSync database
-
-1. Define the schema for the on-device SQLite database.
+#### 1. Define the schema for the on-device SQLite database.
 
 ```kotlin
 import com.powersync.db.schema.Column
@@ -132,7 +131,7 @@ val schema: Schema = Schema(
 ```
 Note: No need to declare a primary key `id` column, as PowerSync will automatically create this.
 
-2. Implement a backend connector to define how PowerSync communicates with your backend this sends changes in local data to your backend service.
+#### 2. Implement a backend connector to define how PowerSync communicates with your backend this sends changes in local data to your backend service.
     
 ```kotlin
 class MyConnector: PowerSyncBackendConnector() {
@@ -150,7 +149,7 @@ class MyConnector: PowerSyncBackendConnector() {
 
 Alternatively, you can use [SupabaseConnector.kt](./connectors/src/commonMain/kotlin/com/powersync/connectors/SupabaseConnector.kt) as a starting point.
 
-3. Initialize the PowerSync database an connect it to the connector, using `PowerSyncBuilder`:
+#### 3. Initialize the PowerSync database an connect it to the connector, using `PowerSyncBuilder`:
   a. Create platform specific `DatabaseDriverFactory` to be used by the `PowerSyncBuilder` to create the SQLite database driver.
   ```kotlin
   // Android
@@ -172,7 +171,7 @@ Alternatively, you can use [SupabaseConnector.kt](./connectors/src/commonMain/ko
     database.connect(MyConnector())
   ```
 
-4. Subscribe to changes in data
+#### 4. Subscribe to changes in data
     
 ```kotlin
 fun watchCustomers(): Flow<List<User>> {
@@ -186,7 +185,7 @@ fun watchCustomers(): Flow<List<User>> {
 }
 ```
 
-5. Insert, update, and delete data in the SQLite database
+#### 5. Insert, update, and delete data in the SQLite database
 
 ```kotlin
 suspend fun insertCustomer(name: String, email: String) {
@@ -218,13 +217,3 @@ suspend fun deleteCustomer(id: String? = null) {
   }
 }
 ```
-
-## Development
-
-### Build
-
-[//]: # (TODO)
-
-### Publishing
-
-[//]: # (TODO)

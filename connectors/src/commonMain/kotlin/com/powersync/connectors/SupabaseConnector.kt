@@ -11,6 +11,12 @@ import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
 
+/** 
+ * A backend connector tailored to Supabase backends.
+ * The backend connector provides the connection between your application backend and the PowerSync managed database. The connector is responsible for:
+ * 1. Obtaining credentials for connecting to the PowerSync service.
+ * 2. Applying local changes against the backend application server.
+ */
 class SupabaseConnector(
     val supabaseUrl: String,
     val supabaseKey: String,
@@ -41,6 +47,9 @@ class SupabaseConnector(
         fetchCredentials()
     }
 
+    /** 
+     * Get credentials for PowerSync.
+     */ 
     override suspend fun fetchCredentials(): PowerSyncCredentials {
         if (!loggedIn) {
             throw Exception("Not logged in")
@@ -61,7 +70,7 @@ class SupabaseConnector(
     }
 
     /**
-     * Upload pending changes to Supabase.
+     * Upload local changes to the app backend (in this case Supabase).
      *
      * This function is called whenever there is data to upload, whether the device is online or offline.
      * If this call throws an error, it is retried periodically.

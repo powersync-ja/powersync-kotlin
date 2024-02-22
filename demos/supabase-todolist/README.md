@@ -1,28 +1,28 @@
-# TodoApp (lite version)
+# PowerSync + Supabase Kotlin Multiplatform Demo: Todo List App
 
-*** This demo app is a work in progress - it's not ready to be used yet. ***
+*** This demo app is a work in progress. It can be run, but certain functionality does not yet work. ***
 
-A simplified version of the [TodoApp example](https://github.com/JetBrains/compose-jb/tree/master/examples/todoapp), fully based on Jetpack Compose and without using any third-party libraries.
+This demo app originally was cloned from [JetBrain's TodoApp (lite version)](https://github.com/JetBrains/compose-multiplatform/tree/master/examples/todoapp-lite).
 
-Supported targets: Android and iOS.
+It is a simple to-do list application demonstrating use of the PowerSync Kotlin Mutiplatform SDK together
+with [Supabase](https://supabase.com/) in a basic Kotlin Multiplatform Compose App. 
+
+Supported KMP targets: Android and iOS.
 
 ## Setting up your development environment
+To setup your environment, please consult [these instructions](https://www.jetbrains.com/help/kotlin-multiplatform-dev/compose-multiplatform-setup.html).
 
-To setup the environment, please consult these [instructions](https://github.com/JetBrains/compose-multiplatform-template#setting-up-your-development-environment).
+## Set up Supabase project
 
-## How to run
+Instructions will follow soon.
 
-Choose a run configuration for an appropriate target in Android Studio and run it.
+## Set up PowerSync instance
 
-![run-configurations.png](run-configurations.png)
+Instructions will follow soon.
 
-## Run on desktop via Gradle
+## Set up project in Android Studio
 
-`./gradlew desktopApp:run`
+Instructions will follow soon.
 
-## Building native desktop distribution
-```
-./gradlew :desktopApp:packageDistributionForCurrentOS
-# outputs are written to desktopApp/build/compose/binaries
-```
-![Desktop](screenshots/todoapplite.png)
+## Run the app
+Choose a run configuration for the Android or iOS target in Android Studio and run it.
