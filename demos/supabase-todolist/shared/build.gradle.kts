@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.jetbrainsCompose)
+    alias(libs.plugins.cocoapods)
     alias(libs.plugins.buildKonfig)
 }
 
@@ -14,13 +15,17 @@ kotlin {
     androidTarget()
 
 //    jvm()
+    iosX64()
+    iosArm64()
+    iosSimulatorArm64()
 
-    listOf(
-        iosX64(),
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
+    cocoapods {
+        ios.deploymentTarget = "15.2"
+        pod("powersync-sqlite-core") {
+            linkOnly = true
+        }
+
+        framework {
             baseName = "shared"
             isStatic = true
             export(libs.powersync.core)

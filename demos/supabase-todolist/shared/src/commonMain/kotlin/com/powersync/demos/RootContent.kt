@@ -27,12 +27,12 @@ fun RootContent(factory: DatabaseDriverFactory, modifier: Modifier = Modifier) {
     )
 
 
-//    if (state.editingItem != null) {
-//        EditDialog(
-//            item = state.editingItem,
-//            onCloseClicked = model::onEditorCloseClicked,
-//            onTextChanged = model::onEditorTextChanged,
-//            onDoneChanged = model::onEditorDoneChanged,
-//        )
-//    }
+    state.editingItem?.also {
+        EditDialog(
+            item = it,
+            onCloseClicked = model::onEditorCloseClicked,
+            onTextChanged = model::onEditorTextChanged,
+            onDoneChanged = model::onEditorDoneChanged,
+        )
+    }
 }
