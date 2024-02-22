@@ -23,6 +23,7 @@ internal class RootStore(factory: DatabaseDriverFactory) {
 
     init {
         runBlocking {
+            connector.login(TEST_EMAIL, TEST_PASSWORD)
             db.connect(connector)
         }
     }
@@ -107,4 +108,9 @@ internal class RootStore(factory: DatabaseDriverFactory) {
         val inputText: String = "",
         val editingItemId: String? = null,
     )
+
+    companion object {
+        private const val TEST_EMAIL = "hello@powersync.com"
+        private const val TEST_PASSWORD = "@dYX0}72eS0kT=(YG@8("
+    }
 }
