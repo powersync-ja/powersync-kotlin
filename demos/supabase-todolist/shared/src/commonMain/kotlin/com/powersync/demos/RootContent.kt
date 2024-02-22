@@ -8,7 +8,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.powersync.DatabaseDriverFactory
-import com.powersync.demos.RootStore.RootState
 
 @Composable
 fun RootContent(factory: DatabaseDriverFactory, modifier: Modifier = Modifier) {
@@ -27,18 +26,13 @@ fun RootContent(factory: DatabaseDriverFactory, modifier: Modifier = Modifier) {
         onInputTextChanged = model::onInputTextChanged,
     )
 
-    state.editingItem?.also { item ->
-        EditDialog(
-            item = item,
-            onCloseClicked = model::onEditorCloseClicked,
-            onTextChanged = model::onEditorTextChanged,
-            onDoneChanged = model::onEditorDoneChanged,
-        )
-    }
+
+//    if (state.editingItem != null) {
+//        EditDialog(
+//            item = state.editingItem,
+//            onCloseClicked = model::onEditorCloseClicked,
+//            onTextChanged = model::onEditorTextChanged,
+//            onDoneChanged = model::onEditorDoneChanged,
+//        )
+//    }
 }
-
-private val RootState.editingItem: TodoItem?
-    get() = null
-
-private fun List<TodoItem>.firstById(id: String): TodoItem? =
-    firstOrNull { it.id == id }

@@ -86,7 +86,7 @@ class SyncStream(
                 }
                 streamingSyncIteration()
             } catch (e: Exception) {
-                println("Error streaming sync: $e")
+                println("SyncStream::streamingSync Error: $e")
                 invalidCredentials = true
                 updateStatus(
                     connected = false,
@@ -212,9 +212,9 @@ class SyncStream(
         )
 
         streamingSyncRequest(req).retryWhen { cause, attempt ->
-            println("Error streaming sync: $cause")
+            println("SyncStream::streamingSyncIteration Error: $cause")
             delay(retryDelay)
-            println("Retrying attempt: $attempt")
+            println("SyncStream::streamingSyncIteration Retrying attempt: $attempt")
             true
         }.collect { value ->
             handleInstruction(value, state)
@@ -353,8 +353,10 @@ class SyncStream(
         state: SyncStreamState
     ): SyncStreamState {
 
+        val json = Json { isLenient = true }
+
         val syncBuckets =
-            listOf<SyncDataBucket>(Json.decodeFromJsonElement(jsonObj["data"] as JsonElement))
+            listOf<SyncDataBucket>(json.decodeFromJsonElement(jsonObj["data"] as JsonElement))
 
         bucketStorage.saveSyncData(SyncDataBatch(syncBuckets))
 

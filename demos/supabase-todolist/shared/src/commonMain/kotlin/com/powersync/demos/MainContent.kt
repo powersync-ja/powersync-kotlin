@@ -35,14 +35,20 @@ internal fun MainContent(
     modifier: Modifier = Modifier,
     items: List<TodoItem>,
     inputText: String,
-    onItemClicked: (id: String) -> Unit,
-    onItemDoneChanged: (id: String, isDone: Boolean) -> Unit,
-    onItemDeleteClicked: (id: String) -> Unit,
+    onItemClicked: (id: TodoItem) -> Unit,
+    onItemDoneChanged: (id: TodoItem, isDone: Boolean) -> Unit,
+    onItemDeleteClicked: (id: TodoItem) -> Unit,
     onAddItemClicked: () -> Unit,
     onInputTextChanged: (String) -> Unit,
 ) {
     Column(modifier) {
         TopAppBar(title = { Text(text = "Todo List") })
+
+        Input(
+            text = inputText,
+            onAddClicked = onAddItemClicked,
+            onTextChanged = onInputTextChanged
+        )
 
         Box(Modifier.weight(1F)) {
             ListContent(
@@ -52,21 +58,15 @@ internal fun MainContent(
                 onItemDeleteClicked = onItemDeleteClicked
             )
         }
-
-        Input(
-            text = inputText,
-            onAddClicked = onAddItemClicked,
-            onTextChanged = onInputTextChanged
-        )
     }
 }
 
 @Composable
 private fun ListContent(
     items: List<TodoItem>,
-    onItemClicked: (id: String) -> Unit,
-    onItemDoneChanged: (id: String, isDone: Boolean) -> Unit,
-    onItemDeleteClicked: (id: String) -> Unit,
+    onItemClicked: (id: TodoItem) -> Unit,
+    onItemDoneChanged: (id: TodoItem, isDone: Boolean) -> Unit,
+    onItemDeleteClicked: (id: TodoItem) -> Unit,
 ) {
     Box {
         val listState = rememberLazyListState()
@@ -75,9 +75,9 @@ private fun ListContent(
             items(items) { item ->
                 Item(
                     item = item,
-                    onClicked = { onItemClicked(item.id) },
-                    onDoneChanged = { onItemDoneChanged(item.id, it) },
-                    onDeleteClicked = { onItemDeleteClicked(item.id) }
+                    onClicked = { onItemClicked(item) },
+                    onDoneChanged = { onItemDoneChanged(item, it) },
+                    onDeleteClicked = { onItemDeleteClicked(item) }
                 )
 
                 Divider()

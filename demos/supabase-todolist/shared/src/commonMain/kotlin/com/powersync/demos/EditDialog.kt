@@ -44,7 +44,6 @@ internal fun EditDialog(
 
             Row {
                 Text(text = "Completed", Modifier.padding(15.dp))
-
                 Checkbox(
                     checked = item.completed,
                     onCheckedChange = onDoneChanged,

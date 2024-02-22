@@ -38,27 +38,31 @@ internal class RootStore(factory: DatabaseDriverFactory) {
         }
     }
 
-    fun onItemClicked(id: String) {
-        setState { copy(editingItemId = id) }
+    fun onItemClicked(item: TodoItem) {
+        setState { copy(editingItem = item) }
     }
 
-    fun onItemDoneChanged(id: String, isDone: Boolean) {
-        updateItem(id = id) { it.copy(completed = isDone) }
+    fun onItemDoneChanged(item: TodoItem, isDone: Boolean) {
+        updateItem(item = item) { it.copy(completed = isDone) }
     }
 
-    fun onItemDeleteClicked(id: String) {
+    fun onItemDeleteClicked(item: TodoItem) {
         runBlocking {
-            db.execute("DELETE FROM todos WHERE id = ?", listOf(id))
+            db.execute("DELETE FROM todos WHERE id = ?", listOf(item.id))
         }
     }
 
     fun onAddItemClicked() {
+        if (state.inputText.isBlank()) return
 
         runBlocking {
             db.execute(
-                "INSERT INTO todos (id, text, isDone) VALUES (uuid(), ?, ?)",
+                "INSERT INTO todos (id, description, completed) VALUES (uuid(), ?, ?)",
                 listOf(state.inputText, 0L)
             )
+            setState {
+                copy(inputText = "")
+            }
         }
     }
 
@@ -67,31 +71,28 @@ internal class RootStore(factory: DatabaseDriverFactory) {
     }
 
     fun onEditorCloseClicked() {
-        setState { copy(editingItemId = null) }
+        updateItem(item = requireNotNull(state.editingItem)) { it }
+        setState { copy(editingItem = null) }
     }
 
     fun onEditorTextChanged(text: String) {
-        updateItem(id = requireNotNull(state.editingItemId)) { it.copy(description = text) }
+        updateEditingItem(item = requireNotNull(state.editingItem)) { it.copy(description = text) }
     }
 
     fun onEditorDoneChanged(isDone: Boolean) {
-        updateItem(id = requireNotNull(state.editingItemId)) { it.copy(completed = isDone) }
+        updateEditingItem(item = requireNotNull(state.editingItem)) { it.copy(completed = isDone) }
     }
 
-    private fun updateItem(id: String, transformer: (item: TodoItem) -> TodoItem) {
-        runBlocking {
-            val item = db.getOptional("SELECT * FROM todos WHERE id = ?", listOf(id)) {
-                TodoItem(
-                    id = it.getString(0)!!,
-                    description = it.getString(1)!!,
-                    completed = it.getLong(2) == 1L
-                )
-            } ?: return@runBlocking
+    private fun updateEditingItem(item: TodoItem, transformer: (item: TodoItem) -> TodoItem) {
+        setState { copy(editingItem = transformer(item)) }
+    }
 
+    private fun updateItem(item: TodoItem, transformer: (item: TodoItem) -> TodoItem) {
+        runBlocking {
             val updatedItem = transformer(item)
             db.execute(
                 "UPDATE todos SET description = ?, completed = ? WHERE id = ?",
-                listOf(id, updatedItem.description, updatedItem.completed)
+                listOf(item.id, updatedItem.description, updatedItem.completed)
             )
         }
     }
@@ -106,7 +107,7 @@ internal class RootStore(factory: DatabaseDriverFactory) {
 
     data class RootState(
         val inputText: String = "",
-        val editingItemId: String? = null,
+        val editingItem: TodoItem? = null
     )
 
     companion object {

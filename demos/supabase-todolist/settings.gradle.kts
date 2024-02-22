@@ -23,13 +23,14 @@ dependencyResolutionManagement {
         mavenCentral()
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
         maven("https://jitpack.io")
-        maven {
-            url = uri("https://maven.pkg.github.com/powersync-ja/powersync-kotlin")
-            credentials {
-                username = localProperties.getProperty("GITHUB_USERNAME")
-                password = localProperties.getProperty("GITHUB_TOKEN")
-            }
-        }
+        mavenLocal()
+//        maven {
+//            url = uri("https://maven.pkg.github.com/powersync-ja/powersync-kotlin")
+//            credentials {
+//                username = localProperties.getProperty("GITHUB_USERNAME")
+//                password = localProperties.getProperty("GITHUB_TOKEN")
+//            }
+//        }
     }
 }
 
