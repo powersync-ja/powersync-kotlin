@@ -7,7 +7,7 @@ import com.powersync.db.schema.Table
 val AppSchema: Schema = Schema(
     listOf(
         Table(
-            "users",
+            "customers",
             listOf(
                 Column.text("name"),
                 Column.text("email")

@@ -38,7 +38,7 @@ class PowerSync(
     }
 
     fun watchUsers(): Flow<List<User>> {
-        return database.watch("SELECT * FROM users", mapper = { cursor ->
+        return database.watch("SELECT * FROM customers", mapper = { cursor ->
             User(
                 id = cursor.getString(0)!!,
                 name = cursor.getString(1)!!,
@@ -50,7 +50,7 @@ class PowerSync(
     suspend fun createUser(name: String, email: String) {
         database.writeTransaction {
             database.execute(
-                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                "INSERT INTO customers (id, name, email) VALUES (uuid(), ?, ?)",
                 listOf(name, email)
             )
         }
@@ -58,13 +58,13 @@ class PowerSync(
 
     suspend fun deleteUser(id: String? = null) {
         val targetId =
-            id ?: database.getOptional("SELECT id FROM users LIMIT 1", mapper = { cursor ->
+            id ?: database.getOptional("SELECT id FROM customers LIMIT 1", mapper = { cursor ->
                 cursor.getString(0)!!
             })
             ?: return
 
         database.writeTransaction {
-            database.execute("DELETE FROM users WHERE id = ?", listOf(targetId))
+            database.execute("DELETE FROM customers WHERE id = ?", listOf(targetId))
         }
     }
 }
