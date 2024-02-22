@@ -71,7 +71,7 @@ internal class RootStore(factory: DatabaseDriverFactory) {
     }
 
     fun onEditorCloseClicked() {
-        updateItem(item = requireNotNull(state.editingItem)) { it }
+        updateItem(item = requireNotNull(state.editingItem)) { it.copy() }
         setState { copy(editingItem = null) }
     }
 
@@ -92,7 +92,7 @@ internal class RootStore(factory: DatabaseDriverFactory) {
             val updatedItem = transformer(item)
             db.execute(
                 "UPDATE todos SET description = ?, completed = ? WHERE id = ?",
-                listOf(item.id, updatedItem.description, updatedItem.completed)
+                listOf(updatedItem.description, updatedItem.completed, item.id)
             )
         }
     }

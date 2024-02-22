@@ -39,7 +39,7 @@ import kotlinx.coroutines.launch
 fun App(powerSync: PowerSync) {
     var version by remember { mutableStateOf("Loading") }
     val scope = rememberCoroutineScope()
-    val users by powerSync.watchUsers().collectAsState(emptyList())
+    val customers by powerSync.watchUsers().collectAsState(emptyList())
 
     MaterialTheme {
         Surface(
@@ -53,7 +53,7 @@ fun App(powerSync: PowerSync) {
             }
 
             ViewContent(version,
-                users = users,
+                users = customers,
                 onCreate = {
                     scope.launch {
                         val person = generateRandomPerson()
@@ -113,12 +113,12 @@ fun ViewContent(version: String, users: List<User>, onCreate: () -> Unit, onDele
                             horizontalArrangement = Arrangement.SpaceAround
                         ) {
                             Column {
-                                MyButton(label = "Create User") {
+                                MyButton(label = "Create") {
                                     onCreate()
                                 }
                             }
                             Column {
-                                MyButton(label = "Delete User") {
+                                MyButton(label = "Delete") {
                                     onDelete()
                                 }
                             }
