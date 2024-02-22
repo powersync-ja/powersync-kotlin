@@ -159,10 +159,10 @@ Alternatively, you can use [SupabaseConnector.kt](./connectors/src/commonMain/ko
   val driverFactory = DatabaseDriverFactory()
   ```
 
-  b. Build a `PowerSyncDatabase` instance using the `PowerSyncBuilder`, schema and the `DatabaseDriverFactory`:
+  b. Build a `PowerSyncDatabase` instance using the `PowerSyncBuilder` and the `DatabaseDriverFactory`. The schema you created in a previous step is also used as a parameter:
   ```kotlin
     // commonMain
-    val database = PowerSyncBuilder.from(driverFactory, AppSchema).build()
+    val database = PowerSyncBuilder.from(driverFactory, schema).build()
   ```
 
   c. Connect the `PowerSyncDatabase` to the backend connector:

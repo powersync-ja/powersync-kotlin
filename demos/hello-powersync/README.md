@@ -25,8 +25,11 @@ create table
     id uuid not null default gen_random_uuid (),
     name text not null,
     email text not null,
-    constraint customers_pkey primary key (id),
+    constraint customers_pkey primary key (id)
   ) tablespace pg_default;
+
+
+drop publication powersync;
 
 -- Create publication for powersync
 create publication powersync for table customers;
@@ -69,10 +72,10 @@ To setup your environment, please consult [these instructions](https://www.jetbr
 sdk.dir=/path/to/android/sdk
 
 # Enter your PowerSync instance URL
-POWERSYNC_URL= 
+POWERSYNC_URL=https://foo.powersync.journeyapps.com
 # Enter your Supabase project's URL and public anon key (Project settings > API)
-SUPABASE_URL=
-SUPABASE_ANON_KEY=
+SUPABASE_URL=https://foo.supabase.co
+SUPABASE_ANON_KEY=foo
 
 # Enter your Supabase auth user's details
 SUPABASE_USER_EMAIL=user@example.com
