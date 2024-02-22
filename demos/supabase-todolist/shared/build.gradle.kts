@@ -1,7 +1,11 @@
+import java.util.Properties
+import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.jetbrainsCompose)
+    alias(libs.plugins.buildKonfig)
 }
 
 version = "1.0-SNAPSHOT"
@@ -9,7 +13,7 @@ version = "1.0-SNAPSHOT"
 kotlin {
     androidTarget()
 
-    jvm()
+//    jvm()
 
     listOf(
         iosX64(),
@@ -24,7 +28,9 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-//            api(libs.powersync.core)
+            api(libs.powersync.core)
+            api(libs.powersync.connectors)
+            implementation(libs.uuid)
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material)
@@ -37,9 +43,9 @@ kotlin {
             api(libs.androidx.core)
         }
 
-        jvmMain.dependencies {
-            implementation(compose.desktop.common)
-        }
+//        jvmMain.dependencies {
+//            implementation(compose.desktop.common)
+//        }
     }
 }
 
@@ -61,3 +67,22 @@ android {
         jvmToolchain(libs.versions.java.get().toInt())
     }
 }
+
+buildkonfig {
+    packageName = "com.powersync.demos"
+    objectName = "Config"
+
+    defaultConfigs {
+        buildConfigField(STRING, "POWERSYNC_URL", readLocalProperty("POWERSYNC_URL"))
+        buildConfigField(STRING, "SUPABASE_URL", readLocalProperty("SUPABASE_URL"))
+        buildConfigField(STRING, "SUPABASE_ANON_KEY", readLocalProperty("SUPABASE_ANON_KEY"))
+    }
+}
+
+fun readLocalProperty(name: String): String = Properties().apply {
+    try {
+        load(rootProject.file("local.properties").reader())
+    } catch (ignored: java.io.IOException) {
+        throw Error("local.properties file not found")
+    }
+}.getProperty(name)

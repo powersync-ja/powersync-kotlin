@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
+import com.powersync.DatabaseDriverFactory
 
 class MainActivity : AppCompatActivity() {
 
@@ -15,7 +16,7 @@ class MainActivity : AppCompatActivity() {
         setContent {
             MaterialTheme {
                 Surface(color = MaterialTheme.colors.background) {
-                    MainView()
+                    MainView(DatabaseDriverFactory(this))
                 }
             }
         }

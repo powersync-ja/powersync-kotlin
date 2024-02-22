@@ -34,7 +34,7 @@ internal fun EditDialog(
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             TextField(
-                value = item.text,
+                value = item.description,
                 modifier = Modifier.weight(1F).fillMaxWidth().sizeIn(minHeight = 192.dp),
                 label = { Text("Todo text") },
                 onValueChange = onTextChanged,
@@ -46,7 +46,7 @@ internal fun EditDialog(
                 Text(text = "Completed", Modifier.padding(15.dp))
 
                 Checkbox(
-                    checked = item.isDone,
+                    checked = item.completed,
                     onCheckedChange = onDoneChanged,
                 )
             }

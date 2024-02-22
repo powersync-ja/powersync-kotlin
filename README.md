@@ -13,12 +13,11 @@ our [community Discord](https://discord.gg/powersync) - we'd love to hear from y
 
 ## SDK Features
 
-* Provides real-time streaming of database changes.
+* Provides real-time streaming of database changes, using Kotlin Coroutines and Flows.
 * Offers direct access to the SQLite database, enabling the use of SQL on both client and server
   sides.
-  [//]: # (TODO: Add support for Kotlin Coroutines and Flow)
-* By default, operations are asynchronous, ensuring the user interface remains unblocked.
-* Supports concurrent operations, allowing one write and multiple reads simultaneously.
+* Operations are asynchronous, ensuring the user interface remains unblocked.
+* Supports concurrent database operations, allowing one write and multiple reads simultaneously.
 * Enables subscription to queries for receiving live updates.
 * Eliminates the need for client-side database migrations as these are managed automatically.
 
@@ -47,13 +46,56 @@ Demo applications are located in the [`demos/`](./demos) directory. See their re
 
 ## Limitations
 
-[//]: # (TODO)
+The PowerSync Kotlin Multiplatform SDK is currently in alpha release and is not yet suitable for production use.
+
+- Integration with SQLDelight schema and API generation is not yet supported.
+- Sqlite database migration is not yet supported.
+- Configurable logging is not yet implemented.
 
 ## Getting Started
 
 ### Installation
 
-[//]: # (TODO)
+Add the PowerSync Kotlin Multiplatform SDK to your project by adding the following to your `build.gradle.kts` file:
+
+```kotlin
+
+kotlin {
+    //...
+  sourceSets {
+    commonMain.dependencies {
+      api("com.powersync:core:$powersyncVersion")
+    }
+    //...
+  }
+}
+```
+
+If want to use the Supabase Connector, also add the following to `commonMain.dependencies`:
+
+```kotlin
+    implementation("com.powersync:connectors:$powersyncVersion")
+```
+
+#### Cocoapods
+
+When using the PowerSync Kotlin Multiplatform SDK to build CocoaPods iOS, add the following to the `cocoapods` config in your `build.gradle.kts`:
+
+```kotlin
+cocoapods {
+  //...
+  pod("powersync-sqlite-core") {
+    linkOnly = true
+  }
+
+  framework {
+    isStatic = true
+    export("com.powersync:core")
+  }
+  //...
+}
+```
+Note: The `linkOnly` attribute is set to `true` and framework is set to `isStatic = true` to ensure that the `powersync-sqlite-core` binaries are only statically linked.
 
 ### Usage
 
@@ -68,15 +110,114 @@ available [here](https://docs.powersync.com/integration-guides/supabase-+-powers
 
 #### Implement a backend connector and initialize the PowerSync database
 
-[//]: # (TODO)
+1. Define the schema for the on-device SQLite database.
 
-1. Define the schema for the local SQLite database.
-2. Implement a backend connector to define how PowerSync communicates with your backend this sends changes in local data to your backend service TODO: code snippet
-3. Initialize the PowerSync database.
+```kotlin
+import com.powersync.db.schema.Column
+import com.powersync.db.schema.Schema
+import com.powersync.db.schema.Table
+
+val schema: Schema = Schema(
+  listOf(
+    Table(
+      "customers",
+      listOf(
+        Column.text("name"),
+        Column.text("email")
+      )
+    )
+  )
+)
+
+```
+Note: No need to declare a primary key `id` column, as PowerSync will automatically create this.
+
+2. Implement a backend connector to define how PowerSync communicates with your backend this sends changes in local data to your backend service.
+    
+```kotlin
+class MyConnector: PowerSyncBackendConnector() {
+  override suspend fun fetchCredentials(): PowerSyncCredentials {
+    // implement fetchCredentials to obtain the necessary credentials to connect to your backend
+  }
+
+  override suspend fun uploadData(database: PowerSyncDatabase) {
+    // Implement uploadData to send local changes to your backend service
+    // You can omit this method if you only want to sync data from the server to the client
+    // see https://docs.powersync.com/usage/installation/upload-data
+  }
+}
+```
+
+Alternatively, you can use [SupabaseConnector.kt](./connectors/src/commonMain/kotlin/com/powersync/connectors/SupabaseConnector.kt) as a starting point.
+
+3. Initialize the PowerSync database an connect it to the connector, using `PowerSyncBuilder`:
+  a. Create platform specific `DatabaseDriverFactory` to be used by the `PowerSyncBuilder` to create the SQLite database driver.
+  ```kotlin
+  // Android
+  val driverFactory = DatabaseDriverFactory(this)
+  
+  // iOS
+  val driverFactory = DatabaseDriverFactory()
+  ```
+
+  b. Build a `PowerSyncDatabase` instance using the `PowerSyncBuilder`, schema and the `DatabaseDriverFactory`:
+  ```kotlin
+    // commonMain
+    val database = PowerSyncBuilder.from(driverFactory, AppSchema).build()
+  ```
+
+  c. Connect the `PowerSyncDatabase` to the backend connector:
+  ```kotlin
+    // commonMain
+    database.connect(MyConnector())
+  ```
+
 4. Subscribe to changes in data
+    
+```kotlin
+fun watchCustomers(): Flow<List<User>> {
+  return database.watch("SELECT * FROM customers", mapper = { cursor ->
+    User(
+      id = cursor.getString(0)!!,
+      name = cursor.getString(1)!!,
+      email = cursor.getString(2)!!
+    )
+  })
+}
+```
+
 5. Insert, update, and delete data in the SQLite database
 
-[//]: # (TODO: code snippet)
+```kotlin
+suspend fun insertCustomer(name: String, email: String) {
+  database.writeTransaction {
+    database.execute(
+      "INSERT INTO customers (id, name, email) VALUES (uuid(), ?, ?)",
+      listOf(name, email)
+    )
+  }
+}
+
+suspend fun updateCustomer(id: String, name: String, email: String) {
+    database.execute(
+      "UPDATE customers SET name = ? WHERE email = ?",
+      listOf(name, email)
+    )
+}
+
+suspend fun deleteCustomer(id: String? = null) {
+    // If no id is provided, delete the first customer in the database
+  val targetId =
+    id ?: database.getOptional("SELECT id FROM customers LIMIT 1", mapper = { cursor ->
+      cursor.getString(0)!!
+    })
+    ?: return
+
+  database.writeTransaction {
+    database.execute("DELETE FROM customers WHERE id = ?", listOf(targetId))
+  }
+}
+```
 
 ## Development
 

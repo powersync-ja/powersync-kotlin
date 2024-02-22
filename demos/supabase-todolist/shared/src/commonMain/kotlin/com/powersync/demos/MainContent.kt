@@ -35,9 +35,9 @@ internal fun MainContent(
     modifier: Modifier = Modifier,
     items: List<TodoItem>,
     inputText: String,
-    onItemClicked: (id: Long) -> Unit,
-    onItemDoneChanged: (id: Long, isDone: Boolean) -> Unit,
-    onItemDeleteClicked: (id: Long) -> Unit,
+    onItemClicked: (id: String) -> Unit,
+    onItemDoneChanged: (id: String, isDone: Boolean) -> Unit,
+    onItemDeleteClicked: (id: String) -> Unit,
     onAddItemClicked: () -> Unit,
     onInputTextChanged: (String) -> Unit,
 ) {
@@ -64,9 +64,9 @@ internal fun MainContent(
 @Composable
 private fun ListContent(
     items: List<TodoItem>,
-    onItemClicked: (id: Long) -> Unit,
-    onItemDoneChanged: (id: Long, isDone: Boolean) -> Unit,
-    onItemDeleteClicked: (id: Long) -> Unit,
+    onItemClicked: (id: String) -> Unit,
+    onItemDoneChanged: (id: String, isDone: Boolean) -> Unit,
+    onItemDeleteClicked: (id: String) -> Unit,
 ) {
     Box {
         val listState = rememberLazyListState()
@@ -102,7 +102,7 @@ private fun Item(
         Spacer(modifier = Modifier.width(8.dp))
 
         Checkbox(
-            checked = item.isDone,
+            checked = item.completed,
             modifier = Modifier.align(Alignment.CenterVertically),
             onCheckedChange = onDoneChanged,
         )
@@ -110,7 +110,7 @@ private fun Item(
         Spacer(modifier = Modifier.width(8.dp))
 
         Text(
-            text = AnnotatedString(item.text),
+            text = AnnotatedString(item.description),
             modifier = Modifier.weight(1F).align(Alignment.CenterVertically),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
