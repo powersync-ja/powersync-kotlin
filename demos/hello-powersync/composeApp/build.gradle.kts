@@ -102,10 +102,16 @@ buildkonfig {
     packageName = "com.powersync.demos"
     objectName = "Config"
 
+
     defaultConfigs {
-        buildConfigField(STRING, "POWERSYNC_URL", readLocalProperty("POWERSYNC_URL"))
-        buildConfigField(STRING, "SUPABASE_URL", readLocalProperty("SUPABASE_URL"))
-        buildConfigField(STRING, "SUPABASE_KEY", readLocalProperty("SUPABASE_KEY"))
+        fun stringConfigField(name: String) =
+            buildConfigField(STRING, name, readLocalProperty(name))
+
+        stringConfigField("POWERSYNC_URL")
+        stringConfigField("SUPABASE_URL")
+        stringConfigField("SUPABASE_KEY")
+        stringConfigField("SUPABASE_USER_EMAIL")
+        stringConfigField("SUPABASE_USER_PASSWORD")
     }
 }
 

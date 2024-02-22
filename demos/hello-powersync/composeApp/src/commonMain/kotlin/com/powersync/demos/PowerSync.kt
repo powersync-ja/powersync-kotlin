@@ -4,31 +4,24 @@ import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncBuilder
 import com.powersync.PowerSyncDatabase
 import com.powersync.connectors.SupabaseConnector
-import com.powersync.demos.Config.POWERSYNC_URL
-import com.powersync.demos.Config.SUPABASE_KEY
-import com.powersync.demos.Config.SUPABASE_URL
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.runBlocking
 
 class PowerSync(
     driverFactory: DatabaseDriverFactory,
 ) {
-    companion object {
-        private const val TEST_EMAIL = "hello@powersync.com"
-        private const val TEST_PASSWORD = "@dYX0}72eS0kT=(YG@8("
-    }
 
     private val connector = SupabaseConnector(
-        supabaseUrl = SUPABASE_URL,
-        supabaseKey = SUPABASE_KEY,
-        powerSyncEndpoint = POWERSYNC_URL
+        supabaseUrl = Config.SUPABASE_URL,
+        supabaseKey = Config.SUPABASE_KEY,
+        powerSyncEndpoint = Config.POWERSYNC_URL
     )
     private val database: PowerSyncDatabase =
         PowerSyncBuilder.from(driverFactory, AppSchema).build();
 
     init {
         runBlocking {
-            connector.login(TEST_EMAIL, TEST_PASSWORD)
+            connector.login(Config.SUPABASE_USER_EMAIL, Config.SUPABASE_USER_PASSWORD)
             database.connect(connector)
         }
     }
