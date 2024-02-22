@@ -35,11 +35,11 @@ internal fun MainContent(
     modifier: Modifier = Modifier,
     items: List<TodoItem>,
     inputText: String,
-    onItemClicked: (id: TodoItem) -> Unit,
-    onItemDoneChanged: (id: TodoItem, isDone: Boolean) -> Unit,
-    onItemDeleteClicked: (id: TodoItem) -> Unit,
+    onItemClicked: (item: TodoItem) -> Unit,
+    onItemDoneChanged: (item: TodoItem, isDone: Boolean) -> Unit,
+    onItemDeleteClicked: (item: TodoItem) -> Unit,
     onAddItemClicked: () -> Unit,
-    onInputTextChanged: (String) -> Unit,
+    onInputTextChanged: (value: String) -> Unit,
 ) {
     Column(modifier) {
         TopAppBar(title = { Text(text = "Todo List") })
@@ -65,8 +65,8 @@ internal fun MainContent(
 private fun ListContent(
     items: List<TodoItem>,
     onItemClicked: (id: TodoItem) -> Unit,
-    onItemDoneChanged: (id: TodoItem, isDone: Boolean) -> Unit,
-    onItemDeleteClicked: (id: TodoItem) -> Unit,
+    onItemDoneChanged: (item: TodoItem, isDone: Boolean) -> Unit,
+    onItemDeleteClicked: (item: TodoItem) -> Unit,
 ) {
     Box {
         val listState = rememberLazyListState()
