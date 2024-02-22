@@ -48,7 +48,9 @@ internal class RootStore(factory: DatabaseDriverFactory) {
 
     fun onItemDeleteClicked(item: TodoItem) {
         runBlocking {
-            db.execute("DELETE FROM todos WHERE id = ?", listOf(item.id))
+            db.writeTransaction {
+                db.execute("DELETE FROM todos WHERE id = ?", listOf(item.id))
+            }
         }
     }
 
@@ -56,10 +58,12 @@ internal class RootStore(factory: DatabaseDriverFactory) {
         if (state.inputText.isBlank()) return
 
         runBlocking {
-            db.execute(
-                "INSERT INTO todos (id, description, completed) VALUES (uuid(), ?, ?)",
-                listOf(state.inputText, 0L)
-            )
+            db.writeTransaction {
+                db.execute(
+                    "INSERT INTO todos (id, description, completed) VALUES (uuid(), ?, ?)",
+                    listOf(state.inputText, 0L)
+                )
+            }
             setState {
                 copy(inputText = "")
             }
@@ -90,10 +94,12 @@ internal class RootStore(factory: DatabaseDriverFactory) {
     private fun updateItem(item: TodoItem, transformer: (item: TodoItem) -> TodoItem) {
         runBlocking {
             val updatedItem = transformer(item)
-            db.execute(
-                "UPDATE todos SET description = ?, completed = ? WHERE id = ?",
-                listOf(updatedItem.description, updatedItem.completed, item.id)
-            )
+            db.writeTransaction {
+                db.execute(
+                    "UPDATE todos SET description = ?, completed = ? WHERE id = ?",
+                    listOf(updatedItem.description, updatedItem.completed, item.id)
+                )
+            }
         }
     }
 
