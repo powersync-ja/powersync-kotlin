@@ -14,13 +14,12 @@ class PsSqliteDriver(private val driver: SqlDriver, private val scope: Coroutine
     // In-memory buffer to store table names before flushing
     private val pendingUpdates = mutableSetOf<String>()
 
-    @Suppress("unused")
-    fun updateTableHook(tableName: String) {
+    fun updateTable(tableName: String) {
         pendingUpdates.add(tableName)
+    }
 
-        scope.launch {
-            fireTableUpdates()
-        }
+    fun clearTableUpdates() {
+        pendingUpdates.clear()
     }
 
     // Function to register for table updates
@@ -38,10 +37,12 @@ class PsSqliteDriver(private val driver: SqlDriver, private val scope: Coroutine
         }
     }
 
-    private suspend fun fireTableUpdates() {
+    fun fireTableUpdates() {
         if (pendingUpdates.isNotEmpty()) {
-            tableUpdatesFlow.emit(pendingUpdates.toList())
-            pendingUpdates.clear()
+            scope.launch {
+                tableUpdatesFlow.emit(pendingUpdates.toList())
+                clearTableUpdates()
+            }
         }
     }
 }

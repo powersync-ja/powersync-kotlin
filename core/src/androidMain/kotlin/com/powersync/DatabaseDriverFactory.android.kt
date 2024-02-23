@@ -16,7 +16,18 @@ actual class DatabaseDriverFactory(private val context: Context) {
 
     @Suppress("unused")
     private fun onTableUpdate(tableName: String) {
-        driver?.updateTableHook(tableName)
+        driver?.updateTable(tableName)
+    }
+
+    @Suppress("unused")
+    private fun onTransactionCommit(success: Boolean) {
+        driver?.also { driver ->
+            if (success) {
+                driver.fireTableUpdates()
+            } else {
+                driver.clearTableUpdates()
+            }
+        }
     }
 
     actual fun createDriver(

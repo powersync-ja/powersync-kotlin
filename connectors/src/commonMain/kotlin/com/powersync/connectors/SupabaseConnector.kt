@@ -11,16 +11,8 @@ import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
 
-<<<<<<< HEAD
 /**
- * A backend connector tailored to Supabase backends.
- * The backend connector provides the connection between your application backend and the PowerSync managed database. The connector is responsible for:
- * 1. Obtaining credentials for connecting to the PowerSync service.
- * 2. Applying local changes against the backend application server.
-=======
-/** 
  * Get a Supabase token to authenticate against the PowerSync instance.
->>>>>>> 546550926577a8c171171bbe2214b68bea7113f7
  */
 class SupabaseConnector(
     val supabaseUrl: String,

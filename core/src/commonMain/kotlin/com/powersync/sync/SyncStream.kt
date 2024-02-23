@@ -225,7 +225,7 @@ class SyncStream(
         jsonString: String,
         state: SyncStreamState
     ): SyncStreamState {
-        println("Received Instruction: $jsonString")
+        println("[SyncStream::handleInstruction] Received Instruction: $jsonString")
         val json = Json { ignoreUnknownKeys = true }
         val obj = json.parseToJsonElement(jsonString).jsonObject
 
@@ -283,7 +283,6 @@ class SyncStream(
     private suspend fun handleStreamingSyncCheckpointComplete(
         state: SyncStreamState
     ): SyncStreamState {
-        println("Checkpoint complete ${Json.encodeToString(state.targetCheckpoint)}")
         val result = bucketStorage.syncLocalDatabase(state.targetCheckpoint!!)
         if (!result.checkpointValid) {
             // This means checksums failed. Start again with a new checkpoint.

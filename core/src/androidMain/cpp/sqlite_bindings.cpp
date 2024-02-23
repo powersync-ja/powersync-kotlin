@@ -42,32 +42,42 @@ update_hook_callback(void *pData, int opCode, char const *pDbName, char const *p
 }
 
 static jint
-commit_hook_callback(void *foo) {
+commit_hook(void *pool) {
     // Get JNIEnv for the current thread
     JNIEnv *env;
     JavaVM *javaVM = g_ctx.javaVM;
     javaVM->GetEnv((void **) &env, JNI_VERSION_1_6);
 
     if (g_ctx.bindingsClz) {
-        jmethodID updateId = env->GetMethodID(
-                g_ctx.bindingsClz, "onTableUpdate", "(Ljava/lang/String;)V");
+        jmethodID methodId = env->GetMethodID(
+                g_ctx.bindingsClz, "onTransactionCommit", "(Z)V");
 
-        jstring tableString = env->NewStringUTF(std::string("ps_crud").c_str());
-
-        env->CallVoidMethod(g_ctx.bindingsObj, updateId, tableString);
+        env->CallVoidMethod(g_ctx.bindingsObj, methodId, JNI_TRUE);
     }
 
     return 0;
 }
 
+static void rollback_hook(void *pool) {
+    // Get JNIEnv for the current thread
+    JNIEnv *env;
+    JavaVM *javaVM = g_ctx.javaVM;
+    javaVM->GetEnv((void **) &env, JNI_VERSION_1_6);
+
+    if (g_ctx.bindingsClz) {
+        jmethodID methodId = env->GetMethodID(
+                g_ctx.bindingsClz, "onTransactionCommit", "(Z)V");
+
+        env->CallVoidMethod(g_ctx.bindingsObj, methodId, JNI_FALSE);
+    }
+}
+
 jint powersync_init(sqlite3 *db, char **pzErrMsg,
                     const sqlite3_api_routines *pApi) {
 
-    // Set the update hook for the SQLite database
     sqlite3_update_hook(db, update_hook_callback, NULL);
-    sqlite3_commit_hook(db, commit_hook_callback, NULL);
-//    sqlite3_rollback_hook(db, (void (*)(void *)) callback,
-//                          (void *) &rollbackPayload);
+    sqlite3_commit_hook(db, commit_hook, NULL);
+    sqlite3_rollback_hook(db, rollback_hook, NULL);
 
     return SQLITE_OK;
 }

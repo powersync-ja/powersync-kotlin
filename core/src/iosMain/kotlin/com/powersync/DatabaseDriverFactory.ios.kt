@@ -7,6 +7,8 @@ import co.touchlab.sqliter.DatabaseConfiguration
 import co.touchlab.sqliter.DatabaseConnection
 import com.powersync.db.internal.PsInternalSchema
 import com.powersync.sqlite.core.init_powersync_sqlite_extension
+import com.powersync.sqlite.core.sqlite3_commit_hook
+import com.powersync.sqlite.core.sqlite3_rollback_hook
 import com.powersync.sqlite.core.sqlite3_update_hook
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.MemScope
@@ -27,7 +29,17 @@ actual class DatabaseDriverFactory {
 
     @Suppress("unused")
     private fun updateTableHook(opType: Int, databaseName: String, tableName: String, rowId: Long) {
-        driver?.updateTableHook(tableName)
+        driver?.updateTable(tableName)
+    }
+
+    private fun onTransactionCommit(success: Boolean) {
+        driver?.also { driver ->
+            if (success) {
+                driver.fireTableUpdates()
+            } else {
+                driver.clearTableUpdates()
+            }
+        }
     }
 
     actual fun createDriver(
@@ -78,6 +90,24 @@ actual class DatabaseDriverFactory {
         )
 
         // Register transaction hooks
+        sqlite3_commit_hook(
+            ptr,
+            staticCFunction { usrPtr ->
+                val callback = usrPtr!!.asStableRef<(Boolean) -> Unit>().get()
+                callback(true)
+                0
+            },
+            StableRef.create(::onTransactionCommit).asCPointer()
+        )
+        sqlite3_rollback_hook(
+            ptr,
+            staticCFunction { usrPtr ->
+                val callback = usrPtr!!.asStableRef<(Boolean) -> Unit>().get()
+                callback(false)
+                0
+            },
+            StableRef.create(::onTransactionCommit).asCPointer()
+        )
     }
 
     private fun deregisterSqliteBinding(connection: DatabaseConnection) {

@@ -93,7 +93,6 @@ class BucketStorage(val db: PsInternalDatabase) {
 
             val numRowsUpdated =
                 db.execute("UPDATE ps_buckets SET target_op = ? WHERE name='\$local'", listOf(opId))
-            println("[BucketStorage::updateLocalTarget] $numRowsUpdated updated")
             return@readTransaction true
         }
     }
