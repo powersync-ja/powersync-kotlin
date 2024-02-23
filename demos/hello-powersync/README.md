@@ -57,7 +57,9 @@ create publication powersync for table customers;
   - Deploy to the newly created instance.
 
 ## Set up your development environment
-To setup your environment, please consult [these instructions](https://www.jetbrains.com/help/kotlin-multiplatform-dev/compose-multiplatform-setup.html).
+* To setup your environment, please consult [these instructions](https://www.jetbrains.com/help/kotlin-multiplatform-dev/compose-multiplatform-setup.html).
+* JDK version 17 is required.
+* Android Gradle plugin version 8.2.2 is required.
 
 ## Configure project in Android Studio
 
@@ -83,7 +85,7 @@ SUPABASE_USER_PASSWORD=foo
 ```
 
 ## Run the App
-Choose a run configuration for the Android or iOS target in Android Studio and run it.
+Choose a run configuration for the Android (`composeApp`) or iOS (`iosApp`) target in Android Studio and run it.
 
 
 ## Project structure

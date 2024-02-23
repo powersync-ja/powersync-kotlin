@@ -12,10 +12,7 @@ import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
 
 /** 
- * A backend connector tailored to Supabase backends.
- * The backend connector provides the connection between your application backend and the PowerSync managed database. The connector is responsible for:
- * 1. Obtaining credentials for connecting to the PowerSync service.
- * 2. Applying local changes against the backend application server.
+ * Get a Supabase token to authenticate against the PowerSync instance.
  */
 class SupabaseConnector(
     val supabaseUrl: String,
@@ -54,6 +51,8 @@ class SupabaseConnector(
         if (!loggedIn) {
             throw Exception("Not logged in")
         }
+
+        // Use Supabase token for PowerSync
         val session = supabaseClient.auth.currentSessionOrNull()
             ?: throw Exception("Could not fetch Supabase credentials");
 
@@ -61,9 +60,10 @@ class SupabaseConnector(
             throw Exception("No user data")
         }
 
+        // userId and expiresAt are for debugging purposes only
         return PowerSyncCredentials(
             endpoint = powerSyncEndpoint,
-            token = session.accessToken,
+            token = session.accessToken, // Use the access token to authenticate against PowerSync
             expiresAt = session.expiresAt,
             userId = session.user!!.id
         );
