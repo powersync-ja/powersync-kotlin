@@ -87,6 +87,7 @@ SUPABASE_USER_PASSWORD=foo
 ## Run the App
 Choose a run configuration for the Android (`composeApp`) or iOS (`iosApp`) target in Android Studio and run it.
 
+![run-configuration](/docs/assets/android-studio-run-configuration.png)
 
 ## Project structure
 

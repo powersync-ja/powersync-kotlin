@@ -2,7 +2,7 @@
 
 *** This demo app is a work in progress. It can be run, but certain functionality does not yet work. ***
 
-This demo app originally was cloned from [JetBrain's TodoApp (lite version)](https://github.com/JetBrains/compose-multiplatform/tree/master/examples/todoapp-lite).
+This demo app originally was cloned from [JetBrains' TodoApp (lite version)](https://github.com/JetBrains/compose-multiplatform/tree/master/examples/todoapp-lite).
 
 It is a simple to-do list application demonstrating use of the PowerSync Kotlin Mutiplatform SDK together
 with [Supabase](https://supabase.com/) in a basic Kotlin Multiplatform Compose App. 
