@@ -13,7 +13,7 @@ class PowerSync(
 
     private val connector = SupabaseConnector(
         supabaseUrl = Config.SUPABASE_URL,
-        supabaseKey = Config.SUPABASE_KEY,
+        supabaseKey = Config.SUPABASE_ANON_KEY,
         powerSyncEndpoint = Config.POWERSYNC_URL
     )
     private val database: PowerSyncDatabase =
