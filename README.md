@@ -31,9 +31,10 @@ Supported KMP targets: Android and iOS.
 
 - [connectors](./connectors/)
 
-    - [SupabaseConnector.kt](./connectors/src/commonMain/kotlin/com/powersync/connectors/SupabaseConnector.kt) An example connector implementation tailed for Supabase. The backend connector provides the connection between your application backend and the PowerSync managed database. It is used to: 
-      1. Retrieve a token to connect to the PowerSync service.
-      2. Apply local changes on your backend application server (and from there, to Postgres).
+    - [SupabaseConnector.kt](./connectors/src/commonMain/kotlin/com/powersync/connectors/SupabaseConnector.kt) An example connector implementation tailed for Supabase. The backend connector provides
+      the connection between your application backend and the PowerSync managed database. It is used to:
+        1. Retrieve a token to connect to the PowerSync service.
+        2. Apply local changes on your backend application server (and from there, to Postgres).
 
 ## Demo Apps / Example Projects
 
@@ -53,6 +54,10 @@ The PowerSync Kotlin Multiplatform SDK is currently in an alpha release and is n
 - Integration with SQLDelight schema and API generation is not yet supported.
 - Configurable logging is not yet implemented.
 
+[//]: # (TODO )
+
+- Supports only a single database file.
+
 ## Getting Started
 
 ### Installation
@@ -63,12 +68,12 @@ Add the PowerSync Kotlin Multiplatform SDK to your project by adding the followi
 
 kotlin {
     //...
-  sourceSets {
-    commonMain.dependencies {
-      api("com.powersync:core:$powersyncVersion")
+    sourceSets {
+        commonMain.dependencies {
+            api("com.powersync:core:$powersyncVersion")
+        }
+        //...
     }
-    //...
-  }
 }
 ```
 
@@ -84,18 +89,19 @@ When using the PowerSync Kotlin Multiplatform SDK to build CocoaPods iOS, add th
 
 ```kotlin
 cocoapods {
-  //...
-  pod("powersync-sqlite-core") {
-    linkOnly = true
-  }
+    //...
+    pod("powersync-sqlite-core") {
+        linkOnly = true
+    }
 
-  framework {
-    isStatic = true
-    export("com.powersync:core")
-  }
-  //...
+    framework {
+        isStatic = true
+        export("com.powersync:core")
+    }
+    //...
 }
 ```
+
 Note: The `linkOnly` attribute is set to `true` and framework is set to `isStatic = true` to ensure that the `powersync-sqlite-core` binaries are only statically linked.
 
 ### Usage
@@ -117,71 +123,76 @@ import com.powersync.db.schema.Schema
 import com.powersync.db.schema.Table
 
 val schema: Schema = Schema(
-  listOf(
-    Table(
-      "customers",
-      listOf(
-        Column.text("name"),
-        Column.text("email")
-      )
+    listOf(
+        Table(
+            "customers",
+            listOf(
+                Column.text("name"),
+                Column.text("email")
+            )
+        )
     )
-  )
 )
 
 ```
+
 Note: No need to declare a primary key `id` column, as PowerSync will automatically create this.
 
 #### 2. Implement a backend connector to define how PowerSync communicates with your backend this sends changes in local data to your backend service.
-    
-```kotlin
-class MyConnector: PowerSyncBackendConnector() {
-  override suspend fun fetchCredentials(): PowerSyncCredentials {
-    // implement fetchCredentials to obtain the necessary credentials to connect to your backend
-  }
 
-  override suspend fun uploadData(database: PowerSyncDatabase) {
-    // Implement uploadData to send local changes to your backend service
-    // You can omit this method if you only want to sync data from the server to the client
-    // see https://docs.powersync.com/usage/installation/upload-data
-  }
+```kotlin
+class MyConnector : PowerSyncBackendConnector() {
+    override suspend fun fetchCredentials(): PowerSyncCredentials {
+        // implement fetchCredentials to obtain the necessary credentials to connect to your backend
+    }
+
+    override suspend fun uploadData(database: PowerSyncDatabase) {
+        // Implement uploadData to send local changes to your backend service
+        // You can omit this method if you only want to sync data from the server to the client
+        // see https://docs.powersync.com/usage/installation/upload-data
+    }
 }
 ```
 
 Alternatively, you can use [SupabaseConnector.kt](./connectors/src/commonMain/kotlin/com/powersync/connectors/SupabaseConnector.kt) as a starting point.
 
 #### 3. Initialize the PowerSync database an connect it to the connector, using `PowerSyncBuilder`:
-  a. Create platform specific `DatabaseDriverFactory` to be used by the `PowerSyncBuilder` to create the SQLite database driver.
+
+a. Create platform specific `DatabaseDriverFactory` to be used by the `PowerSyncBuilder` to create the SQLite database driver.
+
   ```kotlin
   // Android
-  val driverFactory = DatabaseDriverFactory(this)
-  
-  // iOS
-  val driverFactory = DatabaseDriverFactory()
+val driverFactory = DatabaseDriverFactory(this)
+
+// iOS
+val driverFactory = DatabaseDriverFactory()
   ```
 
-  b. Build a `PowerSyncDatabase` instance using the `PowerSyncBuilder` and the `DatabaseDriverFactory`. The schema you created in a previous step is also used as a parameter:
+b. Build a `PowerSyncDatabase` instance using the `PowerSyncBuilder` and the `DatabaseDriverFactory`. The schema you created in a previous step is also used as a parameter:
+
   ```kotlin
     // commonMain
-    val database = PowerSyncBuilder.from(driverFactory, schema).build()
+val database = PowerSyncBuilder.from(driverFactory, schema).build()
   ```
 
-  c. Connect the `PowerSyncDatabase` to the backend connector:
+c. Connect the `PowerSyncDatabase` to the backend connector:
+
   ```kotlin
     // commonMain
-    database.connect(MyConnector())
+database.connect(MyConnector())
   ```
 
 #### 4. Subscribe to changes in data
-    
+
 ```kotlin
 fun watchCustomers(): Flow<List<User>> {
-  return database.watch("SELECT * FROM customers", mapper = { cursor ->
-    User(
-      id = cursor.getString(0)!!,
-      name = cursor.getString(1)!!,
-      email = cursor.getString(2)!!
-    )
-  })
+    return database.watch("SELECT * FROM customers", mapper = { cursor ->
+        User(
+            id = cursor.getString(0)!!,
+            name = cursor.getString(1)!!,
+            email = cursor.getString(2)!!
+        )
+    })
 }
 ```
 
@@ -189,31 +200,31 @@ fun watchCustomers(): Flow<List<User>> {
 
 ```kotlin
 suspend fun insertCustomer(name: String, email: String) {
-  database.writeTransaction {
-    database.execute(
-      "INSERT INTO customers (id, name, email) VALUES (uuid(), ?, ?)",
-      listOf(name, email)
-    )
-  }
+    database.writeTransaction {
+        database.execute(
+            "INSERT INTO customers (id, name, email) VALUES (uuid(), ?, ?)",
+            listOf(name, email)
+        )
+    }
 }
 
 suspend fun updateCustomer(id: String, name: String, email: String) {
     database.execute(
-      "UPDATE customers SET name = ? WHERE email = ?",
-      listOf(name, email)
+        "UPDATE customers SET name = ? WHERE email = ?",
+        listOf(name, email)
     )
 }
 
 suspend fun deleteCustomer(id: String? = null) {
     // If no id is provided, delete the first customer in the database
-  val targetId =
-    id ?: database.getOptional("SELECT id FROM customers LIMIT 1", mapper = { cursor ->
-      cursor.getString(0)!!
-    })
-    ?: return
+    val targetId =
+        id ?: database.getOptional("SELECT id FROM customers LIMIT 1", mapper = { cursor ->
+            cursor.getString(0)!!
+        })
+        ?: return
 
-  database.writeTransaction {
-    database.execute("DELETE FROM customers WHERE id = ?", listOf(targetId))
-  }
+    database.writeTransaction {
+        database.execute("DELETE FROM customers WHERE id = ?", listOf(targetId))
+    }
 }
 ```

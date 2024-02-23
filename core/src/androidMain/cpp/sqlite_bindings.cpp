@@ -30,25 +30,34 @@ update_hook_callback(void *pData, int opCode, char const *pDbName, char const *p
     // Get JNIEnv for the current thread
     JNIEnv *env;
     JavaVM *javaVM = g_ctx.javaVM;
-
-    jint res = javaVM->GetEnv((void **) &env, JNI_VERSION_1_6);
-    if (res != JNI_OK) {
-        res = javaVM->AttachCurrentThread(&env, NULL);
-        if (JNI_OK != res) {
-            return;
-        }
-    }
+    javaVM->GetEnv((void **) &env, JNI_VERSION_1_6);
 
     if (g_ctx.bindingsClz) {
         jmethodID updateId = env->GetMethodID(
-                g_ctx.bindingsClz, "onUpdate", "(ILjava/lang/String;Ljava/lang/String;J)V");
+                g_ctx.bindingsClz, "onTableUpdate", "(Ljava/lang/String;)V");
 
-        jstring dbString = env->NewStringUTF(std::string(pDbName).c_str());
-        jstring tableString = env->NewStringUTF(std::string(pTableName).c_str());
-
-        env->CallVoidMethod(g_ctx.bindingsObj, updateId, opCode, dbString, tableString,
-                            iRow);
+        jstring tableString = env->NewStringUTF(std::string("ps_crud").c_str());
+        env->CallVoidMethod(g_ctx.bindingsObj, updateId, tableString);
     }
+}
+
+static jint
+commit_hook_callback(void *foo) {
+    // Get JNIEnv for the current thread
+    JNIEnv *env;
+    JavaVM *javaVM = g_ctx.javaVM;
+    javaVM->GetEnv((void **) &env, JNI_VERSION_1_6);
+
+    if (g_ctx.bindingsClz) {
+        jmethodID updateId = env->GetMethodID(
+                g_ctx.bindingsClz, "onTableUpdate", "(Ljava/lang/String;)V");
+
+        jstring tableString = env->NewStringUTF(std::string("ps_crud").c_str());
+
+        env->CallVoidMethod(g_ctx.bindingsObj, updateId, tableString);
+    }
+
+    return 0;
 }
 
 jint powersync_init(sqlite3 *db, char **pzErrMsg,
@@ -56,12 +65,15 @@ jint powersync_init(sqlite3 *db, char **pzErrMsg,
 
     // Set the update hook for the SQLite database
     sqlite3_update_hook(db, update_hook_callback, NULL);
+    sqlite3_commit_hook(db, commit_hook_callback, NULL);
+//    sqlite3_rollback_hook(db, (void (*)(void *)) callback,
+//                          (void *) &rollbackPayload);
 
     return SQLITE_OK;
 }
 
 JNIEXPORT void JNICALL
-Java_com_powersync_DatabaseDriverFactory_setupSqliteUpdateHook(JNIEnv *env, jobject thiz) {
+Java_com_powersync_DatabaseDriverFactory_setupSqliteBinding(JNIEnv *env, jobject thiz) {
     jclass clz = env->GetObjectClass(thiz);
     g_ctx.bindingsClz = (jclass) env->NewGlobalRef(clz);
     g_ctx.bindingsObj = env->NewGlobalRef(thiz);

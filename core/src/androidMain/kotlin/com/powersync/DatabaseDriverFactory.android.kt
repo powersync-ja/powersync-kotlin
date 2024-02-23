@@ -3,33 +3,29 @@ package com.powersync
 import android.content.Context
 import androidx.sqlite.db.SupportSQLiteDatabase
 import app.cash.sqldelight.async.coroutines.synchronous
-import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import com.powersync.db.internal.PsInternalSchema
 import io.requery.android.database.sqlite.RequerySQLiteOpenHelperFactory
 import io.requery.android.database.sqlite.SQLiteCustomExtension
+import kotlinx.coroutines.CoroutineScope
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 actual class DatabaseDriverFactory(private val context: Context) {
     private var driver: PsSqliteDriver? = null
-    private external fun setupSqliteUpdateHook()
+    private external fun setupSqliteBinding()
 
     @Suppress("unused")
-    private fun onUpdate(
-        opType: Int,
-        databaseName: String,
-        tableName: String,
-        rowId: Long
-    ) {
-        driver?.updateHook(opType, databaseName, tableName, rowId)
+    private fun onTableUpdate(tableName: String) {
+        driver?.updateTableHook(tableName)
     }
 
     actual fun createDriver(
-        dbFilename: String
+        scope: CoroutineScope,
+        dbFilename: String,
     ): PsSqliteDriver {
         val schema = PsInternalSchema.synchronous()
 
-        this.driver = PsSqliteDriver(AndroidSqliteDriver(
+        this.driver = PsSqliteDriver(scope = scope, driver = AndroidSqliteDriver(
             context = context,
             schema = schema,
             name = dbFilename,
@@ -57,7 +53,7 @@ actual class DatabaseDriverFactory(private val context: Context) {
                 }
             }
         ))
-        setupSqliteUpdateHook()
+        setupSqliteBinding()
         return this.driver as PsSqliteDriver
     }
 

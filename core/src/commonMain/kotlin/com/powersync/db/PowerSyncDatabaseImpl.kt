@@ -39,7 +39,7 @@ internal class PowerSyncDatabaseImpl(
     val scope: CoroutineScope,
     val factory: DatabaseDriverFactory,
     private val dbFilename: String,
-    override val driver: PsSqliteDriver = factory.createDriver(dbFilename),
+    override val driver: PsSqliteDriver = factory.createDriver(scope, dbFilename),
 ) : PowerSyncDatabase {
     private val internalDb = PsInternalDatabase(driver, scope)
     private val bucketStorage: BucketStorage = BucketStorage(internalDb)
@@ -52,7 +52,6 @@ internal class PowerSyncDatabaseImpl(
     override var syncStream: SyncStream? = null
 
     init {
-
         runBlocking {
             applySchema();
         }
@@ -82,10 +81,8 @@ internal class PowerSyncDatabaseImpl(
             syncStream!!.streamingSync()
         }
 
-        driver.tableUpdates("ps_crud") {
-            scope.launch {
-                syncStream!!.triggerCrudUpload()
-            }
+        driver.registerForUpdatesOnTable("ps_crud") {
+            syncStream!!.triggerCrudUpload()
         }
     }
 

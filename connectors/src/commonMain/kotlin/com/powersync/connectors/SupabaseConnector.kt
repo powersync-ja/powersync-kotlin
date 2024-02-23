@@ -11,7 +11,7 @@ import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
 
-/** 
+/**
  * A backend connector tailored to Supabase backends.
  * The backend connector provides the connection between your application backend and the PowerSync managed database. The connector is responsible for:
  * 1. Obtaining credentials for connecting to the PowerSync service.
@@ -47,9 +47,9 @@ class SupabaseConnector(
         fetchCredentials()
     }
 
-    /** 
+    /**
      * Get credentials for PowerSync.
-     */ 
+     */
     override suspend fun fetchCredentials(): PowerSyncCredentials {
         if (!loggedIn) {
             throw Exception("Not logged in")
