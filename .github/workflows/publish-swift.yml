@@ -1,14 +1,10 @@
-name: iOS Publish
+name: Publish iOS Swift
 on:
   workflow_dispatch:
+#  TODO: Uncomment this if we want to publish on merge to main
 #  push:
 #    branches:
 #      - "main"
-
-env:
-  ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
-  ORG_GRADLE_PROJECT_signingInMemoryKeyId : ${{ secrets.SIGNING_KEY_ID }}
-  ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
 
 jobs:
   call-kmmbridge-publish:
@@ -19,5 +15,7 @@ jobs:
     with:
       jvmVersion: 17
       versionBaseProperty: LIBRARY_VERSION
-#    secrets:
+      publishTask: kmmBridgePublish
+    secrets:
+      gradle_params: -PsigningInMemoryKey="${{ secrets.SIGNING_KEY }}" -PsigningInMemoryKeyId="${{ secrets.SIGNING_KEY_ID }}" -PsigningInMemoryKeyPassword="${{ secrets.SIGNING_PASSWORD }}"
 #      PODSPEC_SSH_KEY: ${{ secrets.PODSPEC_SSH_KEY }}
