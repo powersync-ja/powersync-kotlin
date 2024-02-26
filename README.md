@@ -142,21 +142,6 @@ val schema: Schema = Schema(
 
 Note: No need to declare a primary key `id` column, as PowerSync will automatically create this.
 
-<<<<<<< HEAD
-#### 2. Implement a backend connector to define how PowerSync communicates with your backend this sends changes in local data to your backend service.
-
-```kotlin
-class MyConnector : PowerSyncBackendConnector() {
-    override suspend fun fetchCredentials(): PowerSyncCredentials {
-        // implement fetchCredentials to obtain the necessary credentials to connect to your backend
-    }
-
-    override suspend fun uploadData(database: PowerSyncDatabase) {
-        // Implement uploadData to send local changes to your backend service
-        // You can omit this method if you only want to sync data from the server to the client
-        // see https://docs.powersync.com/usage/installation/upload-data
-    }
-=======
 #### 2. Implement a backend connector to define how PowerSync communicates with your backend.
 
 The PowerSync backend connector provides the connection between your application backend and the PowerSync managed database. 
@@ -179,21 +164,15 @@ class MyConnector: PowerSyncBackendConnector() {
     // See an example implementation in connectors/src/commonMain/kotlin/com/powersync/connectors/SupabaseConnector.kt
     // See https://docs.powersync.com/usage/installation/app-backend-setup/writing-client-changes for considerations.
   }
->>>>>>> 546550926577a8c171171bbe2214b68bea7113f7
 }
 ```
 
 #### 3. Initialize the PowerSync database an connect it to the connector, using `PowerSyncBuilder`:
-<<<<<<< HEAD
 
-a. Create platform specific `DatabaseDriverFactory` to be used by the `PowerSyncBuilder` to create the SQLite database driver.
-
-=======
 You need to instantiate the PowerSync database — this is the core managed database. 
 Its primary functions are to record all changes in the local database, whether online or offline. In addition, it automatically uploads changes to your app backend when connected. 
 
   a. Create platform specific `DatabaseDriverFactory` to be used by the `PowerSyncBuilder` to create the SQLite database driver.
->>>>>>> 546550926577a8c171171bbe2214b68bea7113f7
   ```kotlin
   // Android
 val driverFactory = DatabaseDriverFactory(this)
@@ -221,15 +200,6 @@ database.connect(MyConnector())
 ```kotlin
 // You can watch any SQL query. This excutes a read query every time the source tables are modified.
 fun watchCustomers(): Flow<List<User>> {
-<<<<<<< HEAD
-    return database.watch("SELECT * FROM customers", mapper = { cursor ->
-        User(
-            id = cursor.getString(0)!!,
-            name = cursor.getString(1)!!,
-            email = cursor.getString(2)!!
-        )
-    })
-=======
   // TODO: implement your UI based on the result set
   return database.watch("SELECT * FROM customers", mapper = { cursor ->
     User(
@@ -238,7 +208,6 @@ fun watchCustomers(): Flow<List<User>> {
       email = cursor.getString(2)!!
     )
   })
->>>>>>> 546550926577a8c171171bbe2214b68bea7113f7
 }
 ```
 
