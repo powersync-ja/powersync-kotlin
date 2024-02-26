@@ -41,4 +41,7 @@ jobs:
       uses: gradle/actions/setup-gradle@v3
 
     - name: Build with Gradle
-      run: ./gradlew ${{ matrix.target }}
+      run: |
+        ./gradlew \
+        ${{ matrix.target }} \
+        -PGITHUB_PUBLISH_TOKEN=${{ secrets.GITHUB_TOKEN }}
