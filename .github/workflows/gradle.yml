@@ -1,4 +1,4 @@
-name: Java CI with Gradle
+name: Gradle build & test
 
 on:
   push:
