@@ -23,7 +23,11 @@ internal class RootStore(factory: DatabaseDriverFactory) {
 
     init {
         runBlocking {
-            connector.login(TEST_EMAIL, TEST_PASSWORD)
+            try {
+                connector.login(TEST_EMAIL, TEST_PASSWORD)
+            } catch (e: Exception) {
+                println("Could not connect to Supabase, have you configured an auth user and set `SUPABASE_USER_EMAIL` and `SUPABASE_USER_PASSWORD`?\n Error: $e")
+            }
             db.connect(connector)
         }
     }

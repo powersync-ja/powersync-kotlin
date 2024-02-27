@@ -21,7 +21,11 @@ class PowerSync(
 
     init {
         runBlocking {
-            connector.login(Config.SUPABASE_USER_EMAIL, Config.SUPABASE_USER_PASSWORD)
+            try {
+                connector.login(Config.SUPABASE_USER_EMAIL, Config.SUPABASE_USER_PASSWORD)
+            } catch (e: Exception) {
+                println("Could not connect to Supabase, have you configured an auth user and set `SUPABASE_USER_EMAIL` and `SUPABASE_USER_PASSWORD`?\n Error: $e")
+            }
             database.connect(connector)
         }
     }
