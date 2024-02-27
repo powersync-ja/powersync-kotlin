@@ -12,8 +12,8 @@ plugins {
     id("com.powersync.plugins.sonatype")
 }
 
-val sqliteVersion = "3380500"
-val sqliteReleaseYear = "2022"
+val sqliteVersion = "3450000"
+val sqliteReleaseYear = "2024"
 
 val sqliteSrcFolder =
     project.layout.buildDirectory.dir("interop/sqlite").get()
