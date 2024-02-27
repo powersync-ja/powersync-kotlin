@@ -85,7 +85,7 @@ If want to use the Supabase Connector, also add the following to `commonMain.dep
 
 #### Cocoapods
 
-When using the PowerSync Kotlin Multiplatform SDK to build CocoaPods iOS, add the following to the `cocoapods` config in your `build.gradle.kts`:
+We recommend using Cocoapods (as opposed to SMP) for iOS targets. Add the following to the `cocoapods` config in your `build.gradle.kts`
 
 ```kotlin
 cocoapods {
