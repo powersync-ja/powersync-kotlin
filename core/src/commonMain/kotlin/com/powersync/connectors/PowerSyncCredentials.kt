@@ -29,7 +29,7 @@ data class PowerSyncCredentials(
     /**
      * User ID.
      */
-    @SerialName("user_id") val userId: String,
+    @SerialName("user_id") val userId: String?,
     /**
      * When the token expires. Only use for debugging purposes.
      */
