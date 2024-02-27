@@ -47,16 +47,20 @@ Demo applications are located in the [`demos/`](./demos) directory. See their re
 - [demos/supabase-todolist](./demos/supabase-todolist/README.md): ** Currently a work in progress **
   A simple to-do list application demonstrating the use of the PowerSync Kotlin Multiplatform SDK and the Supabase connector.
 
-## Limitations
+## Current Limitations / Future work
 
 The PowerSync Kotlin Multiplatform SDK is currently in an alpha release and is not yet suitable for production use.
 
-- Integration with SQLDelight schema and API generation is not yet supported.
-- Configurable logging is not yet implemented.
-
-[//]: # (TODO )
-
+Current limitations:
+- Debugging via configurable logging is not yet implemented.
+- Integration with SQLDelight schema and API generation (ORM) is not yet supported.
 - Supports only a single database file.
+
+Future work/ideas:
+- Improved error handling.
+- Attachments helper package.
+- Management of DB connections on each platform natively.
+- Supporting additional targets (JVM, Wasm).
 
 ## Getting Started
 
