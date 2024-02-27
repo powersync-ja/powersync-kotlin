@@ -68,9 +68,10 @@ class BucketStorage(val db: PsInternalDatabase) {
             ?: // Nothing to update
             return false
 
-        val seqBefore = db.queries.getCrudSequence().awaitAsOneOrNull()
-            ?: // Nothing to update
-            return false
+        val seqBefore = db.getOptional("SELECT seq FROM sqlite_sequence WHERE name = 'ps_crud'") {
+            it.getLong(0)!!
+        } ?: // Nothing to update
+        return false
 
         val opId = checkpointCallback()
 
@@ -82,9 +83,12 @@ class BucketStorage(val db: PsInternalDatabase) {
                 return@readTransaction false
             }
 
-            val seqAfter = db.queries.getCrudSequence().awaitAsOneOrNull()
-                ?: // assert isNotEmpty
-                throw AssertionError("Sqlite Sequence should not be empty")
+            val seqAfter =
+                db.getOptional("SELECT seq FROM sqlite_sequence WHERE name = 'ps_crud'") {
+                    it.getLong(0)!!
+                }
+                    ?: // assert isNotEmpty
+                    throw AssertionError("Sqlite Sequence should not be empty")
 
             if (seqAfter != seqBefore) {
                 // New crud data may have been uploaded since we got the checkpoint. Abort.
