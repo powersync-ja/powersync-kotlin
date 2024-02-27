@@ -147,7 +147,7 @@ class SyncStream(
             contentType(ContentType.Application.Json)
             headers {
                 append(HttpHeaders.Authorization, "Token ${credentials.token}")
-                append("User-Id", credentials.userId)
+                append("User-Id", credentials.userId ?: "")
             }
         }
         if (response.status.value == 401) {
@@ -173,7 +173,7 @@ class SyncStream(
             contentType(ContentType.Application.Json)
             headers {
                 append(HttpHeaders.Authorization, "Token ${credentials.token}")
-                append("User-Id", credentials.userId)
+                append("User-Id", credentials.userId ?: "")
             }
             timeout { socketTimeoutMillis = Long.MAX_VALUE }
             setBody(bodyJson)
