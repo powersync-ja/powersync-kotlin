@@ -1,10 +1,19 @@
-This is a Kotlin Multiplatform project targeting Android, iOS.
+# PowerSync core module
 
-* `/androidApp` contains Android applications. Even if you’re sharing your UI with Compose Multiplatform, you need this entry point for your Android app.
+The PowerSync core module provides the core functionality for the PowerSync Kotlin Multiplatform SDK.
 
-* `commonMain` is for code that’s common for all targets.
+## Structure
 
-* `/iosMain`
+This is a Kotlin Multiplatform project targeting Android, iOS platforms, with the following structure:
 
-Learn more
-about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+- `commonMain` - Shared code for all targets, which includes the `PowerSyncBackendConnector` interface and `PowerSyncBuilder` for building a `PowerSync` instance. It also defines
+  the `DatabaseDriverFactory` class to be implemented in each platform.
+- `androidMain` - Android specific code, which includes a implementation of `DatabaseDriverFactory` class that creates an instance of `app.cash.sqldelight.driver.android.AndroidSqliteDriver` using
+  a `io.requery.android.database.sqlite.RequerySQLiteOpenHelperFactory`. It also includes native SQLite bindings for Android.
+- `iosMain` - iOS specific code, which includes a implementation of `DatabaseDriverFactory` class that creates an instance of `app.cash.sqldelight.driver.native.NativeSqliteDriver` and also sets up native SQLite bindings for iOS.
+
+## Note on SQLDelight
+
+The PowerSync core module, internally makes use of [SQLDelight](https://cashapp.github.io/sqldelight) for it database API and typesafe database query generation. 
+
+With the Alpha release, the PowerSync core module does not support integrating with SQLDelight from client applications.

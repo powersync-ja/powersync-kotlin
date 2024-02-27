@@ -107,7 +107,9 @@ Note: The `linkOnly` attribute is set to `true` and framework is set to `isStati
 ### Usage
 
 The first step is creating a PowerSync account and setting up a PowerSync instance. If you are using Supabase, we have a step-by-step tutorial
-available [here](https://docs.powersync.com/integration-guides/supabase-+-powersync). For other Postgres backend providers, follow these steps:
+available [here](https://docs.powersync.com/integration-guides/supabase-+-powersync). 
+
+For other Postgres backend providers, follow these steps:
 
 * Sign up for a free PowerSync account
   here [https://www.powersync.com/](https://www.powersync.com/).
