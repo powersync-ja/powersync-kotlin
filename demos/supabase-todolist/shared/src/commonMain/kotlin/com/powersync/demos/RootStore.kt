@@ -24,7 +24,7 @@ internal class RootStore(factory: DatabaseDriverFactory) {
     init {
         runBlocking {
             try {
-                connector.login(TEST_EMAIL, TEST_PASSWORD)
+                connector.login(Config.SUPABASE_USER_EMAIL, Config.SUPABASE_USER_PASSWORD)
             } catch (e: Exception) {
                 println("Could not connect to Supabase, have you configured an auth user and set `SUPABASE_USER_EMAIL` and `SUPABASE_USER_PASSWORD`?\n Error: $e")
             }
@@ -120,8 +120,4 @@ internal class RootStore(factory: DatabaseDriverFactory) {
         val editingItem: TodoItem? = null
     )
 
-    companion object {
-        private const val TEST_EMAIL = "hello@powersync.com"
-        private const val TEST_PASSWORD = "@dYX0}72eS0kT=(YG@8("
-    }
 }

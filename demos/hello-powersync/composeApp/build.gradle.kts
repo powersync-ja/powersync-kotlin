@@ -97,15 +97,27 @@ android {
     }
 }
 
+val localProperties = Properties().apply {
+    try {
+        load(rootProject.file("local.properties").reader())
+    } catch (ignored: java.io.IOException) {
+        throw Error("local.properties file not found")
+    }
+}
 
 buildkonfig {
     packageName = "com.powersync.demos"
     objectName = "Config"
 
-
     defaultConfigs {
-        fun stringConfigField(name: String) =
-            buildConfigField(STRING, name, readLocalProperty(name))
+        fun stringConfigField(name: String) {
+            val propValue = localProperties.getProperty(name, "")
+            if (propValue.isBlank()) {
+                println("Warning: Property $name not found in local.properties")
+            } else {
+                buildConfigField(STRING, name, propValue)
+            }
+        }
 
         stringConfigField("POWERSYNC_URL")
         stringConfigField("SUPABASE_URL")
@@ -114,11 +126,3 @@ buildkonfig {
         stringConfigField("SUPABASE_USER_PASSWORD")
     }
 }
-
-fun readLocalProperty(name: String): String = Properties().apply {
-    try {
-        load(rootProject.file("local.properties").reader())
-    } catch (ignored: java.io.IOException) {
-        throw Error("local.properties file not found")
-    }
-}.getProperty(name)

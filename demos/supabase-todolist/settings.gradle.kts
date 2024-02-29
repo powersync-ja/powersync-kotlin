@@ -26,8 +26,8 @@ dependencyResolutionManagement {
         maven {
             url = uri("https://maven.pkg.github.com/powersync-ja/powersync-kotlin")
             credentials {
-                username = localProperties.getProperty("GITHUB_USERNAME")
-                password = localProperties.getProperty("GITHUB_TOKEN")
+                username = localProperties.getProperty("GITHUB_USERNAME", "")
+                password = localProperties.getProperty("GITHUB_TOKEN", "")
             }
         }
     }

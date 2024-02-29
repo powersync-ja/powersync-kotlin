@@ -77,21 +77,32 @@ android {
     }
 }
 
-buildkonfig {
-    packageName = "com.powersync.demos"
-    objectName = "Config"
-
-    defaultConfigs {
-        buildConfigField(STRING, "POWERSYNC_URL", readLocalProperty("POWERSYNC_URL"))
-        buildConfigField(STRING, "SUPABASE_URL", readLocalProperty("SUPABASE_URL"))
-        buildConfigField(STRING, "SUPABASE_ANON_KEY", readLocalProperty("SUPABASE_ANON_KEY"))
-    }
-}
-
-fun readLocalProperty(name: String): String = Properties().apply {
+val localProperties = Properties().apply {
     try {
         load(rootProject.file("local.properties").reader())
     } catch (ignored: java.io.IOException) {
         throw Error("local.properties file not found")
     }
-}.getProperty(name)
+}
+
+buildkonfig {
+    packageName = "com.powersync.demos"
+    objectName = "Config"
+
+    defaultConfigs {
+        fun stringConfigField(name: String) {
+            val propValue = localProperties.getProperty(name, "")
+            if (propValue.isBlank()) {
+                println("Warning: Property $name not found in local.properties")
+            } else {
+                buildConfigField(STRING, name, propValue)
+            }
+        }
+
+        stringConfigField("POWERSYNC_URL")
+        stringConfigField("SUPABASE_URL")
+        stringConfigField("SUPABASE_ANON_KEY")
+        stringConfigField("SUPABASE_USER_EMAIL")
+        stringConfigField("SUPABASE_USER_PASSWORD")
+    }
+}
