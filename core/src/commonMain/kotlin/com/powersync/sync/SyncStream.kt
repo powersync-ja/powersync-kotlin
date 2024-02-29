@@ -244,8 +244,7 @@ class SyncStream(
             isStreamingSyncData(obj) -> return handleStreamingSyncData(obj, state)
             isStreamingKeepAlive(obj) -> return handleStreamingKeepalive(obj, state)
             else -> {
-                // TODO throw error?
-                println("Unhandled JSON instruction")
+                println("Unhandled instruction")
                 return state
             }
         }

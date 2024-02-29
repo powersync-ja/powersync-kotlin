@@ -40,7 +40,6 @@ class PsInternalDatabase(val driver: PsSqlDriver, private val scope: CoroutineSc
         scope.launch {
             tableUpdates().debounce(DEFAULT_WATCH_THROTTLE_MS).collect { tables ->
                 val dataTables = tables.map { toFriendlyTableName(it) }.filter { it.isNotBlank() }
-                println("Table updates: $dataTables")
                 driver.notifyListeners(queryKeys = dataTables.toTypedArray())
             }
         }

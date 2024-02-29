@@ -56,16 +56,16 @@ internal class PowerSyncDatabaseImpl(
 
     init {
         runBlocking {
+            val sqliteVersion = internalDb.queries.sqliteVersion().awaitAsOne()
+            println("SQLiteVersion: $sqliteVersion")
+            println("PowerSyncVersion: ${getPowerSyncVersion()}")
             applySchema();
         }
     }
 
     private suspend fun applySchema() {
-        println("PowerSync version ${getPowerSyncVersion()}")
-
         val json = Json { encodeDefaults = true }
         val schemaJson = json.encodeToString(schema)
-        println("Serialized app schema: $schemaJson")
 
         this.writeTransaction {
             internalDb.queries.replaceSchema(schemaJson).awaitAsOne()
@@ -87,7 +87,6 @@ internal class PowerSyncDatabaseImpl(
 
         scope.launch {
             internalDb.updatesOnTable(PsInternalTable.CRUD.toString()).debounce(100).collect {
-                println("[PowerSyncDatabaseImpl::triggerCrudUpload]")
                 syncStream!!.triggerCrudUpload()
             }
         }
@@ -161,9 +160,6 @@ internal class PowerSyncDatabaseImpl(
     }
 
     override suspend fun getPowerSyncVersion(): String {
-        val sqliteVersion = internalDb.queries.sqliteVersion().awaitAsOne()
-        println("SQLiteVersion: $sqliteVersion")
-
         return internalDb.queries.powerSyncVersion().awaitAsOne()
     }
 

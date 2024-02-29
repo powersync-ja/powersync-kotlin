@@ -25,23 +25,24 @@ class PsSqlDriver(private val driver: SqlDriver, private val scope: CoroutineSco
         pendingUpdates.clear()
     }
 
-    // Register for table updates
+    // Flows on table updates
     fun tableUpdates(): Flow<List<String>> {
         return tableUpdatesFlow.asSharedFlow()
     }
 
-    // Register for table updates on a specific table
+    // Flows on table updates containing a specific table
     fun updatesOnTable(tableName: String): Flow<Unit> {
         return tableUpdates().filter { it.contains(tableName) }.map { }
     }
 
     fun fireTableUpdates() {
-        if (pendingUpdates.isEmpty()) {
+        val updates = pendingUpdates.toList()
+        if (updates.isEmpty()) {
             return;
         }
         scope.launch {
-            tableUpdatesFlow.emit(pendingUpdates.toList())
-            clearTableUpdates()
+            tableUpdatesFlow.emit(updates)
         }
+        pendingUpdates.clear()
     }
 }
