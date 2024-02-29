@@ -38,7 +38,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(libs.powersync.core)
-            api(libs.powersync.connectors)
+            api(libs.powersync.connector.supabase)
             implementation(libs.uuid)
             implementation(compose.runtime)
             implementation(compose.foundation)

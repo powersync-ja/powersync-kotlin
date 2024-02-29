@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncBuilder
-import com.powersync.connectors.SupabaseConnector
+import com.powersync.connector.supabase.SupabaseConnector
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.runBlocking
 

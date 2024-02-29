@@ -27,7 +27,7 @@ kotlin {
 }
 
 android {
-    namespace = "com.powersync.connectors"
+    namespace = "com.powersync.connector.supabase"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()

@@ -1,6 +1,8 @@
-package com.powersync.connectors
+package com.powersync.connector.supabase
 
 import com.powersync.PowerSyncDatabase
+import com.powersync.connectors.PowerSyncBackendConnector
+import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.UpdateType
 import io.github.jan.supabase.SupabaseClient
@@ -86,7 +88,7 @@ class SupabaseConnector(
                 lastEntry = entry;
 
                 val table = supabaseClient.from(entry.table)
-                val result = when (entry.op) {
+                when (entry.op) {
                     UpdateType.PUT -> {
                         val data = entry.opData?.toMutableMap() ?: mutableMapOf()
                         data["id"] = entry.id
@@ -109,15 +111,12 @@ class SupabaseConnector(
                         }
                     }
                 }
-
-                println("[SupabaseConnector::uploadData] $result")
             }
 
             transaction.complete(null);
 
         } catch (e: Exception) {
-            // TODO implement discard logic
-            println("Data upload error - discarding ${lastEntry!!}, $e")
+            println("Data upload error - retrying last entry: ${lastEntry!!}, $e")
             throw e
         }
     }

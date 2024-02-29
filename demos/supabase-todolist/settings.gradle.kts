@@ -42,3 +42,13 @@ rootProject.name = "supabase-todolist"
 include(":androidApp")
 include(":shared")
 //include(":desktopApp")
+
+includeBuild("../..") {
+    dependencySubstitution {
+        substitute(module("com.powersync:core"))
+            .using(project(":core")).because("we want to auto-wire up sample dependency")
+        substitute(module("com.powersync:connector-supabase"))
+            .using(project(":connectors:supabase"))
+            .because("we want to auto-wire up sample dependency")
+    }
+}
