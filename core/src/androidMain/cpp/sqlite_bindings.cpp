@@ -36,7 +36,7 @@ update_hook_callback(void *pData, int opCode, char const *pDbName, char const *p
         jmethodID updateId = env->GetMethodID(
                 g_ctx.bindingsClz, "onTableUpdate", "(Ljava/lang/String;)V");
 
-        jstring tableString = env->NewStringUTF(std::string("ps_crud").c_str());
+        jstring tableString = env->NewStringUTF(std::string(pTableName).c_str());
         env->CallVoidMethod(g_ctx.bindingsObj, updateId, tableString);
     }
 }

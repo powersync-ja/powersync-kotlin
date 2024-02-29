@@ -8,6 +8,7 @@ import co.touchlab.stately.concurrency.AtomicBoolean
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import com.benasher44.uuid.uuid4
+import com.powersync.db.internal.PsInternalTable
 import kotlinx.coroutines.runBlocking
 
 class BucketStorage(val db: PsInternalDatabase) {
@@ -44,7 +45,6 @@ class BucketStorage(val db: PsInternalDatabase) {
             )
 
         tableNames.addAll(names)
-        println("[BucketStorage::tableNames] Found tables: $tableNames")
     }
 
     fun startSession() {
@@ -61,17 +61,18 @@ class BucketStorage(val db: PsInternalDatabase) {
 
     suspend fun updateLocalTarget(checkpointCallback: suspend () -> String): Boolean {
         db.getOptional(
-            "SELECT target_op FROM ps_buckets WHERE name = '\$local' AND target_op = ?",
+            "SELECT target_op FROM ${PsInternalTable.BUCKETS} WHERE name = '\$local' AND target_op = ?",
             parameters = listOf(MAX_OP_ID),
             mapper = { cursor -> cursor.getLong(0)!! }
         )
             ?: // Nothing to update
             return false
 
-        val seqBefore = db.getOptional("SELECT seq FROM sqlite_sequence WHERE name = 'ps_crud'") {
-            it.getLong(0)!!
-        } ?: // Nothing to update
-        return false
+        val seqBefore =
+            db.getOptional("SELECT seq FROM sqlite_sequence WHERE name = '${PsInternalTable.CRUD}'") {
+                it.getLong(0)!!
+            } ?: // Nothing to update
+            return false
 
         val opId = checkpointCallback()
 
@@ -84,7 +85,7 @@ class BucketStorage(val db: PsInternalDatabase) {
             }
 
             val seqAfter =
-                db.getOptional("SELECT seq FROM sqlite_sequence WHERE name = 'ps_crud'") {
+                db.getOptional("SELECT seq FROM sqlite_sequence WHERE name = '${PsInternalTable.CRUD}'") {
                     it.getLong(0)!!
                 }
                     ?: // assert isNotEmpty
@@ -95,7 +96,10 @@ class BucketStorage(val db: PsInternalDatabase) {
                 return@readTransaction false;
             }
 
-            db.execute("UPDATE ps_buckets SET target_op = ? WHERE name='\$local'", listOf(opId))
+            db.execute(
+                "UPDATE ${PsInternalTable.BUCKETS} SET target_op = ? WHERE name='\$local'",
+                listOf(opId)
+            )
             return@readTransaction true
         }
     }
@@ -113,7 +117,7 @@ class BucketStorage(val db: PsInternalDatabase) {
 
     suspend fun getBucketStates(): List<BucketState> {
         return db.getAll(
-            "SELECT name as bucket, cast(last_op as TEXT) as op_id FROM ps_buckets WHERE pending_delete = 0",
+            "SELECT name as bucket, cast(last_op as TEXT) as op_id FROM ${PsInternalTable.BUCKETS} WHERE pending_delete = 0",
             mapper = { cursor ->
                 BucketState(
                     bucket = cursor.getString(0)!!,
@@ -235,25 +239,13 @@ class BucketStorage(val db: PsInternalDatabase) {
      * This includes creating new tables, dropping old tables, and copying data over from the oplog.
      */
     private suspend fun updateObjectsFromBuckets(checkpoint: Checkpoint): Boolean {
-
-        val tableNames = db.getAll(
-            "SELECT row_type FROM ps_oplog WHERE op_id = ?",
-            listOf(checkpoint.lastOpId.toLong()),
-            mapper = { cursor ->
-                cursor.getString(0)!!
-            }).toSet().toTypedArray()
-
-        return db.readTransaction {
+        return db.writeTransaction {
             val res = db.execute(
                 "INSERT INTO powersync_operations(op, data) VALUES(?, ?)",
                 listOf("sync_local", "")
             )
 
-            this.afterCommit {
-                db.driver.notifyListeners(queryKeys = tableNames)
-            }
-
-            return@readTransaction res == 1L
+            return@writeTransaction res == 1L
         }
     }
 

@@ -20,8 +20,6 @@ import com.powersync.sync.SyncStream
  */
 interface PowerSyncDatabase : ReadQueries, WriteQueries {
 
-    public val driver: SqlDriver
-
     /**
      * The current sync status.
      */

@@ -11,7 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 actual class DatabaseDriverFactory(private val context: Context) {
-    private var driver: PsSqliteDriver? = null
+    private var driver: PsSqlDriver? = null
     private external fun setupSqliteBinding()
 
     @Suppress("unused")
@@ -33,10 +33,10 @@ actual class DatabaseDriverFactory(private val context: Context) {
     actual fun createDriver(
         scope: CoroutineScope,
         dbFilename: String,
-    ): PsSqliteDriver {
+    ): PsSqlDriver {
         val schema = PsInternalSchema.synchronous()
 
-        this.driver = PsSqliteDriver(scope = scope, driver = AndroidSqliteDriver(
+        this.driver = PsSqlDriver(scope = scope, driver = AndroidSqliteDriver(
             context = context,
             schema = schema,
             name = dbFilename,
@@ -65,7 +65,7 @@ actual class DatabaseDriverFactory(private val context: Context) {
             }
         ))
         setupSqliteBinding()
-        return this.driver as PsSqliteDriver
+        return this.driver as PsSqlDriver
     }
 
 

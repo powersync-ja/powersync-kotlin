@@ -8,5 +8,5 @@ expect class DatabaseDriverFactory {
     fun createDriver(
         scope: CoroutineScope,
         dbFilename: String
-    ): PsSqliteDriver
+    ): PsSqlDriver
 }

@@ -7,7 +7,7 @@ import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import app.cash.sqldelight.db.SqlCursor
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
-import com.powersync.PsSqliteDriver
+import com.powersync.PsSqlDriver
 import com.powersync.bucket.BucketStorage
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.crud.CrudBatch
@@ -15,11 +15,14 @@ import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.CrudRow
 import com.powersync.db.crud.CrudTransaction
 import com.powersync.db.internal.PsInternalDatabase
+import com.powersync.db.internal.PsInternalTable
 import com.powersync.db.schema.Schema
 import com.powersync.sync.SyncStatus
 import com.powersync.sync.SyncStream
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
@@ -39,7 +42,7 @@ internal class PowerSyncDatabaseImpl(
     val scope: CoroutineScope,
     val factory: DatabaseDriverFactory,
     private val dbFilename: String,
-    override val driver: PsSqliteDriver = factory.createDriver(scope, dbFilename),
+    driver: PsSqlDriver = factory.createDriver(scope, dbFilename),
 ) : PowerSyncDatabase {
     private val internalDb = PsInternalDatabase(driver, scope)
     private val bucketStorage: BucketStorage = BucketStorage(internalDb)
@@ -69,6 +72,7 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 
+    @OptIn(FlowPreview::class)
     override suspend fun connect(connector: PowerSyncBackendConnector) {
         this.syncStream =
             SyncStream(
@@ -81,8 +85,11 @@ internal class PowerSyncDatabaseImpl(
             syncStream!!.streamingSync()
         }
 
-        driver.registerForUpdatesOnTable("ps_crud") {
-            syncStream!!.triggerCrudUpload()
+        scope.launch {
+            internalDb.updatesOnTable(PsInternalTable.CRUD.toString()).debounce(100).collect {
+                println("[PowerSyncDatabaseImpl::triggerCrudUpload]")
+                syncStream!!.triggerCrudUpload()
+            }
         }
     }
 

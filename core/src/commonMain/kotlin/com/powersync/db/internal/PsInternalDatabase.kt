@@ -9,17 +9,22 @@ import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlCursor
-import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.db.SqlPreparedStatement
+import com.powersync.PsSqlDriver
 import com.powersync.db.PsDatabase
 import com.powersync.db.ReadQueries
 import com.powersync.db.WriteQueries
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-class PsInternalDatabase(val driver: SqlDriver, private val scope: CoroutineScope) :
+
+@OptIn(FlowPreview::class)
+class PsInternalDatabase(val driver: PsSqlDriver, private val scope: CoroutineScope) :
     ReadQueries,
     WriteQueries {
 
@@ -28,6 +33,17 @@ class PsInternalDatabase(val driver: SqlDriver, private val scope: CoroutineScop
 
     companion object {
         const val POWERSYNC_TABLE_MATCH = "(^ps_data__|^ps_data_local__)"
+        const val DEFAULT_WATCH_THROTTLE_MS = 30L
+    }
+
+    init {
+        scope.launch {
+            tableUpdates().debounce(DEFAULT_WATCH_THROTTLE_MS).collect { tables ->
+                val dataTables = tables.map { toFriendlyTableName(it) }.filter { it.isNotBlank() }
+                println("Table updates: $dataTables")
+                driver.notifyListeners(queryKeys = dataTables.toTypedArray())
+            }
+        }
     }
 
     override suspend fun execute(
@@ -36,17 +52,11 @@ class PsInternalDatabase(val driver: SqlDriver, private val scope: CoroutineScop
     ): Long {
         val numParams = parameters?.size ?: 0
 
-        val result = createQuery(
+        return createQuery(
             sql,
             parameters = numParams,
             binders = getBindersFromParams(parameters)
         ).awaitAsOneOrNull() ?: 0
-
-        val tables = getSourceTables(sql, parameters, transformer = ::dataTableToFriendlyName)
-        if (tables.isNotEmpty()) {
-            driver.notifyListeners(queryKeys = tables.toTypedArray())
-        }
-        return result
     }
 
     override suspend fun <RowType : Any> get(
@@ -94,8 +104,8 @@ class PsInternalDatabase(val driver: SqlDriver, private val scope: CoroutineScop
         mapper: (SqlCursor) -> RowType
     ): Flow<List<RowType>> {
 
-        val tables = getSourceTables(sql, parameters, transformer = ::dataTableToFriendlyName)
-
+        val tables = getSourceTables(sql, parameters).map { toFriendlyTableName(it) }
+            .filter { it.isNotBlank() }.toSet()
         return watchQuery(
             query = sql,
             parameters = parameters?.size ?: 0,
@@ -158,10 +168,27 @@ class PsInternalDatabase(val driver: SqlDriver, private val scope: CoroutineScop
         return transactor.transactionWithResult(noEnclosing = true, body)
     }
 
+    // Register callback for table updates
+    private fun tableUpdates(): Flow<List<String>> {
+        return driver.tableUpdates()
+    }
+
+    // Register callback for table updates on a specific table
+    fun updatesOnTable(tableName: String): Flow<Unit> {
+        return driver.updatesOnTable(tableName)
+    }
+
+    private fun toFriendlyTableName(tableName: String): String {
+        val regex = POWERSYNC_TABLE_MATCH.toRegex()
+        if (regex.containsMatchIn(tableName)) {
+            return tableName.replace(regex, "")
+        }
+        return tableName
+    }
+
     private fun getSourceTables(
         sql: String,
         parameters: List<Any>?,
-        transformer: ((value: String) -> String)?
     ): Set<String> {
         val rows = createQuery(
             query = "EXPLAIN $sql",
@@ -193,16 +220,7 @@ class PsInternalDatabase(val driver: SqlDriver, private val scope: CoroutineScop
             }, mapper = { it.getString(0)!! }
         ).executeAsList()
 
-        return tableRows.map { transformer?.invoke(it) ?: it }.filter { it.isNotEmpty() }.toSet()
-    }
-
-    private fun dataTableToFriendlyName(table: String): String {
-        // Return table name that match the regex and replace it with empty string
-        val regex = POWERSYNC_TABLE_MATCH.toRegex()
-        if (regex.containsMatchIn(table)) {
-            return table.replace(regex, "")
-        }
-        return ""
+        return tableRows.toSet()
     }
 
     internal data class ExplainQueryResult(
