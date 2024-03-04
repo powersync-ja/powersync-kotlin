@@ -1,21 +1,14 @@
 package com.powersync.connectors
 
-import io.ktor.util.decodeBase64String
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.long
 
 /**
  * Temporary credentials to connect to the PowerSync service.
  */
-
 @Serializable
 data class PowerSyncCredentials(
     /**
@@ -35,37 +28,6 @@ data class PowerSyncCredentials(
      */
     val expiresAt: Instant?
 ) {
-    companion object {
-        /**
-         * Get an expiry date from a JWT token, if specified.
-         *
-         * The token is not validated in any way.
-         */
-        fun getExpiryDate(token: String): Instant? {
-            return try {
-                val payload = decodeJwt(token)
-                val expiry = payload["exp"]?.jsonPrimitive?.long
-                if (expiry != null) {
-                    Instant.fromEpochSeconds(expiry)
-                } else {
-                    null
-                }
-            } catch (e: Exception) {
-                null
-            }
-        }
-
-        fun decodeJwt(jwt: String): JsonObject {
-            val parts = jwt.split('.')
-            check(parts.size == 3) { "Invalid JWT" }
-
-            val payload = parts[1].decodeBase64String()
-
-            val json = Json { ignoreUnknownKeys = true }
-            return json.parseToJsonElement(payload).jsonObject
-        }
-    }
-
     override fun toString(): String {
         return "PowerSyncCredentials<endpoint: $endpoint userId: $userId expiresAt: ${
             expiresAt?.toLocalDateTime(

@@ -24,10 +24,8 @@ SELECT id, tx_id, data FROM ps_crud WHERE tx_id = ? ORDER BY id ASC;
 deleteEntriesWithIdLessThan:
 DELETE FROM ps_crud WHERE id <= ?;
 
--- Internal tables used by Sqlite and PowerSync. Once (https://github.com/cashapp/sqldelight/pull/4006) is merged,
+-- Internal tables used by PowerSync. Once (https://github.com/cashapp/sqldelight/pull/4006) is merged,
 -- we can define interal tables as part of the dialect.
-CREATE TABLE sqlite_sequence(name TEXT NOT NULL, seq INTEGER NOT NULL);
-
 CREATE TABLE IF NOT EXISTS ps_crud (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT, tx_id INTEGER);
 
 CREATE TABLE ps_buckets(
