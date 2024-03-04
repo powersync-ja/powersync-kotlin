@@ -1,11 +1,4 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-# This workflow will build a Java project with Gradle and cache/restore any dependencies to improve the workflow execution time
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-gradle
-
-name: Java CI with Gradle
+name: Gradle build & test
 
 on:
   push:
@@ -24,15 +17,17 @@ jobs:
         include:
           - target: iosSimulatorArm64Test
             os: macos-latest
-          - target: jvmTest
+          - target: testDebugUnitTest
+            os: ubuntu-latest
+          - target: testReleaseUnitTest
             os: ubuntu-latest
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Validate Gradle Wrapper
       uses: gradle/wrapper-validation-action@v1
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       with:
         path: |
           ~/.konan
@@ -42,7 +37,11 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
+    - name: Set up Gradle
+      uses: gradle/actions/setup-gradle@v3
+
     - name: Build with Gradle
-      uses: gradle/gradle-build-action@ce999babab2de1c4b649dc15f0ee67e6246c994f
-      with:
-        arguments: ${{ matrix.target }}
+      run: |
+        ./gradlew \
+        ${{ matrix.target }} \
+        -PGITHUB_PUBLISH_TOKEN=${{ secrets.GITHUB_TOKEN }}

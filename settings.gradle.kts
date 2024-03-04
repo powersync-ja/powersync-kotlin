@@ -1,17 +1,27 @@
 pluginManagement {
     repositories {
         google()
-        mavenCentral()
         gradlePluginPortal()
+        mavenCentral()
+    }
+    includeBuild("plugins")
+}
+
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
+        maven("https://jitpack.io")
     }
 }
-//dependencyResolutionManagement {
-//    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-//    repositories {
-//        google()
-//        mavenCentral()
-//    }
-//}
 
-rootProject.name = "Notes SQLite"
-include(":app")
+rootProject.name = "powersync"
+
+include(":core")
+include(":connectors:supabase")
+
+include(":dialect")
+include(":powersyncswift")
+
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")

@@ -1,0 +1,110 @@
+[versions]
+## SDK Versions
+android-minSdk = "24"
+android-targetSdk = "34"
+android-compileSdk = "34"
+java = "17"
+idea = "222.4459.24" # Flamingo | 2022.2.1 (see https://plugins.jetbrains.com/docs/intellij/android-studio-releases-list.html)
+
+# Dependencies
+kotlin = "1.9.22"
+coroutines = "1.7.3"
+kotlinx-datetime = "0.5.0"
+kotlinx-io = "0.3.0"
+ktor = "2.3.7"
+uuid = "0.8.2"
+powersync-core = "0.1.6"
+sqlite-android = "3.45.0"
+
+sqlDelight = "2.0.1"
+stately = "2.0.6"
+supabase = "2.0.4"
+junit = "4.13.2"
+
+compose = "1.5.12"
+compose-preview = "1.6.0"
+compose-compiler = "1.5.8"
+
+# plugins
+android-gradle-plugin = "8.2.2"
+kmmBridge = "0.5.1"
+skie = "0.6.1"
+maven-publish = "0.27.0"
+download-plugin = "5.5.0"
+grammerKit = "0.1.12"
+
+# Sample - Android
+androidx-core = "1.12.0"
+androidx-activity-compose = "1.8.2"
+
+androidx-appcompat = "1.6.1"
+androidx-constraintlayout = "2.1.4"
+androidx-espresso-core = "3.5.1"
+androidx-material = "1.11.0"
+androidx-test-junit = "1.1.5"
+org-jetbrains-kotlin-jvm = "1.9.22"
+
+[libraries]
+compose-compiler = { module = "androidx.compose.compiler:compiler", version.ref = "compose-compiler" }
+powersync-sqlite-core = { module = "co.powersync:powersync-sqlite-core", version.ref = "powersync-core" }
+mavenPublishPlugin = { module = "com.vanniktech:gradle-maven-publish-plugin", version.ref = "maven-publish" }
+
+test-junit = { group = "junit", name = "junit", version.ref = "junit" }
+test-junitKtx = { module = "androidx.test.ext:junit-ktx", version.ref = "androidx-test-junit" }
+test-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
+
+kotlinx-io = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinx-io" }
+kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
+
+uuid = { module = "com.benasher44:uuid", version.ref = "uuid" }
+ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-client-ios = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
+ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
+ktor-client-contentnegotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
+ktor-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+
+sqldelight-driver-ios = { module = "app.cash.sqldelight:native-driver", version.ref = "sqlDelight" }
+sqldelight-driver-android = { module = "app.cash.sqldelight:android-driver", version.ref = "sqlDelight" }
+requery-sqlite-android = { module = "com.github.requery:sqlite-android", version.ref = "sqlite-android" }
+sqldelight-coroutines = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqlDelight" }
+sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqlDelight" }
+sqldelight-dialect-sqlite338 = { module = "app.cash.sqldelight:sqlite-3-38-dialect", version.ref = "sqlDelight" }
+sqldelight-dialect-sqlite335 = { module = "app.cash.sqldelight:sqlite-3-35-dialect", version.ref = "sqlDelight" }
+sqldelight-compilerEnv = { module = "app.cash.sqldelight:compiler-env", version.ref = "sqlDelight" }
+
+stately-concurrency = { module = "co.touchlab:stately-concurrency", version.ref = "stately" }
+supabase-client = { module = "io.github.jan-tennert.supabase:postgrest-kt", version.ref = "supabase" }
+supabase-gotrue = { module = "io.github.jan-tennert.supabase:gotrue-kt", version.ref = "supabase" }
+
+# Sample - Android
+androidx-core = { group = "androidx.core", name = "core-ktx", version.ref = "androidx-core" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidx-appcompat" }
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity-compose" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "androidx-espresso-core" }
+androidx-material = { group = "com.google.android.material", name = "material", version.ref = "androidx-material" }
+compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "compose-preview" }
+
+[plugins]
+androidApplication = { id = "com.android.application", version.ref = "android-gradle-plugin" }
+androidLibrary = { id = "com.android.library", version.ref = "android-gradle-plugin" }
+jetbrainsCompose = { id = "org.jetbrains.compose", version.ref = "compose" }
+cocoapods = { id = "org.jetbrains.kotlin.native.cocoapods", version.ref = "kotlin" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+skie = { id = "co.touchlab.skie", version.ref = "skie" }
+kmmbridge = { id = "co.touchlab.kmmbridge", version.ref = "kmmBridge" }
+sqldelight = { id = "app.cash.sqldelight", version.ref = "sqlDelight" }
+grammarKitComposer = { id = "com.alecstrong.grammar.kit.composer", version.ref = "grammerKit" }
+mavenPublishPlugin = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }
+downloadPlugin = { id = "de.undercouch.download", version.ref = "download-plugin" }
+
+[bundles]
+sqldelight = [
+    "sqldelight-runtime",
+    "sqldelight-coroutines"
+]
