@@ -31,7 +31,8 @@ Supported KMP targets: Android and iOS.
 
 - [connectors](./connectors/)
 
-    - [SupabaseConnector.kt](./connectors/src/commonMain/kotlin/com/powersync/connectors/SupabaseConnector.kt) An example connector implementation tailed for Supabase. The backend connector provides
+    - [SupabaseConnector.kt](./connectors/supabase/src/commonMain/kotlin/com/powersync/connector/supabase/SupabaseConnector.kt) An example connector implementation tailed for Supabase. The backend
+      connector provides
       the connection between your application backend and the PowerSync managed database. It is used to:
         1. Retrieve a token to connect to the PowerSync service.
         2. Apply local changes on your backend application server (and from there, to Postgres).
@@ -52,11 +53,13 @@ Demo applications are located in the [`demos/`](./demos) directory. See their re
 The PowerSync Kotlin Multiplatform SDK is currently in an alpha release and is not yet suitable for production use.
 
 Current limitations:
+
 - Debugging via configurable logging is not yet implemented.
 - Integration with SQLDelight schema and API generation (ORM) is not yet supported.
 - Supports only a single database file.
 
 Future work/ideas:
+
 - Improved error handling.
 - Attachments helper package.
 - Management of DB connections on each platform natively.
@@ -111,7 +114,7 @@ Note: The `linkOnly` attribute is set to `true` and framework is set to `isStati
 ### Usage
 
 The first step is creating a PowerSync account and setting up a PowerSync instance. If you are using Supabase, we have a step-by-step tutorial
-available [here](https://docs.powersync.com/integration-guides/supabase-+-powersync). 
+available [here](https://docs.powersync.com/integration-guides/supabase-+-powersync).
 
 For other Postgres backend providers, follow these steps:
 
@@ -120,11 +123,11 @@ For other Postgres backend providers, follow these steps:
 * Visit the [PowerSync dashboard](https://powersync.journeyapps.com/) to create a PowerSync instance. After signing up you will be prompted to start the onboarding wizard which guides your though the
   steps required for this, and find database specific
   instructions [here](https://docs.powersync.com/usage/installation/database-setup). Existing users: start the onboarding wizard by navigating to Help > Start guide in the top-right corner.
-* Developer documentation for PowerSync is available [here](https://docs.powersync.com/).  
+* Developer documentation for PowerSync is available [here](https://docs.powersync.com/).
 
 #### 1. Define the schema for the on-device SQLite database.
 
-You need to set up your schema in your app project. This involves defining your schema in code using the PowerSync syntax. 
+You need to set up your schema in your app project. This involves defining your schema in code using the PowerSync syntax.
 This schema represents a "view" of the downloaded data. No migrations are required — the schema is applied directly when the PowerSync database is constructed.
 
 ```kotlin
@@ -150,35 +153,37 @@ Note: No need to declare a primary key `id` column, as PowerSync will automatica
 
 #### 2. Implement a backend connector to define how PowerSync communicates with your backend.
 
-The PowerSync backend connector provides the connection between your application backend and the PowerSync managed database. 
+The PowerSync backend connector provides the connection between your application backend and the PowerSync managed database.
 It is used to:
+
 1. Retrieve a token to connect to the PowerSync instance.
 2. Apply local changes on your backend application server (and from there, to Postgres)
 
-If you are using Supabase, you can use [SupabaseConnector.kt](./connectors/src/commonMain/kotlin/com/powersync/connectors/SupabaseConnector.kt) as a starting point.
-    
-```kotlin
-class MyConnector: PowerSyncBackendConnector() {
-  override suspend fun fetchCredentials(): PowerSyncCredentials {
-    // implement fetchCredentials to obtain the necessary credentials to connect to your backend
-    // See an example implementation in connectors/src/commonMain/kotlin/com/powersync/connectors/SupabaseConnector.kt
-  }
+If you are using Supabase, you can use [SupabaseConnector.kt](./connectors/supabase/src/commonMain/kotlin/com/powersync/connector/supabase/SupabaseConnector.kt) as a starting point.
 
-  override suspend fun uploadData(database: PowerSyncDatabase) {
-    // Implement uploadData to send local changes to your backend service
-    // You can omit this method if you only want to sync data from the server to the client
-    // See an example implementation in connectors/src/commonMain/kotlin/com/powersync/connectors/SupabaseConnector.kt
-    // See https://docs.powersync.com/usage/installation/app-backend-setup/writing-client-changes for considerations.
-  }
+```kotlin
+class MyConnector : PowerSyncBackendConnector() {
+    override suspend fun fetchCredentials(): PowerSyncCredentials {
+        // implement fetchCredentials to obtain the necessary credentials to connect to your backend
+        // See an example implementation in connectors/supabase/src/commonMain/kotlin/com/powersync/connector/supabase/SupabaseConnector.kt
+    }
+
+    override suspend fun uploadData(database: PowerSyncDatabase) {
+        // Implement uploadData to send local changes to your backend service
+        // You can omit this method if you only want to sync data from the server to the client
+        // See an example implementation in connectors/supabase/src/commonMain/kotlin/com/powersync/connector/supabase/SupabaseConnector.kt
+        // See https://docs.powersync.com/usage/installation/app-backend-setup/writing-client-changes for considerations.
+    }
 }
 ```
 
 #### 3. Initialize the PowerSync database an connect it to the connector, using `PowerSyncBuilder`:
 
-You need to instantiate the PowerSync database — this is the core managed database. 
-Its primary functions are to record all changes in the local database, whether online or offline. In addition, it automatically uploads changes to your app backend when connected. 
+You need to instantiate the PowerSync database — this is the core managed database.
+Its primary functions are to record all changes in the local database, whether online or offline. In addition, it automatically uploads changes to your app backend when connected.
 
-  a. Create platform specific `DatabaseDriverFactory` to be used by the `PowerSyncBuilder` to create the SQLite database driver.
+a. Create platform specific `DatabaseDriverFactory` to be used by the `PowerSyncBuilder` to create the SQLite database driver.
+
   ```kotlin
   // Android
 val driverFactory = DatabaseDriverFactory(this)
@@ -206,14 +211,14 @@ database.connect(MyConnector())
 ```kotlin
 // You can watch any SQL query. This excutes a read query every time the source tables are modified.
 fun watchCustomers(): Flow<List<User>> {
-  // TODO: implement your UI based on the result set
-  return database.watch("SELECT * FROM customers", mapper = { cursor ->
-    User(
-      id = cursor.getString(0)!!,
-      name = cursor.getString(1)!!,
-      email = cursor.getString(2)!!
-    )
-  })
+    // TODO: implement your UI based on the result set
+    return database.watch("SELECT * FROM customers", mapper = { cursor ->
+        User(
+            id = cursor.getString(0)!!,
+            name = cursor.getString(1)!!,
+            email = cursor.getString(2)!!
+        )
+    })
 }
 ```
 
