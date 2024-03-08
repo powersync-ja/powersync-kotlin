@@ -1,8 +1,6 @@
 package com.powersync.db.crud
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
+import com.powersync.utils.JsonUtil
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -57,7 +55,7 @@ data class CrudEntry(
 ) {
     companion object {
         fun fromRow(row: CrudRow): CrudEntry {
-            val data = Json.parseToJsonElement(row.data).jsonObject
+            val data = JsonUtil.json.parseToJsonElement(row.data).jsonObject
             return CrudEntry(
                 id = data["id"]!!.jsonPrimitive.content,
                 clientId = row.id.toInt(),

@@ -14,13 +14,13 @@ import com.powersync.PsSqlDriver
 import com.powersync.db.PsDatabase
 import com.powersync.db.ReadQueries
 import com.powersync.db.WriteQueries
+import com.powersync.utils.JsonUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 
 
 @OptIn(FlowPreview::class)
@@ -210,7 +210,7 @@ class PsInternalDatabase(val driver: PsSqlDriver, private val scope: CoroutineSc
                 rootPages.add(row.p2)
             }
         }
-        val params = listOf(Json.encodeToString(rootPages))
+        val params = listOf(JsonUtil.json.encodeToString(rootPages))
         val tableRows = createQuery(
             "SELECT tbl_name FROM sqlite_master WHERE rootpage IN (SELECT json_each.value FROM json_each(?))",
             parameters = params.size,

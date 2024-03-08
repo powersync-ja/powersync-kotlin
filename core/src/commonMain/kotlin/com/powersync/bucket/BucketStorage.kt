@@ -6,9 +6,9 @@ import com.powersync.sync.SyncDataBatch
 import com.powersync.sync.SyncLocalDatabaseResult
 import co.touchlab.stately.concurrency.AtomicBoolean
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import com.benasher44.uuid.uuid4
 import com.powersync.db.internal.PsInternalTable
+import com.powersync.utils.JsonUtil
 import kotlinx.coroutines.runBlocking
 
 class BucketStorage(val db: PsInternalDatabase) {
@@ -106,7 +106,7 @@ class BucketStorage(val db: PsInternalDatabase) {
 
     suspend fun saveSyncData(syncDataBatch: SyncDataBatch) {
         db.writeTransaction {
-            val jsonString = Json.encodeToString(syncDataBatch);
+            val jsonString = JsonUtil.json.encodeToString(syncDataBatch);
             db.execute(
                 "INSERT INTO powersync_operations(op, data) VALUES(?, ?)",
                 listOf("save", jsonString)
@@ -190,7 +190,7 @@ class BucketStorage(val db: PsInternalDatabase) {
         db.writeTransaction {
             db.execute(
                 "UPDATE ps_buckets SET last_op = ? WHERE name IN (SELECT json_each.value FROM json_each(?))",
-                listOf(targetCheckpoint.lastOpId, Json.encodeToString(bucketNames))
+                listOf(targetCheckpoint.lastOpId, JsonUtil.json.encodeToString(bucketNames))
             )
 
             if (targetCheckpoint.writeCheckpoint != null) {
@@ -220,7 +220,7 @@ class BucketStorage(val db: PsInternalDatabase) {
     suspend fun validateChecksums(checkpoint: Checkpoint): SyncLocalDatabaseResult {
         val res = db.getOptional(
             "SELECT powersync_validate_checkpoint(?) as result",
-            parameters = listOf(Json.encodeToString(checkpoint)),
+            parameters = listOf(JsonUtil.json.encodeToString(checkpoint)),
             mapper = { cursor ->
                 cursor.getString(0)!!
             })
@@ -230,7 +230,7 @@ class BucketStorage(val db: PsInternalDatabase) {
                 checkpointValid = false,
             )
 
-        return Json.decodeFromString<SyncLocalDatabaseResult>(res);
+        return JsonUtil.json.decodeFromString<SyncLocalDatabaseResult>(res);
     }
 
     /**
