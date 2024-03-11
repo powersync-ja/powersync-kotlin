@@ -19,6 +19,7 @@ import com.powersync.db.internal.PsInternalTable
 import com.powersync.db.schema.Schema
 import com.powersync.sync.SyncStatus
 import com.powersync.sync.SyncStream
+import com.powersync.utils.JsonUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
@@ -64,8 +65,7 @@ internal class PowerSyncDatabaseImpl(
     }
 
     private suspend fun applySchema() {
-        val json = Json { encodeDefaults = true }
-        val schemaJson = json.encodeToString(schema)
+        val schemaJson = JsonUtil.json.encodeToString(schema)
 
         this.writeTransaction {
             internalDb.queries.replaceSchema(schemaJson).awaitAsOne()

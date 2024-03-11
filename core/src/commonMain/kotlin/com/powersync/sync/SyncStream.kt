@@ -7,6 +7,7 @@ import com.powersync.bucket.Checkpoint
 import com.powersync.bucket.WriteCheckpointResponse
 import co.touchlab.stately.concurrency.AtomicBoolean
 import com.powersync.connectors.PowerSyncBackendConnector
+import com.powersync.utils.JsonUtil
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpTimeout
@@ -27,7 +28,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.retryWhen
 import kotlinx.datetime.Instant
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -157,7 +157,7 @@ class SyncStream(
             throw Exception("Error getting write checkpoint: ${response.status}")
         }
 
-        val body = Json.decodeFromString<WriteCheckpointResponse>(response.body())
+        val body = JsonUtil.json.decodeFromString<WriteCheckpointResponse>(response.body())
         return body.data.writeCheckpoint
     }
 
@@ -167,7 +167,7 @@ class SyncStream(
 
         val uri = credentials.endpointUri("sync/stream")
 
-        val bodyJson = Json.encodeToString(req)
+        val bodyJson = JsonUtil.json.encodeToString(req)
 
         val request = httpClient.preparePost(uri) {
             contentType(ContentType.Application.Json)
@@ -226,8 +226,7 @@ class SyncStream(
         state: SyncStreamState
     ): SyncStreamState {
         println("[SyncStream::handleInstruction] Received Instruction: $jsonString")
-        val json = Json { ignoreUnknownKeys = true }
-        val obj = json.parseToJsonElement(jsonString).jsonObject
+        val obj = JsonUtil.json.parseToJsonElement(jsonString).jsonObject
 
         // TODO: Clean up
         when (true) {
@@ -255,7 +254,7 @@ class SyncStream(
         state: SyncStreamState
     ): SyncStreamState {
         val checkpoint =
-            Json.decodeFromJsonElement<Checkpoint>(jsonObj["checkpoint"] as JsonElement)
+            JsonUtil.json.decodeFromJsonElement<Checkpoint>(jsonObj["checkpoint"] as JsonElement)
 
         state.targetCheckpoint = checkpoint
         val bucketsToDelete = state.bucketSet!!.toMutableList()
@@ -313,7 +312,7 @@ class SyncStream(
             throw Exception("Checkpoint diff without previous checkpoint")
         }
         val checkpointDiff =
-            Json.decodeFromJsonElement<StreamingSyncCheckpointDiff>(jsonObj["checkpoint_diff"]!!)
+            JsonUtil.json.decodeFromJsonElement<StreamingSyncCheckpointDiff>(jsonObj["checkpoint_diff"]!!)
 
         val newBuckets = mutableMapOf<String, BucketChecksum>()
 
@@ -351,10 +350,9 @@ class SyncStream(
         state: SyncStreamState
     ): SyncStreamState {
 
-        val json = Json { isLenient = true }
 
         val syncBuckets =
-            listOf<SyncDataBucket>(json.decodeFromJsonElement(jsonObj["data"] as JsonElement))
+            listOf<SyncDataBucket>(JsonUtil.json.decodeFromJsonElement(jsonObj["data"] as JsonElement))
 
         bucketStorage.saveSyncData(SyncDataBatch(syncBuckets))
 
