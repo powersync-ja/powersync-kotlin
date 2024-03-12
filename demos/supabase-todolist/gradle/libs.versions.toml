@@ -6,7 +6,6 @@ android-compileSdk = "34"
 java = "17"
 
 # Dependencies
-powersync = "0.0.1-ALPHA2"
 powersync-core = "0.1.6"
 
 kotlin = "1.9.22"
