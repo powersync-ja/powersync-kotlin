@@ -153,6 +153,7 @@ internal class PowerSyncDatabaseImpl(
             return@readTransaction CrudTransaction(
                 crud = entries, transactionId = txId,
                 complete = { writeCheckpoint ->
+                    println("[CrudTransaction::complete] Completing transaction with checkpoint $writeCheckpoint")
                     handleWriteCheckpoint(entries.last().clientId, writeCheckpoint)
                 }
             )
@@ -206,6 +207,10 @@ internal class PowerSyncDatabaseImpl(
 
     override suspend fun execute(sql: String, parameters: List<Any>?): Long {
         return internalDb.execute(sql, parameters)
+    }
+
+    override suspend fun executeWrite(sql: String, parameters: List<Any>?): Long {
+        return internalDb.executeWrite(sql, parameters)
     }
 
     private suspend fun handleWriteCheckpoint(lastTransactionId: Int, writeCheckpoint: String?) {

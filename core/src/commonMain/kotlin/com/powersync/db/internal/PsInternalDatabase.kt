@@ -167,6 +167,12 @@ class PsInternalDatabase(val driver: PsSqlDriver, private val scope: CoroutineSc
         return transactor.transactionWithResult(noEnclosing = true, body)
     }
 
+    override suspend fun executeWrite(sql: String, parameters: List<Any>?): Long {
+        return writeTransaction {
+            execute(sql, parameters)
+        }
+    }
+
     // Register callback for table updates
     private fun tableUpdates(): Flow<List<String>> {
         return driver.tableUpdates()
