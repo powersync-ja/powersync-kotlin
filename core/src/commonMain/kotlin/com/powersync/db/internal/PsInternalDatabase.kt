@@ -51,11 +51,11 @@ class PsInternalDatabase(val driver: PsSqlDriver, private val scope: CoroutineSc
     ): Long {
         val numParams = parameters?.size ?: 0
 
-        return createQuery(
+        return createWriteQuery(
             sql,
             parameters = numParams,
             binders = getBindersFromParams(parameters)
-        ).awaitAsOneOrNull() ?: 0
+        ).awaitAsOneOrNull() ?: 0L
     }
 
     override suspend fun <RowType : Any> get(
@@ -115,12 +115,21 @@ class PsInternalDatabase(val driver: PsSqlDriver, private val scope: CoroutineSc
     }
 
 
-    private fun createQuery(
+    private fun createWriteQuery(
         query: String,
         parameters: Int = 0,
         binders: (SqlPreparedStatement.() -> Unit)? = null,
     ): ExecutableQuery<Long> {
-        return createQuery(query, { cursor -> cursor.getLong(0)!! }, parameters, binders)
+        return object : ExecutableQuery<Long>(mapper = { cursor -> cursor.getLong(0)!! }) {
+            override fun <R> execute(mapper: (SqlCursor) -> QueryResult<R>): QueryResult<R> {
+                return driver.execute(
+                    identifier = null,
+                    sql = query,
+                    parameters,
+                    binders
+                ) as QueryResult<R>
+            }
+        }
     }
 
     private fun <T : Any> createQuery(

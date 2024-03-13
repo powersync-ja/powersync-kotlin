@@ -153,6 +153,7 @@ internal class PowerSyncDatabaseImpl(
             return@readTransaction CrudTransaction(
                 crud = entries, transactionId = txId,
                 complete = { writeCheckpoint ->
+                    println("[CrudTransaction::complete] Completing transaction with checkpoint $writeCheckpoint")
                     handleWriteCheckpoint(entries.last().clientId, writeCheckpoint)
                 }
             )
