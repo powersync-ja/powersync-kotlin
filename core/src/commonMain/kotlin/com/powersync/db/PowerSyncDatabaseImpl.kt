@@ -209,10 +209,6 @@ internal class PowerSyncDatabaseImpl(
         return internalDb.execute(sql, parameters)
     }
 
-    override suspend fun executeWrite(sql: String, parameters: List<Any>?): Long {
-        return internalDb.executeWrite(sql, parameters)
-    }
-
     private suspend fun handleWriteCheckpoint(lastTransactionId: Int, writeCheckpoint: String?) {
         writeTransaction {
             internalDb.queries.deleteEntriesWithIdLessThan(lastTransactionId.toLong())

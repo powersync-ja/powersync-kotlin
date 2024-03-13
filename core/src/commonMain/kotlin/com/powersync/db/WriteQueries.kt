@@ -9,8 +9,6 @@ interface WriteQueries {
      */
     suspend fun execute(sql: String, parameters: List<Any>? = listOf()): Long
 
-    suspend fun executeWrite(sql: String, parameters: List<Any>?): Long
-
     suspend fun <R> writeTransaction(body: suspend SuspendingTransactionWithReturn<R>.() -> R): R
 
 }
