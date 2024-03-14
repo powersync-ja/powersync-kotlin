@@ -75,6 +75,7 @@ kotlin {
                 val cInteropTask = tasks[interopProcessingTaskName]
                 cInteropTask.dependsOn(buildCInteropDef)
                 defFile = buildCInteropDef.get().outputs.files.singleFile
+                compilerOpts.addAll(listOf("-DHAVE_GETHOSTUUID=0"))
             }
             cinterops.create("powersync-sqlite-core")
         }
