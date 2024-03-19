@@ -19,6 +19,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 
@@ -38,10 +39,17 @@ class PsInternalDatabase(val driver: PsSqlDriver, private val scope: CoroutineSc
 
     init {
         scope.launch {
-            tableUpdates().debounce(DEFAULT_WATCH_THROTTLE_MS).collect { tables ->
-                val dataTables = tables.map { toFriendlyTableName(it) }.filter { it.isNotBlank() }
-                driver.notifyListeners(queryKeys = dataTables.toTypedArray())
-            }
+            val accumulatedUpdates = mutableSetOf<String>();
+            tableUpdates()
+//               Debounce will discard any events which occur inside the debounce window
+//               This will accumulate those table updates
+                .onEach { tables -> accumulatedUpdates.addAll(tables) }
+                .debounce(DEFAULT_WATCH_THROTTLE_MS)
+                .collect {
+                    val dataTables = accumulatedUpdates.map { toFriendlyTableName(it) }.filter { it.isNotBlank() }
+                    driver.notifyListeners(queryKeys = dataTables.toTypedArray());
+                    accumulatedUpdates.clear();
+                }
         }
     }
 
