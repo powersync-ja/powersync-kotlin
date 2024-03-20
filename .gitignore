@@ -19,3 +19,4 @@ captures
 **/xcshareddata/WorkspaceSettings.xcsettings
 Pods/
 plugins/sonatype
+dialect/bin
