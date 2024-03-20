@@ -2,13 +2,14 @@ package com.powersync.db.schema
 
 import com.powersync.invalidSqliteCharacters
 import kotlinx.serialization.Serializable
+import kotlin.math.log
 
 /**
  * A single table in the schema.
  */
 @Serializable
 
-data class Table  constructor(
+data class Table constructor(
     /**
      * The synced table name, matching sync rules.
      */
@@ -34,6 +35,21 @@ data class Table  constructor(
      */
     private val _viewNameOverride: String? = null
 ) {
+
+    init {
+        /**
+         * Need to set the column definition for each index column.
+         * This is required for serialization
+         */
+        indexes.forEach { index ->
+            index.columns.forEach {
+                val matchingColumn = columns.find { c -> c.name == it.column }
+                    ?: throw AssertionError("Could not find column definition for index ${index.name}:${it.column}")
+                it.setColumnDefinition(column = matchingColumn)
+            }
+        }
+    }
+
     companion object {
         /**
          * Create a table that only exists locally.
