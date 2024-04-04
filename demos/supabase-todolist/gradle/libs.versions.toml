@@ -37,9 +37,6 @@ androidx-material = "1.11.0"
 androidx-test-junit = "1.1.5"
 
 [libraries]
-powersync-core = { module = "com.powersync:core", version.ref = "powersync" }
-powersync-connector-supabase = { module = "com.powersync:connector-supabase", version.ref = "powersync" }
-
 powersync-sqlite-core = { module = "co.powersync:powersync-sqlite-core", version.ref = "powersync-core" }
 
 test-junit = { group = "junit", name = "junit", version.ref = "junit" }
