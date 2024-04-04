@@ -32,13 +32,13 @@ kotlin {
         framework {
             baseName = "shared"
             isStatic = true
-            export(libs.powersync.core)
+            export("com.powersync:core")
         }
     }
     sourceSets {
         commonMain.dependencies {
-            api(libs.powersync.core)
-            api(libs.powersync.connector.supabase)
+            api("com.powersync:core")
+            api("com.powersync:connector-supabase")
             implementation(libs.uuid)
             implementation(compose.runtime)
             implementation(compose.foundation)
