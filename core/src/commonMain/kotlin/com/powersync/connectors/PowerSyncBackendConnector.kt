@@ -25,7 +25,9 @@ abstract class PowerSyncBackendConnector {
      * These credentials may have expired already.
      */
     suspend fun getCredentialsCached(): PowerSyncCredentials? {
-        cachedCredentials?.let { return it }
+        if (cachedCredentials != null) {
+            return cachedCredentials
+        }
         return prefetchCredentials()
     }
 
@@ -51,6 +53,7 @@ abstract class PowerSyncBackendConnector {
         fetchRequest = fetchRequest ?: GlobalScope.async {
             fetchCredentials().also { value ->
                 cachedCredentials = value
+                fetchRequest = null
             }
         }
 
