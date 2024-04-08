@@ -86,10 +86,12 @@ class SyncStream(
                     connector.invalidateCredentials()
                     invalidCredentials = false
                 }
-                val state = streamingSyncIteration()
-                if (!state.retry) {
-                    break;
-                }
+                streamingSyncIteration()
+//                val state = streamingSyncIteration()
+//                TODO: We currently always retry
+//                if (!state.retry) {
+//                    break;
+//                }
             } catch (e: Exception) {
                 println("SyncStream::streamingSync Error: $e")
                 invalidCredentials = true
