@@ -9,5 +9,5 @@ data class StreamingSyncCheckpointDiff(
     @SerialName("last_op_id") val lastOpId: String,
     @SerialName("updated_buckets") val updatedBuckets: List<BucketChecksum>,
     @SerialName("removed_buckets") val removedBuckets: List<String>,
-    @SerialName("write_checkpoint") val writeCheckpoint: String?
+    @SerialName("write_checkpoint") val writeCheckpoint: String? = null
 )
