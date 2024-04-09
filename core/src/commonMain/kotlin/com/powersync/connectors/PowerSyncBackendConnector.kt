@@ -51,6 +51,7 @@ abstract class PowerSyncBackendConnector {
         fetchRequest = fetchRequest ?: GlobalScope.async {
             fetchCredentials().also { value ->
                 cachedCredentials = value
+                fetchRequest = null
             }
         }
 
