@@ -32,7 +32,7 @@ abstract class PublishToCentralPortalTask : DefaultTask() {
 
     companion object {
         const val UPLOAD_ENDPOINT =
-            "https://central.sonatype.com/api/v1/publisher/upload?publishingType=USER_MANAGED"
+            "https://central.sonatype.com/api/v1/publisher/upload?publishingType=AUTOMATIC"
         const val SUCCESS_STATUS_CODE = 201
     }
 
