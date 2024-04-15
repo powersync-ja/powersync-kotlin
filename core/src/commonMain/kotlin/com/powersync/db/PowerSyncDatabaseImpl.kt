@@ -27,7 +27,6 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 
 /**
  * A PowerSync managed database.
@@ -166,7 +165,7 @@ internal class PowerSyncDatabaseImpl(
 
     override suspend fun <RowType : Any> get(
         sql: String,
-        parameters: List<Any>?,
+        parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType
     ): RowType {
         return internalDb.get(sql, parameters, mapper)
@@ -174,7 +173,7 @@ internal class PowerSyncDatabaseImpl(
 
     override suspend fun <RowType : Any> getAll(
         sql: String,
-        parameters: List<Any>?,
+        parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType
     ): List<RowType> {
         return internalDb.getAll(sql, parameters, mapper)
@@ -182,7 +181,7 @@ internal class PowerSyncDatabaseImpl(
 
     override suspend fun <RowType : Any> getOptional(
         sql: String,
-        parameters: List<Any>?,
+        parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType
     ): RowType? {
         return internalDb.getOptional(sql, parameters, mapper)
@@ -190,7 +189,7 @@ internal class PowerSyncDatabaseImpl(
 
     override fun <RowType : Any> watch(
         sql: String,
-        parameters: List<Any>?,
+        parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType
     ): Flow<List<RowType>> {
         return internalDb.watch(sql, parameters, mapper)
@@ -205,7 +204,7 @@ internal class PowerSyncDatabaseImpl(
         return internalDb.writeTransaction(body)
     }
 
-    override suspend fun execute(sql: String, parameters: List<Any>?): Long {
+    override suspend fun execute(sql: String, parameters: List<Any?>?): Long {
         return internalDb.execute(sql, parameters)
     }
 
