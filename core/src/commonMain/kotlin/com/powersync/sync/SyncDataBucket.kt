@@ -5,7 +5,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class SyncDataBucket (
+internal data class SyncDataBucket (
     val bucket: String,
     val data: List<OplogEntry>,
     @SerialName("has_more") val hasMore: Boolean = false,

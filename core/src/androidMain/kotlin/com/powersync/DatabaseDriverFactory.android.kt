@@ -10,7 +10,7 @@ import io.requery.android.database.sqlite.SQLiteCustomExtension
 import kotlinx.coroutines.CoroutineScope
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
-actual class DatabaseDriverFactory(private val context: Context) {
+public actual class DatabaseDriverFactory(private val context: Context) {
     private var driver: PsSqlDriver? = null
     private external fun setupSqliteBinding()
 
@@ -30,7 +30,7 @@ actual class DatabaseDriverFactory(private val context: Context) {
         }
     }
 
-    actual fun createDriver(
+    public actual fun createDriver(
         scope: CoroutineScope,
         dbFilename: String,
     ): PsSqlDriver {
@@ -69,7 +69,7 @@ actual class DatabaseDriverFactory(private val context: Context) {
     }
 
 
-    companion object {
+    public companion object {
         init {
             System.loadLibrary("powersync-sqlite")
         }

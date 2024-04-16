@@ -7,7 +7,7 @@ import kotlinx.serialization.json.jsonPrimitive
 /**
  * A single client-side change.
  */
-data class CrudEntry(
+public data class CrudEntry(
 
     /**
      * ID of the changed row.
@@ -53,8 +53,8 @@ data class CrudEntry(
      */
     val opData: Map<String, String>?
 ) {
-    companion object {
-        fun fromRow(row: CrudRow): CrudEntry {
+    public companion object {
+        public fun fromRow(row: CrudRow): CrudEntry {
             val data = JsonUtil.json.parseToJsonElement(row.data).jsonObject
             return CrudEntry(
                 id = data["id"]!!.jsonPrimitive.content,

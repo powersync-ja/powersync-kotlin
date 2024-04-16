@@ -1,6 +1,6 @@
 package com.powersync.db.schema
 
-enum class ColumnType {
+public enum class ColumnType {
     INTEGER,
     TEXT,
     REAL,

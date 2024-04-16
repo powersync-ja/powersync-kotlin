@@ -10,7 +10,7 @@ import kotlinx.serialization.SerialName
  * Temporary credentials to connect to the PowerSync service.
  */
 @Serializable
-data class PowerSyncCredentials(
+public data class PowerSyncCredentials(
     /**
      * PowerSync endpoint, e.g. "https://myinstance.powersync.co".
      */
@@ -36,7 +36,7 @@ data class PowerSyncCredentials(
         }>"
     }
 
-    fun endpointUri(path: String): String {
+    public fun endpointUri(path: String): String {
         return "$endpoint/$path"
     }
 }

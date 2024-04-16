@@ -36,7 +36,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 
-class SyncStream(
+internal class SyncStream(
     private val bucketStorage: BucketStorage,
     private val connector: PowerSyncBackendConnector,
     private val uploadCrud: suspend () -> Unit,
@@ -418,7 +418,7 @@ class SyncStream(
 
 }
 
-data class SyncStreamState(
+internal data class SyncStreamState(
     var targetCheckpoint: Checkpoint?,
     var validatedCheckpoint: Checkpoint?,
     var appliedCheckpoint: Checkpoint?,

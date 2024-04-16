@@ -18,14 +18,14 @@ import com.powersync.sync.SyncStream
  *
  * All changes to local tables are automatically recorded, whether connected or not. Once connected, the changes are uploaded.
  */
-interface PowerSyncDatabase : ReadQueries, WriteQueries {
+public interface PowerSyncDatabase : ReadQueries, WriteQueries {
 
     /**
      * The current sync status.
      */
-    val currentStatus: SyncStatus
+    public val currentStatus: SyncStatus
 
-    var syncStream: SyncStream?
+//    public var syncStream: SyncStream?
 
     /**
      *  Connect to the PowerSync service, and keep the databases in sync.
@@ -35,7 +35,7 @@ interface PowerSyncDatabase : ReadQueries, WriteQueries {
      *  TODO: Status changes are reported on [statusStream].
      */
 
-    suspend fun connect(connector: PowerSyncBackendConnector)
+    public suspend fun connect(connector: PowerSyncBackendConnector)
 
 
     /**
@@ -55,7 +55,7 @@ interface PowerSyncDatabase : ReadQueries, WriteQueries {
      * data by transaction. One batch may contain data from multiple transactions,
      * and a single transaction may be split over multiple batches.
      */
-    suspend fun getCrudBatch(limit: Int = 100): CrudBatch?
+    public suspend fun getCrudBatch(limit: Int = 100): CrudBatch?
 
 
     /**
@@ -72,10 +72,10 @@ interface PowerSyncDatabase : ReadQueries, WriteQueries {
      * All data for the transaction is loaded into memory.
      */
 
-    suspend fun getNextCrudTransaction(): CrudTransaction?
+    public suspend fun getNextCrudTransaction(): CrudTransaction?
 
     /**
      * Convenience method to get the current version of PowerSync.
      */
-    suspend fun getPowerSyncVersion(): String
+    public suspend fun getPowerSyncVersion(): String
 }

@@ -53,7 +53,7 @@ internal class PowerSyncDatabaseImpl(
      */
     override val currentStatus: SyncStatus = SyncStatus()
 
-    override var syncStream: SyncStream? = null
+    private var syncStream: SyncStream? = null
 
     init {
         runBlocking {

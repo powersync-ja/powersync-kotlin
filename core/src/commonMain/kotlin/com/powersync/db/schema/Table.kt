@@ -1,15 +1,13 @@
 package com.powersync.db.schema
 
-import com.powersync.invalidSqliteCharacters
 import kotlinx.serialization.Serializable
-import kotlin.math.log
 
 /**
  * A single table in the schema.
  */
 @Serializable
 
-data class Table constructor(
+public data class Table constructor(
     /**
      * The synced table name, matching sync rules.
      */
@@ -50,13 +48,13 @@ data class Table constructor(
         }
     }
 
-    companion object {
+    public companion object {
         /**
          * Create a table that only exists locally.
          *
          * This table does not record changes, and is not synchronized from the service.
          */
-        fun localOnly(
+        public fun localOnly(
             name: String,
             columns: List<Column>,
             indexes: List<Index> = listOf(),
@@ -79,7 +77,7 @@ data class Table constructor(
          *
          * SELECT queries on the table will always return 0 rows.
          */
-        fun insertOnly(name: String, columns: List<Column>, viewName: String? = null): Table {
+        public fun insertOnly(name: String, columns: List<Column>, viewName: String? = null): Table {
             return Table(
                 name,
                 columns,
@@ -96,10 +94,10 @@ data class Table constructor(
      *
      * Name of the table that stores the underlying data.
      */
-    val internalName: String
+    internal val internalName: String
         get() = if (localOnly) "ps_data_local__$name" else "ps_data__$name"
 
-    operator fun get(columnName: String): Column {
+    public operator fun get(columnName: String): Column {
         return columns.first { it.name == columnName }
     }
 
@@ -116,7 +114,7 @@ data class Table constructor(
     /**
      * Check that there are no issues in the table definition.
      */
-    fun validate() {
+    public fun validate() {
         if (invalidSqliteCharacters.containsMatchIn(name)) {
             throw AssertionError("Invalid characters in table name: $name")
         } else if (_viewNameOverride != null && invalidSqliteCharacters.containsMatchIn(
@@ -172,6 +170,6 @@ data class Table constructor(
      * Name for the view, used for queries.
      * Defaults to the synced table name.
      */
-    val viewName: String
+    public val viewName: String
         get() = _viewNameOverride ?: name
 }

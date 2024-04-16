@@ -2,7 +2,7 @@ package com.powersync.sync
 
 import kotlinx.datetime.Instant
 
-data class SyncStatus(
+public data class SyncStatus(
     /**
      * true if currently connected.
      *

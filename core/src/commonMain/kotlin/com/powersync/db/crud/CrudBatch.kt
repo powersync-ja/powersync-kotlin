@@ -3,7 +3,7 @@ package com.powersync.db.crud
 /**
  * A batch of client-side changes.
  */
-data class CrudBatch(
+public data class CrudBatch(
     /**
      * List of client-side changes.
      */

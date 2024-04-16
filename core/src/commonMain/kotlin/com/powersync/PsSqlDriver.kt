@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
-class PsSqlDriver(private val driver: SqlDriver, private val scope: CoroutineScope) :
+public class PsSqlDriver(private val driver: SqlDriver, private val scope: CoroutineScope) :
     SqlDriver by driver {
     // MutableSharedFlow to emit batched table updates
     private val tableUpdatesFlow = MutableSharedFlow<List<String>>(replay = 0)
@@ -17,25 +17,25 @@ class PsSqlDriver(private val driver: SqlDriver, private val scope: CoroutineSco
     // In-memory buffer to store table names before flushing
     private val pendingUpdates = mutableSetOf<String>()
 
-    fun updateTable(tableName: String) {
+    public fun updateTable(tableName: String) {
         pendingUpdates.add(tableName)
     }
 
-    fun clearTableUpdates() {
+    public fun clearTableUpdates() {
         pendingUpdates.clear()
     }
 
     // Flows on table updates
-    fun tableUpdates(): Flow<List<String>> {
+    public fun tableUpdates(): Flow<List<String>> {
         return tableUpdatesFlow.asSharedFlow()
     }
 
     // Flows on table updates containing a specific table
-    fun updatesOnTable(tableName: String): Flow<Unit> {
+    public fun updatesOnTable(tableName: String): Flow<Unit> {
         return tableUpdates().filter { it.contains(tableName) }.map { }
     }
 
-    fun fireTableUpdates() {
+    public fun fireTableUpdates() {
         val updates = pendingUpdates.toList()
         if (updates.isEmpty()) {
             return;

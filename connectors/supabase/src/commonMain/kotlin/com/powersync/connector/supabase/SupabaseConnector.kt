@@ -16,10 +16,10 @@ import io.github.jan.supabase.postgrest.from
 /**
  * Get a Supabase token to authenticate against the PowerSync instance.
  */
-class SupabaseConnector(
-    val supabaseUrl: String,
-    val supabaseKey: String,
-    val powerSyncEndpoint: String,
+public class SupabaseConnector(
+    public val supabaseUrl: String,
+    public val supabaseKey: String,
+    public val powerSyncEndpoint: String,
 ) : PowerSyncBackendConnector() {
 
     private var loggedIn: Boolean = false
@@ -37,7 +37,7 @@ class SupabaseConnector(
         return client
     }
 
-    suspend fun login(email: String, password: String) {
+    public suspend fun login(email: String, password: String) {
         supabaseClient.auth.signInWith(Email) {
             this.email = email
             this.password = password

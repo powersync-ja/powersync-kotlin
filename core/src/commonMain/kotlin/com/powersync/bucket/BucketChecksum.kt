@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class BucketChecksum(
+internal data class BucketChecksum(
     val bucket: String,
     val checksum: Int,
     val count: Int? = null,

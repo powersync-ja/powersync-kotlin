@@ -81,6 +81,8 @@ kotlin {
         }
     }
 
+    explicitApi()
+
     sourceSets {
         all {
             languageSettings {

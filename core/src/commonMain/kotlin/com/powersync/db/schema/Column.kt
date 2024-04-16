@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 /** A single column in a table schema. */
 @Serializable
-data class Column(
+public data class Column(
     /** Name of the column. */
     val name: String,
 
@@ -18,14 +18,14 @@ data class Column(
      */
     val type: ColumnType
 ) {
-    companion object {
+    public companion object {
         /** Create a TEXT column. */
-        fun text(name: String) = Column(name, ColumnType.TEXT)
+        public fun text(name: String): Column = Column(name, ColumnType.TEXT)
 
         /** Create an INTEGER column. */
-        fun integer(name: String) = Column(name, ColumnType.INTEGER)
+        public fun integer(name: String): Column = Column(name, ColumnType.INTEGER)
 
         /** Create a REAL column. */
-        fun real(name: String) = Column(name, ColumnType.REAL)
+        public fun real(name: String): Column = Column(name, ColumnType.REAL)
     }
 }

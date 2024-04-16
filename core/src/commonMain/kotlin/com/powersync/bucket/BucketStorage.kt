@@ -11,7 +11,7 @@ import com.powersync.db.internal.PsInternalTable
 import com.powersync.utils.JsonUtil
 import kotlinx.coroutines.runBlocking
 
-class BucketStorage(val db: PsInternalDatabase) {
+internal class BucketStorage(val db: PsInternalDatabase) {
 
     private val tableNames: MutableSet<String> = mutableSetOf()
     private var hasCompletedSync = AtomicBoolean(false)
@@ -201,7 +201,7 @@ class BucketStorage(val db: PsInternalDatabase) {
             }
         }
 
-        val valid = updateObjectsFromBuckets(targetCheckpoint);
+        val valid = updateObjectsFromBuckets()
 
         if (!valid) {
             return SyncLocalDatabaseResult(
@@ -234,11 +234,11 @@ class BucketStorage(val db: PsInternalDatabase) {
     }
 
     /**
-     * Atomically update the local state to the current checkpoint.
+     * Atomically update the local state.
      *
      * This includes creating new tables, dropping old tables, and copying data over from the oplog.
      */
-    private suspend fun updateObjectsFromBuckets(checkpoint: Checkpoint): Boolean {
+    private suspend fun updateObjectsFromBuckets(): Boolean {
         return db.writeTransaction {
             val res = db.execute(
                 "INSERT INTO powersync_operations(op, data) VALUES(?, ?)",

@@ -5,7 +5,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class StreamingSyncRequest(
+internal data class StreamingSyncRequest(
     val buckets: List<BucketRequest>,
     @SerialName("include_checksum") val includeChecksum: Boolean = true,
 ) {
