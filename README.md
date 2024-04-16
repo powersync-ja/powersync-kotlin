@@ -87,7 +87,7 @@ kotlin {
 If want to use the Supabase Connector, also add the following to `commonMain.dependencies`:
 
 ```kotlin
-    implementation("com.powersync:connectors:$powersyncVersion")
+    implementation("com.powersync:connector-supabase:$powersyncVersion")
 ```
 
 #### Cocoapods
@@ -136,13 +136,11 @@ import com.powersync.db.schema.Schema
 import com.powersync.db.schema.Table
 
 val schema: Schema = Schema(
-    listOf(
-        Table(
-            "customers",
-            listOf(
-                Column.text("name"),
-                Column.text("email")
-            )
+    Table(
+        name = "customers",
+        columns = listOf(
+            Column.text("name"),
+            Column.text("email")
         )
     )
 )
@@ -230,29 +228,34 @@ The `execute` method executes a write query (INSERT, UPDATE, DELETE) and returns
 suspend fun insertCustomer(name: String, email: String) {
     database.writeTransaction {
         database.execute(
-            "INSERT INTO customers (id, name, email) VALUES (uuid(), ?, ?)",
-            listOf(name, email)
+            sql = "INSERT INTO customers (id, name, email) VALUES (uuid(), ?, ?)",
+            parameters = listOf(name, email)
         )
     }
 }
 
 suspend fun updateCustomer(id: String, name: String, email: String) {
     database.execute(
-        "UPDATE customers SET name = ? WHERE email = ?",
-        listOf(name, email)
+        sql = "UPDATE customers SET name = ? WHERE email = ?",
+        parameters = listOf(name, email)
     )
 }
 
 suspend fun deleteCustomer(id: String? = null) {
     // If no id is provided, delete the first customer in the database
     val targetId =
-        id ?: database.getOptional("SELECT id FROM customers LIMIT 1", mapper = { cursor ->
-            cursor.getString(0)!!
-        })
-        ?: return
+        id ?: database.getOptional(
+            sql = "SELECT id FROM customers LIMIT 1",
+            mapper = { cursor ->
+                cursor.getString(0)!!
+            }
+        ) ?: return
 
     database.writeTransaction {
-        database.execute("DELETE FROM customers WHERE id = ?", listOf(targetId))
+        database.execute(
+            sql = "DELETE FROM customers WHERE id = ?",
+            parameters = listOf(targetId)
+        )
     }
 }
 ```

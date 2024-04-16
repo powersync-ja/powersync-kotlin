@@ -25,8 +25,6 @@ public interface PowerSyncDatabase : ReadQueries, WriteQueries {
      */
     public val currentStatus: SyncStatus
 
-//    public var syncStream: SyncStream?
-
     /**
      *  Connect to the PowerSync service, and keep the databases in sync.
      *

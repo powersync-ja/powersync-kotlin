@@ -16,6 +16,12 @@ public data class Index(
 ) {
 
     /**
+     * @param name Descriptive name of the index.
+     * @param columns List of columns used for the index.
+     */
+    public constructor(name: String, vararg columns: IndexedColumn) : this(name, columns.asList())
+
+    /**
      * Construct a new index with the specified column names.
      */
     public companion object {
