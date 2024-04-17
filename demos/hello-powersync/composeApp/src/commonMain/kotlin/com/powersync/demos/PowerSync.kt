@@ -4,6 +4,7 @@ import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncBuilder
 import com.powersync.PowerSyncDatabase
 import com.powersync.connector.supabase.SupabaseConnector
+import com.powersync.sync.SyncStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.runBlocking
 
@@ -18,6 +19,9 @@ class PowerSync(
     )
     private val database: PowerSyncDatabase =
         PowerSyncBuilder.from(driverFactory, AppSchema).build();
+
+    val db: PowerSyncDatabase
+        get() = database;
 
     init {
         runBlocking {

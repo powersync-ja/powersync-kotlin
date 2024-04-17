@@ -27,6 +27,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.retryWhen
 import kotlinx.datetime.Instant
 import kotlinx.serialization.encodeToString
@@ -73,6 +75,10 @@ class SyncStream(
         fun isStreamingSyncCheckpointDiff(obj: JsonObject): Boolean {
             return obj.containsKey("checkpoint_diff")
         }
+    }
+
+    fun getStatusFlow(): StateFlow<SyncStatus> {
+        return statusStreamController.asStateFlow();
     }
 
     suspend fun streamingSync() {
@@ -197,6 +203,8 @@ class SyncStream(
             if (httpResponse.status != HttpStatusCode.OK) {
                 throw RuntimeException("Received error when connecting to sync stream: ${httpResponse.bodyAsText()}")
             }
+
+            updateStatus(connected = true, connecting = false);
 
             val channel: ByteReadChannel = httpResponse.body()
 

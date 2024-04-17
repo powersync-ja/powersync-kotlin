@@ -8,6 +8,7 @@ import com.powersync.db.crud.CrudBatch
 import com.powersync.db.crud.CrudTransaction
 import com.powersync.sync.SyncStatus
 import com.powersync.sync.SyncStream
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * A PowerSync managed database.
@@ -24,6 +25,11 @@ interface PowerSyncDatabase : ReadQueries, WriteQueries {
      * The current sync status.
      */
     val currentStatus: SyncStatus
+
+    /**
+     * @returns a StateFlow which can be used to process sync state updates
+     */
+    fun getStatusFlow(): StateFlow<SyncStatus>
 
     var syncStream: SyncStream?
 

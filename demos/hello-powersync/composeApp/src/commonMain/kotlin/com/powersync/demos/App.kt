@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.powersync.sync.SyncStatus
 import kotlinx.coroutines.launch
 
 @Composable
@@ -40,6 +41,7 @@ fun App(powerSync: PowerSync) {
     var version by remember { mutableStateOf("Loading") }
     val scope = rememberCoroutineScope()
     val customers by powerSync.watchUsers().collectAsState(emptyList())
+    val syncStatus by powerSync.db.getStatusFlow().collectAsState(powerSync.db.currentStatus)
 
     MaterialTheme {
         Surface(
@@ -48,11 +50,13 @@ fun App(powerSync: PowerSync) {
         ) {
             LaunchedEffect(powerSync) {
                 scope.launch {
-                    version = """PowerSync version: ${powerSync.getPowersyncVersion()}"""
+                    version =
+                        """PowerSync version: ${powerSync.getPowersyncVersion()}"""
                 }
             }
 
-            ViewContent(version,
+            ViewContent(
+                version,
                 users = customers,
                 onCreate = {
                     scope.launch {
@@ -64,13 +68,21 @@ fun App(powerSync: PowerSync) {
                     scope.launch {
                         powerSync.deleteUser()
                     }
-                })
+                },
+                syncStatus = syncStatus
+            )
         }
     }
 }
 
 @Composable
-fun ViewContent(version: String, users: List<User>, onCreate: () -> Unit, onDelete: () -> Unit) {
+fun ViewContent(
+    version: String,
+    users: List<User>,
+    onCreate: () -> Unit,
+    onDelete: () -> Unit,
+    syncStatus: SyncStatus
+) {
     val layoutDirection = LocalLayoutDirection.current
     Scaffold(
         modifier = Modifier,
@@ -128,7 +140,11 @@ fun ViewContent(version: String, users: List<User>, onCreate: () -> Unit, onDele
                 }
                 // This box should be at the bottom of the screen
                 Box(modifier = Modifier.padding(24.dp).align(Alignment.BottomEnd)) {
-                    Text(version)
+                    Column {
+                        Text(version)
+                        Text("""Connected: ${syncStatus.connected}""")
+                    }
+
                 }
             }
 

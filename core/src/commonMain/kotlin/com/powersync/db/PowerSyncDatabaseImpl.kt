@@ -23,6 +23,9 @@ import com.powersync.utils.JsonUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -50,7 +53,8 @@ internal class PowerSyncDatabaseImpl(
     /**
      * The current sync status.
      */
-    override val currentStatus: SyncStatus = SyncStatus()
+    override var currentStatus: SyncStatus = SyncStatus()
+    private val statusStreamController = MutableStateFlow(currentStatus)
 
     override var syncStream: SyncStream? = null
 
@@ -61,6 +65,10 @@ internal class PowerSyncDatabaseImpl(
             println("PowerSyncVersion: ${getPowerSyncVersion()}")
             applySchema();
         }
+    }
+
+    override fun getStatusFlow(): StateFlow<SyncStatus> {
+        return statusStreamController.asStateFlow();
     }
 
     private suspend fun applySchema() {
@@ -82,6 +90,13 @@ internal class PowerSyncDatabaseImpl(
 
         scope.launch {
             syncStream!!.streamingSync()
+        }
+
+        scope.launch {
+            syncStream!!.getStatusFlow().collect {
+                currentStatus = it;
+                statusStreamController.value = it;
+            }
         }
 
         scope.launch {
