@@ -26,11 +26,6 @@ interface PowerSyncDatabase : ReadQueries, WriteQueries {
      */
     val currentStatus: SyncStatus
 
-    /**
-     * @returns a StateFlow which can be used to process sync state updates
-     */
-    fun getStatusFlow(): StateFlow<SyncStatus>
-
     var syncStream: SyncStream?
 
     /**

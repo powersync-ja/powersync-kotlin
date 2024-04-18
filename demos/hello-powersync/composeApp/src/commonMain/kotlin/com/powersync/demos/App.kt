@@ -33,7 +33,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.powersync.sync.SyncStatus
+import com.powersync.sync.SyncStatusData
 import kotlinx.coroutines.launch
 
 @Composable
@@ -41,7 +41,7 @@ fun App(powerSync: PowerSync) {
     var version by remember { mutableStateOf("Loading") }
     val scope = rememberCoroutineScope()
     val customers by powerSync.watchUsers().collectAsState(emptyList())
-    val syncStatus by powerSync.db.getStatusFlow().collectAsState(powerSync.db.currentStatus)
+    val syncStatus by powerSync.db.currentStatus.asFlow().collectAsState(powerSync.db.currentStatus)
 
     MaterialTheme {
         Surface(
@@ -81,7 +81,7 @@ fun ViewContent(
     users: List<User>,
     onCreate: () -> Unit,
     onDelete: () -> Unit,
-    syncStatus: SyncStatus
+    syncStatus: SyncStatusData
 ) {
     val layoutDirection = LocalLayoutDirection.current
     Scaffold(

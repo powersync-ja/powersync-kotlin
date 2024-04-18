@@ -54,7 +54,6 @@ internal class PowerSyncDatabaseImpl(
      * The current sync status.
      */
     override var currentStatus: SyncStatus = SyncStatus()
-    private val statusStreamController = MutableStateFlow(currentStatus)
 
     override var syncStream: SyncStream? = null
 
@@ -65,10 +64,6 @@ internal class PowerSyncDatabaseImpl(
             println("PowerSyncVersion: ${getPowerSyncVersion()}")
             applySchema();
         }
-    }
-
-    override fun getStatusFlow(): StateFlow<SyncStatus> {
-        return statusStreamController.asStateFlow();
     }
 
     private suspend fun applySchema() {
@@ -93,9 +88,17 @@ internal class PowerSyncDatabaseImpl(
         }
 
         scope.launch {
-            syncStream!!.getStatusFlow().collect {
-                currentStatus = it;
-                statusStreamController.value = it;
+            syncStream!!.status.asFlow().collect {
+                currentStatus.update(
+                    connected = it.connected,
+                    connecting = it.connecting,
+                    downloading = it.downloading,
+                    lastSyncedAt = it.lastSyncedAt,
+                    uploadError = it.uploadError,
+                    downloadError = it.downloadError,
+                    clearDownloadError = it.downloadError == null,
+                    clearUploadError = it.uploadError == null
+                )
             }
         }
 
