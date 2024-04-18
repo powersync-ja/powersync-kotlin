@@ -70,19 +70,47 @@ data class SyncStatusDataContainer(
 ) : SyncStatusData {
     override val anyError
         get() = downloadError ?: uploadError
+
+    /**
+     * Builder for creating a new SyncStatusDataContainer with updated values.
+     */
+    class Builder(private var data: SyncStatusDataContainer) {
+        fun connected(value: Boolean) = apply { data = data.copy(connected = value) }
+        fun connecting(value: Boolean) = apply { data = data.copy(connecting = value) }
+        fun downloading(value: Boolean) = apply { data = data.copy(downloading = value) }
+        fun uploading(value: Boolean) = apply { data = data.copy(uploading = value) }
+        fun lastSyncedAt(value: Instant?) = apply { data = data.copy(lastSyncedAt = value) }
+        fun uploadError(value: Any?) = apply { data = data.copy(uploadError = value) }
+        fun downloadError(value: Any?) = apply { data = data.copy(downloadError = value) }
+        fun clearUploadError() = apply { data = data.copy(uploadError = null) }
+        fun clearDownloadError() = apply { data = data.copy(downloadError = null) }
+        fun build() = data
+    }
 }
 
 
 data class SyncStatus(
-    var data: SyncStatusData = SyncStatusDataContainer()
-) : SyncStatusData {
-    private val stateFlow: MutableStateFlow<SyncStatusData> = MutableStateFlow(data)
+    val data: SyncStatusDataContainer = SyncStatusDataContainer()
+) : SyncStatusData by data {
+    private val stateFlow: MutableStateFlow<SyncStatusDataContainer> = MutableStateFlow(data)
 
     /**
      * @returns a flow which emits whenever the sync status has changed
      */
     fun asFlow(): SharedFlow<SyncStatusData> {
         return stateFlow.asSharedFlow()
+    }
+
+    /**
+     * Updates the internal sync status indicators and emits Flow updates
+     * Usage:
+     * ```
+     * syncStatus.update {
+     *    connected(true)
+     * }
+     */
+    internal fun update(builder: SyncStatusDataContainer.Builder.() -> Unit) {
+        stateFlow.value = SyncStatusDataContainer.Builder(stateFlow.value).apply(builder).build()
     }
 
     /**
@@ -99,7 +127,7 @@ data class SyncStatus(
         clearUploadError: Boolean? = false,
         clearDownloadError: Boolean? = false,
     ) {
-        data = SyncStatusDataContainer(
+        stateFlow.value = data.copy(
             connected = connected,
             connecting = connecting,
             downloading = downloading,
@@ -108,33 +136,7 @@ data class SyncStatus(
             uploadError = if (clearUploadError == true) null else uploadError,
             downloadError = if (clearDownloadError == true) null else downloadError,
         )
-
-        stateFlow.value = data
     }
-
-    override val anyError: Any?
-        get() = data.anyError
-
-    override val connected: Boolean
-        get() = data.connected
-
-    override val connecting: Boolean
-        get() = data.connecting
-
-    override val downloading: Boolean
-        get() = data.downloading
-
-    override val uploading: Boolean
-        get() = data.uploading
-
-    override val lastSyncedAt: Instant?
-        get() = data.lastSyncedAt
-
-    override val uploadError: Any?
-        get() = data.uploadError
-
-    override val downloadError: Any?
-        get() = data.downloadError
 
     override fun toString(): String {
         return "SyncStatus(connected=$connected, connecting=$connecting, downloading=$downloading, uploading=$uploading, lastSyncedAt=$lastSyncedAt, error=$anyError)"
