@@ -8,7 +8,6 @@ import com.powersync.db.crud.CrudBatch
 import com.powersync.db.crud.CrudTransaction
 import com.powersync.sync.SyncStatus
 import com.powersync.sync.SyncStream
-import kotlinx.coroutines.flow.StateFlow
 
 /**
  * A PowerSync managed database.
