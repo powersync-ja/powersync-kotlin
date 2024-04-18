@@ -90,8 +90,8 @@ data class SyncStatusDataContainer(
 
 
 data class SyncStatus(
-    val data: SyncStatusDataContainer = SyncStatusDataContainer()
-) : SyncStatusData by data {
+    private var data: SyncStatusDataContainer = SyncStatusDataContainer()
+) : SyncStatusData {
     private val stateFlow: MutableStateFlow<SyncStatusDataContainer> = MutableStateFlow(data)
 
     /**
@@ -110,7 +110,8 @@ data class SyncStatus(
      * }
      */
     internal fun update(builder: SyncStatusDataContainer.Builder.() -> Unit) {
-        stateFlow.value = SyncStatusDataContainer.Builder(stateFlow.value).apply(builder).build()
+        data = SyncStatusDataContainer.Builder(data).apply(builder).build()
+        stateFlow.value = data;
     }
 
     /**
@@ -127,7 +128,7 @@ data class SyncStatus(
         clearUploadError: Boolean? = false,
         clearDownloadError: Boolean? = false,
     ) {
-        stateFlow.value = data.copy(
+        data = data.copy(
             connected = connected,
             connecting = connecting,
             downloading = downloading,
@@ -136,7 +137,32 @@ data class SyncStatus(
             uploadError = if (clearUploadError == true) null else uploadError,
             downloadError = if (clearDownloadError == true) null else downloadError,
         )
+        stateFlow.value = data
     }
+
+    override val anyError: Any?
+        get() = data.anyError
+
+    override val connected: Boolean
+        get() = data.connected
+
+    override val connecting: Boolean
+        get() = data.connecting
+
+    override val downloading: Boolean
+        get() = data.downloading
+
+    override val uploading: Boolean
+        get() = data.uploading
+
+    override val lastSyncedAt: Instant?
+        get() = data.lastSyncedAt
+
+    override val uploadError: Any?
+        get() = data.uploadError
+
+    override val downloadError: Any?
+        get() = data.downloadError
 
     override fun toString(): String {
         return "SyncStatus(connected=$connected, connecting=$connecting, downloading=$downloading, uploading=$uploading, lastSyncedAt=$lastSyncedAt, error=$anyError)"
