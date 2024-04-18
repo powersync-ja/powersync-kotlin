@@ -85,6 +85,21 @@ internal class PowerSyncDatabaseImpl(
         }
 
         scope.launch {
+            syncStream!!.status.asFlow().collect {
+                currentStatus.update(
+                    connected = it.connected,
+                    connecting = it.connecting,
+                    downloading = it.downloading,
+                    lastSyncedAt = it.lastSyncedAt,
+                    uploadError = it.uploadError,
+                    downloadError = it.downloadError,
+                    clearDownloadError = it.downloadError == null,
+                    clearUploadError = it.uploadError == null
+                )
+            }
+        }
+
+        scope.launch {
             internalDb.updatesOnTable(PsInternalTable.CRUD.toString()).debounce(100).collect {
                 syncStream!!.triggerCrudUpload()
             }

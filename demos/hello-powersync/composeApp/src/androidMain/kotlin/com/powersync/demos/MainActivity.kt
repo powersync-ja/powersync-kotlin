@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.powersync.DatabaseDriverFactory
+import com.powersync.sync.SyncStatus
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,7 +22,7 @@ class MainActivity : ComponentActivity() {
 @Preview
 @Composable
 fun ViewContentPreview() {
-    ViewContent("Preview", listOf(User("1", "John Doe", "john@example.com")), {}, {})
+    ViewContent("Preview", listOf(User("1", "John Doe", "john@example.com")), {}, {}, SyncStatus())
 }
 
 @Preview
