@@ -35,13 +35,18 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
+import org.kodein.log.LoggerFactory
+import org.kodein.log.newLogger
 
 internal class SyncStream(
     private val bucketStorage: BucketStorage,
     private val connector: PowerSyncBackendConnector,
     private val uploadCrud: suspend () -> Unit,
-    private val retryDelay: Long = 1000L
+    private val retryDelay: Long = 1000L,
+    loggerFactory: LoggerFactory
 ) {
+    private val logger = newLogger(loggerFactory)
+
     private var isUploadingCrud = AtomicBoolean(false)
 
     private var lastStatus = SyncStatus()
@@ -93,7 +98,7 @@ internal class SyncStream(
 //                    break;
 //                }
             } catch (e: Exception) {
-                println("SyncStream::streamingSync Error: $e")
+                logger.error(e) { "Error in streamingSync" }
                 invalidCredentials = true
                 updateStatus(
                     downloadError = e
@@ -127,7 +132,7 @@ internal class SyncStream(
                     break
                 }
             } catch (e: Exception) {
-                println("[SyncStream::uploadAllCrud] Error uploading crud: $e")
+                logger.error(e) { "Error uploading crud" }
                 updateStatus(uploading = false, uploadError = e)
                 delay(retryDelay)
                 break
@@ -240,11 +245,11 @@ internal class SyncStream(
         jsonString: String,
         state: SyncStreamState
     ): SyncStreamState {
-        println("[SyncStream::handleInstruction] Received Instruction: $jsonString")
+        logger.info { "[handleInstruction] Received Instruction: $jsonString" }
         val obj = JsonUtil.json.parseToJsonElement(jsonString).jsonObject
 
         // TODO: Clean up
-        when (true) {
+        when {
             isStreamingSyncCheckpoint(obj) -> return handleStreamingSyncCheckpoint(obj, state)
             isStreamingSyncCheckpointComplete(obj) -> return handleStreamingSyncCheckpointComplete(
                 state
@@ -258,7 +263,7 @@ internal class SyncStream(
             isStreamingSyncData(obj) -> return handleStreamingSyncData(obj, state)
             isStreamingKeepAlive(obj) -> return handleStreamingKeepalive(obj, state)
             else -> {
-                println("Unhandled instruction")
+                logger.warning { "Unhandled instruction $jsonString" }
                 return state
             }
         }
@@ -283,7 +288,7 @@ internal class SyncStream(
         }
 
         if (bucketsToDelete.size > 0) {
-            println("Removing buckets [${bucketsToDelete.joinToString(separator = ", ")}]")
+            logger.info { "Removing buckets [${bucketsToDelete.joinToString(separator = ", ")}]" }
         }
 
         state.bucketSet = newBuckets
@@ -310,7 +315,7 @@ internal class SyncStream(
             // landing here the whole time
         } else {
             state.appliedCheckpoint = state.targetCheckpoint!!.clone()
-            println("validated checkpoint ${state.appliedCheckpoint}")
+            logger.info { "validated checkpoint ${state.appliedCheckpoint}" }
         }
 
         state.validatedCheckpoint = state.targetCheckpoint
@@ -352,7 +357,7 @@ internal class SyncStream(
 
         val bucketsToDelete = checkpointDiff.removedBuckets
         if (bucketsToDelete.isNotEmpty()) {
-            println("Remove buckets $bucketsToDelete")
+            logger.info { "Remove buckets $bucketsToDelete" }
         }
         bucketStorage.removeBuckets(bucketsToDelete)
         bucketStorage.setTargetCheckpoint(state.targetCheckpoint!!)
@@ -382,7 +387,7 @@ internal class SyncStream(
 
         if (tokenExpiresIn <= 0) {
             // Connection would be closed automatically right after this
-            println("Token expiring reconnect")
+            logger.info { "Token expiring reconnect" }
             connector.invalidateCredentials()
             state.retry = true
             return state

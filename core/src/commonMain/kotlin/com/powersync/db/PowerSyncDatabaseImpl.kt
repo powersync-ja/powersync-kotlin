@@ -27,7 +27,9 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
+import org.kodein.log.LoggerFactory
+import org.kodein.log.frontend.defaultLogFrontend
+import org.kodein.log.newLogger
 
 /**
  * A PowerSync managed database.
@@ -45,8 +47,11 @@ internal class PowerSyncDatabaseImpl(
     private val dbFilename: String,
     driver: PsSqlDriver = factory.createDriver(scope, dbFilename),
 ) : PowerSyncDatabase {
+    private val loggerFactory = LoggerFactory(defaultLogFrontend)
+    private val logger = newLogger(loggerFactory)
+
     private val internalDb = PsInternalDatabase(driver, scope)
-    private val bucketStorage: BucketStorage = BucketStorage(internalDb)
+    private val bucketStorage: BucketStorage = BucketStorage(internalDb, loggerFactory)
 
     /**
      * The current sync status.
@@ -58,8 +63,8 @@ internal class PowerSyncDatabaseImpl(
     init {
         runBlocking {
             val sqliteVersion = internalDb.queries.sqliteVersion().awaitAsOne()
-            println("SQLiteVersion: $sqliteVersion")
-            println("PowerSyncVersion: ${getPowerSyncVersion()}")
+            logger.debug { "SQLiteVersion: $sqliteVersion" }
+            logger.debug { "PowerSyncVersion: ${getPowerSyncVersion()}" }
             applySchema();
         }
     }
@@ -78,7 +83,8 @@ internal class PowerSyncDatabaseImpl(
             SyncStream(
                 bucketStorage = bucketStorage,
                 connector = connector,
-                uploadCrud = suspend { connector.uploadData(this) }
+                uploadCrud = suspend { connector.uploadData(this) },
+                loggerFactory = loggerFactory
             )
 
         scope.launch {
@@ -153,7 +159,7 @@ internal class PowerSyncDatabaseImpl(
             return@readTransaction CrudTransaction(
                 crud = entries, transactionId = txId,
                 complete = { writeCheckpoint ->
-                    println("[CrudTransaction::complete] Completing transaction with checkpoint $writeCheckpoint")
+                    logger.info { "[CrudTransaction::complete] Completing transaction with checkpoint $writeCheckpoint" }
                     handleWriteCheckpoint(entries.last().clientId, writeCheckpoint)
                 }
             )

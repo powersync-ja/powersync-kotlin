@@ -24,4 +24,6 @@ include(":connectors:supabase")
 include(":dialect")
 include(":powersyncswift")
 
+include(":compose")
+
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")

@@ -10,8 +10,14 @@ import com.benasher44.uuid.uuid4
 import com.powersync.db.internal.PsInternalTable
 import com.powersync.utils.JsonUtil
 import kotlinx.coroutines.runBlocking
+import org.kodein.log.LoggerFactory
+import org.kodein.log.newLogger
 
-internal class BucketStorage(val db: PsInternalDatabase) {
+internal class BucketStorage(
+    private val db: PsInternalDatabase,
+    loggerFactory: LoggerFactory
+) {
+    private val logger = newLogger(loggerFactory)
 
     private val tableNames: MutableSet<String> = mutableSetOf()
     private var hasCompletedSync = AtomicBoolean(false)
@@ -76,11 +82,11 @@ internal class BucketStorage(val db: PsInternalDatabase) {
 
         val opId = checkpointCallback()
 
-        println("[BucketStorage::updateLocalTarget] Updating target to checkpoint $opId")
+        logger.info { "[updateLocalTarget] Updating target to checkpoint $opId" }
 
         return db.readTransaction {
             if (hasCrud()) {
-                println("[BucketStorage::updateLocalTarget] ps crud is not empty")
+                logger.warning { "[updateLocalTarget] ps crud is not empty" }
                 return@readTransaction false
             }
 
@@ -177,7 +183,7 @@ internal class BucketStorage(val db: PsInternalDatabase) {
         val result = validateChecksums(targetCheckpoint);
 
         if (!result.checkpointValid) {
-            println("[BucketStorage::SyncLocalDatabase] Checksums failed for ${result.checkpointFailures}")
+            logger.warning { "[SyncLocalDatabase] Checksums failed for ${result.checkpointFailures}" }
             result.checkpointFailures?.forEach { bucketName ->
                 deleteBucket(bucketName)
             }
