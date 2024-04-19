@@ -175,7 +175,7 @@ class MyConnector : PowerSyncBackendConnector() {
 }
 ```
 
-#### 3. Initialize the PowerSync database an connect it to the connector, using `PowerSyncBuilder`:
+#### 3. Initialize the PowerSync database and connect it to the connector, using `PowerSyncBuilder`:
 
 You need to instantiate the PowerSync database — this is the core managed database.
 Its primary functions are to record all changes in the local database, whether online or offline. In addition, it automatically uploads changes to your app backend when connected.
@@ -183,7 +183,7 @@ Its primary functions are to record all changes in the local database, whether o
 a. Create platform specific `DatabaseDriverFactory` to be used by the `PowerSyncBuilder` to create the SQLite database driver.
 
   ```kotlin
-  // Android
+// Android
 val driverFactory = DatabaseDriverFactory(this)
 
 // iOS
@@ -193,16 +193,28 @@ val driverFactory = DatabaseDriverFactory()
 b. Build a `PowerSyncDatabase` instance using the `PowerSyncBuilder` and the `DatabaseDriverFactory`. The schema you created in a previous step is also used as a parameter:
 
   ```kotlin
-    // commonMain
+// commonMain
 val database = PowerSyncBuilder.from(driverFactory, schema).build()
   ```
 
 c. Connect the `PowerSyncDatabase` to the backend connector:
 
   ```kotlin
-    // commonMain
+// commonMain
 database.connect(MyConnector())
   ```
+
+**Special case: Compose Multiplatform**
+
+The artifact `com.powersync:powersync-compose` provides a simpler API:
+
+```kotlin
+// commonMain
+val database = rememberPowerSyncDatabase(schema)
+remember {
+    database.connect(MyConnector())
+}
+```
 
 #### 4. Subscribe to changes in data
 
