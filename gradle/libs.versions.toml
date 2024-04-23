@@ -19,7 +19,7 @@ canard = "1.1.2"
 
 sqlDelight = "2.0.1"
 stately = "2.0.6"
-supabase = "2.0.4"
+supabase = "2.3.1"
 junit = "4.13.2"
 
 compose = "1.5.12"

@@ -8,6 +8,7 @@ import com.powersync.db.crud.UpdateType
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.gotrue.Auth
+import io.github.jan.supabase.gotrue.SessionStatus
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.postgrest.Postgrest
@@ -17,24 +18,25 @@ import io.github.jan.supabase.postgrest.from
  * Get a Supabase token to authenticate against the PowerSync instance.
  */
 public class SupabaseConnector(
-    public val supabaseUrl: String,
-    public val supabaseKey: String,
-    public val powerSyncEndpoint: String,
+    public val supabaseClient: SupabaseClient,
+    public val powerSyncEndpoint: String
 ) : PowerSyncBackendConnector() {
 
-    private var loggedIn: Boolean = false
-    private val supabaseClient: SupabaseClient = createClient()
-
-    private fun createClient(): SupabaseClient {
-        val client = createSupabaseClient(
-            supabaseUrl = supabaseUrl,
-            supabaseKey = supabaseKey
-        ) {
+    public constructor(
+        supabaseUrl: String,
+        supabaseKey: String,
+        powerSyncEndpoint: String
+    ) : this(
+        supabaseClient = createSupabaseClient(supabaseUrl, supabaseKey) {
             install(Auth)
             install(Postgrest)
-        }
+        },
+        powerSyncEndpoint = powerSyncEndpoint
+    )
 
-        return client
+    init {
+        require(supabaseClient.pluginManager.getPluginOrNull(Auth) != null) { "The Auth plugin must be installed on the Supabase client" }
+        require(supabaseClient.pluginManager.getPluginOrNull(Postgrest) != null) { "The Postgrest plugin must be installed on the Supabase client" }
     }
 
     public suspend fun login(email: String, password: String) {
@@ -42,25 +44,22 @@ public class SupabaseConnector(
             this.email = email
             this.password = password
         }
-        this.loggedIn = true
-        fetchCredentials()
+    }
+
+    public suspend fun loginAnonymously() {
+        supabaseClient.auth.signInAnonymously()
     }
 
     /**
      * Get credentials for PowerSync.
      */
     override suspend fun fetchCredentials(): PowerSyncCredentials {
-        if (!loggedIn) {
-            throw Exception("Not logged in")
-        }
+        check(supabaseClient.auth.sessionStatus.value is SessionStatus.Authenticated) { "Supabase client is not authenticated" }
 
         // Use Supabase token for PowerSync
-        val session = supabaseClient.auth.currentSessionOrNull()
-            ?: throw Exception("Could not fetch Supabase credentials");
+        val session = supabaseClient.auth.currentSessionOrNull() ?: error("Could not fetch Supabase credentials");
 
-        if (session.user == null) {
-            throw Exception("No user data")
-        }
+        check(session.user != null) { "No user data" }
 
         // userId and expiresAt are for debugging purposes only
         return PowerSyncCredentials(
