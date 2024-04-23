@@ -12,7 +12,9 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
-        maven("https://jitpack.io")
+        maven("https://jitpack.io") {
+            content { includeGroup("com.github.requery") }
+        }
     }
 }
 
