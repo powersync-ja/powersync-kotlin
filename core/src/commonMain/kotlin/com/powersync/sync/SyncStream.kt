@@ -27,7 +27,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.retryWhen
+import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
@@ -49,16 +52,17 @@ internal class SyncStream(
 
     private var isUploadingCrud = AtomicBoolean(false)
 
-    private var lastStatus = SyncStatus()
+    /**
+     * The current sync status. This instance is updated as changes occur
+     */
+    var status = SyncStatus()
+
     private val httpClient: HttpClient = HttpClient {
         install(HttpTimeout)
         install(ContentNegotiation)
     };
-    private val statusStreamController = MutableStateFlow(SyncStatus())
 
     companion object {
-        private val _noError = Any()
-
         fun isStreamingSyncData(obj: JsonObject): Boolean {
             return obj.containsKey("data")
         }
@@ -80,10 +84,11 @@ internal class SyncStream(
         }
     }
 
+
     suspend fun streamingSync() {
         var invalidCredentials = false
         while (true) {
-            updateStatus(connecting = true)
+            status.update(connecting = true);
             try {
                 if (invalidCredentials) {
                     // This may error. In that case it will be retried again on the next
@@ -100,11 +105,11 @@ internal class SyncStream(
             } catch (e: Exception) {
                 logger.error(e) { "Error in streamingSync" }
                 invalidCredentials = true
-                updateStatus(
+                status.update(
                     downloadError = e
                 )
             } finally {
-                updateStatus(
+                status.update(
                     connected = false,
                     connecting = true,
                     downloading = false,
@@ -127,23 +132,26 @@ internal class SyncStream(
         while (true) {
             try {
                 val done = uploadCrudBatch()
-                updateStatus(uploadError = _noError)
+                if (status.uploadError == true) {
+                    status.update(clearUploadError = true)
+                }
+
                 if (done) {
                     break
                 }
             } catch (e: Exception) {
                 logger.error(e) { "Error uploading crud" }
-                updateStatus(uploading = false, uploadError = e)
+                status.update(uploading = false, uploadError = e)
                 delay(retryDelay)
                 break
             }
         }
-        updateStatus(uploading = false)
+        status.update(uploading = false)
     }
 
     private suspend fun uploadCrudBatch(): Boolean {
         if (bucketStorage.hasCrud()) {
-            updateStatus(uploading = true)
+            status.update(uploading = true)
             uploadCrud()
             return false
         } else {
@@ -203,6 +211,7 @@ internal class SyncStream(
                 throw RuntimeException("Received error when connecting to sync stream: ${httpResponse.bodyAsText()}")
             }
 
+            status.update(connected = true, connecting = false);
             val channel: ByteReadChannel = httpResponse.body()
 
             while (!channel.isClosedForRead) {
@@ -319,6 +328,7 @@ internal class SyncStream(
         }
 
         state.validatedCheckpoint = state.targetCheckpoint
+        status.update(lastSyncedAt = Clock.System.now(), clearDownloadError = true)
 
         return state
     }
@@ -394,31 +404,6 @@ internal class SyncStream(
         }
         triggerCrudUpload()
         return state
-    }
-
-    private fun updateStatus(
-        lastSyncedAt: Instant? = null,
-        connected: Boolean? = null,
-        connecting: Boolean? = null,
-        downloading: Boolean? = null,
-        uploading: Boolean? = null,
-        uploadError: Any? = null,
-        downloadError: Any? = null,
-    ) {
-        val c = connected ?: lastStatus.connected
-        val newStatus = SyncStatus(
-            connected = c,
-            connecting = !c && (connecting ?: lastStatus.connecting),
-            lastSyncedAt = lastSyncedAt ?: lastStatus.lastSyncedAt,
-            downloading = downloading ?: lastStatus.downloading,
-            uploading = uploading ?: lastStatus.uploading,
-            uploadError = if (uploadError == _noError) null else uploadError
-                ?: lastStatus.uploadError,
-            downloadError = if (downloadError == _noError) null else downloadError
-                ?: lastStatus.downloadError
-        )
-        lastStatus = newStatus
-        statusStreamController.value = newStatus
     }
 
 }

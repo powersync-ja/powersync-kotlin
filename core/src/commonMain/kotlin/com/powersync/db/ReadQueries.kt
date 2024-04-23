@@ -11,7 +11,7 @@ public interface ReadQueries {
      */
     public suspend fun <RowType : Any> get(
         sql: String,
-        parameters: List<Any>? = listOf(),
+        parameters: List<Any?>? = listOf(),
         mapper: (SqlCursor) -> RowType
     ): RowType
 
@@ -20,7 +20,7 @@ public interface ReadQueries {
      */
     public suspend fun <RowType : Any> getAll(
         sql: String,
-        parameters: List<Any>? = listOf(),
+        parameters: List<Any?>? = listOf(),
         mapper: (SqlCursor) -> RowType
     ): List<RowType>
 
@@ -29,7 +29,7 @@ public interface ReadQueries {
      */
     public suspend fun <RowType : Any> getOptional(
         sql: String,
-        parameters: List<Any>? = listOf(),
+        parameters: List<Any?>? = listOf(),
         mapper: (SqlCursor) -> RowType
     ): RowType?
 
@@ -38,7 +38,7 @@ public interface ReadQueries {
      */
     public fun <RowType : Any> watch(
         sql: String,
-        parameters: List<Any>? = listOf(),
+        parameters: List<Any?>? = listOf(),
         mapper: (SqlCursor) -> RowType
     ): Flow<List<RowType>>
 

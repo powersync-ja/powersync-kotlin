@@ -55,7 +55,7 @@ internal class PsInternalDatabase(val driver: PsSqlDriver, private val scope: Co
 
     override suspend fun execute(
         sql: String,
-        parameters: List<Any>?
+        parameters: List<Any?>?
     ): Long {
         val numParams = parameters?.size ?: 0
 
@@ -68,7 +68,7 @@ internal class PsInternalDatabase(val driver: PsSqlDriver, private val scope: Co
 
     override suspend fun <RowType : Any> get(
         sql: String,
-        parameters: List<Any>?,
+        parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType
     ): RowType {
         return this.createQuery(
@@ -81,7 +81,7 @@ internal class PsInternalDatabase(val driver: PsSqlDriver, private val scope: Co
 
     override suspend fun <RowType : Any> getAll(
         sql: String,
-        parameters: List<Any>?,
+        parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType
     ): List<RowType> {
         return this.createQuery(
@@ -94,7 +94,7 @@ internal class PsInternalDatabase(val driver: PsSqlDriver, private val scope: Co
 
     override suspend fun <RowType : Any> getOptional(
         sql: String,
-        parameters: List<Any>?,
+        parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType
     ): RowType? {
         return this.createQuery(
@@ -107,7 +107,7 @@ internal class PsInternalDatabase(val driver: PsSqlDriver, private val scope: Co
 
     override fun <RowType : Any> watch(
         sql: String,
-        parameters: List<Any>?,
+        parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType
     ): Flow<List<RowType>> {
 
@@ -205,7 +205,7 @@ internal class PsInternalDatabase(val driver: PsSqlDriver, private val scope: Co
 
     private fun getSourceTables(
         sql: String,
-        parameters: List<Any>?,
+        parameters: List<Any?>?,
     ): Set<String> {
         val rows = createQuery(
             query = "EXPLAIN $sql",
@@ -249,7 +249,7 @@ internal class PsInternalDatabase(val driver: PsSqlDriver, private val scope: Co
     )
 }
 
-internal fun getBindersFromParams(parameters: List<Any>?): (SqlPreparedStatement.() -> Unit)? {
+internal fun getBindersFromParams(parameters: List<Any?>?): (SqlPreparedStatement.() -> Unit)? {
     if (parameters.isNullOrEmpty()) {
         return null
     }
@@ -261,7 +261,11 @@ internal fun getBindersFromParams(parameters: List<Any>?): (SqlPreparedStatement
                 is Long -> bindLong(index, parameter)
                 is Double -> bindDouble(index, parameter)
                 is ByteArray -> bindBytes(index, parameter)
-                else -> throw IllegalArgumentException("Unsupported parameter type: ${parameter::class}, at index $index")
+                else -> {
+                    if(parameter != null) {
+                        throw IllegalArgumentException("Unsupported parameter type: ${parameter::class}, at index $index")
+                    }
+                }
             }
         }
     }

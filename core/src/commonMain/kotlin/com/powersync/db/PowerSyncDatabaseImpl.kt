@@ -92,6 +92,21 @@ internal class PowerSyncDatabaseImpl(
         }
 
         scope.launch {
+            syncStream!!.status.asFlow().collect {
+                currentStatus.update(
+                    connected = it.connected,
+                    connecting = it.connecting,
+                    downloading = it.downloading,
+                    lastSyncedAt = it.lastSyncedAt,
+                    uploadError = it.uploadError,
+                    downloadError = it.downloadError,
+                    clearDownloadError = it.downloadError == null,
+                    clearUploadError = it.uploadError == null
+                )
+            }
+        }
+
+        scope.launch {
             internalDb.updatesOnTable(PsInternalTable.CRUD.toString()).debounce(100).collect {
                 syncStream!!.triggerCrudUpload()
             }
@@ -172,7 +187,7 @@ internal class PowerSyncDatabaseImpl(
 
     override suspend fun <RowType : Any> get(
         sql: String,
-        parameters: List<Any>?,
+        parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType
     ): RowType {
         return internalDb.get(sql, parameters, mapper)
@@ -180,7 +195,7 @@ internal class PowerSyncDatabaseImpl(
 
     override suspend fun <RowType : Any> getAll(
         sql: String,
-        parameters: List<Any>?,
+        parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType
     ): List<RowType> {
         return internalDb.getAll(sql, parameters, mapper)
@@ -188,7 +203,7 @@ internal class PowerSyncDatabaseImpl(
 
     override suspend fun <RowType : Any> getOptional(
         sql: String,
-        parameters: List<Any>?,
+        parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType
     ): RowType? {
         return internalDb.getOptional(sql, parameters, mapper)
@@ -196,7 +211,7 @@ internal class PowerSyncDatabaseImpl(
 
     override fun <RowType : Any> watch(
         sql: String,
-        parameters: List<Any>?,
+        parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType
     ): Flow<List<RowType>> {
         return internalDb.watch(sql, parameters, mapper)
@@ -211,7 +226,7 @@ internal class PowerSyncDatabaseImpl(
         return internalDb.writeTransaction(body)
     }
 
-    override suspend fun execute(sql: String, parameters: List<Any>?): Long {
+    override suspend fun execute(sql: String, parameters: List<Any?>?): Long {
         return internalDb.execute(sql, parameters)
     }
 
