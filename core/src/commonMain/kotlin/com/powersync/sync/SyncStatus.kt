@@ -167,4 +167,8 @@ public data class SyncStatus internal constructor(
     override fun toString(): String {
         return "SyncStatus(connected=$connected, connecting=$connecting, downloading=$downloading, uploading=$uploading, lastSyncedAt=$lastSyncedAt, error=$anyError)"
     }
+
+    public companion object {
+        public fun empty(): SyncStatus = SyncStatus()
+    }
 }

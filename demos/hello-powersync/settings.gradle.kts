@@ -36,5 +36,7 @@ includeBuild("../..") {
         substitute(module("com.powersync:connector-supabase"))
             .using(project(":connectors:supabase"))
             .because("we want to auto-wire up sample dependency")
+        substitute(module("com.powersync:compose"))
+            .using(project(":compose")).because("we want to auto-wire up sample dependency")
     }
 }

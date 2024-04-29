@@ -39,6 +39,7 @@ kotlin {
         commonMain.dependencies {
             api("com.powersync:core")
             api("com.powersync:connector-supabase")
+            api("com.powersync:compose")
             implementation(projectLibs.bundles.sqldelight)
             implementation(projectLibs.kotlinx.datetime)
             implementation(compose.runtime)

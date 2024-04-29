@@ -13,7 +13,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            App(PowerSync(DatabaseDriverFactory(this)))
+            App()
         }
     }
 }
@@ -22,7 +22,7 @@ class MainActivity : ComponentActivity() {
 @Preview
 @Composable
 fun ViewContentPreview() {
-    ViewContent("Preview", listOf(User("1", "John Doe", "john@example.com")), {}, {}, SyncStatus())
+    ViewContent("Preview", listOf(User("1", "John Doe", "john@example.com")), {}, {}, SyncStatus.empty())
 }
 
 @Preview

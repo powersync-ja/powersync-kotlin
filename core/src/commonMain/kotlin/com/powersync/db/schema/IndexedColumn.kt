@@ -35,7 +35,7 @@ public data class IndexedColumn(
      * Sets the parent column definition. The column definition's type
      * is required for the serialized JSON payload of powersync_replace_schema
      */
-    public fun setColumnDefinition(column: Column) {
+    internal fun setColumnDefinition(column: Column) {
         this.type = column.type;
         this.columnDefinition = column;
     }
