@@ -178,6 +178,11 @@ internal class PowerSyncDatabaseImpl(
         return internalDb.queries.powerSyncVersion().awaitAsOne()
     }
 
+    /**
+     * Executes a query and returns the result.
+     * If there is no result, throws a [IllegalArgumentException].
+     * Use [getOptional] if you want to handle the case where there is no result.
+     */
     override suspend fun <RowType : Any> get(
         sql: String,
         parameters: List<Any?>?,
