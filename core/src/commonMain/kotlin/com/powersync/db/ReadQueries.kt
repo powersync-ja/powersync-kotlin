@@ -8,6 +8,8 @@ interface ReadQueries {
 
     /**
      * Execute a read-only (SELECT) query and return a single result.
+     * If there is no result, throws an [IllegalArgumentException].
+     * Use [getOptional] if you want to handle a possible no result.
      */
     suspend fun <RowType : Any> get(
         sql: String,
