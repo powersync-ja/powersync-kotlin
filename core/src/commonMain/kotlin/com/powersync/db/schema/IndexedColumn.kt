@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
  * Describes an indexed column.
  */
 @Serializable
-data class IndexedColumn(
+public data class IndexedColumn(
     /**
      * Name of the column to index.
      */
@@ -26,21 +26,21 @@ data class IndexedColumn(
      */
     var type: ColumnType? = null
 ) {
-    companion object {
-        fun ascending(column: String) = IndexedColumn(column, true)
-        fun descending(column: String) = IndexedColumn(column, false)
+    public companion object {
+        public fun ascending(column: String): IndexedColumn = IndexedColumn(column, true)
+        public fun descending(column: String): IndexedColumn = IndexedColumn(column, false)
     }
 
     /**
      * Sets the parent column definition. The column definition's type
      * is required for the serialized JSON payload of powersync_replace_schema
      */
-    fun setColumnDefinition(column: Column) {
+    internal fun setColumnDefinition(column: Column) {
         this.type = column.type;
         this.columnDefinition = column;
     }
 
-    fun toSql(table: Table): String {
+    internal fun toSql(table: Table): String {
         val fullColumn = table[column] // errors if not found
         return fullColumn.let {
             if (ascending) mapColumn(it) else "${mapColumn(it)} DESC"
@@ -48,6 +48,6 @@ data class IndexedColumn(
     }
 }
 
-fun mapColumn(column: Column): String {
+internal fun mapColumn(column: Column): String {
     return "CAST(json_extract(data, ${column.name}) as ${column.type})"
 }

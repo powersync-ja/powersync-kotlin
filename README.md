@@ -87,7 +87,7 @@ kotlin {
 If want to use the Supabase Connector, also add the following to `commonMain.dependencies`:
 
 ```kotlin
-    implementation("com.powersync:connectors:$powersyncVersion")
+    implementation("com.powersync:connector-supabase:$powersyncVersion")
 ```
 
 #### Cocoapods
@@ -136,13 +136,11 @@ import com.powersync.db.schema.Schema
 import com.powersync.db.schema.Table
 
 val schema: Schema = Schema(
-    listOf(
-        Table(
-            "customers",
-            listOf(
-                Column.text("name"),
-                Column.text("email")
-            )
+    Table(
+        name = "customers",
+        columns = listOf(
+            Column.text("name"),
+            Column.text("email")
         )
     )
 )
@@ -177,7 +175,7 @@ class MyConnector : PowerSyncBackendConnector() {
 }
 ```
 
-#### 3. Initialize the PowerSync database an connect it to the connector, using `PowerSyncBuilder`:
+#### 3. Initialize the PowerSync database and connect it to the connector, using `PowerSyncBuilder`:
 
 You need to instantiate the PowerSync database — this is the core managed database.
 Its primary functions are to record all changes in the local database, whether online or offline. In addition, it automatically uploads changes to your app backend when connected.
@@ -185,7 +183,7 @@ Its primary functions are to record all changes in the local database, whether o
 a. Create platform specific `DatabaseDriverFactory` to be used by the `PowerSyncBuilder` to create the SQLite database driver.
 
   ```kotlin
-  // Android
+// Android
 val driverFactory = DatabaseDriverFactory(this)
 
 // iOS
@@ -195,16 +193,28 @@ val driverFactory = DatabaseDriverFactory()
 b. Build a `PowerSyncDatabase` instance using the `PowerSyncBuilder` and the `DatabaseDriverFactory`. The schema you created in a previous step is also used as a parameter:
 
   ```kotlin
-    // commonMain
+// commonMain
 val database = PowerSyncBuilder.from(driverFactory, schema).build()
   ```
 
 c. Connect the `PowerSyncDatabase` to the backend connector:
 
   ```kotlin
-    // commonMain
+// commonMain
 database.connect(MyConnector())
   ```
+
+**Special case: Compose Multiplatform**
+
+The artifact `com.powersync:powersync-compose` provides a simpler API:
+
+```kotlin
+// commonMain
+val database = rememberPowerSyncDatabase(schema)
+remember {
+    database.connect(MyConnector())
+}
+```
 
 #### 4. Subscribe to changes in data
 
@@ -230,29 +240,34 @@ The `execute` method executes a write query (INSERT, UPDATE, DELETE) and returns
 suspend fun insertCustomer(name: String, email: String) {
     database.writeTransaction {
         database.execute(
-            "INSERT INTO customers (id, name, email) VALUES (uuid(), ?, ?)",
-            listOf(name, email)
+            sql = "INSERT INTO customers (id, name, email) VALUES (uuid(), ?, ?)",
+            parameters = listOf(name, email)
         )
     }
 }
 
 suspend fun updateCustomer(id: String, name: String, email: String) {
     database.execute(
-        "UPDATE customers SET name = ? WHERE email = ?",
-        listOf(name, email)
+        sql = "UPDATE customers SET name = ? WHERE email = ?",
+        parameters = listOf(name, email)
     )
 }
 
 suspend fun deleteCustomer(id: String? = null) {
     // If no id is provided, delete the first customer in the database
     val targetId =
-        id ?: database.getOptional("SELECT id FROM customers LIMIT 1", mapper = { cursor ->
-            cursor.getString(0)!!
-        })
-        ?: return
+        id ?: database.getOptional(
+            sql = "SELECT id FROM customers LIMIT 1",
+            mapper = { cursor ->
+                cursor.getString(0)!!
+            }
+        ) ?: return
 
     database.writeTransaction {
-        database.execute("DELETE FROM customers WHERE id = ?", listOf(targetId))
+        database.execute(
+            sql = "DELETE FROM customers WHERE id = ?",
+            parameters = listOf(targetId)
+        )
     }
 }
 ```

@@ -1,3 +1,3 @@
 package com.powersync
 
-fun sayHello() = "Hello from Kotlin!"
+public fun sayHello(): String = "Hello from Kotlin!"

@@ -3,7 +3,7 @@ package com.powersync.db.crud
 /**
  * A transaction of client-side changes.
  */
-data class CrudTransaction(
+public data class CrudTransaction(
     /**
      * Unique transaction id.
      *
@@ -23,5 +23,5 @@ data class CrudTransaction(
      */
     val complete: suspend (writeCheckpoint: String?) -> Unit
 ) {
-    override fun toString() = "CrudTransaction<$transactionId, $crud>"
+    override fun toString(): String = "CrudTransaction<$transactionId, $crud>"
 }

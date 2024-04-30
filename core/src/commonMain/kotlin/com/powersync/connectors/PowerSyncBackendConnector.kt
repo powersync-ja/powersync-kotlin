@@ -14,7 +14,7 @@ import kotlinx.coroutines.GlobalScope
  * 2. Applying local changes against the backend application server.
  *
  */
-abstract class PowerSyncBackendConnector {
+public abstract class PowerSyncBackendConnector {
     private var cachedCredentials: PowerSyncCredentials? = null
     private var fetchRequest: Deferred<PowerSyncCredentials?>? = null
 
@@ -24,7 +24,7 @@ abstract class PowerSyncBackendConnector {
      *
      * These credentials may have expired already.
      */
-    suspend fun getCredentialsCached(): PowerSyncCredentials? {
+    public suspend fun getCredentialsCached(): PowerSyncCredentials? {
         cachedCredentials?.let { return it }
         return prefetchCredentials()
     }
@@ -34,7 +34,7 @@ abstract class PowerSyncBackendConnector {
      *
      * This may be called when the current credentials have expired.
      */
-    fun invalidateCredentials() {
+    public fun invalidateCredentials() {
         cachedCredentials = null
     }
 
@@ -47,7 +47,7 @@ abstract class PowerSyncBackendConnector {
      * This may be called before the current credentials have expired.
      */
     @OptIn(DelicateCoroutinesApi::class)
-    suspend fun prefetchCredentials(): PowerSyncCredentials? {
+    public suspend fun prefetchCredentials(): PowerSyncCredentials? {
         fetchRequest = fetchRequest ?: GlobalScope.async {
             fetchCredentials().also { value ->
                 cachedCredentials = value
@@ -69,7 +69,7 @@ abstract class PowerSyncBackendConnector {
      *
      * This token is kept for the duration of a sync connection.
      */
-    abstract suspend fun fetchCredentials(): PowerSyncCredentials?
+    public abstract suspend fun fetchCredentials(): PowerSyncCredentials?
 
     /**
      * Upload local changes to the app backend.
@@ -78,5 +78,5 @@ abstract class PowerSyncBackendConnector {
      *
      * Any thrown errors will result in a retry after the configured wait period (default: 5 seconds).
      */
-    abstract suspend fun uploadData(database: PowerSyncDatabase)
+    public abstract suspend fun uploadData(database: PowerSyncDatabase)
 }

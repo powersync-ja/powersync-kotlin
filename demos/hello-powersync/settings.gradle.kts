@@ -14,7 +14,9 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
-        maven("https://jitpack.io")
+        maven("https://jitpack.io") {
+            content { includeGroup("com.github.requery") }
+        }
     }
     versionCatalogs {
         create("projectLibs") {
@@ -34,5 +36,7 @@ includeBuild("../..") {
         substitute(module("com.powersync:connector-supabase"))
             .using(project(":connectors:supabase"))
             .because("we want to auto-wire up sample dependency")
+        substitute(module("com.powersync:compose"))
+            .using(project(":compose")).because("we want to auto-wire up sample dependency")
     }
 }

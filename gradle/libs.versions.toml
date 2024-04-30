@@ -15,10 +15,11 @@ ktor = "2.3.7"
 uuid = "0.8.2"
 powersync-core = "0.1.6"
 sqlite-android = "3.45.0"
+canard = "1.1.2"
 
 sqlDelight = "2.0.1"
 stately = "2.0.6"
-supabase = "2.0.4"
+supabase = "2.3.1"
 junit = "4.13.2"
 
 compose = "1.5.12"
@@ -60,6 +61,8 @@ kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", versio
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 
 uuid = { module = "com.benasher44:uuid", version.ref = "uuid" }
+canard = { module = "org.kodein.log:canard", version.ref = "canard" }
+
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-ios = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }

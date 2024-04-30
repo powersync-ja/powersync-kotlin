@@ -18,12 +18,14 @@ allprojects {
     repositories {
         mavenCentral()
         google()
-        maven("https://jitpack.io")
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
         maven("https://www.jetbrains.com/intellij-repository/releases")
         maven("https://cache-redirector.jetbrains.com/intellij-dependencies")
         // Repo for the backported Android IntelliJ Plugin by Jetbrains used in Ultimate
         maven("https://maven.pkg.jetbrains.space/kotlin/p/kotlin/kotlin-ide-plugin-dependencies/")
+        maven("https://jitpack.io") {
+            content { includeGroup("com.github.requery") }
+        }
     }
 
 

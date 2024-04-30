@@ -20,14 +20,14 @@ import kotlinx.coroutines.CoroutineScope
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 @OptIn(ExperimentalForeignApi::class)
-actual class DatabaseDriverFactory {
+public actual class DatabaseDriverFactory {
     private var driver: PsSqlDriver? = null
 
     init {
         init_powersync_sqlite_extension()
     }
 
-    @Suppress("unused")
+    @Suppress("unused", "UNUSED_PARAMETER")
     private fun updateTableHook(opType: Int, databaseName: String, tableName: String, rowId: Long) {
         driver?.updateTable(tableName)
     }
@@ -42,7 +42,7 @@ actual class DatabaseDriverFactory {
         }
     }
 
-    actual fun createDriver(
+    public actual fun createDriver(
         scope: CoroutineScope,
         dbFilename: String,
     ): PsSqlDriver {
@@ -104,7 +104,6 @@ actual class DatabaseDriverFactory {
             staticCFunction { usrPtr ->
                 val callback = usrPtr!!.asStableRef<(Boolean) -> Unit>().get()
                 callback(false)
-                0
             },
             StableRef.create(::onTransactionCommit).asCPointer()
         )

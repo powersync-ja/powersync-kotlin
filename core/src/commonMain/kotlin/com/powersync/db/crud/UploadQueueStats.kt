@@ -3,7 +3,7 @@ package com.powersync.db.crud
 /**
  * Stats of the local upload queue.
  */
-data class UploadQueueStats(
+public data class UploadQueueStats(
     /**
      * Number of records in the upload queue.
      */

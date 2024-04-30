@@ -25,7 +25,7 @@ import kotlinx.serialization.encodeToString
 
 
 @OptIn(FlowPreview::class)
-class PsInternalDatabase(val driver: PsSqlDriver, private val scope: CoroutineScope) :
+internal class PsInternalDatabase(val driver: PsSqlDriver, private val scope: CoroutineScope) :
     ReadQueries,
     WriteQueries {
 
@@ -131,6 +131,7 @@ class PsInternalDatabase(val driver: PsSqlDriver, private val scope: CoroutineSc
     ): ExecutableQuery<Long> {
         return object : ExecutableQuery<Long>(mapper = { cursor -> cursor.getLong(0)!! }) {
             override fun <R> execute(mapper: (SqlCursor) -> QueryResult<R>): QueryResult<R> {
+                @Suppress("UNCHECKED_CAST")
                 return driver.execute(
                     identifier = null,
                     sql = query,
@@ -249,7 +250,7 @@ class PsInternalDatabase(val driver: PsSqlDriver, private val scope: CoroutineSc
     )
 }
 
-fun getBindersFromParams(parameters: List<Any?>?): (SqlPreparedStatement.() -> Unit)? {
+internal fun getBindersFromParams(parameters: List<Any?>?): (SqlPreparedStatement.() -> Unit)? {
     if (parameters.isNullOrEmpty()) {
         return null
     }

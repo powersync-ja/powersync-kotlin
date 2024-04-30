@@ -6,24 +6,24 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 
-interface PowerSyncBuilder {
+public interface PowerSyncBuilder {
 
-    fun build(): PowerSyncDatabase
+    public fun build(): PowerSyncDatabase
 
     /**
      * By default [PowerSyncDatabase] will open a global scope for management of shared processes, if instead you'd like to control
      * the scope that sharing/multicasting happens in you can pass a @param [scope]
      */
-    fun scope(scope: CoroutineScope): PowerSyncBuilder
+    public fun scope(scope: CoroutineScope): PowerSyncBuilder
 
-    companion object {
+    public companion object {
 
-        const val DEFAULT_DB_FILENAME = "powersync.db"
-        fun from(factory: DatabaseDriverFactory, schema: Schema): PowerSyncBuilder {
+        public const val DEFAULT_DB_FILENAME: String = "powersync.db"
+        public fun from(factory: DatabaseDriverFactory, schema: Schema): PowerSyncBuilder {
             return from(factory, schema, DEFAULT_DB_FILENAME)
         }
 
-        fun from(
+        public fun from(
             factory: DatabaseDriverFactory,
             schema: Schema,
             dbFilename: String

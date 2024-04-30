@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class OplogEntry(
+internal data class OplogEntry(
     val checksum: Long,
     @SerialName("op_id") val opId: String,
     @SerialName("object_id") val rowId: String? = null,

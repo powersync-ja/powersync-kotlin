@@ -11,6 +11,9 @@ gradlePlugin {
     }
 }
 
+kotlin {
+    explicitApi()
+}
 
 dependencies {
     implementation(libs.mavenPublishPlugin)

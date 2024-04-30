@@ -8,27 +8,27 @@ import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.bundling.Zip
 
-abstract class SonatypeCentralExtension(
+public abstract class SonatypeCentralExtension(
     private val project: Project
 ) {
     @get:Optional
-    val username: Property<String?> = project.objects.property(String::class.java)
+    public val username: Property<String?> = project.objects.property(String::class.java)
 
     @get:Optional
-    val password: Property<String?> = project.objects.property(String::class.java)
+    public val password: Property<String?> = project.objects.property(String::class.java)
 
-    companion object {
-        const val NAME = "sonatypePublishing"
-        const val GROUP = "publishing"
-        const val REPO_DIR = "sonatypeLocal"
-        const val BUNDLE_DIR = "sonatypeBundles"
+    public companion object {
+        public const val NAME: String = "sonatypePublishing"
+        public const val GROUP: String = "publishing"
+        public const val REPO_DIR: String = "sonatypeLocal"
+        public const val BUNDLE_DIR: String = "sonatypeBundles"
 
-        const val PUBLISH_TASK_NAME = "publishAllPublicationsToSonatypeRepository"
-        const val PUBLISH_LOCAL_TASK_NAME = "publishAllPublicationsToSonatypeLocalRepository"
-        const val COMPONENT_BUNDLE_TASK_NAME = "generateSonatypeComponentBundle"
+        public const val PUBLISH_TASK_NAME: String = "publishAllPublicationsToSonatypeRepository"
+        public const val PUBLISH_LOCAL_TASK_NAME: String = "publishAllPublicationsToSonatypeLocalRepository"
+        public const val COMPONENT_BUNDLE_TASK_NAME: String = "generateSonatypeComponentBundle"
 
-        const val SONATYPE_USERNAME_KEY = "centralPortal.username"
-        const val SONATYPE_PASSWORD_KEY = "centralPortal.password"
+        public const val SONATYPE_USERNAME_KEY: String = "centralPortal.username"
+        public const val SONATYPE_PASSWORD_KEY: String = "centralPortal.password"
     }
 
     internal fun apply() {

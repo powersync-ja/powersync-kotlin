@@ -8,11 +8,11 @@ import app.cash.sqldelight.dialects.sqlite_3_35.SqliteTypeResolver
 import app.cash.sqldelight.dialects.sqlite_3_38.SqliteDialect as Sqlite338Dialect
 import com.alecstrong.sql.psi.core.psi.SqlFunctionExpr
 
-class PowerSyncDialect : SqlDelightDialect by Sqlite338Dialect() {
-    override fun typeResolver(parentResolver: TypeResolver) = PowerSyncTypeResolver(parentResolver)
+public class PowerSyncDialect : SqlDelightDialect by Sqlite338Dialect() {
+    override fun typeResolver(parentResolver: TypeResolver): PowerSyncTypeResolver = PowerSyncTypeResolver(parentResolver)
 }
 
-class PowerSyncTypeResolver(private val parentResolver: TypeResolver) :
+public class PowerSyncTypeResolver(private val parentResolver: TypeResolver) :
     TypeResolver by SqliteTypeResolver(parentResolver) {
     override fun functionType(functionExpr: SqlFunctionExpr): IntermediateType? {
         when (functionExpr.functionName.text) {

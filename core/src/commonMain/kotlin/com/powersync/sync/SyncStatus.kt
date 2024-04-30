@@ -5,61 +5,61 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.datetime.Instant
 
-interface SyncStatusData {
+public interface SyncStatusData {
     /**
      * true if currently connected.
      *
      * This means the PowerSync connection is ready to download, and [PowerSyncBackendConnector.uploadData] may be called for any local changes.
      */
-    val connected: Boolean
+    public val connected: Boolean
 
     /**
      * true if the PowerSync connection is busy connecting.
      *
      * During this stage, [PowerSyncBackendConnector.uploadData] may already be called, and [uploading] may be true.
      */
-    val connecting: Boolean
+    public val connecting: Boolean
 
     /**
      * true if actively downloading changes.
      *
      * This is only true when [connected] is also true.
      */
-    val downloading: Boolean
+    public val downloading: Boolean
 
     /**
      * true if uploading changes
      */
-    val uploading: Boolean
+    public val uploading: Boolean
 
     /**
      * Time that a last sync has fully completed, if any.
      *
      * Currently this is reset to null after a restart.
      */
-    val lastSyncedAt: Instant?
+    public val lastSyncedAt: Instant?
 
     /**
      * Error during uploading.
      *
      * Cleared on the next successful upload.
      */
-    val uploadError: Any?
+    public val uploadError: Any?
 
     /**
      * Error during downloading (including connecting).
      *
      * Cleared on the next successful data download.
      */
-    val downloadError: Any?
+    public val downloadError: Any?
 
     /**
      * Convenience getter for either the value of downloadError or uploadError
      */
-    val anyError: Any?
+    public val anyError: Any?
 }
 
-data class SyncStatusDataContainer(
+internal data class SyncStatusDataContainer(
     override val connected: Boolean = false,
     override val connecting: Boolean = false,
     override val downloading: Boolean = false,
@@ -89,7 +89,7 @@ data class SyncStatusDataContainer(
 }
 
 
-data class SyncStatus(
+public data class SyncStatus internal constructor(
     private var data: SyncStatusDataContainer = SyncStatusDataContainer()
 ) : SyncStatusData {
     private val stateFlow: MutableStateFlow<SyncStatusDataContainer> = MutableStateFlow(data)
@@ -97,7 +97,7 @@ data class SyncStatus(
     /**
      * @returns a flow which emits whenever the sync status has changed
      */
-    fun asFlow(): SharedFlow<SyncStatusData> {
+    public fun asFlow(): SharedFlow<SyncStatusData> {
         return stateFlow.asSharedFlow()
     }
 
@@ -166,5 +166,9 @@ data class SyncStatus(
 
     override fun toString(): String {
         return "SyncStatus(connected=$connected, connecting=$connecting, downloading=$downloading, uploading=$uploading, lastSyncedAt=$lastSyncedAt, error=$anyError)"
+    }
+
+    public companion object {
+        public fun empty(): SyncStatus = SyncStatus()
     }
 }

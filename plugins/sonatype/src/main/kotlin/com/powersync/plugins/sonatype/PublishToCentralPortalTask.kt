@@ -16,7 +16,7 @@ import java.net.URISyntaxException
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.Base64
-abstract class PublishToCentralPortalTask : DefaultTask() {
+internal abstract class PublishToCentralPortalTask : DefaultTask() {
     @get:Input
     @get:Optional
     abstract val username: Property<String?>

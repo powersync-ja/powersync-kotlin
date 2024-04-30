@@ -81,6 +81,8 @@ kotlin {
         }
     }
 
+    explicitApi()
+
     sourceSets {
         all {
             languageSettings {
@@ -98,6 +100,7 @@ kotlin {
             implementation(libs.kotlinx.datetime)
             implementation(libs.stately.concurrency)
             implementation(libs.bundles.sqldelight)
+            implementation(libs.canard)
         }
         androidMain.dependencies {
             implementation(libs.powersync.sqlite.core)

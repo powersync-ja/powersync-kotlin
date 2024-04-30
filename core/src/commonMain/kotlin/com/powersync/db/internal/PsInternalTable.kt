@@ -1,6 +1,6 @@
 package com.powersync.db.internal
 
-enum class PsInternalTable(private val tableName: String) {
+internal enum class PsInternalTable(private val tableName: String) {
     DATA("ps_data"),
     CRUD("ps_crud"),
     BUCKETS("ps_buckets"),
