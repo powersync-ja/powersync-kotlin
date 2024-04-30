@@ -71,12 +71,13 @@ internal class PsInternalDatabase(val driver: PsSqlDriver, private val scope: Co
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType
     ): RowType {
-        return this.createQuery(
+        val result = this.createQuery(
             query = sql,
             parameters = parameters?.size ?: 0,
             binders = getBindersFromParams(parameters),
             mapper = mapper
-        ).awaitAsOneOrNull()!!
+        ).awaitAsOneOrNull()
+        return requireNotNull(result) { "Query returned no result" }
     }
 
     override suspend fun <RowType : Any> getAll(
