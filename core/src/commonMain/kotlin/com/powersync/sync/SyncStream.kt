@@ -120,7 +120,7 @@ internal class SyncStream(
     }
 
     suspend fun triggerCrudUpload() {
-        if (isUploadingCrud.value) {
+        if (!status.connected || isUploadingCrud.value) {
             return
         }
         isUploadingCrud.value = true
@@ -224,6 +224,7 @@ internal class SyncStream(
     }
 
     private suspend fun streamingSyncIteration(): SyncStreamState {
+
         val bucketEntries = bucketStorage.getBucketStates()
         val initialBuckets = mutableMapOf<String, String>()
 

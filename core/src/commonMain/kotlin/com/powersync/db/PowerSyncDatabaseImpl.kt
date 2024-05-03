@@ -20,8 +20,11 @@ import com.powersync.db.schema.Schema
 import com.powersync.sync.SyncStatus
 import com.powersync.sync.SyncStream
 import com.powersync.utils.JsonUtil
+import com.powersync.utils.Strings.quoteIdentifier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
@@ -60,6 +63,10 @@ internal class PowerSyncDatabaseImpl(
 
     private var syncStream: SyncStream? = null
 
+    private var syncJob: Job? = null
+
+    private var uploadJob: Job? = null
+
     init {
         runBlocking {
             val sqliteVersion = internalDb.queries.sqliteVersion().awaitAsOne()
@@ -87,7 +94,7 @@ internal class PowerSyncDatabaseImpl(
                 loggerFactory = loggerFactory
             )
 
-        scope.launch {
+        syncJob = scope.launch {
             syncStream!!.streamingSync()
         }
 
@@ -106,7 +113,7 @@ internal class PowerSyncDatabaseImpl(
             }
         }
 
-        scope.launch {
+        uploadJob = scope.launch {
             internalDb.updatesOnTable(PsInternalTable.CRUD.toString()).debounce(100).collect {
                 syncStream!!.triggerCrudUpload()
             }
@@ -244,6 +251,40 @@ internal class PowerSyncDatabaseImpl(
                     "UPDATE ps_buckets SET target_op = ? WHERE name='\$local'",
                     listOf(bucketStorage.getMaxOpId()),
                 )
+            }
+        }
+    }
+
+    override suspend fun disconnect() {
+        if(syncJob != null && uploadJob != null && syncJob!!.isActive && uploadJob!!.isActive) {
+            logger.debug { "Disconnecting" }
+            //Wait for job to finish and then cancel
+            syncJob?.cancelAndJoin()
+            uploadJob?.cancelAndJoin()
+            syncStream = null
+            currentStatus.update(connected = false, connecting = false)
+        }
+    }
+
+    override suspend fun disconnectAndClear(clearLocal: Boolean) {
+        disconnect()
+
+        this.writeTransaction {
+            execute("DELETE FROM ${PsInternalTable.OPLOG}")
+            execute("DELETE FROM ${PsInternalTable.CRUD}")
+            execute("DELETE FROM ${PsInternalTable.BUCKETS}")
+
+            val tableGlob = if (clearLocal) "ps_data_*" else "ps_data__*"
+            val existingTableRows = getAll(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB ?",
+                listOf(tableGlob),
+                mapper = { cursor ->
+                    cursor.getString(0)!!
+                }
+            )
+
+            for (row in existingTableRows) {
+                execute("DELETE FROM ${quoteIdentifier(row)}")
             }
         }
     }

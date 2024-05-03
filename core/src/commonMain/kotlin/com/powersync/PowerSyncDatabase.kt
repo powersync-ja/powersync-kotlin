@@ -76,4 +76,16 @@ public interface PowerSyncDatabase : ReadQueries, WriteQueries {
      * Convenience method to get the current version of PowerSync.
      */
     public suspend fun getPowerSyncVersion(): String
+
+    public suspend fun disconnect()
+
+    /**
+     *  Disconnect and clear the database.
+     *  Use this when logging out.
+     *  The database can still be queried after this is called, but the tables
+     *  would be empty.
+     *
+     * To preserve data in local-only tables, set clearLocal to false.
+     */
+    public suspend fun disconnectAndClear(clearLocal: Boolean = true)
 }
