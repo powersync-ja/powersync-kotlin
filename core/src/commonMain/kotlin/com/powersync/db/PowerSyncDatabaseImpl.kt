@@ -272,6 +272,7 @@ internal class PowerSyncDatabaseImpl(
             execute("DELETE FROM ${PsInternalTable.OPLOG}")
             execute("DELETE FROM ${PsInternalTable.CRUD}")
             execute("DELETE FROM ${PsInternalTable.BUCKETS}")
+            execute("DELETE FROM ${PsInternalTable.UNTYPED}")
 
             val tableGlob = if (clearLocal) "ps_data_*" else "ps_data__*"
             val existingTableRows = getAll(

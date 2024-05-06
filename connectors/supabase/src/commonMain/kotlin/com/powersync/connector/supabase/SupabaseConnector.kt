@@ -21,6 +21,7 @@ public class SupabaseConnector(
     public val supabaseClient: SupabaseClient,
     public val powerSyncEndpoint: String
 ) : PowerSyncBackendConnector() {
+
     public constructor(
         supabaseUrl: String,
         supabaseKey: String,
