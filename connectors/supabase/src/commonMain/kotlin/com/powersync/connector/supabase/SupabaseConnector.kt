@@ -9,7 +9,6 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.gotrue.Auth
 import io.github.jan.supabase.gotrue.SessionStatus
-import io.github.jan.supabase.gotrue.SessionManager
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.postgrest.Postgrest
@@ -32,8 +31,6 @@ public class SupabaseConnector(
             install(Postgrest)
         },
         powerSyncEndpoint = powerSyncEndpoint
-
-
     )
 
     init {

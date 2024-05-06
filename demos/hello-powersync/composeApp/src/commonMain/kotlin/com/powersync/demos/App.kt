@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,17 +54,7 @@ fun App() {
                     scope.launch {
                         powerSync.deleteUser()
                     }
-                },
-                onDisconnectAndClear = {
-                    scope.launch {
-                        powerSync.disconnectAndClear()
-                    }
-                },
-                onConnect = {
-                    scope.launch {
-                        powerSync.connect()
-                    }
-                },
+                }
                 syncStatus = syncStatus
             )
         }
@@ -79,8 +67,6 @@ fun ViewContent(
     users: List<User>,
     onCreate: () -> Unit,
     onDelete: () -> Unit,
-    onDisconnectAndClear: () -> Unit,
-    onConnect: () -> Unit,
     syncStatus: SyncStatusData
 ) {
     val layoutDirection = LocalLayoutDirection.current
@@ -140,23 +126,6 @@ fun ViewContent(
 
                     item {
                         Spacer(Modifier.height(24.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceAround
-                        ) {
-                            Column {
-                                MyButton(label = "Disconnect and clear") {
-                                    onDisconnectAndClear()
-                                }
-                            }
-
-                            Column {
-                                MyButton(label = "Connect") {
-                                    onConnect()
-                                }
-                            }
-                        }
 
                     }
                 }

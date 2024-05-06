@@ -257,7 +257,6 @@ internal class PowerSyncDatabaseImpl(
 
     override suspend fun disconnect() {
         if(syncJob != null && uploadJob != null && syncJob!!.isActive && uploadJob!!.isActive) {
-            logger.debug { "Disconnecting" }
             //Wait for job to finish and then cancel
             syncJob?.cancelAndJoin()
             uploadJob?.cancelAndJoin()
