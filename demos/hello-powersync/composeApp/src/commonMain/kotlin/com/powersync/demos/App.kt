@@ -54,7 +54,7 @@ fun App() {
                     scope.launch {
                         powerSync.deleteUser()
                     }
-                }
+                },
                 syncStatus = syncStatus
             )
         }
@@ -123,14 +123,7 @@ fun ViewContent(
                         }
 
                     }
-
-                    item {
-                        Spacer(Modifier.height(24.dp))
-
-                    }
                 }
-
-
                 // This box should be at the bottom of the screen
                 Box(modifier = Modifier.padding(24.dp).align(Alignment.BottomEnd)) {
                     Column {

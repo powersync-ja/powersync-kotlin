@@ -68,12 +68,4 @@ class PowerSync(
             database.execute("DELETE FROM customers WHERE id = ?", listOf(targetId))
         }
     }
-
-    suspend fun connect() {
-        database.connect(connector)
-    }
-
-    suspend fun disconnectAndClear() {
-        database.disconnectAndClear()
-    }
 }
