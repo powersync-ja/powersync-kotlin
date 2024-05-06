@@ -23,6 +23,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.utils.io.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -103,7 +104,10 @@ internal class SyncStream(
 //                    break;
 //                }
             } catch (e: Exception) {
-                logger.error(e) { "Error in streamingSync" }
+                //If the coroutine was cancelled, don't log an error
+                if(e !is CancellationException) {
+                    logger.error(e) { "Error in streamingSync" }
+                }
                 invalidCredentials = true
                 status.update(
                     downloadError = e

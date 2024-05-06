@@ -43,12 +43,7 @@ internal class BucketStorage(
     private suspend fun readTableNames() {
         tableNames.clear()
         // Query to get existing table names
-        val names =
-            db.getAll("SELECT name FROM sqlite_master WHERE type='table' AND name GLOB 'ps_data_*'",
-                mapper = { cursor ->
-                    cursor.getString(0)!!
-                }
-            )
+        val names = db.getExistingTableNames("ps_data_*")
 
         tableNames.addAll(names)
     }

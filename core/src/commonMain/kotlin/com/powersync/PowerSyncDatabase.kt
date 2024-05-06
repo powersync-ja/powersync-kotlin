@@ -77,6 +77,11 @@ public interface PowerSyncDatabase : ReadQueries, WriteQueries {
      */
     public suspend fun getPowerSyncVersion(): String
 
+    /**
+     * Close the sync connection.
+     *
+     * Use [connect] to connect again.
+     */
     public suspend fun disconnect()
 
     /**

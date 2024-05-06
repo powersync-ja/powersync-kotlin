@@ -86,6 +86,9 @@ internal class PowerSyncDatabaseImpl(
 
     @OptIn(FlowPreview::class)
     override suspend fun connect(connector: PowerSyncBackendConnector) {
+        // close connection if one is open
+        disconnect();
+
         this.syncStream =
             SyncStream(
                 bucketStorage = bucketStorage,
@@ -256,8 +259,8 @@ internal class PowerSyncDatabaseImpl(
     }
 
     override suspend fun disconnect() {
-        if(syncJob != null && uploadJob != null && syncJob!!.isActive && uploadJob!!.isActive) {
-            //Wait for job to finish and then cancel
+        if (syncJob != null && uploadJob != null && syncJob!!.isActive && uploadJob!!.isActive) {
+            //Wait for job to finish and then cancel with a CancellationException
             syncJob?.cancelAndJoin()
             uploadJob?.cancelAndJoin()
             syncStream = null
@@ -275,13 +278,7 @@ internal class PowerSyncDatabaseImpl(
             execute("DELETE FROM ${PsInternalTable.UNTYPED}")
 
             val tableGlob = if (clearLocal) "ps_data_*" else "ps_data__*"
-            val existingTableRows = getAll(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB ?",
-                listOf(tableGlob),
-                mapper = { cursor ->
-                    cursor.getString(0)!!
-                }
-            )
+            val existingTableRows = internalDb.getExistingTableNames(tableGlob)
 
             for (row in existingTableRows) {
                 execute("DELETE FROM ${quoteIdentifier(row)}")
