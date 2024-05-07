@@ -241,6 +241,20 @@ internal class PsInternalDatabase(val driver: PsSqlDriver, private val scope: Co
         return tableRows.toSet()
     }
 
+    fun getExistingTableNames(tableGlob: String): List<String> {
+        val existingTableNames = createQuery(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB ?",
+            parameters = 1,
+            binders = {
+                bindString(0, tableGlob)
+            },
+            mapper = { cursor ->
+                cursor.getString(0)!!
+            }
+        ).executeAsList()
+        return existingTableNames
+    }
+
     internal data class ExplainQueryResult(
         val addr: String,
         val opcode: String,
