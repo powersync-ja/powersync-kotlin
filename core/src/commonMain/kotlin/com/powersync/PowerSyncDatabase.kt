@@ -30,10 +30,12 @@ public interface PowerSyncDatabase : ReadQueries, WriteQueries {
      *
      *  The connection is automatically re-opened if it fails for any reason.
      *
+     *  Use @param [retryDelayMs] to specify the delay between retries. Defaults to 1s.
+     *
      *  TODO: Status changes are reported on [statusStream].
      */
 
-    public suspend fun connect(connector: PowerSyncBackendConnector)
+    public suspend fun connect(connector: PowerSyncBackendConnector, retryDelayMs: Long = 1000L)
 
 
     /**

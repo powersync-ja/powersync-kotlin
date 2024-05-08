@@ -46,7 +46,7 @@ internal class SyncStream(
     private val bucketStorage: BucketStorage,
     private val connector: PowerSyncBackendConnector,
     private val uploadCrud: suspend () -> Unit,
-    private val retryDelay: Long = 1000L,
+    private val retryDelayMs: Long = 1000L,
     loggerFactory: LoggerFactory
 ) {
     private val logger = newLogger(loggerFactory)
@@ -118,7 +118,7 @@ internal class SyncStream(
                     connecting = true,
                     downloading = false,
                 )
-                delay(retryDelay)
+                delay(retryDelayMs)
             }
         }
     }
@@ -146,7 +146,7 @@ internal class SyncStream(
             } catch (e: Exception) {
                 logger.error(e) { "Error uploading crud" }
                 status.update(uploading = false, uploadError = e)
-                delay(retryDelay)
+                delay(retryDelayMs)
                 break
             }
         }

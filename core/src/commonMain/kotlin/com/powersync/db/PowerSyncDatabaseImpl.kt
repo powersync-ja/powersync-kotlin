@@ -85,7 +85,7 @@ internal class PowerSyncDatabaseImpl(
     }
 
     @OptIn(FlowPreview::class)
-    override suspend fun connect(connector: PowerSyncBackendConnector) {
+    override suspend fun connect(connector: PowerSyncBackendConnector, retryDelayMs: Long) {
         // close connection if one is open
         disconnect();
 
@@ -94,6 +94,7 @@ internal class PowerSyncDatabaseImpl(
                 bucketStorage = bucketStorage,
                 connector = connector,
                 uploadCrud = suspend { connector.uploadData(this) },
+                retryDelayMs = retryDelayMs,
                 loggerFactory = loggerFactory
             )
 
