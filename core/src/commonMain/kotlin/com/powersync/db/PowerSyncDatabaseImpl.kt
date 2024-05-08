@@ -85,7 +85,7 @@ internal class PowerSyncDatabaseImpl(
     }
 
     @OptIn(FlowPreview::class)
-    override suspend fun connect(connector: PowerSyncBackendConnector) {
+    override suspend fun connect(connector: PowerSyncBackendConnector, crudThrottleMs: Long, retryDelayMs: Long) {
         // close connection if one is open
         disconnect();
 
@@ -94,6 +94,7 @@ internal class PowerSyncDatabaseImpl(
                 bucketStorage = bucketStorage,
                 connector = connector,
                 uploadCrud = suspend { connector.uploadData(this) },
+                retryDelayMs = retryDelayMs,
                 loggerFactory = loggerFactory
             )
 
@@ -117,7 +118,7 @@ internal class PowerSyncDatabaseImpl(
         }
 
         uploadJob = scope.launch {
-            internalDb.updatesOnTable(PsInternalTable.CRUD.toString()).debounce(100).collect {
+            internalDb.updatesOnTable(PsInternalTable.CRUD.toString()).debounce(crudThrottleMs).collect {
                 syncStream!!.triggerCrudUpload()
             }
         }
