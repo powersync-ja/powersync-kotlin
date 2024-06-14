@@ -1,6 +1,7 @@
-import de.undercouch.gradle.tasks.download.Download
-import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import com.powersync.plugins.sonatype.setupGithubRepository
+import de.undercouch.gradle.tasks.download.Download
+import org.apache.tools.ant.taskdefs.condition.Os
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -14,8 +15,15 @@ plugins {
 val sqliteVersion = "3450000"
 val sqliteReleaseYear = "2024"
 
-val sqliteSrcFolder =
-    project.layout.buildDirectory.dir("interop/sqlite").get()
+val osName = when {
+    Os.isFamily(Os.FAMILY_WINDOWS) -> "Windows"
+    Os.isFamily(Os.FAMILY_MAC) -> "macOS"
+    Os.isFamily(Os.FAMILY_UNIX) -> "Linux"
+    else -> "Unknown"
+}
+
+val sqliteSrcFolder = project.layout.buildDirectory.dir("interop/sqlite").get()
+val jvmNativeBuildFolder = "${layout.buildDirectory.get().asFile}/native/powersync-sqlite"
 
 val downloadSQLiteSources by tasks.registering(Download::class) {
     val zipFileName = "sqlite-amalgamation-$sqliteVersion.zip"
@@ -59,6 +67,19 @@ val buildCInteropDef by tasks.registering {
     outputs.files(defFile)
 }
 
+tasks.create<Exec>("buildNative") {
+    group = "build"
+
+    outputs.dir(jvmNativeBuildFolder)
+    workingDir = file(jvmNativeBuildFolder)
+
+    environment("TARGET", "$osName/cmake")
+    environment("SOURCE_PATH", "$projectDir/src/jvmMain/cpp")
+    environment("INTEROP_PATH", "$sqliteSrcFolder")
+
+    commandLine("$projectDir/src/jvmMain/cpp/build.sh")
+}
+
 kotlin {
     androidTarget {
         publishLibraryVariants("release", "debug")
@@ -67,6 +88,13 @@ kotlin {
     iosX64()
     iosArm64()
     iosSimulatorArm64()
+    jvm {
+        val processResources = compilations["main"].processResourcesTaskName
+        (tasks[processResources] as ProcessResources).apply {
+            dependsOn("buildNative")
+            from("$jvmNativeBuildFolder/${osName}/output")
+        }
+    }
 
     targets.withType<KotlinNativeTarget> {
         compilations.getByName("main") {
@@ -111,6 +139,11 @@ kotlin {
 
         iosMain.dependencies {
             implementation(libs.ktor.client.ios)
+        }
+
+        jvmMain.dependencies {
+            implementation(libs.sqldelight.driver.desktop)
+            implementation(libs.ktor.client.okhttp)
         }
 
         commonTest.dependencies {
@@ -180,4 +213,3 @@ afterEvaluate {
 }
 
 setupGithubRepository()
-

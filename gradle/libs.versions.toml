@@ -72,6 +72,7 @@ ktor-client-contentnegotiation = { module = "io.ktor:ktor-client-content-negotia
 ktor-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 
+sqldelight-driver-desktop = { module = "app.cash.sqldelight:sqlite-driver", version.ref ="sqlDelight" }
 sqldelight-driver-ios = { module = "app.cash.sqldelight:native-driver", version.ref = "sqlDelight" }
 sqldelight-driver-android = { module = "app.cash.sqldelight:android-driver", version.ref = "sqlDelight" }
 requery-sqlite-android = { module = "com.github.requery:sqlite-android", version.ref = "sqlite-android" }
