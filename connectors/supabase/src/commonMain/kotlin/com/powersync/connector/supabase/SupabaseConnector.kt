@@ -57,17 +57,16 @@ public class SupabaseConnector(
         check(supabaseClient.auth.sessionStatus.value is SessionStatus.Authenticated) { "Supabase client is not authenticated" }
 
         // Use Supabase token for PowerSync
-        val session = supabaseClient.auth.currentSessionOrNull() ?: error("Could not fetch Supabase credentials");
+        val session = supabaseClient.auth.currentSessionOrNull() ?: error("Could not fetch Supabase credentials")
 
         check(session.user != null) { "No user data" }
 
-        // userId and expiresAt are for debugging purposes only
+        // userId is for debugging purposes only
         return PowerSyncCredentials(
             endpoint = powerSyncEndpoint,
             token = session.accessToken, // Use the access token to authenticate against PowerSync
-            expiresAt = session.expiresAt,
             userId = session.user!!.id
-        );
+        )
     }
 
     /**

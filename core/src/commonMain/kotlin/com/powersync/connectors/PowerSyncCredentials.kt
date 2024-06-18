@@ -22,18 +22,10 @@ public data class PowerSyncCredentials(
     /**
      * User ID.
      */
-    @SerialName("user_id") val userId: String?,
-    /**
-     * When the token expires. Only use for debugging purposes.
-     */
-    val expiresAt: Instant?
+    @SerialName("user_id") val userId: String?
 ) {
     override fun toString(): String {
-        return "PowerSyncCredentials<endpoint: $endpoint userId: $userId expiresAt: ${
-            expiresAt?.toLocalDateTime(
-                TimeZone.UTC
-            )
-        }>"
+        return "PowerSyncCredentials<endpoint: $endpoint userId: $userId>"
     }
 
     public fun endpointUri(path: String): String {
