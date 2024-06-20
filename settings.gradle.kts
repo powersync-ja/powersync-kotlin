@@ -18,13 +18,13 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "powersync"
+rootProject.name = "powersync-root"
 
 include(":core")
 include(":connectors:supabase")
 
 include(":dialect")
-include(":powersyncswift")
+include(":PowerSync")
 
 include(":compose")
 

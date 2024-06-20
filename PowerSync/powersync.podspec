@@ -1,19 +1,19 @@
 Pod::Spec.new do |spec|
-    spec.name                     = 'powersyncswift'
+    spec.name                     = 'PowerSync'
     spec.version                  = '0.1'
-    spec.homepage                 = 'https://www.touchlab.co'
+    spec.homepage                 = 'https://www.powersync.com'
     spec.source                   = { :http=> ''}
-    spec.authors                  = ''
-    spec.license                  = ''
-    spec.summary                  = 'PowerSyncSwift'
-    spec.vendored_frameworks      = 'build/cocoapods/framework/powersyncswift.framework'
+    spec.authors                  = 'JOURNEYAPPS'
+    spec.license                  = 'Apache-2.0'
+    spec.summary                  = 'PowerSync SDK for Swift'
+    spec.vendored_frameworks      = 'build/cocoapods/framework/PowerSync.framework'
                 
     spec.ios.deployment_target = '13.5'
                 
                 
     spec.pod_target_xcconfig = {
-        'KOTLIN_PROJECT_PATH' => ':powersyncswift',
-        'PRODUCT_MODULE_NAME' => 'powersyncswift',
+        'KOTLIN_PROJECT_PATH' => ':PowerSync',
+        'PRODUCT_MODULE_NAME' => 'PowerSync',
     }
                 
     spec.script_phases = [
