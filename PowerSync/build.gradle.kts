@@ -1,4 +1,5 @@
 import co.touchlab.faktory.versionmanager.TimestampVersionManager
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -20,6 +21,12 @@ kotlin {
     }
 
     explicitApi()
+
+    targets.withType<KotlinNativeTarget> {
+        compilations.getByName("main") {
+            compilerOptions.options.freeCompilerArgs.add("-Xexport-kdoc")
+        }
+    }
 
     sourceSets {
         commonMain.dependencies {

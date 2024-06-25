@@ -71,6 +71,7 @@ kotlin {
 
     targets.withType<KotlinNativeTarget> {
         compilations.getByName("main") {
+            compilerOptions.options.freeCompilerArgs.add("-Xexport-kdoc")
             cinterops.create("sqlite") {
                 val cInteropTask = tasks[interopProcessingTaskName]
                 cInteropTask.dependsOn(buildCInteropDef)
@@ -87,6 +88,12 @@ kotlin {
         all {
             languageSettings {
                 optIn("kotlinx.cinterop.ExperimentalForeignApi")
+            }
+
+            val commonMain by sourceSets.getting {
+                dependencies {
+                    implementation(libs.configuration.annotations)
+                }
             }
         }
         commonMain.dependencies {

@@ -1,4 +1,5 @@
 import com.powersync.plugins.sonatype.setupGithubRepository
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -10,6 +11,12 @@ plugins {
 kotlin {
     androidTarget {
         publishLibraryVariants("release", "debug")
+    }
+
+    targets.withType<KotlinNativeTarget> {
+        compilations.getByName("main") {
+            compilerOptions.options.freeCompilerArgs.add("-Xexport-kdoc")
+        }
     }
 
     iosX64()
