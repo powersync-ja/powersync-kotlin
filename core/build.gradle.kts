@@ -71,6 +71,7 @@ kotlin {
 
     targets.withType<KotlinNativeTarget> {
         compilations.getByName("main") {
+            compilerOptions.options.freeCompilerArgs.add("-Xexport-kdoc")
             cinterops.create("sqlite") {
                 val cInteropTask = tasks[interopProcessingTaskName]
                 cInteropTask.dependsOn(buildCInteropDef)
@@ -89,6 +90,7 @@ kotlin {
                 optIn("kotlinx.cinterop.ExperimentalForeignApi")
             }
         }
+
         commonMain.dependencies {
             implementation(libs.uuid)
             implementation(libs.kotlin.stdlib)
@@ -101,13 +103,16 @@ kotlin {
             implementation(libs.stately.concurrency)
             implementation(libs.bundles.sqldelight)
             implementation(libs.canard)
+            implementation(libs.configuration.annotations)
         }
+
         androidMain.dependencies {
             implementation(libs.powersync.sqlite.core)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.requery.sqlite.android)
             implementation(libs.sqldelight.driver.android)
         }
+
         iosMain.dependencies {
             implementation(libs.ktor.client.ios)
             implementation(libs.sqldelight.driver.ios)

@@ -3,6 +3,7 @@
 android-minSdk = "24"
 android-targetSdk = "34"
 android-compileSdk = "34"
+configurationAnnotations = "0.8.2"
 java = "17"
 idea = "222.4459.24" # Flamingo | 2022.2.1 (see https://plugins.jetbrains.com/docs/intellij/android-studio-releases-list.html)
 
@@ -47,6 +48,7 @@ org-jetbrains-kotlin-jvm = "1.9.22"
 
 [libraries]
 compose-compiler = { module = "androidx.compose.compiler:compiler", version.ref = "compose-compiler" }
+configuration-annotations = { module = "co.touchlab.skie:configuration-annotations", version.ref = "configurationAnnotations" }
 powersync-sqlite-core = { module = "co.powersync:powersync-sqlite-core", version.ref = "powersync-core" }
 mavenPublishPlugin = { module = "com.vanniktech:gradle-maven-publish-plugin", version.ref = "maven-publish" }
 
