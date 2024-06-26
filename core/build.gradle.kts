@@ -89,13 +89,8 @@ kotlin {
             languageSettings {
                 optIn("kotlinx.cinterop.ExperimentalForeignApi")
             }
-
-            val commonMain by sourceSets.getting {
-                dependencies {
-                    implementation(libs.configuration.annotations)
-                }
-            }
         }
+
         commonMain.dependencies {
             implementation(libs.uuid)
             implementation(libs.kotlin.stdlib)
@@ -108,13 +103,16 @@ kotlin {
             implementation(libs.stately.concurrency)
             implementation(libs.bundles.sqldelight)
             implementation(libs.canard)
+            implementation(libs.configuration.annotations)
         }
+
         androidMain.dependencies {
             implementation(libs.powersync.sqlite.core)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.requery.sqlite.android)
             implementation(libs.sqldelight.driver.android)
         }
+
         iosMain.dependencies {
             implementation(libs.ktor.client.ios)
             implementation(libs.sqldelight.driver.ios)
