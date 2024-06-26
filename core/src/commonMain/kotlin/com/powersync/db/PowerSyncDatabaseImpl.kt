@@ -72,7 +72,7 @@ internal class PowerSyncDatabaseImpl(
             val sqliteVersion = internalDb.queries.sqliteVersion().awaitAsOne()
             logger.debug { "SQLiteVersion: $sqliteVersion" }
             logger.debug { "PowerSyncVersion: ${getPowerSyncVersion()}" }
-            applySchema();
+            applySchema()
         }
     }
 
@@ -87,7 +87,7 @@ internal class PowerSyncDatabaseImpl(
     @OptIn(FlowPreview::class)
     override suspend fun connect(connector: PowerSyncBackendConnector, crudThrottleMs: Long, retryDelayMs: Long) {
         // close connection if one is open
-        disconnect();
+        disconnect()
 
         this.syncStream =
             SyncStream(
@@ -143,7 +143,7 @@ internal class PowerSyncDatabaseImpl(
             return null
         }
 
-        val hasMore = entries.size > limit;
+        val hasMore = entries.size > limit
         if (hasMore) {
             entries.dropLast(entries.size - limit)
         }
