@@ -5,7 +5,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
-import com.powersync.createPowerSyncDatabase
 import com.powersync.db.schema.Schema
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.plus
@@ -19,6 +18,6 @@ public fun rememberPowerSyncDatabase(schema: Schema): PowerSyncDatabase {
     val driverFactory = rememberDatabaseDriverFactory()
     val scope = rememberCoroutineScope()
     return remember(schema) {
-        createPowerSyncDatabase(driverFactory, schema, scope = scope + Dispatchers.Default)
+        PowerSyncDatabase(driverFactory, schema, scope = scope + Dispatchers.Default)
     }
 }

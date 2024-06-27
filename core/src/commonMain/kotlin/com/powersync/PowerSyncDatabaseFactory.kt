@@ -14,7 +14,7 @@ public const val DEFAULT_DB_FILENAME: String = "powersync.db"
  */
 @OptIn(DelicateCoroutinesApi::class)
 @DefaultArgumentInterop.Enabled
-public fun createPowerSyncDatabase(
+public fun PowerSyncDatabase(
     factory: DatabaseDriverFactory,
     schema: Schema,
     dbFilename: String = DEFAULT_DB_FILENAME,

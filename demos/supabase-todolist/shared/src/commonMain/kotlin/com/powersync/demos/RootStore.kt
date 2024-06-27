@@ -5,13 +5,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.powersync.DatabaseDriverFactory
 import com.powersync.connector.supabase.SupabaseConnector
-import com.powersync.createPowerSyncDatabase
+import com.powersync.PowerSyncDatabase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.runBlocking
 
 internal class RootStore(factory: DatabaseDriverFactory) {
 
-    private val db = createPowerSyncDatabase(factory, schema)
+    private val db = PowerSyncDatabase(factory, schema)
     private val connector = SupabaseConnector(
         powerSyncEndpoint = Config.POWERSYNC_URL,
         supabaseUrl = Config.SUPABASE_URL,

@@ -3,7 +3,6 @@ package com.powersync.demos
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
 import com.powersync.connector.supabase.SupabaseConnector
-import com.powersync.createPowerSyncDatabase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.runBlocking
 
@@ -16,7 +15,7 @@ class PowerSync(
         supabaseKey = Config.SUPABASE_ANON_KEY,
         powerSyncEndpoint = Config.POWERSYNC_URL
     )
-    private val database: PowerSyncDatabase = createPowerSyncDatabase(driverFactory, AppSchema)
+    private val database = PowerSyncDatabase(driverFactory, AppSchema)
 
     val db: PowerSyncDatabase
         get() = database;
