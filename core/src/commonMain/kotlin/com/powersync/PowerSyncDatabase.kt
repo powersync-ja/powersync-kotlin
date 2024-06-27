@@ -1,13 +1,11 @@
 package com.powersync
 
-import app.cash.sqldelight.db.SqlDriver
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.ReadQueries
 import com.powersync.db.WriteQueries
 import com.powersync.db.crud.CrudBatch
 import com.powersync.db.crud.CrudTransaction
 import com.powersync.sync.SyncStatus
-import com.powersync.sync.SyncStream
 
 /**
  * A PowerSync managed database.
