@@ -103,7 +103,7 @@ kotlin {
             implementation(libs.stately.concurrency)
             implementation(libs.bundles.sqldelight)
             implementation(libs.configuration.annotations)
-            implementation(libs.kermit)
+            api(libs.kermit)
         }
 
         androidMain.dependencies {
@@ -127,6 +127,20 @@ kotlin {
 android {
     kotlin {
         jvmToolchain(17)
+    }
+
+
+    buildFeatures {
+        buildConfig = true
+    }
+
+    buildTypes {
+        release {
+            buildConfigField("boolean", "DEBUG", "false")
+        }
+        debug {
+            buildConfigField("boolean", "DEBUG", "true")
+        }
     }
 
     namespace = "com.powersync"
