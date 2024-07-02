@@ -8,15 +8,15 @@ java = "17"
 idea = "222.4459.24" # Flamingo | 2022.2.1 (see https://plugins.jetbrains.com/docs/intellij/android-studio-releases-list.html)
 
 # Dependencies
+kermit = "2.0.4"
 kotlin = "1.9.22"
 coroutines = "1.7.3"
 kotlinx-datetime = "0.5.0"
 kotlinx-io = "0.3.0"
-ktor = "2.3.7"
+ktor = "2.3.10"
 uuid = "0.8.2"
 powersync-core = "0.1.6"
 sqlite-android = "3.45.0"
-canard = "1.1.2"
 
 sqlDelight = "2.0.1"
 stately = "2.0.6"
@@ -24,8 +24,8 @@ supabase = "2.3.1"
 junit = "4.13.2"
 
 compose = "1.5.12"
-compose-preview = "1.6.0"
-compose-compiler = "1.5.8"
+compose-preview = "1.6.8"
+compose-compiler = "1.5.14"
 
 # plugins
 android-gradle-plugin = "8.2.2"
@@ -49,6 +49,7 @@ org-jetbrains-kotlin-jvm = "1.9.22"
 [libraries]
 compose-compiler = { module = "androidx.compose.compiler:compiler", version.ref = "compose-compiler" }
 configuration-annotations = { module = "co.touchlab.skie:configuration-annotations", version.ref = "configurationAnnotations" }
+kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 powersync-sqlite-core = { module = "co.powersync:powersync-sqlite-core", version.ref = "powersync-core" }
 mavenPublishPlugin = { module = "com.vanniktech:gradle-maven-publish-plugin", version.ref = "maven-publish" }
 
@@ -63,7 +64,6 @@ kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", versio
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 
 uuid = { module = "com.benasher44:uuid", version.ref = "uuid" }
-canard = { module = "org.kodein.log:canard", version.ref = "canard" }
 
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-ios = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }

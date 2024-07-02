@@ -5,6 +5,7 @@ import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import app.cash.sqldelight.db.SqlCursor
+import co.touchlab.kermit.Logger
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
 import com.powersync.PsSqlDriver
@@ -30,9 +31,6 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
-import org.kodein.log.LoggerFactory
-import org.kodein.log.frontend.defaultLogFrontend
-import org.kodein.log.newLogger
 
 /**
  * A PowerSync managed database.
@@ -48,13 +46,11 @@ internal class PowerSyncDatabaseImpl(
     val scope: CoroutineScope,
     val factory: DatabaseDriverFactory,
     private val dbFilename: String,
+    val logger: Logger = Logger,
     driver: PsSqlDriver = factory.createDriver(scope, dbFilename),
 ) : PowerSyncDatabase {
-    private val loggerFactory = LoggerFactory(defaultLogFrontend)
-    private val logger = newLogger(loggerFactory)
-
     private val internalDb = PsInternalDatabase(driver, scope)
-    private val bucketStorage: BucketStorage = BucketStorage(internalDb, loggerFactory)
+    private val bucketStorage: BucketStorage = BucketStorage(internalDb, logger)
 
     /**
      * The current sync status.
@@ -70,8 +66,8 @@ internal class PowerSyncDatabaseImpl(
     init {
         runBlocking {
             val sqliteVersion = internalDb.queries.sqliteVersion().awaitAsOne()
-            logger.debug { "SQLiteVersion: $sqliteVersion" }
-            logger.debug { "PowerSyncVersion: ${getPowerSyncVersion()}" }
+            logger.d { "SQLiteVersion: $sqliteVersion" }
+            logger.d { "PowerSyncVersion: ${getPowerSyncVersion()}" }
             applySchema()
         }
     }
@@ -95,7 +91,7 @@ internal class PowerSyncDatabaseImpl(
                 connector = connector,
                 uploadCrud = suspend { connector.uploadData(this) },
                 retryDelayMs = retryDelayMs,
-                loggerFactory = loggerFactory
+                logger = logger
             )
 
         syncJob = scope.launch {
@@ -185,7 +181,7 @@ internal class PowerSyncDatabaseImpl(
             return@readTransaction CrudTransaction(
                 crud = entries, transactionId = txId,
                 complete = { writeCheckpoint ->
-                    logger.info { "[CrudTransaction::complete] Completing transaction with checkpoint $writeCheckpoint" }
+                    logger.i { "[CrudTransaction::complete] Completing transaction with checkpoint $writeCheckpoint" }
                     handleWriteCheckpoint(entries.last().clientId, writeCheckpoint)
                 }
             )

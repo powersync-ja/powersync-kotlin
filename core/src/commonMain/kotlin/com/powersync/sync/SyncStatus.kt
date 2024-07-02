@@ -3,6 +3,7 @@ package com.powersync.sync
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import com.powersync.connectors.PowerSyncBackendConnector
 import kotlinx.datetime.Instant
 
 public interface SyncStatusData {
@@ -111,7 +112,7 @@ public data class SyncStatus internal constructor(
      */
     internal fun update(builder: SyncStatusDataContainer.Builder.() -> Unit) {
         data = SyncStatusDataContainer.Builder(data).apply(builder).build()
-        stateFlow.value = data;
+        stateFlow.value = data
     }
 
     /**

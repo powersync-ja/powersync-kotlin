@@ -1,6 +1,7 @@
 package com.powersync.bucket
 
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
+import co.touchlab.kermit.Logger
 import com.powersync.db.internal.PsInternalDatabase
 import com.powersync.sync.SyncDataBatch
 import com.powersync.sync.SyncLocalDatabaseResult
@@ -10,15 +11,11 @@ import com.benasher44.uuid.uuid4
 import com.powersync.db.internal.PsInternalTable
 import com.powersync.utils.JsonUtil
 import kotlinx.coroutines.runBlocking
-import org.kodein.log.LoggerFactory
-import org.kodein.log.newLogger
 
 internal class BucketStorage(
     private val db: PsInternalDatabase,
-    loggerFactory: LoggerFactory
+    private val logger: Logger
 ) {
-    private val logger = newLogger(loggerFactory)
-
     private val tableNames: MutableSet<String> = mutableSetOf()
     private var hasCompletedSync = AtomicBoolean(false)
     private var checksumCache: ChecksumCache? = null
@@ -27,7 +24,7 @@ internal class BucketStorage(
     /**
      * Count up, and do a compact on startup.
      */
-    private var compactCounter = COMPACT_OPERATION_INTERVAL;
+    private var compactCounter = COMPACT_OPERATION_INTERVAL
 
     companion object {
         const val MAX_OP_ID = "9223372036854775807"
@@ -49,11 +46,11 @@ internal class BucketStorage(
     }
 
     fun startSession() {
-        checksumCache = null;
+        checksumCache = null
     }
 
     fun getMaxOpId(): String {
-        return MAX_OP_ID;
+        return MAX_OP_ID
     }
 
     suspend fun hasCrud(): Boolean {
@@ -77,11 +74,11 @@ internal class BucketStorage(
 
         val opId = checkpointCallback()
 
-        logger.info { "[updateLocalTarget] Updating target to checkpoint $opId" }
+        logger.i { "[updateLocalTarget] Updating target to checkpoint $opId" }
 
         return db.readTransaction {
             if (hasCrud()) {
-                logger.warning { "[updateLocalTarget] ps crud is not empty" }
+                logger.w { "[updateLocalTarget] ps crud is not empty" }
                 return@readTransaction false
             }
 
@@ -94,7 +91,7 @@ internal class BucketStorage(
 
             if (seqAfter != seqBefore) {
                 // New crud data may have been uploaded since we got the checkpoint. Abort.
-                return@readTransaction false;
+                return@readTransaction false
             }
 
             db.execute(
@@ -107,7 +104,7 @@ internal class BucketStorage(
 
     suspend fun saveSyncData(syncDataBatch: SyncDataBatch) {
         db.writeTransaction {
-            val jsonString = JsonUtil.json.encodeToString(syncDataBatch);
+            val jsonString = JsonUtil.json.encodeToString(syncDataBatch)
             db.execute(
                 "INSERT INTO powersync_operations(op, data) VALUES(?, ?)",
                 listOf("save", jsonString)
@@ -135,7 +132,7 @@ internal class BucketStorage(
 
 
     suspend fun deleteBucket(bucketName: String) {
-        val newName = "\$delete_${bucketName}_${uuid4()}";
+        val newName = "\$delete_${bucketName}_${uuid4()}"
 
         db.writeTransaction {
             db.execute(
@@ -152,7 +149,7 @@ internal class BucketStorage(
             db.execute("DELETE FROM ps_buckets WHERE name = ?", parameters = listOf(bucketName))
         }
 
-        this.pendingBucketDeletes.value = true;
+        this.pendingBucketDeletes.value = true
     }
 
     suspend fun hasCompletedSync(): Boolean {
@@ -175,10 +172,10 @@ internal class BucketStorage(
     }
 
     suspend fun syncLocalDatabase(targetCheckpoint: Checkpoint): SyncLocalDatabaseResult {
-        val result = validateChecksums(targetCheckpoint);
+        val result = validateChecksums(targetCheckpoint)
 
         if (!result.checkpointValid) {
-            logger.warning { "[SyncLocalDatabase] Checksums failed for ${result.checkpointFailures}" }
+            logger.w { "[SyncLocalDatabase] Checksums failed for ${result.checkpointFailures}" }
             result.checkpointFailures?.forEach { bucketName ->
                 deleteBucket(bucketName)
             }
@@ -231,7 +228,7 @@ internal class BucketStorage(
                 checkpointValid = false,
             )
 
-        return JsonUtil.json.decodeFromString<SyncLocalDatabaseResult>(res);
+        return JsonUtil.json.decodeFromString<SyncLocalDatabaseResult>(res)
     }
 
     /**
@@ -252,16 +249,16 @@ internal class BucketStorage(
 
     suspend fun forceCompact() {
         // Reset counter
-        this.compactCounter = COMPACT_OPERATION_INTERVAL;
-        this.pendingBucketDeletes.value = true;
+        this.compactCounter = COMPACT_OPERATION_INTERVAL
+        this.pendingBucketDeletes.value = true
 
-        this.autoCompact();
+        this.autoCompact()
     }
 
 
     suspend fun autoCompact() {
         // 1. Delete buckets
-        deletePendingBuckets();
+        deletePendingBuckets()
 
         // 2. Clear REMOVE operations, only keeping PUT ones
         clearRemoveOps()
@@ -269,7 +266,7 @@ internal class BucketStorage(
 
     private suspend fun deletePendingBuckets() {
         if (!this.pendingBucketDeletes.value) {
-            return;
+            return
         }
 
         db.writeTransaction {
@@ -281,13 +278,13 @@ internal class BucketStorage(
                 "DELETE FROM ps_buckets WHERE pending_delete = 1 AND last_applied_op = last_op AND last_op >= target_op",
             )
             // Executed once after start-up, and again when there are pending deletes.
-            pendingBucketDeletes.value = false;
+            pendingBucketDeletes.value = false
         }
     }
 
     private suspend fun clearRemoveOps() {
         if (this.compactCounter < COMPACT_OPERATION_INTERVAL) {
-            return;
+            return
         }
 
         db.writeTransaction {
@@ -296,7 +293,7 @@ internal class BucketStorage(
                 listOf("clear_remove_ops", "")
             )
         }
-        this.compactCounter = 0;
+        this.compactCounter = 0
     }
 
     @Suppress("UNUSED_PARAMETER")
