@@ -1,5 +1,6 @@
 package com.powersync.sync
 
+import co.touchlab.kermit.Logger
 import com.powersync.bucket.BucketChecksum
 import com.powersync.bucket.BucketRequest
 import com.powersync.bucket.BucketStorage
@@ -27,30 +28,21 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.retryWhen
 import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
-import org.kodein.log.LoggerFactory
-import org.kodein.log.newLogger
 
 internal class SyncStream(
     private val bucketStorage: BucketStorage,
     private val connector: PowerSyncBackendConnector,
     private val uploadCrud: suspend () -> Unit,
     private val retryDelayMs: Long = 1000L,
-    loggerFactory: LoggerFactory
+    private val logger: Logger
 ) {
-    private val logger = newLogger(loggerFactory)
-
     private var isUploadingCrud = AtomicBoolean(false)
 
     /**
@@ -61,7 +53,7 @@ internal class SyncStream(
     private val httpClient: HttpClient = HttpClient {
         install(HttpTimeout)
         install(ContentNegotiation)
-    };
+    }
 
     companion object {
         fun isStreamingSyncData(obj: JsonObject): Boolean {
@@ -89,7 +81,7 @@ internal class SyncStream(
     suspend fun streamingSync() {
         var invalidCredentials = false
         while (true) {
-            status.update(connecting = true);
+            status.update(connecting = true)
             try {
                 if (invalidCredentials) {
                     // This may error. In that case it will be retried again on the next
@@ -106,7 +98,7 @@ internal class SyncStream(
             } catch (e: Exception) {
                 //If the coroutine was cancelled, don't log an error
                 if(e !is CancellationException) {
-                    logger.error(e) { "Error in streamingSync" }
+                    logger.e(e) { "Error in streamingSync" }
                 }
                 invalidCredentials = true
                 status.update(
@@ -144,7 +136,7 @@ internal class SyncStream(
                     break
                 }
             } catch (e: Exception) {
-                logger.error(e) { "Error uploading crud" }
+                logger.e(e) { "Error uploading crud" }
                 status.update(uploading = false, uploadError = e)
                 delay(retryDelayMs)
                 break
@@ -215,7 +207,7 @@ internal class SyncStream(
                 throw RuntimeException("Received error when connecting to sync stream: ${httpResponse.bodyAsText()}")
             }
 
-            status.update(connected = true, connecting = false);
+            status.update(connected = true, connecting = false)
             val channel: ByteReadChannel = httpResponse.body()
 
             while (!channel.isClosedForRead) {
@@ -252,14 +244,14 @@ internal class SyncStream(
             handleInstruction(value, state)
         }
 
-        return state;
+        return state
     }
 
     private suspend fun handleInstruction(
         jsonString: String,
         state: SyncStreamState
     ): SyncStreamState {
-        logger.info { "[handleInstruction] Received Instruction: $jsonString" }
+        logger.i { "[handleInstruction] Received Instruction: $jsonString" }
         val obj = JsonUtil.json.parseToJsonElement(jsonString).jsonObject
 
         // TODO: Clean up
@@ -277,7 +269,7 @@ internal class SyncStream(
             isStreamingSyncData(obj) -> return handleStreamingSyncData(obj, state)
             isStreamingKeepAlive(obj) -> return handleStreamingKeepalive(obj, state)
             else -> {
-                logger.warning { "Unhandled instruction $jsonString" }
+                logger.w { "Unhandled instruction $jsonString" }
                 return state
             }
         }
@@ -302,7 +294,7 @@ internal class SyncStream(
         }
 
         if (bucketsToDelete.size > 0) {
-            logger.info { "Removing buckets [${bucketsToDelete.joinToString(separator = ", ")}]" }
+            logger.i { "Removing buckets [${bucketsToDelete.joinToString(separator = ", ")}]" }
         }
 
         state.bucketSet = newBuckets
@@ -329,7 +321,7 @@ internal class SyncStream(
             // landing here the whole time
         } else {
             state.appliedCheckpoint = state.targetCheckpoint!!.clone()
-            logger.info { "validated checkpoint ${state.appliedCheckpoint}" }
+            logger.i { "validated checkpoint ${state.appliedCheckpoint}" }
         }
 
         state.validatedCheckpoint = state.targetCheckpoint
@@ -372,7 +364,7 @@ internal class SyncStream(
 
         val bucketsToDelete = checkpointDiff.removedBuckets
         if (bucketsToDelete.isNotEmpty()) {
-            logger.info { "Remove buckets $bucketsToDelete" }
+            logger.i { "Remove buckets $bucketsToDelete" }
         }
         bucketStorage.removeBuckets(bucketsToDelete)
         bucketStorage.setTargetCheckpoint(state.targetCheckpoint!!)
@@ -394,7 +386,7 @@ internal class SyncStream(
         return state
     }
 
-    suspend fun handleStreamingKeepalive(
+    private suspend fun handleStreamingKeepalive(
         jsonObj: JsonObject,
         state: SyncStreamState
     ): SyncStreamState {
@@ -402,7 +394,7 @@ internal class SyncStream(
 
         if (tokenExpiresIn <= 0) {
             // Connection would be closed automatically right after this
-            logger.info { "Token expiring reconnect" }
+            logger.i { "Token expiring reconnect" }
             connector.invalidateCredentials()
             state.retry = true
             return state
