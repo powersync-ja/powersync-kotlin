@@ -3,9 +3,8 @@ package com.powersync.connectors
 import com.powersync.PowerSyncDatabase
 import kotlinx.coroutines.async
 import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
 import co.touchlab.skie.configuration.annotations.SuspendInterop
+import kotlinx.coroutines.coroutineScope
 
 /**
  * Implement this to connect an app backend.
@@ -35,7 +34,7 @@ public abstract class PowerSyncBackendConnector {
      *
      * This may be called when the current credentials have expired.
      */
-    public fun invalidateCredentials() {
+    public open suspend fun invalidateCredentials() {
         cachedCredentials = null
     }
 
@@ -47,12 +46,13 @@ public abstract class PowerSyncBackendConnector {
      *
      * This may be called before the current credentials have expired.
      */
-    @OptIn(DelicateCoroutinesApi::class)
     public suspend fun prefetchCredentials(): PowerSyncCredentials? {
-        fetchRequest = fetchRequest ?: GlobalScope.async {
-            fetchCredentials().also { value ->
-                cachedCredentials = value
-                fetchRequest = null
+        fetchRequest = fetchRequest ?: coroutineScope {
+            async {
+                fetchCredentials().also { value ->
+                    cachedCredentials = value
+                    fetchRequest = null
+                }
             }
         }
 
