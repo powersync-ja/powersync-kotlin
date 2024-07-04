@@ -34,7 +34,7 @@ public abstract class PowerSyncBackendConnector {
      *
      * This may be called when the current credentials have expired.
      */
-    public open suspend fun invalidateCredentials() {
+    public fun invalidateCredentials() {
         cachedCredentials = null
     }
 
