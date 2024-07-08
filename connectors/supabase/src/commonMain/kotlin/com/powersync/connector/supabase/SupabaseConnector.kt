@@ -77,13 +77,13 @@ public class SupabaseConnector(
      */
     override suspend fun uploadData(database: PowerSyncDatabase) {
 
-        val transaction = database.getNextCrudTransaction() ?: return;
+        val transaction = database.getNextCrudTransaction() ?: return
 
-        var lastEntry: CrudEntry? = null;
+        var lastEntry: CrudEntry? = null
         try {
 
             for (entry in transaction.crud) {
-                lastEntry = entry;
+                lastEntry = entry
 
                 val table = supabaseClient.from(entry.table)
                 when (entry.op) {
@@ -111,7 +111,7 @@ public class SupabaseConnector(
                 }
             }
 
-            transaction.complete(null);
+            transaction.complete(null)
 
         } catch (e: Exception) {
             println("Data upload error - retrying last entry: ${lastEntry!!}, $e")
