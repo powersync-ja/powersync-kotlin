@@ -9,8 +9,8 @@ idea = "222.4459.24" # Flamingo | 2022.2.1 (see https://plugins.jetbrains.com/do
 
 # Dependencies
 kermit = "2.0.4"
-kotlin = "1.9.22"
-coroutines = "1.7.3"
+kotlin = "1.9.23"
+coroutines = "1.8.0"
 kotlinx-datetime = "0.5.0"
 kotlinx-io = "0.3.0"
 ktor = "2.3.10"
@@ -18,19 +18,19 @@ uuid = "0.8.2"
 powersync-core = "0.1.6"
 sqlite-android = "3.45.0"
 
-sqlDelight = "2.0.1"
-stately = "2.0.6"
+sqlDelight = "2.0.2"
+stately = "2.0.7"
 supabase = "2.3.1"
 junit = "4.13.2"
 
-compose = "1.5.12"
+compose = "1.6.11"
 compose-preview = "1.6.8"
 compose-compiler = "1.5.14"
 
 # plugins
 android-gradle-plugin = "8.2.2"
 kmmBridge = "0.5.1"
-skie = "0.6.1"
+skie = "0.8.2"
 maven-publish = "0.27.0"
 download-plugin = "5.5.0"
 grammerKit = "0.1.12"
