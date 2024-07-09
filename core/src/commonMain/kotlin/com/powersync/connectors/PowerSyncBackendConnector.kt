@@ -13,7 +13,7 @@ import co.touchlab.skie.configuration.annotations.SuspendInterop
  */
 public abstract class PowerSyncBackendConnector {
     private var cachedCredentials: PowerSyncCredentials? = null
-    private var fetchRequest: PowerSyncCredentials? = null
+    private var isFetching: Boolean = false
 
     /**
      * Get credentials current cached, or fetch new credentials if none are
@@ -44,13 +44,16 @@ public abstract class PowerSyncBackendConnector {
      * This may be called before the current credentials have expired.
      */
     public suspend fun prefetchCredentials(): PowerSyncCredentials? {
-        fetchRequest = fetchRequest ?: fetchCredentials().also { value ->
-            cachedCredentials = value
-            fetchRequest = null
-            return value
+        if(isFetching) {
+            return null
         }
 
-        return fetchRequest
+        isFetching = true
+        fetchCredentials().also { value ->
+            cachedCredentials = value
+            isFetching = false
+            return value
+        }
     }
 
     /**
