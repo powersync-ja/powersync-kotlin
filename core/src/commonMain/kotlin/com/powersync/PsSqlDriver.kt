@@ -38,7 +38,7 @@ public class PsSqlDriver(private val driver: SqlDriver, private val scope: Corou
     public fun fireTableUpdates() {
         val updates = pendingUpdates.toList()
         if (updates.isEmpty()) {
-            return;
+            return
         }
         scope.launch {
             tableUpdatesFlow.emit(updates)

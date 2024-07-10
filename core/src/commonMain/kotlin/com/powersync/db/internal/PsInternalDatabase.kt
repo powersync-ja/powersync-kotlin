@@ -39,7 +39,7 @@ internal class PsInternalDatabase(val driver: PsSqlDriver, private val scope: Co
 
     init {
         scope.launch {
-            val accumulatedUpdates = mutableSetOf<String>();
+            val accumulatedUpdates = mutableSetOf<String>()
             tableUpdates()
 //               Debounce will discard any events which occur inside the debounce window
 //               This will accumulate those table updates
@@ -47,8 +47,8 @@ internal class PsInternalDatabase(val driver: PsSqlDriver, private val scope: Co
                 .debounce(DEFAULT_WATCH_THROTTLE_MS)
                 .collect {
                     val dataTables = accumulatedUpdates.map { toFriendlyTableName(it) }.filter { it.isNotBlank() }
-                    driver.notifyListeners(queryKeys = dataTables.toTypedArray());
-                    accumulatedUpdates.clear();
+                    driver.notifyListeners(queryKeys = dataTables.toTypedArray())
+                    accumulatedUpdates.clear()
                 }
         }
     }
@@ -165,7 +165,7 @@ internal class PsInternalDatabase(val driver: PsSqlDriver, private val scope: Co
 
         return object : Query<T>(mapper) {
             override fun <R> execute(mapper: (SqlCursor) -> QueryResult<R>): QueryResult<R> {
-                return driver.executeQuery(null, query, mapper, parameters, binders);
+                return driver.executeQuery(null, query, mapper, parameters, binders)
             }
 
             override fun addListener(listener: Listener) {
