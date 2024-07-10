@@ -39,7 +39,9 @@ kotlin {
 skie {
     features {
         group {
-            SuspendInterop.Enabled(false) // or false
+            // We turn this off as the suspend interop feature results in
+            // threading issues when implementing SDK in Swift
+            SuspendInterop.Enabled(false)
         }
     }
 }
