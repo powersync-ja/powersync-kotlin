@@ -5,7 +5,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
-import co.touchlab.skie.configuration.annotations.SuspendInterop
 
 /**
  * Implement this to connect an app backend.
@@ -70,7 +69,6 @@ public abstract class PowerSyncBackendConnector {
      *
      * This token is kept for the duration of a sync connection.
      */
-    @SuspendInterop.Disabled
     public abstract suspend fun fetchCredentials(): PowerSyncCredentials?
 
     /**
@@ -80,6 +78,5 @@ public abstract class PowerSyncBackendConnector {
      *
      * Any thrown errors will result in a retry after the configured wait period (default: 5 seconds).
      */
-    @SuspendInterop.Disabled
     public abstract suspend fun uploadData(database: PowerSyncDatabase)
 }

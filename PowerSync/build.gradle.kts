@@ -1,4 +1,5 @@
 import co.touchlab.faktory.versionmanager.TimestampVersionManager
+import co.touchlab.skie.configuration.SuspendInterop
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 
 plugins {
@@ -31,6 +32,16 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(project(":core"))
+        }
+    }
+}
+
+skie {
+    features {
+        group {
+            // We turn this off as the suspend interop feature results in
+            // threading issues when implementing SDK in Swift
+            SuspendInterop.Enabled(false)
         }
     }
 }
