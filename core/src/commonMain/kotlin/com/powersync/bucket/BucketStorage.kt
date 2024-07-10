@@ -8,7 +8,7 @@ import com.powersync.sync.SyncLocalDatabaseResult
 import co.touchlab.stately.concurrency.AtomicBoolean
 import kotlinx.serialization.encodeToString
 import com.benasher44.uuid.uuid4
-import com.powersync.db.internal.PsInternalTable
+import com.powersync.db.internal.InternalTable
 import com.powersync.utils.JsonUtil
 import kotlinx.coroutines.runBlocking
 
@@ -59,7 +59,7 @@ internal class BucketStorage(
 
     suspend fun updateLocalTarget(checkpointCallback: suspend () -> String): Boolean {
         db.getOptional(
-            "SELECT target_op FROM ${PsInternalTable.BUCKETS} WHERE name = '\$local' AND target_op = ?",
+            "SELECT target_op FROM ${InternalTable.BUCKETS} WHERE name = '\$local' AND target_op = ?",
             parameters = listOf(MAX_OP_ID),
             mapper = { cursor -> cursor.getLong(0)!! }
         )
@@ -67,7 +67,7 @@ internal class BucketStorage(
             return false
 
         val seqBefore =
-            db.getOptional("SELECT seq FROM sqlite_sequence WHERE name = '${PsInternalTable.CRUD}'") {
+            db.getOptional("SELECT seq FROM sqlite_sequence WHERE name = '${InternalTable.CRUD}'") {
                 it.getLong(0)!!
             } ?: // Nothing to update
             return false
@@ -83,7 +83,7 @@ internal class BucketStorage(
             }
 
             val seqAfter =
-                db.getOptional("SELECT seq FROM sqlite_sequence WHERE name = '${PsInternalTable.CRUD}'") {
+                db.getOptional("SELECT seq FROM sqlite_sequence WHERE name = '${InternalTable.CRUD}'") {
                     it.getLong(0)!!
                 }
                     ?: // assert isNotEmpty
@@ -95,7 +95,7 @@ internal class BucketStorage(
             }
 
             db.execute(
-                "UPDATE ${PsInternalTable.BUCKETS} SET target_op = ? WHERE name='\$local'",
+                "UPDATE ${InternalTable.BUCKETS} SET target_op = ? WHERE name='\$local'",
                 listOf(opId)
             )
             return@readTransaction true
@@ -115,7 +115,7 @@ internal class BucketStorage(
 
     suspend fun getBucketStates(): List<BucketState> {
         return db.getAll(
-            "SELECT name as bucket, cast(last_op as TEXT) as op_id FROM ${PsInternalTable.BUCKETS} WHERE pending_delete = 0",
+            "SELECT name as bucket, cast(last_op as TEXT) as op_id FROM ${InternalTable.BUCKETS} WHERE pending_delete = 0",
             mapper = { cursor ->
                 BucketState(
                     bucket = cursor.getString(0)!!,
