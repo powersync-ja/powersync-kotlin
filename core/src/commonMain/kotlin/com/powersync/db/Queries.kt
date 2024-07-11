@@ -4,7 +4,12 @@ import app.cash.sqldelight.SuspendingTransactionWithReturn
 import app.cash.sqldelight.db.SqlCursor
 import kotlinx.coroutines.flow.Flow
 
-public interface ReadQueries {
+public interface Queries {
+
+    /**
+     * Execute a write query (INSERT, UPDATE, DELETE) and return the number of rows updated for an INSERT/DELETE/UPDATE.
+     */
+    public suspend fun execute(sql: String, parameters: List<Any?>? = listOf()): Long
 
     /**
      * Execute a read-only (SELECT) query and return a single result.
@@ -44,9 +49,7 @@ public interface ReadQueries {
         mapper: (SqlCursor) -> RowType
     ): Flow<List<RowType>>
 
+    public suspend fun <R> writeTransaction(body: suspend SuspendingTransactionWithReturn<R>.() -> R): R
 
     public suspend fun <R> readTransaction(body: suspend SuspendingTransactionWithReturn<R>.() -> R): R
-
 }
-
-

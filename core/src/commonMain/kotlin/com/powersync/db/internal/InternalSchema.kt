@@ -5,7 +5,7 @@ import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.db.SqlSchema
 
-internal object PsInternalSchema : SqlSchema<QueryResult.AsyncValue<Unit>> {
+internal object InternalSchema : SqlSchema<QueryResult.AsyncValue<Unit>> {
     override val version: Long
         get() = 1
 

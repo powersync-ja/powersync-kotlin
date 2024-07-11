@@ -12,8 +12,7 @@ import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlPreparedStatement
 import com.powersync.PsSqlDriver
 import com.powersync.db.PsDatabase
-import com.powersync.db.ReadQueries
-import com.powersync.db.WriteQueries
+import com.powersync.db.Queries
 import com.powersync.utils.JsonUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
@@ -26,8 +25,7 @@ import kotlinx.serialization.encodeToString
 
 @OptIn(FlowPreview::class)
 internal class PsInternalDatabase(val driver: PsSqlDriver, private val scope: CoroutineScope) :
-    ReadQueries,
-    WriteQueries {
+    Queries {
 
     private val transactor: PsDatabase = PsDatabase(driver)
     val queries = transactor.powersyncQueries
@@ -59,11 +57,12 @@ internal class PsInternalDatabase(val driver: PsSqlDriver, private val scope: Co
     ): Long {
         val numParams = parameters?.size ?: 0
 
-        return createWriteQuery(
-            sql,
+        return driver.execute(
+            identifier = null,
+            sql = sql,
             parameters = numParams,
             binders = getBindersFromParams(parameters)
-        ).awaitAsOneOrNull() ?: 0L
+        ).await()
     }
 
     override suspend fun <RowType : Any> get(
@@ -121,25 +120,6 @@ internal class PsInternalDatabase(val driver: PsSqlDriver, private val scope: Co
             mapper = mapper,
             tables = tables
         ).asFlow().mapToList(scope.coroutineContext)
-    }
-
-
-    private fun createWriteQuery(
-        query: String,
-        parameters: Int = 0,
-        binders: (SqlPreparedStatement.() -> Unit)? = null,
-    ): ExecutableQuery<Long> {
-        return object : ExecutableQuery<Long>(mapper = { cursor -> cursor.getLong(0)!! }) {
-            override fun <R> execute(mapper: (SqlCursor) -> QueryResult<R>): QueryResult<R> {
-                @Suppress("UNCHECKED_CAST")
-                return driver.execute(
-                    identifier = null,
-                    sql = query,
-                    parameters,
-                    binders
-                ) as QueryResult<R>
-            }
-        }
     }
 
     private fun <T : Any> createQuery(
