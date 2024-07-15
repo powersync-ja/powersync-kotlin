@@ -44,7 +44,7 @@ public abstract class PowerSyncBackendConnector {
      */
     public suspend fun prefetchCredentials(): PowerSyncCredentials? {
         if(isFetching) {
-            return null
+            return cachedCredentials
         }
 
         isFetching = true
