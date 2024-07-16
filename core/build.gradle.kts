@@ -6,7 +6,6 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.androidLibrary)
-    alias(libs.plugins.sqldelight)
     alias(libs.plugins.mavenPublishPlugin)
     alias(libs.plugins.downloadPlugin)
     id("com.powersync.plugins.sonatype")
@@ -101,21 +100,17 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
             implementation(libs.stately.concurrency)
-            implementation(libs.bundles.sqldelight)
             implementation(libs.configuration.annotations)
+            api(project(":persistence"))
             api(libs.kermit)
         }
 
         androidMain.dependencies {
-            implementation(libs.powersync.sqlite.core)
             implementation(libs.ktor.client.okhttp)
-            implementation(libs.requery.sqlite.android)
-            implementation(libs.sqldelight.driver.android)
         }
 
         iosMain.dependencies {
             implementation(libs.ktor.client.ios)
-            implementation(libs.sqldelight.driver.ios)
         }
 
         commonTest.dependencies {
@@ -182,17 +177,6 @@ afterEvaluate {
     buildTasks.forEach {
         it.dependsOn(buildCInteropDef)
     }
-}
-
-sqldelight {
-    databases {
-        create("PsDatabase") {
-            packageName.set("com.powersync.db")
-            generateAsync = true
-            dialect(project(":dialect"))
-        }
-    }
-    linkSqlite = true
 }
 
 setupGithubRepository()

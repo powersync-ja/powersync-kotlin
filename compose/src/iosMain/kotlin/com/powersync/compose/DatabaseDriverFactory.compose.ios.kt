@@ -10,5 +10,4 @@ public actual fun rememberDatabaseDriverFactory(): DatabaseDriverFactory {
     return remember {
         DatabaseDriverFactory()
     }
-
 }

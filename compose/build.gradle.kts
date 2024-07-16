@@ -21,6 +21,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(project(":core"))
+            implementation(project(":persistence"))
             implementation(compose.runtime)
         }
         androidMain.dependencies {
