@@ -1,8 +1,7 @@
 package com.powersync
 
 import com.powersync.connectors.PowerSyncBackendConnector
-import com.powersync.db.ReadQueries
-import com.powersync.db.WriteQueries
+import com.powersync.db.Queries
 import com.powersync.db.crud.CrudBatch
 import com.powersync.db.crud.CrudTransaction
 import com.powersync.sync.SyncStatus
@@ -16,7 +15,7 @@ import com.powersync.sync.SyncStatus
  *
  * All changes to local tables are automatically recorded, whether connected or not. Once connected, the changes are uploaded.
  */
-public interface PowerSyncDatabase : ReadQueries, WriteQueries {
+public interface PowerSyncDatabase : Queries {
 
     /**
      * The current sync status.

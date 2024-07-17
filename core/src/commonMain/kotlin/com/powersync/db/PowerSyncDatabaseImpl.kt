@@ -16,7 +16,7 @@ import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.CrudRow
 import com.powersync.db.crud.CrudTransaction
 import com.powersync.db.internal.PsInternalDatabase
-import com.powersync.db.internal.PsInternalTable
+import com.powersync.db.internal.InternalTable
 import com.powersync.db.schema.Schema
 import com.powersync.sync.SyncStatus
 import com.powersync.sync.SyncStream
@@ -114,7 +114,7 @@ internal class PowerSyncDatabaseImpl(
         }
 
         uploadJob = scope.launch {
-            internalDb.updatesOnTable(PsInternalTable.CRUD.toString()).debounce(crudThrottleMs).collect {
+            internalDb.updatesOnTable(InternalTable.CRUD.toString()).debounce(crudThrottleMs).collect {
                 syncStream!!.triggerCrudUpload()
             }
         }
@@ -269,10 +269,10 @@ internal class PowerSyncDatabaseImpl(
         disconnect()
 
         this.writeTransaction {
-            execute("DELETE FROM ${PsInternalTable.OPLOG}")
-            execute("DELETE FROM ${PsInternalTable.CRUD}")
-            execute("DELETE FROM ${PsInternalTable.BUCKETS}")
-            execute("DELETE FROM ${PsInternalTable.UNTYPED}")
+            execute("DELETE FROM ${InternalTable.OPLOG}")
+            execute("DELETE FROM ${InternalTable.CRUD}")
+            execute("DELETE FROM ${InternalTable.BUCKETS}")
+            execute("DELETE FROM ${InternalTable.UNTYPED}")
 
             val tableGlob = if (clearLocal) "ps_data_*" else "ps_data__*"
             val existingTableRows = internalDb.getExistingTableNames(tableGlob)
