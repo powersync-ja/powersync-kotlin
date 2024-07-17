@@ -1,6 +1,11 @@
 package com.powersync.connectors
 
 import com.powersync.PowerSyncDatabase
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /**
  * Implement this to connect an app backend.
@@ -12,7 +17,8 @@ import com.powersync.PowerSyncDatabase
  */
 public abstract class PowerSyncBackendConnector {
     private var cachedCredentials: PowerSyncCredentials? = null
-    private var isFetching: Boolean = false
+    private var fetchRequest: Job? = null
+    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     /**
      * Get credentials current cached, or fetch new credentials if none are
@@ -22,7 +28,8 @@ public abstract class PowerSyncBackendConnector {
      */
     public suspend fun getCredentialsCached(): PowerSyncCredentials? {
         cachedCredentials?.let { return it }
-        return prefetchCredentials()
+        prefetchCredentials()?.join()
+        return cachedCredentials
     }
 
     /**
@@ -42,17 +49,17 @@ public abstract class PowerSyncBackendConnector {
      *
      * This may be called before the current credentials have expired.
      */
-    public suspend fun prefetchCredentials(): PowerSyncCredentials? {
-        if(isFetching) {
-            return cachedCredentials
+    public suspend fun prefetchCredentials(): Job? {
+        fetchRequest?.takeIf { it.isActive }?.let { return it }
+
+        fetchRequest = scope.launch {
+            fetchCredentials().also { value ->
+                cachedCredentials = value
+                fetchRequest = null
+            }
         }
 
-        isFetching = true
-        fetchCredentials().also { value ->
-            cachedCredentials = value
-            isFetching = false
-            return value
-        }
+        return fetchRequest
     }
 
     /**
