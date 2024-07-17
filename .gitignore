@@ -20,3 +20,4 @@ captures
 Pods/
 plugins/sonatype
 dialect/bin
+.build

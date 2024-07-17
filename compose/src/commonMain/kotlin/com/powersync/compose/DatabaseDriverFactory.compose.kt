@@ -9,7 +9,6 @@ import com.powersync.db.schema.Schema
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.plus
 
-
 @Composable
 public expect fun rememberDatabaseDriverFactory(): DatabaseDriverFactory
 

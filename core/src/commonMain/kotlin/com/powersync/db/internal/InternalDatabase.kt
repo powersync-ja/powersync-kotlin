@@ -11,8 +11,8 @@ import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlPreparedStatement
 import com.powersync.PsSqlDriver
-import com.powersync.db.PsDatabase
 import com.powersync.db.Queries
+import com.powersync.persistence.PsDatabase
 import com.powersync.utils.JsonUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
