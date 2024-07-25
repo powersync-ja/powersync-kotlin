@@ -28,6 +28,7 @@ dependencyResolutionManagement {
 rootProject.name = "hello-powersync"
 
 include(":composeApp")
+include(":desktop")
 
 includeBuild("../..") {
     dependencySubstitution {

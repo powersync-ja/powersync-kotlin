@@ -14,6 +14,8 @@ plugins {
 kotlin {
     androidTarget()
 
+    jvm()
+
 //    iosX64() // uncomment to enable iOS x64
     iosArm64()
     iosSimulatorArm64()
