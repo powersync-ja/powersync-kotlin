@@ -1,39 +1,18 @@
-package com.powersync.demos
+package com.powersync.demos.powersync
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.powersync.DatabaseDriverFactory
-import com.powersync.connector.supabase.SupabaseConnector
 import com.powersync.PowerSyncDatabase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.runBlocking
 
-internal class RootStore(factory: DatabaseDriverFactory) {
-
-    private val db = PowerSyncDatabase(factory, schema)
-    private val connector = SupabaseConnector(
-        powerSyncEndpoint = Config.POWERSYNC_URL,
-        supabaseUrl = Config.SUPABASE_URL,
-        supabaseKey = Config.SUPABASE_ANON_KEY
-    )
-
-    var state: RootState by mutableStateOf(initialState())
+internal class Todo(private val db: PowerSyncDatabase) {
+    var state: TodoState by mutableStateOf(initialState())
         private set
 
-    init {
-        runBlocking {
-            try {
-                connector.login(Config.SUPABASE_USER_EMAIL, Config.SUPABASE_USER_PASSWORD)
-            } catch (e: Exception) {
-                println("Could not connect to Supabase, have you configured an auth user and set `SUPABASE_USER_EMAIL` and `SUPABASE_USER_PASSWORD`?\n Error: $e")
-            }
-            db.connect(connector)
-        }
-    }
-
     fun watchItems(): Flow<List<TodoItem>> {
-        return db.watch("SELECT * FROM todos") { cursor ->
+        return db.watch("SELECT * FROM todos ORDER BY id") { cursor ->
             TodoItem(
                 id = cursor.getString(0)!!,
                 description = cursor.getString(1)!!,
@@ -108,16 +87,15 @@ internal class RootStore(factory: DatabaseDriverFactory) {
     }
 
 
-    private fun initialState(): RootState =
-        RootState()
+    private fun initialState(): TodoState =
+        TodoState()
 
-    private inline fun setState(update: RootState.() -> RootState) {
+    private inline fun setState(update: TodoState.() -> TodoState) {
         state = state.update()
     }
 
-    data class RootState(
+    data class TodoState(
         val inputText: String = "",
         val editingItem: TodoItem? = null
     )
-
 }

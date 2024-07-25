@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 public interface Queries {
 
     /**
-     * Execute a write query (INSERT, UPDATE, DELETE) and return the number of rows updated for an INSERT/DELETE/UPDATE.
+     * Execute a write query (INSERT, UPDATE, DELETE)
      */
     public suspend fun execute(sql: String, parameters: List<Any?>? = listOf()): Long
 

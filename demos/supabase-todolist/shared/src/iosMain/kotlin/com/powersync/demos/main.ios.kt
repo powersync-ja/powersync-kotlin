@@ -7,5 +7,5 @@ import com.powersync.DatabaseDriverFactory
 import platform.UIKit.UIViewController
 
 fun MainViewController(): UIViewController = ComposeUIViewController {
-    RootContent(factory = DatabaseDriverFactory(), modifier = Modifier.fillMaxSize())
+    App(factory = DatabaseDriverFactory(), modifier = Modifier.fillMaxSize())
 }

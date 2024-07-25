@@ -1,4 +1,4 @@
-package com.powersync.demos
+package com.powersync.demos.powersync
 
 import com.powersync.db.schema.Column
 import com.powersync.db.schema.Schema

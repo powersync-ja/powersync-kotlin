@@ -11,6 +11,7 @@ import io.github.jan.supabase.gotrue.Auth
 import io.github.jan.supabase.gotrue.SessionStatus
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
+import io.github.jan.supabase.gotrue.user.UserSession
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
 
@@ -44,6 +45,21 @@ public class SupabaseConnector(
             this.email = email
             this.password = password
         }
+    }
+
+    public suspend fun signUp(email: String, password: String) {
+        supabaseClient.auth.signUpWith(Email) {
+            this.email = email
+            this.password = password
+        }
+    }
+
+    public suspend fun signOut() {
+        supabaseClient.auth.signOut()
+    }
+
+    public fun session(): UserSession? {
+        return supabaseClient.auth.currentSessionOrNull()
     }
 
     public suspend fun loginAnonymously() {

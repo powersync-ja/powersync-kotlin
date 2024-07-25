@@ -6,4 +6,4 @@ import androidx.compose.ui.Modifier
 import com.powersync.DatabaseDriverFactory
 
 @Composable
-fun MainView(factory: DatabaseDriverFactory) = RootContent(factory, Modifier.fillMaxSize())
+fun MainView(factory: DatabaseDriverFactory) = App(factory, Modifier.fillMaxSize())
