@@ -8,33 +8,33 @@ java = "17"
 # Dependencies
 powersync-core = "0.1.6"
 
-kotlin = "1.9.22"
-coroutines = "1.7.3"
+kotlin = "1.9.23"
+coroutines = "1.8.0"
 kotlinx-datetime = "0.5.0"
 kotlinx-io = "0.3.0"
-ktor = "2.3.7"
+ktor = "2.3.10"
 uuid = "0.8.2"
 buildKonfig = "0.15.1"
 
-supabase = "2.0.4"
+supabase = "2.3.1"
 junit = "4.13.2"
 
-compose = "1.5.12"
-compose-preview = "1.6.1"
-compose-compiler = "1.5.9"
+compose = "1.6.11"
+compose-preview = "1.6.8"
+compose-compiler = "1.5.14"
 
 # plugins
-android-gradle-plugin = "8.2.2"
-skie = "0.6.1"
+android-gradle-plugin = "8.5.1"
+skie = "0.8.2"
 
 # Sample - Android
-androidx-core = "1.12.0"
-androidx-activity-compose = "1.8.2"
+androidx-core = "1.13.1"
+androidx-activity-compose = "1.9.1"
 
-androidx-appcompat = "1.6.1"
-androidx-espresso-core = "3.5.1"
-androidx-material = "1.11.0"
-androidx-test-junit = "1.1.5"
+androidx-appcompat = "1.7.0"
+androidx-espresso-core = "3.6.1"
+androidx-material = "1.12.0"
+androidx-test-junit = "1.2.1"
 
 [libraries]
 powersync-sqlite-core = { module = "co.powersync:powersync-sqlite-core", version.ref = "powersync-core" }
