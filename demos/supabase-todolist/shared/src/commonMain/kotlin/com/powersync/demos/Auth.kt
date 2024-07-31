@@ -2,6 +2,7 @@ package com.powersync.demos
 
 import com.powersync.PowerSyncDatabase
 import com.powersync.connector.supabase.SupabaseConnector
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
@@ -18,6 +19,8 @@ internal class AuthViewModel(
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.SignedOut)
     val authState: StateFlow<AuthState> = _authState
+    private val _userId = MutableStateFlow<String?>(null)
+    val userId: StateFlow<String?> = _userId
 
 
     private fun connectDatabase() {
@@ -33,6 +36,11 @@ internal class AuthViewModel(
     }
 
     init {
+        // Need this delay to allow the supabase connection
+        // to be established before checking the session
+        runBlocking {
+            delay(200)
+        }
         checkSession()
     }
 
@@ -41,6 +49,7 @@ internal class AuthViewModel(
             val session = supabase.session()
             if (session != null) {
                 _authState.value = AuthState.SignedIn
+                _userId.value = session.user?.id
             } else {
                 _authState.value = AuthState.SignedOut
             }

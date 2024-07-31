@@ -15,13 +15,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.unit.dp
+import com.powersync.demos.Screen
 import com.powersync.demos.onKeyUp
 
 @Composable
 internal fun Input(
     text: String,
     onTextChanged: (String) -> Unit,
-    onAddClicked: () -> Unit
+    onAddClicked: () -> Unit,
+    screen: Screen,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
         OutlinedTextField(
@@ -30,7 +32,7 @@ internal fun Input(
                 .weight(weight = 1F)
                 .onKeyUp(key = Key.Enter, action = onAddClicked),
             onValueChange = onTextChanged,
-            label = { Text(text = "Add a todo") }
+            label = { Text(text = if(screen == Screen.Home) "Add a list" else "Add a todo") }
         )
 
         Spacer(modifier = Modifier.width(8.dp))

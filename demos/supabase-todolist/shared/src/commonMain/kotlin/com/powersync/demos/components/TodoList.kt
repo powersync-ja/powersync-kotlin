@@ -11,23 +11,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.powersync.demos.powersync.TodoItem
 import com.powersync.demos.VerticalScrollbar
-import com.powersync.demos.powersync.ListItem
 import com.powersync.demos.rememberScrollbarAdapter
 
 @Composable
-internal fun ListContent(
-    items: List<ListItem>,
-    onItemClicked: (item: ListItem) -> Unit,
-    onItemDeleteClicked: (item: ListItem) -> Unit,
+internal fun TodoList(
+    items: List<TodoItem>,
+    onItemClicked: (id: TodoItem) -> Unit,
+    onItemDoneChanged: (item: TodoItem, isDone: Boolean) -> Unit,
+    onItemDeleteClicked: (item: TodoItem) -> Unit,
 ) {
     Box {
         val listState = rememberLazyListState()
 
         LazyColumn(state = listState) {
             items(items) { item ->
-                ListItem(
+                TodoItem(
                     item = item,
                     onClicked = { onItemClicked(item) },
+                    onDoneChanged = { onItemDoneChanged(item, it) },
                     onDeleteClicked = { onItemDeleteClicked(item) }
                 )
 

@@ -3,20 +3,37 @@ package com.powersync.demos.powersync
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import co.touchlab.kermit.Logger
 import com.powersync.PowerSyncDatabase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.runBlocking
 
-internal class Todo(private val db: PowerSyncDatabase) {
+internal class Todo(
+    private val db: PowerSyncDatabase,
+    private val userId: String?
+) {
     var state: TodoState by mutableStateOf(initialState())
         private set
 
-    fun watchItems(): Flow<List<TodoItem>> {
-        return db.watch("SELECT * FROM todos ORDER BY id") { cursor ->
+    fun watchItems(listId: String?): Flow<List<TodoItem>> {
+        return db.watch<TodoItem>("""
+                SELECT * 
+                FROM $TODOS_TABLE
+                WHERE list_id = ?
+                ORDER by id
+            """,
+        if(listId != null) listOf(listId) else null
+        ) { cursor ->
             TodoItem(
                 id = cursor.getString(0)!!,
-                description = cursor.getString(1)!!,
-                completed = cursor.getLong(2) == 1L
+                createdAt = cursor.getString(1),
+                completedAt = cursor.getString(2),
+                description = cursor.getString(3)!!,
+                createdBy = cursor.getString(4),
+                completedBy = cursor.getString(5),
+                completed = cursor.getLong(6) == 1L,
+                listId = cursor.getString(7)!!,
+                photoId = cursor.getString(8)
             )
         }
     }
@@ -26,25 +43,30 @@ internal class Todo(private val db: PowerSyncDatabase) {
     }
 
     fun onItemDoneChanged(item: TodoItem, isDone: Boolean) {
-        updateItem(item = item) { it.copy(completed = isDone) }
+        updateItem(item = item) {
+            it.copy(
+                completed = isDone,
+                completedBy = if(isDone) userId else null
+            )
+        }
     }
 
     fun onItemDeleteClicked(item: TodoItem) {
         runBlocking {
             db.writeTransaction {
-                db.execute("DELETE FROM todos WHERE id = ?", listOf(item.id))
+                db.execute("DELETE FROM $TODOS_TABLE WHERE id = ?", listOf(item.id))
             }
         }
     }
 
-    fun onAddItemClicked() {
+    fun onAddItemClicked(listId: String?) {
         if (state.inputText.isBlank()) return
 
         runBlocking {
             db.writeTransaction {
                 db.execute(
-                    "INSERT INTO todos (id, description, completed) VALUES (uuid(), ?, ?)",
-                    listOf(state.inputText, 0L)
+                    "INSERT INTO $TODOS_TABLE (id, created_at, created_by, description, list_id) VALUES (uuid(), datetime(), ?, ?, ?)",
+                    listOf(userId, state.inputText, listId)
                 )
             }
             setState {
@@ -58,16 +80,24 @@ internal class Todo(private val db: PowerSyncDatabase) {
     }
 
     fun onEditorCloseClicked() {
+        Logger.i(state.editingItem.toString())
         updateItem(item = requireNotNull(state.editingItem)) { it.copy() }
         setState { copy(editingItem = null) }
     }
 
     fun onEditorTextChanged(text: String) {
-        updateEditingItem(item = requireNotNull(state.editingItem)) { it.copy(description = text) }
+        updateEditingItem(item = requireNotNull(state.editingItem)) {
+            it.copy(description = text)
+        }
     }
 
     fun onEditorDoneChanged(isDone: Boolean) {
-        updateEditingItem(item = requireNotNull(state.editingItem)) { it.copy(completed = isDone) }
+        updateEditingItem(item = requireNotNull(state.editingItem)) {
+            it.copy(
+                completed = isDone,
+                completedBy = if(isDone) userId else null
+            )
+        }
     }
 
     private fun updateEditingItem(item: TodoItem, transformer: (item: TodoItem) -> TodoItem) {
@@ -77,9 +107,11 @@ internal class Todo(private val db: PowerSyncDatabase) {
     private fun updateItem(item: TodoItem, transformer: (item: TodoItem) -> TodoItem) {
         runBlocking {
             val updatedItem = transformer(item)
+            Logger.i("LOL\n")
+            Logger.i(updatedItem.toString())
             db.writeTransaction {
                 db.execute(
-                    "UPDATE todos SET description = ?, completed = ? WHERE id = ?",
+                    "UPDATE $TODOS_TABLE SET description = ?, completed = ? WHERE id = ?",
                     listOf(updatedItem.description, updatedItem.completed, item.id)
                 )
             }

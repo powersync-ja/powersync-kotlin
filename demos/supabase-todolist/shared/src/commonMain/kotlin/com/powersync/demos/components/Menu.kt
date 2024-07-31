@@ -8,7 +8,7 @@ import androidx.compose.runtime.*
 @Composable
 fun Menu(
     isLoggedIn: Boolean,
-    onSqlConsoleSelected: () -> Unit,
+//    onSqlConsoleSelected: () -> Unit,
     onSignOutSelected: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -27,12 +27,12 @@ fun Menu(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
-            DropdownMenuItem(onClick = {
-                expanded = false
-                onSqlConsoleSelected()
-            }) {
-                Text("SQL Console")
-            }
+//            DropdownMenuItem(onClick = {
+//                expanded = false
+//                onSqlConsoleSelected()
+//            }) {
+//                Text("SQL Console")
+//            }
             DropdownMenuItem(onClick = {
                 expanded = false
                 onSignOutSelected()

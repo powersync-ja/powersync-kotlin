@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.Checkbox
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.Text
@@ -16,19 +17,28 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.powersync.demos.MARGIN_SCROLLBAR
-import com.powersync.demos.powersync.ListItem
+import com.powersync.demos.powersync.TodoItem
 
 @Composable
-internal fun ListItem(
-    item: ListItem,
+internal fun TodoItem(
+    item: TodoItem,
     onClicked: () -> Unit,
+    onDoneChanged: (Boolean) -> Unit,
     onDeleteClicked: () -> Unit
 ) {
     Row(modifier = Modifier.clickable(onClick = onClicked)) {
         Spacer(modifier = Modifier.width(8.dp))
 
+        Checkbox(
+            checked = item.completed,
+            modifier = Modifier.align(Alignment.CenterVertically),
+            onCheckedChange = onDoneChanged,
+        )
+
+        Spacer(modifier = Modifier.width(8.dp))
+
         Text(
-            text = AnnotatedString(item.name),
+            text = AnnotatedString(item.description),
             modifier = Modifier.weight(1F).align(Alignment.CenterVertically),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
