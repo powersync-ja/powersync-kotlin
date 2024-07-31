@@ -59,8 +59,12 @@ internal class Todo(
         }
     }
 
-    fun onAddItemClicked(listId: String?) {
+    fun onAddItemClicked(userId: String?, listId: String?) {
         if (state.inputText.isBlank()) return
+        Logger.i("userId: $userId")
+        if(userId == null || listId == null) {
+            throw Exception("userId or listId is null")
+        }
 
         runBlocking {
             db.writeTransaction {
@@ -80,7 +84,6 @@ internal class Todo(
     }
 
     fun onEditorCloseClicked() {
-        Logger.i(state.editingItem.toString())
         updateItem(item = requireNotNull(state.editingItem)) { it.copy() }
         setState { copy(editingItem = null) }
     }
@@ -107,8 +110,6 @@ internal class Todo(
     private fun updateItem(item: TodoItem, transformer: (item: TodoItem) -> TodoItem) {
         runBlocking {
             val updatedItem = transformer(item)
-            Logger.i("LOL\n")
-            Logger.i(updatedItem.toString())
             db.writeTransaction {
                 db.execute(
                     "UPDATE $TODOS_TABLE SET description = ?, completed = ? WHERE id = ?",

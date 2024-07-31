@@ -25,8 +25,7 @@ val todos = Table(
     indexes = listOf(
         Index(
             name = "listid",
-            columns = listOf(IndexedColumn("list_id")
-            )
+            columns = listOf(IndexedColumn("list_id"))
         )
     )
 )

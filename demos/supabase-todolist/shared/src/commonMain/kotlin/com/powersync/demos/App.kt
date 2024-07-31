@@ -81,14 +81,13 @@ fun App(factory: DatabaseDriverFactory, modifier: Modifier = Modifier) {
 
         is Screen.Todos -> {
             val handleOnAddItemClicked = {
-                todos.onAddItemClicked(selectedListId)
+                todos.onAddItemClicked(userId, selectedListId)
             }
 
             TodosScreen(
                 modifier = modifier.background(MaterialTheme.colors.background),
                 navController = navController,
                 items = todoItems,
-                isLoggedIn = true,
 //                onSqlConsoleSelected = { navController.navigate(Screen.SqlConsole) },
                 inputText = todos.state.inputText,
                 onItemClicked = todos::onItemClicked,

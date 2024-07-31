@@ -24,7 +24,6 @@ internal fun TodosScreen(
     navController: NavController,
     items: List<TodoItem>,
     inputText: String,
-    isLoggedIn: Boolean,
 //    onSqlConsoleSelected: () -> Unit,
     onItemClicked: (item: TodoItem) -> Unit,
     onItemDoneChanged: (item: TodoItem, isDone: Boolean) -> Unit,
@@ -35,13 +34,11 @@ internal fun TodosScreen(
     Column(modifier) {
         TopAppBar(
             title = { Text(text = "Todo List") },
-            navigationIcon = if (isLoggedIn) {
-                {
-                    IconButton(onClick = { navController.navigate(Screen.Home) }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Go back")
-                    }
+            navigationIcon = {
+                IconButton(onClick = { navController.navigate(Screen.Home) }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Go back")
                 }
-            } else null
+            }
         )
 
         Input(
