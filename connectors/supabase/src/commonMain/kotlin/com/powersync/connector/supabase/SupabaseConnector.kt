@@ -14,6 +14,7 @@ import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.gotrue.user.UserSession
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Get a Supabase token to authenticate against the PowerSync instance.
@@ -61,6 +62,8 @@ public class SupabaseConnector(
     public fun session(): UserSession? {
         return supabaseClient.auth.currentSessionOrNull()
     }
+
+    public val sessionStatus: StateFlow<SessionStatus> = supabaseClient.auth.sessionStatus
 
     public suspend fun loginAnonymously() {
         supabaseClient.auth.signInAnonymously()

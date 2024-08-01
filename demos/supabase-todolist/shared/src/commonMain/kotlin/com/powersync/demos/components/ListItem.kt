@@ -25,7 +25,7 @@ internal fun ListItem(
     onDeleteClicked: () -> Unit
 ) {
     Row(modifier = Modifier.clickable(onClick = onClicked)) {
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(16.dp))
 
         Text(
             text = AnnotatedString(item.name),

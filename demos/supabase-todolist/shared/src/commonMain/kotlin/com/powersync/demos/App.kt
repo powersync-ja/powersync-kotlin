@@ -3,11 +3,13 @@ package com.powersync.demos
 import androidx.compose.foundation.background
 import androidx.compose.material.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import co.touchlab.kermit.Logger
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
 import com.powersync.connector.supabase.SupabaseConnector
@@ -15,7 +17,6 @@ import com.powersync.demos.components.EditDialog
 import com.powersync.demos.powersync.ListContent
 import com.powersync.demos.powersync.ListItem
 import com.powersync.demos.powersync.Todo
-import com.powersync.demos.powersync.TodoItem
 import com.powersync.demos.powersync.schema
 import com.powersync.demos.screens.HomeScreen
 import com.powersync.demos.screens.SignInScreen
@@ -24,9 +25,9 @@ import com.powersync.demos.screens.TodosScreen
 //import com.powersync.demos.screens.SqlConsoleScreen
 import kotlinx.coroutines.runBlocking
 
+
 @Composable
 fun App(factory: DatabaseDriverFactory, modifier: Modifier = Modifier) {
-    val db = remember { PowerSyncDatabase(factory, schema) }
     val supabase = remember {
         SupabaseConnector(
             powerSyncEndpoint = Config.POWERSYNC_URL,
@@ -34,19 +35,35 @@ fun App(factory: DatabaseDriverFactory, modifier: Modifier = Modifier) {
             supabaseKey = Config.SUPABASE_ANON_KEY
         )
     }
+    val db = remember { PowerSyncDatabase(factory, schema) }
+    val syncStatus = db.currentStatus
+    val status = syncStatus.asFlow().collectAsState(initial = null)
 
     val navController = remember { NavController(Screen.Home) }
-    val authViewModel = remember { AuthViewModel(supabase, db) }
+    val authViewModel = remember {
+        AuthViewModel(supabase, db, navController)
+    }
+
     val authState by authViewModel.authState.collectAsState()
-    val userId by authViewModel.userId.collectAsState()
     val currentScreen by navController.currentScreen.collectAsState()
 
-    val lists = remember { ListContent(db, userId) }
-    val selectedListId by lists.selectedListId.collectAsState()
-    val items by lists.watchItems().collectAsState(initial = emptyList())
+    val userId by authViewModel.userId.collectAsState()
+    val currentUserId = rememberUpdatedState(userId)
+    val lists = remember { mutableStateOf(ListContent(db, userId)) }
+    LaunchedEffect(currentUserId.value) {
+        lists.value = ListContent(db, currentUserId.value)
+    }
+    val selectedListId by lists.value.selectedListId.collectAsState()
+    val items by lists.value.watchItems().collectAsState(initial = emptyList())
+    val listsInputText by lists.value.inputText.collectAsState()
 
-    val todos = remember { Todo(db, userId) }
-    val todoItems by todos.watchItems(selectedListId).collectAsState(initial = emptyList())
+    val todos = remember { mutableStateOf(Todo(db, userId)) }
+    LaunchedEffect(currentUserId.value) {
+        todos.value = Todo(db, currentUserId.value)
+    }
+    val todoItems by todos.value.watchItems(selectedListId).collectAsState(initial = emptyList())
+    val editingItem by todos.value.editingItem.collectAsState()
+    val todosInputText by todos.value.inputText.collectAsState()
 
     fun handleSignOut() {
         runBlocking {
@@ -56,53 +73,50 @@ fun App(factory: DatabaseDriverFactory, modifier: Modifier = Modifier) {
 
     when (currentScreen) {
         is Screen.Home -> {
-            if(authState == AuthState.SignedOut) {
-                navController.navigate(Screen.SignIn)
-            }
-
             val handleOnItemClicked = { item: ListItem ->
-                lists.onItemClicked(item)
+                lists.value.onItemClicked(item)
                 navController.navigate(Screen.Todos)
             }
 
             HomeScreen(
                 modifier = modifier.background(MaterialTheme.colors.background),
                 items = items,
-                isLoggedIn = true,
+                isConnected = status.value?.connected,
 //                onSqlConsoleSelected = { navController.navigate(Screen.SqlConsole) },
                 onSignOutSelected = { handleSignOut() },
-                inputText = lists.state.inputText,
+                inputText = listsInputText,
                 onItemClicked = handleOnItemClicked,
-                onItemDeleteClicked = lists::onItemDeleteClicked,
-                onAddItemClicked = lists::onAddItemClicked,
-                onInputTextChanged = lists::onInputTextChanged,
+                onItemDeleteClicked = lists.value::onItemDeleteClicked,
+                onAddItemClicked = lists.value::onAddItemClicked,
+                onInputTextChanged = lists.value::onInputTextChanged,
             )
         }
 
         is Screen.Todos -> {
             val handleOnAddItemClicked = {
-                todos.onAddItemClicked(userId, selectedListId)
+                todos.value.onAddItemClicked(userId, selectedListId)
             }
 
             TodosScreen(
                 modifier = modifier.background(MaterialTheme.colors.background),
                 navController = navController,
                 items = todoItems,
+                isConnected = status.value?.connected,
 //                onSqlConsoleSelected = { navController.navigate(Screen.SqlConsole) },
-                inputText = todos.state.inputText,
-                onItemClicked = todos::onItemClicked,
-                onItemDoneChanged = todos::onItemDoneChanged,
-                onItemDeleteClicked = todos::onItemDeleteClicked,
+                inputText = todosInputText,
+                onItemClicked = todos.value::onItemClicked,
+                onItemDoneChanged = todos.value::onItemDoneChanged,
+                onItemDeleteClicked = todos.value::onItemDeleteClicked,
                 onAddItemClicked = handleOnAddItemClicked,
-                onInputTextChanged = todos::onInputTextChanged,
+                onInputTextChanged = todos.value::onInputTextChanged,
             )
 
-            todos.state.editingItem?.also {
+            editingItem?.also {
                 EditDialog(
                     item = it,
-                    onCloseClicked = todos::onEditorCloseClicked,
-                    onTextChanged = todos::onEditorTextChanged,
-                    onDoneChanged = todos::onEditorDoneChanged,
+                    onCloseClicked = todos.value::onEditorCloseClicked,
+                    onTextChanged = todos.value::onEditorTextChanged,
+                    onDoneChanged = todos.value::onEditorDoneChanged,
                 )
             }
         }

@@ -1,11 +1,7 @@
 package com.powersync.demos.powersync
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import co.touchlab.kermit.Logger
+import androidx.lifecycle.ViewModel
 import com.powersync.PowerSyncDatabase
-import com.powersync.demos.AuthState
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,17 +10,17 @@ import kotlinx.coroutines.runBlocking
 internal class ListContent(
     private val db: PowerSyncDatabase,
     private val userId: String?
-) {
-    var state: ListContentState by mutableStateOf(initialState())
-        private set
-
+): ViewModel() {
     private val _selectedListId = MutableStateFlow<String?>(null)
     val selectedListId: StateFlow<String?> = _selectedListId
+
+    private val _inputText = MutableStateFlow<String>("")
+    val inputText: StateFlow<String> = _inputText
 
     fun watchItems(): Flow<List<ListItem>> {
         return db.watch("""
             SELECT
-                $LISTS_TABLE.*, COUNT($TODOS_TABLE.id) AS total_tasks, SUM(CASE WHEN $TODOS_TABLE.completed = true THEN 1 ELSE 0 END) as completed_tasks
+                *
             FROM
                 $LISTS_TABLE
             LEFT JOIN $TODOS_TABLE
@@ -50,18 +46,16 @@ internal class ListContent(
     }
 
     fun onAddItemClicked() {
-        if (state.inputText.isBlank()) return
+        if (_inputText.value.isBlank()) return
 
         runBlocking {
             db.writeTransaction {
                 db.execute(
                     "INSERT INTO $LISTS_TABLE (id, created_at, name, owner_id) VALUES (uuid(), datetime(), ?, ?)",
-                    listOf(state.inputText, userId)
+                    listOf(_inputText.value, userId)
                 )
             }
-            setState {
-                copy(inputText = "")
-            }
+            _inputText.value = ""
         }
     }
 
@@ -70,17 +64,6 @@ internal class ListContent(
     }
 
     fun onInputTextChanged(text: String) {
-        setState { copy(inputText = text) }
+        _inputText.value = text
     }
-
-    private fun initialState(): ListContentState =
-        ListContentState()
-
-    private inline fun setState(update: ListContentState.() -> ListContentState) {
-        state = state.update()
-    }
-
-    data class ListContentState(
-        val inputText: String = ""
-    )
 }

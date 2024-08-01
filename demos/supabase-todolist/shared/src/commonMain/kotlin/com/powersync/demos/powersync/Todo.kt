@@ -1,19 +1,25 @@
 package com.powersync.demos.powersync
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import com.powersync.PowerSyncDatabase
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 
 internal class Todo(
     private val db: PowerSyncDatabase,
     private val userId: String?
-) {
-    var state: TodoState by mutableStateOf(initialState())
-        private set
+): ViewModel() {
+
+    private val _inputText = MutableStateFlow<String>("")
+    val inputText: StateFlow<String> = _inputText
+
+    private val _editingItem = MutableStateFlow<TodoItem?>(null)
+    val editingItem: StateFlow<TodoItem?> = _editingItem
 
     fun watchItems(listId: String?): Flow<List<TodoItem>> {
         return db.watch<TodoItem>("""
@@ -39,20 +45,21 @@ internal class Todo(
     }
 
     fun onItemClicked(item: TodoItem) {
-        setState { copy(editingItem = item) }
+        _editingItem.value = item
     }
 
     fun onItemDoneChanged(item: TodoItem, isDone: Boolean) {
         updateItem(item = item) {
             it.copy(
                 completed = isDone,
-                completedBy = if(isDone) userId else null
+                completedBy = if(isDone) userId else null,
+                completedAt = if(isDone) Clock.System.now().toString() else null
             )
         }
     }
 
     fun onItemDeleteClicked(item: TodoItem) {
-        runBlocking {
+        viewModelScope.launch {
             db.writeTransaction {
                 db.execute("DELETE FROM $TODOS_TABLE WHERE id = ?", listOf(item.id))
             }
@@ -60,75 +67,62 @@ internal class Todo(
     }
 
     fun onAddItemClicked(userId: String?, listId: String?) {
-        if (state.inputText.isBlank()) return
-        Logger.i("userId: $userId")
+        if (_inputText.value.isBlank()) return
+
         if(userId == null || listId == null) {
             throw Exception("userId or listId is null")
         }
 
-        runBlocking {
+        viewModelScope.launch {
             db.writeTransaction {
                 db.execute(
                     "INSERT INTO $TODOS_TABLE (id, created_at, created_by, description, list_id) VALUES (uuid(), datetime(), ?, ?, ?)",
-                    listOf(userId, state.inputText, listId)
+                    listOf(userId, _inputText.value, listId)
                 )
             }
-            setState {
-                copy(inputText = "")
-            }
+            _inputText.value = ""
         }
     }
 
     fun onInputTextChanged(text: String) {
-        setState { copy(inputText = text) }
+        _inputText.value = text
     }
 
     fun onEditorCloseClicked() {
-        updateItem(item = requireNotNull(state.editingItem)) { it.copy() }
-        setState { copy(editingItem = null) }
+        updateItem(item = requireNotNull(_editingItem.value)) { it.copy() }
+        _editingItem.value = null
     }
 
     fun onEditorTextChanged(text: String) {
-        updateEditingItem(item = requireNotNull(state.editingItem)) {
+        updateEditingItem(item = requireNotNull(_editingItem.value)) {
             it.copy(description = text)
         }
     }
 
     fun onEditorDoneChanged(isDone: Boolean) {
-        updateEditingItem(item = requireNotNull(state.editingItem)) {
+        updateEditingItem(item = requireNotNull(_editingItem.value)) {
             it.copy(
                 completed = isDone,
-                completedBy = if(isDone) userId else null
+                completedBy = if(isDone) userId else null,
+                completedAt = if(isDone) Clock.System.now().toString() else null
             )
         }
     }
 
     private fun updateEditingItem(item: TodoItem, transformer: (item: TodoItem) -> TodoItem) {
-        setState { copy(editingItem = transformer(item)) }
+        _editingItem.value = transformer(item)
     }
 
     private fun updateItem(item: TodoItem, transformer: (item: TodoItem) -> TodoItem) {
-        runBlocking {
+        viewModelScope.launch {
             val updatedItem = transformer(item)
+            Logger.i("Updating item: $updatedItem")
             db.writeTransaction {
                 db.execute(
-                    "UPDATE $TODOS_TABLE SET description = ?, completed = ? WHERE id = ?",
-                    listOf(updatedItem.description, updatedItem.completed, item.id)
+                    "UPDATE $TODOS_TABLE SET description = ?, completed = ?, completed_by = ?, completed_at = ? WHERE id = ?",
+                    listOf(updatedItem.description, updatedItem.completed, updatedItem.completedBy, updatedItem.completedAt, item.id)
                 )
             }
         }
     }
-
-
-    private fun initialState(): TodoState =
-        TodoState()
-
-    private inline fun setState(update: TodoState.() -> TodoState) {
-        state = state.update()
-    }
-
-    data class TodoState(
-        val inputText: String = "",
-        val editingItem: TodoItem? = null
-    )
 }

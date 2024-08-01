@@ -3,9 +3,11 @@ package com.powersync.demos.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.powersync.PowerSyncDatabase
 import com.powersync.demos.NavController
@@ -17,23 +19,46 @@ import com.powersync.demos.powersync.TodoItem
 internal fun SqlConsoleScreen(navController: NavController, db: PowerSyncDatabase) {
     var query by remember { mutableStateOf("SELECT * FROM todos") }
     val error by remember { mutableStateOf<String?>(null) }
+    val listOfQueryItems = mutableListOf<Map<String, String>>()
 
     val data by db.watch(query) { cursor ->
-        TodoItem(
-            id = cursor.getString(0)!!,
-            description = cursor.getString(1)!!,
-            completed = cursor.getLong(2) == 1L
-        )
+        run {
+            val map = mutableMapOf<String, String>()
+            val count = mutableStateOf(0)
+            for (i in 0..10) {
+                if(cursor.getString(i) != null) {
+                    map.put(count.value.toString(), cursor.getString(count.value)!!)
+                    count.value++
+                } else {
+                    listOfQueryItems.add(map.toMap())
+                    map.clear()
+                    count.value = 0
+                    break
+                }
+                print(listOfQueryItems)
+            }
+        }
     }.collectAsState(initial = emptyList())
 
+    println("HELLO")
     println(data)
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text("SQL Console") },
+            title = {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "SQL Console",
+                        textAlign = TextAlign.Center
+                    )
+                }
+            },
             navigationIcon = {
                 IconButton(onClick = { navController.navigate(Screen.Home) }) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
             }
         )
@@ -76,19 +101,18 @@ internal fun SqlConsoleScreen(navController: NavController, db: PowerSyncDatabas
             Text("Query Results:", style = MaterialTheme.typography.h6)
             Spacer(modifier = Modifier.height(8.dp))
 
-            Box(modifier = Modifier.weight(1f)) {
-                ResultSetTable(
-                    columns = listOf("id", "description", "completed"),
-                    rows = data.map { item ->
-                        listOf(
-                        item.id,
-                        item.description,
-                        item.completed.toString()
-                        )
-                    }
-                )
-            }
+//            Box(modifier = Modifier.weight(1f)) {
+//                ResultSetTable(
+//                    columns = (0..count).map { it.toString() },
+//                    rows = data.map { item ->
+//                        val list = mutableListOf<String>()
+//                        for (i in 0..count) {
+//                            list.add(map[i.toString()]!!)
+//                        }
+//                        list
+//                    }
+//                )
+//            }
         }
     }
 }
-
