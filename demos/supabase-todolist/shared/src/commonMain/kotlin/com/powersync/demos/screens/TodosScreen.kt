@@ -33,7 +33,6 @@ internal fun TodosScreen(
     items: List<TodoItem>,
     inputText: String,
     isConnected: Boolean?,
-//    onSqlConsoleSelected: () -> Unit,
     onItemClicked: (item: TodoItem) -> Unit,
     onItemDoneChanged: (item: TodoItem, isDone: Boolean) -> Unit,
     onItemDeleteClicked: (item: TodoItem) -> Unit,

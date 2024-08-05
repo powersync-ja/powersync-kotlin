@@ -38,7 +38,7 @@ internal class AuthViewModel(
                     SessionStatus.LoadingFromStorage -> Logger.e("Loading from storage")
                     SessionStatus.NetworkError -> Logger.e("Network error")
                     is SessionStatus.NotAuthenticated -> {
-                        db.disconnect()
+                        db.disconnectAndClear()
                         _authState.value = AuthState.SignedOut
                         navController.navigate(Screen.SignIn)
                     }
