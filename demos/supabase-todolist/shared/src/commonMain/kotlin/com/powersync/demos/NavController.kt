@@ -6,7 +6,6 @@ import kotlinx.coroutines.flow.asStateFlow
 
 sealed class Screen {
     data object Home : Screen()
-//    data object SqlConsole : Screen()
     data object SignIn : Screen()
     data object SignUp : Screen()
     data object Todos : Screen()

@@ -22,7 +22,6 @@ import com.powersync.demos.screens.HomeScreen
 import com.powersync.demos.screens.SignInScreen
 import com.powersync.demos.screens.SignUpScreen
 import com.powersync.demos.screens.TodosScreen
-//import com.powersync.demos.screens.SqlConsoleScreen
 import kotlinx.coroutines.runBlocking
 
 
@@ -82,7 +81,6 @@ fun App(factory: DatabaseDriverFactory, modifier: Modifier = Modifier) {
                 modifier = modifier.background(MaterialTheme.colors.background),
                 items = items,
                 isConnected = status.value?.connected,
-//                onSqlConsoleSelected = { navController.navigate(Screen.SqlConsole) },
                 onSignOutSelected = { handleSignOut() },
                 inputText = listsInputText,
                 onItemClicked = handleOnItemClicked,
@@ -102,7 +100,6 @@ fun App(factory: DatabaseDriverFactory, modifier: Modifier = Modifier) {
                 navController = navController,
                 items = todoItems,
                 isConnected = status.value?.connected,
-//                onSqlConsoleSelected = { navController.navigate(Screen.SqlConsole) },
                 inputText = todosInputText,
                 onItemClicked = todos.value::onItemClicked,
                 onItemDoneChanged = todos.value::onItemDoneChanged,
@@ -121,10 +118,6 @@ fun App(factory: DatabaseDriverFactory, modifier: Modifier = Modifier) {
             }
         }
 
-//        is Screen.SqlConsole -> {
-//            SqlConsoleScreen(navController, db)
-//        }
-
         is Screen.SignIn -> {
             if(authState == AuthState.SignedIn) {
                 navController.navigate(Screen.Home)
@@ -135,6 +128,7 @@ fun App(factory: DatabaseDriverFactory, modifier: Modifier = Modifier) {
                 authViewModel
             )
         }
+
         is Screen.SignUp -> {
             if(authState == AuthState.SignedIn) {
                 navController.navigate(Screen.Home)

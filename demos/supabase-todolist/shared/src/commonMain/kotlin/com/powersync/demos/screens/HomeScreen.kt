@@ -25,7 +25,6 @@ internal fun HomeScreen(
     items: List<ListItem>,
     inputText: String,
     isConnected: Boolean?,
-//    onSqlConsoleSelected: () -> Unit,
     onSignOutSelected: () -> Unit,
     onItemClicked: (item: ListItem) -> Unit,
     onItemDeleteClicked: (item: ListItem) -> Unit,
@@ -43,7 +42,6 @@ internal fun HomeScreen(
             ) },
             navigationIcon = { Menu(
                 true,
-//                        onSqlConsoleSelected,
                 onSignOutSelected
             ) },
             actions = {
