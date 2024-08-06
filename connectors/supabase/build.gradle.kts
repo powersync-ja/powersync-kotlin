@@ -30,7 +30,7 @@ kotlin {
             api(project(":core"))
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.supabase.client)
-            implementation(libs.supabase.gotrue)
+            api(libs.supabase.gotrue)
         }
     }
 }

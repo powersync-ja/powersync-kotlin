@@ -43,8 +43,8 @@ kotlin {
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material)
-            @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
             implementation(compose.components.resources)
+            implementation(compose.materialIconsExtended)
         }
         androidMain.dependencies {
             api(libs.androidx.activity.compose)
