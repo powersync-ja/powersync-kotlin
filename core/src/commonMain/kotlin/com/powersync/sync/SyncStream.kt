@@ -40,7 +40,7 @@ internal class SyncStream(
     private val bucketStorage: BucketStorage,
     private val connector: PowerSyncBackendConnector,
     private val uploadCrud: suspend () -> Unit,
-    private val retryDelayMs: Long = 1000L,
+    private val retryDelayMs: Long = 5000L,
     private val logger: Logger
 ) {
     private var isUploadingCrud = AtomicBoolean(false)
