@@ -77,6 +77,10 @@ internal class SyncStream(
         }
     }
 
+    fun invalidateCredentials() {
+        connector.invalidateCredentials()
+    }
+
 
     suspend fun streamingSync() {
         var invalidCredentials = false

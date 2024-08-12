@@ -256,13 +256,20 @@ internal class PowerSyncDatabaseImpl(
     }
 
     override suspend fun disconnect() {
-        if (syncJob != null && uploadJob != null && syncJob!!.isActive && uploadJob!!.isActive) {
-            //Wait for jobs to finish and then cancel with a CancellationException
+        if (syncJob != null && syncJob!!.isActive) {
             syncJob?.cancelAndJoin()
-            uploadJob?.cancelAndJoin()
-            syncStream = null
-            currentStatus.update(connected = false, connecting = false)
         }
+
+        if (uploadJob != null && uploadJob!!.isActive) {
+            uploadJob?.cancelAndJoin()
+        }
+
+        if(syncStream != null) {
+            syncStream?.invalidateCredentials()
+            syncStream = null
+        }
+
+        currentStatus.update(connected = false, connecting = false)
     }
 
     override suspend fun disconnectAndClear(clearLocal: Boolean) {
