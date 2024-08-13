@@ -32,21 +32,15 @@ internal class BucketStorage(
     }
 
     init {
-        runBlocking {
-            readTableNames()
-        }
+        readTableNames()
     }
 
-    private suspend fun readTableNames() {
+    private fun readTableNames() {
         tableNames.clear()
         // Query to get existing table names
         val names = db.getExistingTableNames("ps_data_*")
 
         tableNames.addAll(names)
-    }
-
-    fun startSession() {
-        checksumCache = null
     }
 
     fun getMaxOpId(): String {
@@ -131,22 +125,13 @@ internal class BucketStorage(
     }
 
 
-    suspend fun deleteBucket(bucketName: String) {
-        val newName = "\$delete_${bucketName}_${uuid4()}"
+    private suspend fun deleteBucket(bucketName: String) {
 
-        db.writeTransaction {
+        db.writeTransaction{
             db.execute(
-                "UPDATE ps_oplog SET op=${OpType.REMOVE}, data=NULL WHERE op=${OpType.PUT} AND superseded=0 AND bucket=?",
-                listOf(bucketName)
+                "INSERT INTO powersync_operations(op, data) VALUES(?, ?)",
+                listOf("delete_bucket", bucketName)
             )
-
-            // Rename bucket
-            db.execute(
-                "UPDATE ps_oplog SET bucket=? WHERE bucket=?",
-                listOf(newName, bucketName)
-            )
-
-            db.execute("DELETE FROM ps_buckets WHERE name = ?", parameters = listOf(bucketName))
         }
 
         this.pendingBucketDeletes.value = true

@@ -271,7 +271,7 @@ internal class SyncStream(
             )
 
             isStreamingSyncData(obj) -> return handleStreamingSyncData(obj, state)
-            isStreamingKeepAlive(obj) -> return handleStreamingKeepalive(obj, state)
+            isStreamingKeepAlive(obj) -> return handleStreamingKeepAlive(obj, state)
             else -> {
                 logger.w { "Unhandled instruction $jsonString" }
                 return state
@@ -390,7 +390,7 @@ internal class SyncStream(
         return state
     }
 
-    private suspend fun handleStreamingKeepalive(
+    private suspend fun handleStreamingKeepAlive(
         jsonObj: JsonObject,
         state: SyncStreamState
     ): SyncStreamState {

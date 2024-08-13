@@ -10,6 +10,7 @@ import androidx.compose.ui.unit.dp
 import com.powersync.demos.AuthViewModel
 import com.powersync.demos.NavController
 import com.powersync.demos.Screen
+import io.github.jan.supabase.exceptions.BadRequestRestException
 import kotlinx.coroutines.launch
 
 @Composable
@@ -31,7 +32,11 @@ internal fun SignInScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Sign In", style = MaterialTheme.typography.h4, modifier = Modifier.padding(bottom = 32.dp))
+        Text(
+            "Sign In",
+            style = MaterialTheme.typography.h4,
+            modifier = Modifier.padding(bottom = 32.dp)
+        )
 
         TextField(
             value = email,
@@ -68,7 +73,11 @@ internal fun SignInScreen(
                     try {
                         authViewModel.signIn(email, password)
                     } catch (e: Exception) {
-                        errorMessage = e.message ?: "An error occurred during sign-in"
+                        if (e is BadRequestRestException) {
+                            errorMessage = "Invalid email or password"
+                        } else {
+                            errorMessage = e.message ?: "An error occurred during sign-in"
+                        }
                     } finally {
                         isLoading = false
                     }
