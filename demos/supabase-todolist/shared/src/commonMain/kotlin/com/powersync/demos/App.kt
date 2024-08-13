@@ -72,6 +72,10 @@ fun App(factory: DatabaseDriverFactory, modifier: Modifier = Modifier) {
 
     when (currentScreen) {
         is Screen.Home -> {
+            if(authState == AuthState.SignedOut) {
+                navController.navigate(Screen.SignIn)
+            }
+
             val handleOnItemClicked = { item: ListItem ->
                 lists.value.onItemClicked(item)
                 navController.navigate(Screen.Todos)

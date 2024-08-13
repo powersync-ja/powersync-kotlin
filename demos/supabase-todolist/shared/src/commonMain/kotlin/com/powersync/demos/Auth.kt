@@ -28,13 +28,14 @@ internal class AuthViewModel(
     init {
         viewModelScope.launch {
             supabase.sessionStatus.collect() {
-                when(it) {
+                when (it) {
                     is SessionStatus.Authenticated -> {
                         _authState.value = AuthState.SignedIn
                         _userId.value = it.session.user?.id
                         db.connect(supabase)
                         navController.navigate(Screen.Home)
                     }
+
                     SessionStatus.LoadingFromStorage -> Logger.e("Loading from storage")
                     SessionStatus.NetworkError -> Logger.e("Network error")
                     is SessionStatus.NotAuthenticated -> {
@@ -47,23 +48,22 @@ internal class AuthViewModel(
         }
     }
 
-    fun signIn(email: String, password: String) {
-        viewModelScope.launch {
-            supabase.login(email, password)
-            _authState.value = AuthState.SignedIn
-        }
+    suspend fun signIn(email: String, password: String) {
+        supabase.login(email, password)
+        _authState.value = AuthState.SignedIn
     }
 
-    fun signUp(email: String, password: String) {
-        viewModelScope.launch {
-            supabase.signUp(email, password)
-            _authState.value = AuthState.SignedIn
-        }
+    suspend fun signUp(email: String, password: String) {
+        supabase.signUp(email, password)
+        _authState.value = AuthState.SignedIn
     }
 
-    fun signOut() {
-        viewModelScope.launch {
+    suspend fun signOut() {
+        try {
             supabase.signOut()
+        } catch (e: Exception) {
+            Logger.e("Error signing out: $e")
+        } finally {
             _authState.value = AuthState.SignedOut
         }
     }
