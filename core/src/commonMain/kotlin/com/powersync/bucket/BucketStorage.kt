@@ -7,10 +7,8 @@ import com.powersync.sync.SyncDataBatch
 import com.powersync.sync.SyncLocalDatabaseResult
 import co.touchlab.stately.concurrency.AtomicBoolean
 import kotlinx.serialization.encodeToString
-import com.benasher44.uuid.uuid4
 import com.powersync.db.internal.InternalTable
 import com.powersync.utils.JsonUtil
-import kotlinx.coroutines.runBlocking
 
 internal class BucketStorage(
     private val db: PsInternalDatabase,
@@ -18,7 +16,6 @@ internal class BucketStorage(
 ) {
     private val tableNames: MutableSet<String> = mutableSetOf()
     private var hasCompletedSync = AtomicBoolean(false)
-    private var checksumCache: ChecksumCache? = null
     private var pendingBucketDeletes = AtomicBoolean(false)
 
     /**
@@ -200,7 +197,7 @@ internal class BucketStorage(
         )
     }
 
-    suspend fun validateChecksums(checkpoint: Checkpoint): SyncLocalDatabaseResult {
+    private suspend fun validateChecksums(checkpoint: Checkpoint): SyncLocalDatabaseResult {
         val res = db.getOptional(
             "SELECT powersync_validate_checkpoint(?) as result",
             parameters = listOf(JsonUtil.json.encodeToString(checkpoint)),
@@ -232,7 +229,7 @@ internal class BucketStorage(
         }
     }
 
-    suspend fun forceCompact() {
+    private suspend fun forceCompact() {
         // Reset counter
         this.compactCounter = COMPACT_OPERATION_INTERVAL
         this.pendingBucketDeletes.value = true
@@ -241,7 +238,7 @@ internal class BucketStorage(
     }
 
 
-    suspend fun autoCompact() {
+    private suspend fun autoCompact() {
         // 1. Delete buckets
         deletePendingBuckets()
 
