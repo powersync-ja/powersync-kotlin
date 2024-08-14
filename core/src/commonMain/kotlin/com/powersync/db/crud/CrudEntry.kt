@@ -62,10 +62,7 @@ public data class CrudEntry(
                 clientId = row.id.toInt(),
                 op = UpdateType.fromJsonChecked(data["op"]!!.jsonPrimitive.content),
                 opData = data["data"]?.jsonObject?.mapValues { (_, value) ->
-                    when {
-                        value.jsonPrimitive.contentOrNull != null -> value.jsonPrimitive.content
-                        else -> null
-                    }
+                    value.jsonPrimitive.contentOrNull
                 },
                 table = data["type"]!!.jsonPrimitive.content,
                 transactionId = row.txId,
