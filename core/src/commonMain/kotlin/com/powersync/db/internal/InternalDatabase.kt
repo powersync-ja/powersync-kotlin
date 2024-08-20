@@ -2,7 +2,6 @@ package com.powersync.db.internal
 
 import app.cash.sqldelight.ExecutableQuery
 import app.cash.sqldelight.Query
-import app.cash.sqldelight.SuspendingTransactionWithReturn
 import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import app.cash.sqldelight.coroutines.asFlow
@@ -10,7 +9,7 @@ import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlPreparedStatement
-import com.powersync.PowerSyncDatabase
+import com.powersync.PowerSyncTransaction
 import com.powersync.PsSqlDriver
 import com.powersync.db.Queries
 import com.powersync.persistence.PsDatabase
@@ -161,14 +160,14 @@ internal class PsInternalDatabase(val driver: PsSqlDriver, private val scope: Co
 
     override suspend fun <R> readTransaction(callback: suspend (PowerSyncTransaction) -> R): R {
         return transactor.transactionWithResult(noEnclosing = true) {
-            val transaction = generateTransaction()
+            val transaction = PowerSyncTransaction(this@PsInternalDatabase)
             callback(transaction)
         }
     }
 
     override suspend fun <R> writeTransaction(callback: suspend (PowerSyncTransaction) -> R): R {
         return transactor.transactionWithResult(noEnclosing = true) {
-            val transaction = generateTransaction()
+            val transaction = PowerSyncTransaction(this@PsInternalDatabase)
             callback(transaction)
         }
     }
@@ -226,41 +225,6 @@ internal class PsInternalDatabase(val driver: PsSqlDriver, private val scope: Co
         ).executeAsList()
 
         return tableRows.toSet()
-    }
-
-    private fun generateTransaction(): PowerSyncTransaction {
-        val transaction = object : PowerSyncTransaction {
-            override suspend fun execute(sql: String, parameters: List<Any?>?): Long {
-                return this@PsInternalDatabase.execute(sql, parameters ?: emptyList())
-            }
-
-            override suspend fun <RowType : Any> get(
-                sql: String,
-                parameters: List<Any?>?,
-                mapper: (SqlCursor) -> RowType
-            ): RowType {
-                return this@PsInternalDatabase.get(sql, parameters ?: emptyList(), mapper)
-            }
-
-            override suspend fun <RowType : Any> getAll(
-                sql: String,
-                parameters: List<Any?>?,
-                mapper: (SqlCursor) -> RowType
-            ): List<RowType> {
-                return this@PsInternalDatabase.getAll(sql, parameters ?: emptyList(), mapper)
-            }
-
-            override suspend fun <RowType : Any> getOptional(
-                sql: String,
-                parameters: List<Any?>?,
-                mapper: (SqlCursor) -> RowType
-            ): RowType? {
-                return this@PsInternalDatabase.getOptional(sql, parameters ?: emptyList(), mapper)
-            }
-
-        }
-
-        return transaction
     }
 
     fun getExistingTableNames(tableGlob: String): List<String> {
