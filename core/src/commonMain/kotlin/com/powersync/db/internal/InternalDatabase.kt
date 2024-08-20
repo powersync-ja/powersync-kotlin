@@ -10,6 +10,7 @@ import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlPreparedStatement
+import com.powersync.PowerSyncDatabase
 import com.powersync.PsSqlDriver
 import com.powersync.db.Queries
 import com.powersync.persistence.PsDatabase
@@ -27,7 +28,7 @@ import kotlinx.serialization.encodeToString
 internal class PsInternalDatabase(val driver: PsSqlDriver, private val scope: CoroutineScope) :
     Queries {
 
-    private val transactor: PsDatabase = PsDatabase(driver)
+    val transactor: PsDatabase = PsDatabase(driver)
     val queries = transactor.powersyncQueries
 
     companion object {
@@ -158,12 +159,18 @@ internal class PsInternalDatabase(val driver: PsSqlDriver, private val scope: Co
         }
     }
 
-    override suspend fun <R> readTransaction(body: suspend SuspendingTransactionWithReturn<R>.() -> R): R {
-        return transactor.transactionWithResult(noEnclosing = true, body)
+    override suspend fun <R> readTransaction(callback: suspend (PowerSyncTransaction) -> R): R {
+        return transactor.transactionWithResult(noEnclosing = true) {
+            val transaction = generateTransaction()
+            callback(transaction)
+        }
     }
 
-    override suspend fun <R> writeTransaction(body: suspend SuspendingTransactionWithReturn<R>.() -> R): R {
-        return transactor.transactionWithResult(noEnclosing = true, body)
+    override suspend fun <R> writeTransaction(callback: suspend (PowerSyncTransaction) -> R): R {
+        return transactor.transactionWithResult(noEnclosing = true) {
+            val transaction = generateTransaction()
+            callback(transaction)
+        }
     }
 
     // Register callback for table updates
@@ -219,6 +226,41 @@ internal class PsInternalDatabase(val driver: PsSqlDriver, private val scope: Co
         ).executeAsList()
 
         return tableRows.toSet()
+    }
+
+    private fun generateTransaction(): PowerSyncTransaction {
+        val transaction = object : PowerSyncTransaction {
+            override suspend fun execute(sql: String, parameters: List<Any?>?): Long {
+                return this@PsInternalDatabase.execute(sql, parameters ?: emptyList())
+            }
+
+            override suspend fun <RowType : Any> get(
+                sql: String,
+                parameters: List<Any?>?,
+                mapper: (SqlCursor) -> RowType
+            ): RowType {
+                return this@PsInternalDatabase.get(sql, parameters ?: emptyList(), mapper)
+            }
+
+            override suspend fun <RowType : Any> getAll(
+                sql: String,
+                parameters: List<Any?>?,
+                mapper: (SqlCursor) -> RowType
+            ): List<RowType> {
+                return this@PsInternalDatabase.getAll(sql, parameters ?: emptyList(), mapper)
+            }
+
+            override suspend fun <RowType : Any> getOptional(
+                sql: String,
+                parameters: List<Any?>?,
+                mapper: (SqlCursor) -> RowType
+            ): RowType? {
+                return this@PsInternalDatabase.getOptional(sql, parameters ?: emptyList(), mapper)
+            }
+
+        }
+
+        return transaction
     }
 
     fun getExistingTableNames(tableGlob: String): List<String> {

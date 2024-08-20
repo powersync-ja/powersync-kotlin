@@ -1,6 +1,5 @@
 package com.powersync.db
 
-import app.cash.sqldelight.SuspendingTransactionWithReturn
 import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
@@ -17,6 +16,7 @@ import com.powersync.db.crud.CrudRow
 import com.powersync.db.crud.CrudTransaction
 import com.powersync.db.internal.PsInternalDatabase
 import com.powersync.db.internal.InternalTable
+import com.powersync.db.internal.PowerSyncTransaction
 import com.powersync.db.schema.Schema
 import com.powersync.sync.SyncStatus
 import com.powersync.sync.SyncStream
@@ -75,7 +75,7 @@ internal class PowerSyncDatabaseImpl(
     private suspend fun applySchema() {
         val schemaJson = JsonUtil.json.encodeToString(schema)
 
-        this.writeTransaction {
+        this.writeTransaction { tx ->
             internalDb.queries.replaceSchema(schemaJson).awaitAsOne()
         }
     }
@@ -225,12 +225,16 @@ internal class PowerSyncDatabaseImpl(
     }
 
 
-    override suspend fun <R> readTransaction(body: suspend SuspendingTransactionWithReturn<R>.() -> R): R {
-        return internalDb.readTransaction(body)
+    override suspend fun <R> readTransaction(callback: suspend (tx: PowerSyncTransaction) -> R): R {
+        return internalDb.readTransaction { tx ->
+            callback(tx)
+        }
     }
 
-    override suspend fun <R> writeTransaction(body: suspend SuspendingTransactionWithReturn<R>.() -> R): R {
-        return internalDb.writeTransaction(body)
+    override suspend fun <R> writeTransaction(callback: suspend (tx: PowerSyncTransaction) -> R): R {
+        return internalDb.writeTransaction { tx ->
+            callback(tx)
+        }
     }
 
     override suspend fun execute(sql: String, parameters: List<Any?>?): Long {
@@ -238,16 +242,16 @@ internal class PowerSyncDatabaseImpl(
     }
 
     private suspend fun handleWriteCheckpoint(lastTransactionId: Int, writeCheckpoint: String?) {
-        writeTransaction {
+        writeTransaction { tx ->
             internalDb.queries.deleteEntriesWithIdLessThan(lastTransactionId.toLong())
 
             if (writeCheckpoint != null && bucketStorage.hasCrud()) {
-                execute(
+                tx.execute(
                     "UPDATE ps_buckets SET target_op = ? WHERE name='\$local'",
                     listOf(writeCheckpoint),
                 )
             } else {
-                execute(
+                tx.execute(
                     "UPDATE ps_buckets SET target_op = ? WHERE name='\$local'",
                     listOf(bucketStorage.getMaxOpId()),
                 )
@@ -275,17 +279,17 @@ internal class PowerSyncDatabaseImpl(
     override suspend fun disconnectAndClear(clearLocal: Boolean) {
         disconnect()
 
-        this.writeTransaction {
-            execute("DELETE FROM ${InternalTable.OPLOG}")
-            execute("DELETE FROM ${InternalTable.CRUD}")
-            execute("DELETE FROM ${InternalTable.BUCKETS}")
-            execute("DELETE FROM ${InternalTable.UNTYPED}")
+        this.writeTransaction { tx ->
+            tx.execute("DELETE FROM ${InternalTable.OPLOG}")
+            tx.execute("DELETE FROM ${InternalTable.CRUD}")
+            tx.execute("DELETE FROM ${InternalTable.BUCKETS}")
+            tx.execute("DELETE FROM ${InternalTable.UNTYPED}")
 
             val tableGlob = if (clearLocal) "ps_data_*" else "ps_data__*"
             val existingTableRows = internalDb.getExistingTableNames(tableGlob)
 
             for (row in existingTableRows) {
-                execute("DELETE FROM ${quoteIdentifier(row)}")
+                tx.execute("DELETE FROM ${quoteIdentifier(row)}")
             }
         }
     }

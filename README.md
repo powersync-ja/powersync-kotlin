@@ -238,8 +238,8 @@ The `execute` method executes a write query (INSERT, UPDATE, DELETE) and returns
 
 ```kotlin
 suspend fun insertCustomer(name: String, email: String) {
-    database.writeTransaction {
-        database.execute(
+    database.writeTransaction { tx ->
+        tx.execute(
             sql = "INSERT INTO customers (id, name, email) VALUES (uuid(), ?, ?)",
             parameters = listOf(name, email)
         )
@@ -263,8 +263,8 @@ suspend fun deleteCustomer(id: String? = null) {
             }
         ) ?: return
 
-    database.writeTransaction {
-        database.execute(
+    database.writeTransaction { tx ->
+        tx.execute(
             sql = "DELETE FROM customers WHERE id = ?",
             parameters = listOf(targetId)
         )
