@@ -1,9 +1,6 @@
 package com.powersync.plugins.sonatype
 
-import org.gradle.api.Action
 import org.gradle.api.Project
-import org.gradle.api.artifacts.repositories.MavenArtifactRepository
-import org.gradle.api.artifacts.repositories.PasswordCredentials
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.bundling.Zip
