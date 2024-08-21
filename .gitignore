@@ -10,6 +10,7 @@ local.properties
 captures
 .externalNativeBuild
 **/.cxx
+**/*.xcodeproj/*
 *.xcodeproj/*
 **/.swiftpm
 !*.xcodeproj/project.pbxproj
