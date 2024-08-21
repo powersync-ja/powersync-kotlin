@@ -46,8 +46,8 @@ class PowerSync(
     }
 
     suspend fun createUser(name: String, email: String) {
-        database.writeTransaction {
-            database.execute(
+        database.writeTransaction { tx ->
+            tx.execute(
                 "INSERT INTO customers (id, name, email) VALUES (uuid(), ?, ?)",
                 listOf(name, email)
             )
@@ -61,8 +61,8 @@ class PowerSync(
             })
             ?: return
 
-        database.writeTransaction {
-            database.execute("DELETE FROM customers WHERE id = ?", listOf(targetId))
+        database.writeTransaction { tx ->
+            tx.execute("DELETE FROM customers WHERE id = ?", listOf(targetId))
         }
     }
 }

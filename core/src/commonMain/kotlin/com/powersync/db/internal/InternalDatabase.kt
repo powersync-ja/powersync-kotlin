@@ -2,7 +2,6 @@ package com.powersync.db.internal
 
 import app.cash.sqldelight.ExecutableQuery
 import app.cash.sqldelight.Query
-import app.cash.sqldelight.SuspendingTransactionWithReturn
 import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import app.cash.sqldelight.coroutines.asFlow
@@ -10,6 +9,7 @@ import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlPreparedStatement
+import com.powersync.PowerSyncTransaction
 import com.powersync.PsSqlDriver
 import com.powersync.db.Queries
 import com.powersync.persistence.PsDatabase
@@ -27,7 +27,7 @@ import kotlinx.serialization.encodeToString
 internal class PsInternalDatabase(val driver: PsSqlDriver, private val scope: CoroutineScope) :
     Queries {
 
-    private val transactor: PsDatabase = PsDatabase(driver)
+    val transactor: PsDatabase = PsDatabase(driver)
     val queries = transactor.powersyncQueries
 
     companion object {
@@ -158,12 +158,18 @@ internal class PsInternalDatabase(val driver: PsSqlDriver, private val scope: Co
         }
     }
 
-    override suspend fun <R> readTransaction(body: suspend SuspendingTransactionWithReturn<R>.() -> R): R {
-        return transactor.transactionWithResult(noEnclosing = true, body)
+    override suspend fun <R> readTransaction(callback: suspend (PowerSyncTransaction) -> R): R {
+        return transactor.transactionWithResult(noEnclosing = true) {
+            val transaction = PowerSyncTransaction(this@PsInternalDatabase)
+            callback(transaction)
+        }
     }
 
-    override suspend fun <R> writeTransaction(body: suspend SuspendingTransactionWithReturn<R>.() -> R): R {
-        return transactor.transactionWithResult(noEnclosing = true, body)
+    override suspend fun <R> writeTransaction(callback: suspend (PowerSyncTransaction) -> R): R {
+        return transactor.transactionWithResult(noEnclosing = true) {
+            val transaction = PowerSyncTransaction(this@PsInternalDatabase)
+            callback(transaction)
+        }
     }
 
     // Register callback for table updates

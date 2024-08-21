@@ -2,6 +2,7 @@ package com.powersync.db
 
 import app.cash.sqldelight.SuspendingTransactionWithReturn
 import app.cash.sqldelight.db.SqlCursor
+import com.powersync.db.internal.PowerSyncTransaction
 import kotlinx.coroutines.flow.Flow
 
 public interface Queries {
@@ -49,7 +50,7 @@ public interface Queries {
         mapper: (SqlCursor) -> RowType
     ): Flow<List<RowType>>
 
-    public suspend fun <R> writeTransaction(body: suspend SuspendingTransactionWithReturn<R>.() -> R): R
+    public suspend fun <R> writeTransaction(callback: suspend (PowerSyncTransaction) -> R): R
 
-    public suspend fun <R> readTransaction(body: suspend SuspendingTransactionWithReturn<R>.() -> R): R
+    public suspend fun <R> readTransaction(callback: suspend (PowerSyncTransaction) -> R): R
 }
