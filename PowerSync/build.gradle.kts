@@ -1,6 +1,5 @@
 import co.touchlab.faktory.artifactmanager.ArtifactManager
 import co.touchlab.faktory.capitalized
-import co.touchlab.faktory.versionmanager.TimestampVersionManager
 import co.touchlab.skie.configuration.SuspendInterop
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 
@@ -55,11 +54,16 @@ kmmbridge {
     spm()
 }
 
+// We need this so that when a user includes the package in XCode they are able to
+// import the package using Github
 if (System.getenv().containsKey("CI")) {
     // Setup github publishing based on GitHub action variables
     addGithubPackagesRepository()
 }
 
+// This is required for KMMBridge zip to be uploaded to Sonatype (Maven Central)
+// and needs to be in this file as it requires access to import co.touchlab.faktory
+// which is only available here
 class SonatypePortalPublishArtifactManager(
     val project: Project,
     private val publicationName: String?,
@@ -71,9 +75,13 @@ class SonatypePortalPublishArtifactManager(
     private val group: String = project.group.toString().replace(".", "/")
     private val kmmbridgeArtifactId =
         "${project.name}-${artifactSuffix ?: KMMBRIDGE_ARTIFACT_SUFFIX}"
+    private val LIBRARY_VERSION: String by project
+    // This is the URL that will be added to Package.swift in Github package so that
+    // KMMBridge is downloaded when a user includes the package in XCode
+    private val MAVEN_CENTRAL_PACKAGE_ZIP_URL = "https://repo1.maven.org/maven2/com/powersync/${kmmbridgeArtifactId.lowercase()}/${LIBRARY_VERSION}/${kmmbridgeArtifactId.lowercase()}-${LIBRARY_VERSION}.zip"
 
     override fun deployArtifact(project: Project, zipFilePath: File, version: String): String {
-        return "FOOBAR_URL"
+        return MAVEN_CENTRAL_PACKAGE_ZIP_URL
     }
 
     override fun configure(

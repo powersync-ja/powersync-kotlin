@@ -19,6 +19,5 @@ captures
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
 Pods/
-plugins/sonatype
 dialect/bin
 .build

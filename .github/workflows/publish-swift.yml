@@ -1,3 +1,4 @@
+# This can be deleted once we have verified that KMMBridge is successfully available to public
 name: Publish iOS Swift
 on:
   workflow_dispatch:
