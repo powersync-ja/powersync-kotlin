@@ -60,8 +60,8 @@ internal class Todo(
 
     fun onItemDeleteClicked(item: TodoItem) {
         viewModelScope.launch {
-            db.writeTransaction {
-                db.execute("DELETE FROM $TODOS_TABLE WHERE id = ?", listOf(item.id))
+            db.writeTransaction { tx ->
+                tx.execute("DELETE FROM $TODOS_TABLE WHERE id = ?", listOf(item.id))
             }
         }
     }
@@ -74,8 +74,8 @@ internal class Todo(
         }
 
         viewModelScope.launch {
-            db.writeTransaction {
-                db.execute(
+            db.writeTransaction { tx ->
+                tx.execute(
                     "INSERT INTO $TODOS_TABLE (id, created_at, created_by, description, list_id) VALUES (uuid(), datetime(), ?, ?, ?)",
                     listOf(userId, _inputText.value, listId)
                 )
@@ -117,8 +117,8 @@ internal class Todo(
         viewModelScope.launch {
             val updatedItem = transformer(item)
             Logger.i("Updating item: $updatedItem")
-            db.writeTransaction {
-                db.execute(
+            db.writeTransaction { tx ->
+                tx.execute(
                     "UPDATE $TODOS_TABLE SET description = ?, completed = ?, completed_by = ?, completed_at = ? WHERE id = ?",
                     listOf(updatedItem.description, updatedItem.completed, updatedItem.completedBy, updatedItem.completedAt, item.id)
                 )

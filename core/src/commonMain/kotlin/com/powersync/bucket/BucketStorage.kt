@@ -94,9 +94,9 @@ internal class BucketStorage(
     }
 
     suspend fun saveSyncData(syncDataBatch: SyncDataBatch) {
-        db.writeTransaction {
+        db.writeTransaction { tx ->
             val jsonString = JsonUtil.json.encodeToString(syncDataBatch)
-            db.execute(
+            tx.execute(
                 "INSERT INTO powersync_operations(op, data) VALUES(?, ?)",
                 listOf("save", jsonString)
             )
@@ -124,8 +124,8 @@ internal class BucketStorage(
 
     private suspend fun deleteBucket(bucketName: String) {
 
-        db.writeTransaction{
-            db.execute(
+        db.writeTransaction{ tx ->
+            tx.execute(
                 "INSERT INTO powersync_operations(op, data) VALUES(?, ?)",
                 listOf("delete_bucket", bucketName)
             )
@@ -167,14 +167,14 @@ internal class BucketStorage(
 
         val bucketNames = targetCheckpoint.checksums.map { it.bucket }
 
-        db.writeTransaction {
-            db.execute(
+        db.writeTransaction { tx ->
+            tx.execute(
                 "UPDATE ps_buckets SET last_op = ? WHERE name IN (SELECT json_each.value FROM json_each(?))",
                 listOf(targetCheckpoint.lastOpId, JsonUtil.json.encodeToString(bucketNames))
             )
 
             if (targetCheckpoint.writeCheckpoint != null) {
-                db.execute(
+                tx.execute(
                     "UPDATE ps_buckets SET last_op = ? WHERE name = '\$local'",
                     listOf(targetCheckpoint.writeCheckpoint),
                 )
@@ -219,8 +219,8 @@ internal class BucketStorage(
      * This includes creating new tables, dropping old tables, and copying data over from the oplog.
      */
     private suspend fun updateObjectsFromBuckets(): Boolean {
-        return db.writeTransaction {
-            val res = db.execute(
+        return db.writeTransaction { tx ->
+            val res = tx.execute(
                 "INSERT INTO powersync_operations(op, data) VALUES(?, ?)",
                 listOf("sync_local", "")
             )
@@ -251,12 +251,12 @@ internal class BucketStorage(
             return
         }
 
-        db.writeTransaction {
-            db.execute(
+        db.writeTransaction { tx ->
+            tx.execute(
                 "DELETE FROM ps_oplog WHERE bucket IN (SELECT name FROM ps_buckets WHERE pending_delete = 1 AND last_applied_op = last_op AND last_op >= target_op)",
             )
 
-            db.execute(
+            tx.execute(
                 "DELETE FROM ps_buckets WHERE pending_delete = 1 AND last_applied_op = last_op AND last_op >= target_op",
             )
             // Executed once after start-up, and again when there are pending deletes.
@@ -269,8 +269,8 @@ internal class BucketStorage(
             return
         }
 
-        db.writeTransaction {
-            db.execute(
+        db.writeTransaction { tx ->
+            tx.execute(
                 "INSERT INTO powersync_operations(op, data) VALUES (?, ?)",
                 listOf("clear_remove_ops", "")
             )
