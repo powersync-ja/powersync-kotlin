@@ -1,3 +1,3 @@
 package com.powersync.db.schema
 
-internal val invalidSqliteCharacters = Regex("""["'%,.#\\s\\[\\]]""")
+internal val invalidSqliteCharacters = Regex("""["'%,.#\s\[\]]""")
