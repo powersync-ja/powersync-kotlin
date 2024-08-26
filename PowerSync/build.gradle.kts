@@ -2,6 +2,8 @@ import co.touchlab.faktory.artifactmanager.ArtifactManager
 import co.touchlab.faktory.capitalized
 import co.touchlab.skie.configuration.SuspendInterop
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+import java.net.URL
+import java.security.MessageDigest
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -49,7 +51,7 @@ skie {
 }
 
 kmmbridge {
-    artifactManager.set(SonatypePortalPublishArtifactManager(project, null, null, null))
+    artifactManager.set(SonatypePortalPublishArtifactManager(project, repositoryName = null))
     artifactManager.finalizeValue()
     spm()
 }
@@ -66,15 +68,13 @@ if (System.getenv().containsKey("CI")) {
 // which is only available here
 class SonatypePortalPublishArtifactManager(
     val project: Project,
-    private val publicationName: String?,
-    artifactSuffix: String?,
+    private val publicationName: String = "KMMBridgeFramework",
+    artifactSuffix: String = "kmmbridge",
     private val repositoryName: String?,
 ) : ArtifactManager {
-    private val FRAMEWORK_PUBLICATION_NAME = "KMMBridgeFramework"
-    private val KMMBRIDGE_ARTIFACT_SUFFIX = "kmmbridge"
     private val group: String = project.group.toString().replace(".", "/")
     private val kmmbridgeArtifactId =
-        "${project.name}-${artifactSuffix ?: KMMBRIDGE_ARTIFACT_SUFFIX}"
+        "${project.name}-${artifactSuffix}"
     private val LIBRARY_VERSION: String by project
     // This is the URL that will be added to Package.swift in Github package so that
     // KMMBridge is downloaded when a user includes the package in XCode
@@ -91,7 +91,7 @@ class SonatypePortalPublishArtifactManager(
         kmmPublishTask: TaskProvider<Task>
     ) {
         project.extensions.getByType<PublishingExtension>().publications.create(
-            publicationName ?: FRAMEWORK_PUBLICATION_NAME, MavenPublication::class.java
+            publicationName, MavenPublication::class.java
         ) {
             this.version = version
             val archiveProvider = project.tasks.named("zipXCFramework", Zip::class.java).flatMap {
@@ -101,6 +101,18 @@ class SonatypePortalPublishArtifactManager(
                 extension = "zip"
             }
             artifactId = kmmbridgeArtifactId
+        }
+
+        // Register the task
+        project.tasks.register<UpdatePackageSwiftChecksumTask>("updatePackageSwiftChecksum") {
+            artifactId.set(kmmbridgeArtifactId)
+            zipUrl.set(MAVEN_CENTRAL_PACKAGE_ZIP_URL)
+            dependsOn("updatePackageSwift")
+        }
+
+        // Make sure this task runs after updatePackageSwift
+        project.tasks.named("kmmBridgePublish") {
+            dependsOn("updatePackageSwiftChecksum")
         }
 
         publishingTasks().forEach {
@@ -125,7 +137,7 @@ class SonatypePortalPublishArtifactManager(
         // Either the user has supplied a correct name, or we use the default. If neither is found, fail.
         val publicationNameCap =
             publishingExtension.publications.getByName(
-                publicationName ?: FRAMEWORK_PUBLICATION_NAME
+                publicationName
             ).name.capitalized()
 
         return publishingExtension.repositories.filterIsInstance<MavenArtifactRepository>()
@@ -138,3 +150,49 @@ class SonatypePortalPublishArtifactManager(
             }
     }
 }
+
+abstract class UpdatePackageSwiftChecksumTask : DefaultTask() {
+    @get:Input
+    abstract val artifactId: Property<String>
+
+    @get:Input
+    abstract val zipUrl: Property<String>
+
+    @TaskAction
+    fun updateChecksum() {
+        val LIBRARY_VERSION: String by project
+
+        val zipFile = project.file("${project.buildDir}/tmp/${artifactId.get().lowercase()}-$LIBRARY_VERSION.zip")
+
+        // Download the zip file
+        zipFile.parentFile.mkdirs()
+        URL(zipUrl.get()).openStream().use { input ->
+            zipFile.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        }
+
+        // Compute the checksum
+        val checksum = zipFile.inputStream().use { input ->
+            val digest = MessageDigest.getInstance("SHA-256")
+            val buffer = ByteArray(8192)
+            var bytes = input.read(buffer)
+            while (bytes >= 0) {
+                digest.update(buffer, 0, bytes)
+                bytes = input.read(buffer)
+            }
+            digest.digest().joinToString("") { "%02x".format(it) }
+        }
+
+        // Update Package.swift
+        val packageSwiftFile = project.rootProject.file("Package.swift")
+        val updatedContent = packageSwiftFile.readText().replace(
+            Regex("let remoteKotlinChecksum = \"[a-f0-9]+\""),
+            "let remoteKotlinChecksum = \"$checksum\""
+        )
+        packageSwiftFile.writeText(updatedContent)
+
+        println("Updated Package.swift with new checksum: $checksum")
+    }
+}
+
