@@ -2,11 +2,12 @@ package com.powersync.db.schema
 
 import kotlinx.serialization.Serializable
 
+private const val MAX_AMOUNT_OF_COLUMNS = 63
+
 /**
  * A single table in the schema.
  */
 @Serializable
-
 public data class Table constructor(
     /**
      * The synced table name, matching sync rules.
@@ -115,9 +116,15 @@ public data class Table constructor(
      * Check that there are no issues in the table definition.
      */
     public fun validate() {
+        if (columns.size > MAX_AMOUNT_OF_COLUMNS) {
+            throw AssertionError("Table $name has more than $MAX_AMOUNT_OF_COLUMNS columns, which is not supported")
+        }
+
         if (invalidSqliteCharacters.containsMatchIn(name)) {
             throw AssertionError("Invalid characters in table name: $name")
-        } else if (_viewNameOverride != null && invalidSqliteCharacters.containsMatchIn(
+        }
+
+        if (_viewNameOverride != null && invalidSqliteCharacters.containsMatchIn(
                 _viewNameOverride
             )
         ) {
