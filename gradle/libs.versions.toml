@@ -29,7 +29,7 @@ compose-compiler = "1.5.14"
 
 # plugins
 android-gradle-plugin = "8.5.1"
-kmmBridge = "0.5.1"
+kmmBridge = "0.5.7"
 skie = "0.8.2"
 maven-publish = "0.27.0"
 download-plugin = "5.5.0"

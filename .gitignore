@@ -10,6 +10,7 @@ local.properties
 captures
 .externalNativeBuild
 **/.cxx
+**/*.xcodeproj/*
 *.xcodeproj/*
 **/.swiftpm
 !*.xcodeproj/project.pbxproj
@@ -18,6 +19,5 @@ captures
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
 Pods/
-plugins/sonatype
 dialect/bin
 .build

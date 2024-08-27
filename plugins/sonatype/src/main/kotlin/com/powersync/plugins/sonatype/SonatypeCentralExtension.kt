@@ -1,9 +1,6 @@
 package com.powersync.plugins.sonatype
 
-import org.gradle.api.Action
 import org.gradle.api.Project
-import org.gradle.api.artifacts.repositories.MavenArtifactRepository
-import org.gradle.api.artifacts.repositories.PasswordCredentials
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.bundling.Zip
@@ -27,6 +24,7 @@ public abstract class SonatypeCentralExtension(
         public const val PUBLISH_LOCAL_TASK_NAME: String = "publishAllPublicationsToSonatypeLocalRepository"
         public const val COMPONENT_BUNDLE_TASK_NAME: String = "generateSonatypeComponentBundle"
 
+        // This should be stored in your ~/.gradle/gradle.properties
         public const val SONATYPE_USERNAME_KEY: String = "centralPortal.username"
         public const val SONATYPE_PASSWORD_KEY: String = "centralPortal.password"
     }
@@ -64,4 +62,3 @@ public abstract class SonatypeCentralExtension(
         }
     }
 }
-

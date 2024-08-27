@@ -16,6 +16,7 @@ import java.net.URISyntaxException
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.Base64
+
 internal abstract class PublishToCentralPortalTask : DefaultTask() {
     @get:Input
     @get:Optional
@@ -52,7 +53,7 @@ internal abstract class PublishToCentralPortalTask : DefaultTask() {
             "Missing PublishToCentralPortal's `password` and `${SonatypeCentralExtension.SONATYPE_PASSWORD_KEY}` value and `${SonatypeCentralExtension.SONATYPE_PASSWORD_KEY}` property"
         )
 
-        val outputFile = this.outputFile();
+        val outputFile = this.outputFile()
 
         val name = URLEncoder.encode(
             (project.group
@@ -78,7 +79,7 @@ internal abstract class PublishToCentralPortalTask : DefaultTask() {
             out.write("\r\nContent-Type: application/octet-stream".toByteArray())
             out.write("\r\n\r\n".toByteArray())
             FileInputStream(outputFile).use { inputStream ->
-                val buffer: ByteArray = ByteArray(1024)
+                val buffer = ByteArray(1024)
                 var available: Long = outputFile.length()
                 while (available > 0) {
                     val read: Int = inputStream.read(
