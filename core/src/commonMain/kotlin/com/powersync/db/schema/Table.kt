@@ -32,7 +32,7 @@ public data class Table constructor(
     /**
      * Override the name for the view
      */
-    private val _viewNameOverride: String? = null
+    private val viewNameOverride: String? = null
 ) {
 
     init {
@@ -67,7 +67,7 @@ public data class Table constructor(
                 indexes,
                 localOnly = true,
                 insertOnly = false,
-                _viewNameOverride = viewName
+                viewNameOverride = viewName
             )
         }
 
@@ -85,7 +85,7 @@ public data class Table constructor(
                 indexes = listOf(),
                 localOnly = false,
                 insertOnly = true,
-                _viewNameOverride = viewName
+                viewNameOverride = viewName
             )
         }
     }
@@ -107,8 +107,8 @@ public data class Table constructor(
      */
     val validName: Boolean
         get() = !invalidSqliteCharacters.containsMatchIn(name) &&
-                (_viewNameOverride == null || !invalidSqliteCharacters.containsMatchIn(
-                    _viewNameOverride
+                (viewNameOverride == null || !invalidSqliteCharacters.containsMatchIn(
+                    viewNameOverride
                 ))
 
 
@@ -124,11 +124,11 @@ public data class Table constructor(
             throw AssertionError("Invalid characters in table name: $name")
         }
 
-        if (_viewNameOverride != null && invalidSqliteCharacters.containsMatchIn(
-                _viewNameOverride
+        if (viewNameOverride != null && invalidSqliteCharacters.containsMatchIn(
+                viewNameOverride
             )
         ) {
-            throw AssertionError("Invalid characters in view name: $_viewNameOverride")
+            throw AssertionError("Invalid characters in view name: $viewNameOverride")
         }
 
         val columnNames = mutableSetOf("id")
@@ -178,5 +178,5 @@ public data class Table constructor(
      * Defaults to the synced table name.
      */
     public val viewName: String
-        get() = _viewNameOverride ?: name
+        get() = viewNameOverride ?: name
 }

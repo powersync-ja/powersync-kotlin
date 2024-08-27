@@ -56,6 +56,14 @@ class TableTest {
     }
 
     @Test
+    fun testViewNameOverride() {
+        val columns = listOf(Column("name", ColumnType.TEXT))
+        val table = Table("valid_table_name", columns, viewNameOverride = "new_view_name")
+
+        assertEquals(table.viewName,"new_view_name")
+    }
+
+    @Test
     fun testInvalidTableName() {
         val columns = listOf(Column("name", ColumnType.TEXT))
         val table = Table("#invalid-table-name", columns)
