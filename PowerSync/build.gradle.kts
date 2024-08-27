@@ -64,8 +64,8 @@ if (System.getenv().containsKey("CI")) {
 }
 
 // This is required for KMMBridge zip to be uploaded to Sonatype (Maven Central)
-// and needs to be in this file as it requires access to import co.touchlab.faktory
-// which is only available here
+// Since this will only ever be used in this build file it does not make sense to make a
+// plugin to use this.
 class SonatypePortalPublishArtifactManager(
     val project: Project,
     private val publicationName: String = "KMMBridgeFramework",
@@ -151,6 +151,8 @@ class SonatypePortalPublishArtifactManager(
     }
 }
 
+// This task is used to update Package.swift with the checksum of the zip file
+// located on maven central.
 abstract class UpdatePackageSwiftChecksumTask : DefaultTask() {
     @get:Input
     abstract val artifactId: Property<String>
@@ -162,7 +164,7 @@ abstract class UpdatePackageSwiftChecksumTask : DefaultTask() {
     fun updateChecksum() {
         val LIBRARY_VERSION: String by project
 
-        val zipFile = project.file("${project.buildDir}/tmp/${artifactId.get().lowercase()}-$LIBRARY_VERSION.zip")
+        val zipFile = project.file("${project.layout.buildDirectory.get()}/tmp/${artifactId.get().lowercase()}-$LIBRARY_VERSION.zip")
 
         // Download the zip file
         zipFile.parentFile.mkdirs()
