@@ -8,7 +8,7 @@
 
 ## Beta release
 
-This SDK is currently in an beta release. If you find a bug or issue, please open a [GitHub issue](https://github.com/powersync-ja/powersync-kotlin/issues). Questions or feedback can be posted on
+This SDK is currently in a beta release. If you find a bug or issue, please open a [GitHub issue](https://github.com/powersync-ja/powersync-kotlin/issues). Questions or feedback can be posted on
 our [community Discord](https://discord.gg/powersync) - we'd love to hear from you.
 
 ## SDK Features
