@@ -50,7 +50,7 @@ Demo applications are located in the [`demos/`](./demos) directory. See their re
 
 ## Current Limitations / Future work
 
-The PowerSync Kotlin Multiplatform SDK is currently in a beta release and is not yet suitable for production use.
+The PowerSync Kotlin Multiplatform SDK is currently in a beta release and can be used in production if you’ve tested extensively.
 
 Current limitations:
 
