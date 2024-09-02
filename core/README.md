@@ -14,6 +14,6 @@ This is a Kotlin Multiplatform project targeting Android, iOS platforms, with th
 
 ## Note on SQLDelight
 
-The PowerSync core module, internally makes use of [SQLDelight](https://cashapp.github.io/sqldelight) for it database API and typesafe database query generation. 
+The PowerSync core module, internally makes use of [SQLDelight](https://cashapp.github.io/sqldelight) for it database API and typesafe database query generation.
 
-With the Alpha release, the PowerSync core module does not support integrating with SQLDelight from client applications.
+With the Beta release, the PowerSync core module does not support integrating with SQLDelight from client applications.

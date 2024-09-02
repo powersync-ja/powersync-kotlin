@@ -6,9 +6,9 @@
 
 # PowerSync Kotlin Multiplatform SDK
 
-## Alpha release
+## Beta release
 
-This SDK is currently in an alpha release. If you find a bug or issue, please open a [GitHub issue](https://github.com/powersync-ja/powersync-kotlin/issues). Questions or feedback can be posted on
+This SDK is currently in an beta release. If you find a bug or issue, please open a [GitHub issue](https://github.com/powersync-ja/powersync-kotlin/issues). Questions or feedback can be posted on
 our [community Discord](https://discord.gg/powersync) - we'd love to hear from you.
 
 ## SDK Features
@@ -50,11 +50,10 @@ Demo applications are located in the [`demos/`](./demos) directory. See their re
 
 ## Current Limitations / Future work
 
-The PowerSync Kotlin Multiplatform SDK is currently in an alpha release and is not yet suitable for production use.
+The PowerSync Kotlin Multiplatform SDK is currently in an beta release and is not yet suitable for production use.
 
 Current limitations:
 
-- Debugging via configurable logging is not yet implemented.
 - Integration with SQLDelight schema and API generation (ORM) is not yet supported.
 - Supports only a single database file.
 
