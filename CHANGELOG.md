@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.0.1-BETA1
+## 1.0.0-BETA1
 
 * Improve API by changing from Builder pattern to simply instantiating the database `PowerSyncDatabase`
   E.g. `val db = PowerSyncDatabase(factory, schema)`
