@@ -1,7 +1,5 @@
 # PowerSync + Supabase Kotlin Multiplatform Demo: Todo List App
 
-*** This demo app is a work in progress. It can be run, but certain functionality does not yet work. ***
-
 It is a simple to-do list application demonstrating use of the PowerSync Kotlin Mutiplatform SDK together
 with [Supabase](https://supabase.com/) in a basic Kotlin Multiplatform Compose App.
 
