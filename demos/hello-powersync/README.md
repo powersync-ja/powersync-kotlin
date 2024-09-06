@@ -67,7 +67,7 @@ create publication powersync for table customers;
 2. Open the repo in Android Studio. This creates a `local.properties` file in root and should contain a `sdk.dir=/path/to/android/sdk` line.
 3. Sync the project with Gradle (this should happen automatically, or choose File > Sync project with Gradle Files).
 4. Open the `demos/hello-powersync` directory in Android Studio and sync this project with Gradle.
-5. Insert your Supabase project, auth user, and PowerSync project credentials into the `local.properties` file:
+5. Insert your Supabase project URL, Supabase Anon Key, and PowerSync instance URL into the `local.properties` file:
 
 ```
 # local.properties
