@@ -30,10 +30,6 @@ POWERSYNC_URL=https://foo.powersync.journeyapps.com
 # Enter your Supabase project's URL and public anon key (Project settings > API)
 SUPABASE_URL=https://foo.supabase.co
 SUPABASE_ANON_KEY=foo
-
-# Enter your Supabase auth user's details
-SUPABASE_USER_EMAIL=user@example.com
-SUPABASE_USER_PASSWORD=foo
 ```
 
 ## Run the app
