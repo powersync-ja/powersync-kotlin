@@ -1,16 +1,16 @@
 # Hello-PowerSync Demo App
 
 This is a minimal demo app demonstrating use of the PowerSync Kotlin Mutiplatform SDK together
-with [Supabase](https://supabase.com/) in a basic Kotlin Multiplatform Compose App. 
+with [Supabase](https://supabase.com/) in a basic Kotlin Multiplatform Compose App.
 
 The app lists customers and allows you to add or delete rows.
 Data is [synced to users globally](https://docs.powersync.com/usage/sync-rules/example-global-data). For more advanced sync rules and functionality, see the [PowerSync+Supabase Todo-List](../supabase-todolist/README.md) demo application.
 
 Supported KMP targets: Android and iOS.
 
-## Alpha release
+## Beta release
 
-The Kotlin Multiplatform SDK is currently in an alpha release. If you find a bug or issue, please
+The Kotlin Multiplatform SDK is currently in a beta release. If you find a bug or issue, please
 open a [GitHub issue](https://github.com/powersync-ja/powersync-kotlin/issues). Questions or
 feedback can be posted on our [community Discord](https://discord.gg/powersync) - we'd love to hear
 from you.
@@ -67,7 +67,7 @@ create publication powersync for table customers;
 2. Open the repo in Android Studio. This creates a `local.properties` file in root and should contain a `sdk.dir=/path/to/android/sdk` line.
 3. Sync the project with Gradle (this should happen automatically, or choose File > Sync project with Gradle Files).
 4. Open the `demos/hello-powersync` directory in Android Studio and sync this project with Gradle.
-5. Insert your Supabase project, auth user, and PowerSync project credentials into the `local.properties` file:
+5. Insert your Supabase project URL, Supabase Anon Key, and PowerSync instance URL into the `local.properties` file:
 
 ```
 # local.properties

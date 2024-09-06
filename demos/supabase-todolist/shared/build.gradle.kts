@@ -102,7 +102,5 @@ buildkonfig {
         stringConfigField("POWERSYNC_URL")
         stringConfigField("SUPABASE_URL")
         stringConfigField("SUPABASE_ANON_KEY")
-        stringConfigField("SUPABASE_USER_EMAIL")
-        stringConfigField("SUPABASE_USER_PASSWORD")
     }
 }
