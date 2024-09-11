@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0-BETA2
+
+* Publish persistence package
+
 ## 1.0.0-BETA1
 
 * Improve API by changing from Builder pattern to simply instantiating the database `PowerSyncDatabase`
