@@ -1,7 +1,10 @@
+import com.powersync.plugins.sonatype.setupGithubRepository
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.sqldelight)
     alias(libs.plugins.androidLibrary)
+    id("com.powersync.plugins.sonatype")
 }
 
 kotlin {
@@ -66,3 +69,4 @@ sqldelight {
     }
 }
 
+setupGithubRepository()
