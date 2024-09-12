@@ -154,4 +154,17 @@ class TableTest {
 
         assertEquals(exception.message,"Duplicate index users.name_index")
     }
+
+
+    @Test
+    fun testValidationOfIdColumn() {
+        val columns = listOf(Column("id", ColumnType.TEXT))
+        val table = Table("users", columns)
+
+        val exception = assertFailsWith<AssertionError> {
+            table.validate()
+        }
+
+        assertEquals(exception.message,"users: id column is automatically added, custom id columns are not supported")
+    }
 }
