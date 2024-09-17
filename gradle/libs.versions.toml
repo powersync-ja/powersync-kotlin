@@ -9,13 +9,13 @@ idea = "222.4459.24" # Flamingo | 2022.2.1 (see https://plugins.jetbrains.com/do
 
 # Dependencies
 kermit = "2.0.4"
-kotlin = "1.9.23"
+kotlin = "1.9.24"
 coroutines = "1.8.0"
 kotlinx-datetime = "0.5.0"
 kotlinx-io = "0.3.0"
 ktor = "2.3.10"
 uuid = "0.8.2"
-powersync-core = "0.1.6"
+powersync-core = "0.2.1"
 sqlite-android = "3.45.0"
 
 sqlDelight = "2.0.2"

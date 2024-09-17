@@ -50,6 +50,8 @@ internal class SyncStream(
      */
     var status = SyncStatus()
 
+    private var clientId: String? = null
+
     private val httpClient: HttpClient = HttpClient {
         install(HttpTimeout)
         install(ContentNegotiation)
@@ -84,6 +86,7 @@ internal class SyncStream(
 
     suspend fun streamingSync() {
         var invalidCredentials = false
+        clientId = bucketStorage.getClientId()
         while (true) {
             status.update(connecting = true)
             try {
@@ -164,7 +167,7 @@ internal class SyncStream(
     private suspend fun getWriteCheckpoint(): String {
         val credentials = connector.getCredentialsCached()
         require(credentials != null) { "Not logged in" }
-        val uri = credentials.endpointUri("write-checkpoint2.json")
+        val uri = credentials.endpointUri("write-checkpoint2.json?client_id=$clientId'")
 
         val response = httpClient.get(uri) {
             contentType(ContentType.Application.Json)
@@ -242,6 +245,7 @@ internal class SyncStream(
 
         val req = StreamingSyncRequest(
             buckets = initialBuckets.map { (bucket, after) -> BucketRequest(bucket, after) },
+            clientId = clientId!!
         )
 
         streamingSyncRequest(req).collect { value ->
