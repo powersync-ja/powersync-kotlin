@@ -30,6 +30,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.Instant
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.encodeToString
 
 /**
@@ -67,8 +69,10 @@ internal class PowerSyncDatabaseImpl(
         runBlocking {
             val sqliteVersion = internalDb.queries.sqliteVersion().awaitAsOne()
             logger.d { "SQLiteVersion: $sqliteVersion" }
+            checkVersion()
             logger.d { "PowerSyncVersion: ${getPowerSyncVersion()}" }
             applySchema()
+            updateHasSynced()
         }
     }
 
@@ -105,6 +109,7 @@ internal class PowerSyncDatabaseImpl(
                     connecting = it.connecting,
                     downloading = it.downloading,
                     lastSyncedAt = it.lastSyncedAt,
+                    hasSynced = it.hasSynced,
                     uploadError = it.uploadError,
                     downloadError = it.downloadError,
                     clearDownloadError = it.downloadError == null,
@@ -247,12 +252,12 @@ internal class PowerSyncDatabaseImpl(
 
             if (writeCheckpoint != null && bucketStorage.hasCrud()) {
                 tx.execute(
-                    "UPDATE ps_buckets SET target_op = ? WHERE name='\$local'",
+                    "UPDATE ps_buckets SET target_op = CAST(? as INTEGER) WHERE name='\$local'",
                     listOf(writeCheckpoint),
                 )
             } else {
                 tx.execute(
-                    "UPDATE ps_buckets SET target_op = ? WHERE name='\$local'",
+                    "UPDATE ps_buckets SET target_op = CAST(? as INTEGER) WHERE name='\$local'",
                     listOf(bucketStorage.getMaxOpId()),
                 )
             }
@@ -273,7 +278,7 @@ internal class PowerSyncDatabaseImpl(
             syncStream = null
         }
 
-        currentStatus.update(connected = false, connecting = false)
+        currentStatus.update(connected = false, connecting = false, lastSyncedAt = currentStatus.lastSyncedAt)
     }
 
     override suspend fun disconnectAndClear(clearLocal: Boolean) {
@@ -291,6 +296,45 @@ internal class PowerSyncDatabaseImpl(
             for (row in existingTableRows) {
                 tx.execute("DELETE FROM ${quoteIdentifier(row)}")
             }
+        }
+    }
+
+    private suspend fun updateHasSynced() {
+        // Query the database to see if any data has been synced.
+        val timestamp = internalDb.getOptional("SELECT powersync_last_synced_at() as synced_at", null) { cursor ->
+            cursor.getString(0)!!
+        }
+
+        val hasSynced = timestamp != null
+        if (hasSynced != currentStatus.hasSynced) {
+            val formattedDateTime = "${timestamp!!.replace(" ","T").toLocalDateTime()}Z"
+            val lastSyncedAt = Instant.parse(formattedDateTime)
+            currentStatus.update(hasSynced = hasSynced, lastSyncedAt = lastSyncedAt)
+        }
+    }
+
+    /**
+     * Check that a supported version of the powersync extension is loaded.
+     */
+    private suspend fun checkVersion() {
+        val version: String = try {
+            getPowerSyncVersion()
+        } catch (e: Exception) {
+            throw Exception("The powersync extension is not loaded correctly. Details: $e")
+        }
+
+        // Parse version
+        val versionInts: List<Int> = try {
+            version.split(Regex("[./]"))
+                .take(3)
+                .map { it.toInt() }
+        } catch (e: Exception) {
+            throw Exception("Unsupported powersync extension version. Need ^0.2.0, got: $version. Details: $e")
+        }
+
+        // Validate ^0.2.0
+        if (versionInts[0] != 0 || versionInts[1] != 2 || versionInts[2] < 0) {
+            throw Exception("Unsupported powersync extension version. Need ^0.2.0, got: $version")
         }
     }
 }

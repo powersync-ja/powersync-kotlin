@@ -41,6 +41,13 @@ public interface SyncStatusData {
     public val lastSyncedAt: Instant?
 
     /**
+     * Indicates whether there has been at least one full sync, if any.
+     *
+     * Is null when unknown, for example when state is still being loaded from the database.
+     */
+    public val hasSynced: Boolean?
+
+    /**
      * Error during uploading.
      *
      * Cleared on the next successful upload.
@@ -66,27 +73,12 @@ internal data class SyncStatusDataContainer(
     override val downloading: Boolean = false,
     override val uploading: Boolean = false,
     override val lastSyncedAt: Instant? = null,
+    override val hasSynced: Boolean? = null,
     override val uploadError: Any? = null,
     override val downloadError: Any? = null,
 ) : SyncStatusData {
     override val anyError
         get() = downloadError ?: uploadError
-
-    /**
-     * Builder for creating a new SyncStatusDataContainer with updated values.
-     */
-    class Builder(private var data: SyncStatusDataContainer) {
-        fun connected(value: Boolean) = apply { data = data.copy(connected = value) }
-        fun connecting(value: Boolean) = apply { data = data.copy(connecting = value) }
-        fun downloading(value: Boolean) = apply { data = data.copy(downloading = value) }
-        fun uploading(value: Boolean) = apply { data = data.copy(uploading = value) }
-        fun lastSyncedAt(value: Instant?) = apply { data = data.copy(lastSyncedAt = value) }
-        fun uploadError(value: Any?) = apply { data = data.copy(uploadError = value) }
-        fun downloadError(value: Any?) = apply { data = data.copy(downloadError = value) }
-        fun clearUploadError() = apply { data = data.copy(uploadError = null) }
-        fun clearDownloadError() = apply { data = data.copy(downloadError = null) }
-        fun build() = data
-    }
 }
 
 
@@ -104,25 +96,13 @@ public data class SyncStatus internal constructor(
 
     /**
      * Updates the internal sync status indicators and emits Flow updates
-     * Usage:
-     * ```
-     * syncStatus.update {
-     *    connected(true)
-     * }
-     */
-    internal fun update(builder: SyncStatusDataContainer.Builder.() -> Unit) {
-        data = SyncStatusDataContainer.Builder(data).apply(builder).build()
-        stateFlow.value = data
-    }
-
-    /**
-     * Updates the internal sync status indicators and emits Flow updates
      */
     internal fun update(
         connected: Boolean = data.connected,
         connecting: Boolean = data.connecting,
         downloading: Boolean = data.downloading,
         uploading: Boolean = data.uploading,
+        hasSynced: Boolean? = data.hasSynced,
         lastSyncedAt: Instant? = data.lastSyncedAt,
         uploadError: Any? = data.uploadError,
         downloadError: Any? = data.downloadError,
@@ -135,6 +115,7 @@ public data class SyncStatus internal constructor(
             downloading = downloading,
             uploading = uploading,
             lastSyncedAt = lastSyncedAt,
+            hasSynced = hasSynced,
             uploadError = if (clearUploadError == true) null else uploadError,
             downloadError = if (clearDownloadError == true) null else downloadError,
         )
@@ -159,6 +140,9 @@ public data class SyncStatus internal constructor(
     override val lastSyncedAt: Instant?
         get() = data.lastSyncedAt
 
+    override val hasSynced: Boolean?
+        get() = data.hasSynced
+
     override val uploadError: Any?
         get() = data.uploadError
 
@@ -166,7 +150,7 @@ public data class SyncStatus internal constructor(
         get() = data.downloadError
 
     override fun toString(): String {
-        return "SyncStatus(connected=$connected, connecting=$connecting, downloading=$downloading, uploading=$uploading, lastSyncedAt=$lastSyncedAt, error=$anyError)"
+        return "SyncStatus(connected=$connected, connecting=$connecting, downloading=$downloading, uploading=$uploading, lastSyncedAt=$lastSyncedAt, hasSynced: $hasSynced, error=$anyError)"
     }
 
     public companion object {

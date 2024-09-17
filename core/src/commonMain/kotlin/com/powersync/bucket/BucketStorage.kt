@@ -44,6 +44,13 @@ internal class BucketStorage(
         return MAX_OP_ID
     }
 
+    suspend fun getClientId(): String {
+        val id = db.getOptional("SELECT powersync_client_id() as client_id") {
+            it.getString(0)!!
+        }
+        return id ?: throw IllegalStateException("Client ID not found")
+    }
+
     suspend fun hasCrud(): Boolean {
         return db.queries.hasCrud().awaitAsOneOrNull() == 1L
     }
@@ -140,7 +147,7 @@ internal class BucketStorage(
         }
 
         val completedSync = db.getOptional(
-            "SELECT name, last_applied_op FROM ps_buckets WHERE last_applied_op > 0 LIMIT 1",
+            "SELECT powersync_last_synced_at()",
             mapper = { cursor ->
                 cursor.getString(0)!!
             })
