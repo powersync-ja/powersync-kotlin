@@ -284,8 +284,8 @@ internal class PowerSyncDatabaseImpl(
     override suspend fun disconnectAndClear(clearLocal: Boolean) {
         disconnect()
 
-        this.writeTransaction { tx ->
-            tx.execute("select powersync_clear(?)", listOf(if(clearLocal) 1 else 0))
+        this.writeTransaction {
+            internalDb.queries.powersyncClear(if(clearLocal) "1" else "0").awaitAsOne()
         }
         currentStatus.update(lastSyncedAt = null, hasSynced = false)
     }
