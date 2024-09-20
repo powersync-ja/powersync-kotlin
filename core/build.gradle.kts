@@ -1,6 +1,7 @@
 import de.undercouch.gradle.tasks.download.Download
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import com.powersync.plugins.sonatype.setupGithubRepository
+import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -8,6 +9,7 @@ plugins {
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.mavenPublishPlugin)
     alias(libs.plugins.downloadPlugin)
+    alias(libs.plugins.buildKonfig)
     id("com.powersync.plugins.sonatype")
 }
 
@@ -161,6 +163,21 @@ android {
     }
 }
 
+buildkonfig {
+    packageName = "com.powersync.core"
+    defaultConfigs {
+        buildConfigField(STRING, "LIBRARY_VERSION", version.toString())
+        buildConfigField(STRING, "LIBRARY_NAME", "powersync-kotlin")
+    }
+    // This will be used to differentiate between the Swift and Kotlin SDKs
+    // TODO: Need to update publish plugin to publish individual modules
+    // then update build script to add -Pbuildkonfig.flavor=swift-sdk as a flag
+    // and implement that as its own github workflow
+    defaultConfigs("swift-sdk") {
+        buildConfigField(STRING, "LIBRARY_NAME", "powersync-swift")
+    }
+}
+
 
 afterEvaluate {
     val buildTasks = tasks.matching {
@@ -180,4 +197,3 @@ afterEvaluate {
 }
 
 setupGithubRepository()
-

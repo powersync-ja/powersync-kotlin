@@ -8,6 +8,8 @@ import com.powersync.bucket.Checkpoint
 import com.powersync.bucket.WriteCheckpointResponse
 import co.touchlab.stately.concurrency.AtomicBoolean
 import com.powersync.connectors.PowerSyncBackendConnector
+import com.powersync.core.BuildKonfig.LIBRARY_VERSION
+import com.powersync.core.BuildKonfig.LIBRARY_NAME
 import com.powersync.utils.JsonUtil
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -164,6 +166,10 @@ internal class SyncStream(
         }
     }
 
+    private fun powerSyncUserAgent(): String {
+        return "$LIBRARY_NAME/$LIBRARY_VERSION"
+    }
+
     private suspend fun getWriteCheckpoint(): String {
         val credentials = connector.getCredentialsCached()
         require(credentials != null) { "Not logged in" }
@@ -174,6 +180,7 @@ internal class SyncStream(
             headers {
                 append(HttpHeaders.Authorization, "Token ${credentials.token}")
                 append("User-Id", credentials.userId ?: "")
+                append("User-Agent", powerSyncUserAgent())
             }
         }
         if (response.status.value == 401) {
@@ -200,6 +207,7 @@ internal class SyncStream(
             headers {
                 append(HttpHeaders.Authorization, "Token ${credentials.token}")
                 append("User-Id", credentials.userId ?: "")
+                append("User-Agent", powerSyncUserAgent())
             }
             timeout { socketTimeoutMillis = Long.MAX_VALUE }
             setBody(bodyJson)
