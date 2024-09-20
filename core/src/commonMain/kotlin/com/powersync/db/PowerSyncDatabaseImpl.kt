@@ -285,18 +285,9 @@ internal class PowerSyncDatabaseImpl(
         disconnect()
 
         this.writeTransaction { tx ->
-            tx.execute("DELETE FROM ${InternalTable.OPLOG}")
-            tx.execute("DELETE FROM ${InternalTable.CRUD}")
-            tx.execute("DELETE FROM ${InternalTable.BUCKETS}")
-            tx.execute("DELETE FROM ${InternalTable.UNTYPED}")
-
-            val tableGlob = if (clearLocal) "ps_data_*" else "ps_data__*"
-            val existingTableRows = internalDb.getExistingTableNames(tableGlob)
-
-            for (row in existingTableRows) {
-                tx.execute("DELETE FROM ${quoteIdentifier(row)}")
-            }
+            tx.execute("select powersync_clear(?)", listOf(if(clearLocal) 1 else 0))
         }
+        currentStatus.update(lastSyncedAt = null, hasSynced = false)
     }
 
     private suspend fun updateHasSynced() {
