@@ -171,8 +171,8 @@ buildkonfig {
     }
     // This will be used to differentiate between the Swift and Kotlin SDKs
     // TODO: Need to update publish plugin to publish individual modules
-    // then update build script to add -Pbuildkonfig.flavor=swift-sdk as a flag
-    // and implement that as its own github workflow
+    //       then update build script to add -Pbuildkonfig.flavor=swift-sdk as a flag
+    //       and implement that as its own github workflow
     defaultConfigs("swift-sdk") {
         buildConfigField(STRING, "LIBRARY_NAME", "powersync-swift")
     }
