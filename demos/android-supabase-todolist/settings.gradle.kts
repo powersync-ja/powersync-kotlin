@@ -22,4 +22,16 @@ dependencyResolutionManagement {
 
 rootProject.name = "AndroidExample"
 include(":app")
- 
+
+includeBuild("../..") {
+    dependencySubstitution {
+        substitute(module("com.powersync:core"))
+            .using(project(":core")).because("we want to auto-wire up sample dependency")
+        substitute(module("com.powersync:connector-supabase"))
+            .using(project(":connectors:supabase"))
+            .because("we want to auto-wire up sample dependency")
+        substitute(module("com.powersync:compose"))
+            .using(project(":compose"))
+            .because("we want to auto-wire up sample dependency")
+    }
+}
