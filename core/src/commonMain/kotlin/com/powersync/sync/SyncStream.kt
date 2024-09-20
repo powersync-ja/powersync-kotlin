@@ -179,7 +179,6 @@ internal class SyncStream(
             contentType(ContentType.Application.Json)
             headers {
                 append(HttpHeaders.Authorization, "Token ${credentials.token}")
-                append("User-Id", credentials.userId ?: "")
                 append("User-Agent", powerSyncUserAgent())
             }
         }
@@ -206,7 +205,6 @@ internal class SyncStream(
             contentType(ContentType.Application.Json)
             headers {
                 append(HttpHeaders.Authorization, "Token ${credentials.token}")
-                append("User-Id", credentials.userId ?: "")
                 append("User-Agent", powerSyncUserAgent())
             }
             timeout { socketTimeoutMillis = Long.MAX_VALUE }
