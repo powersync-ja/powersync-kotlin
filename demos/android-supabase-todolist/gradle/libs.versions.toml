@@ -12,7 +12,6 @@ composeBom = "2024.04.01"
 materialIconsExtended = "1.7.2"
 uuid = "0.8.2"
 kermit = "2.0.4"
-powersync-sqlite-core = "0.2.1"
 sqldelight= "2.0.2"
 
 [libraries]
@@ -32,7 +31,6 @@ androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
-powersync-sqlite-core = { module = "co.powersync:powersync-sqlite-core", version.ref = "powersync-sqlite-core" }
 uuid = { module = "com.benasher44:uuid", version.ref = "uuid" }
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 

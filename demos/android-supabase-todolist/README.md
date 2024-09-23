@@ -32,3 +32,37 @@ SUPABASE_ANON_KEY=foo
 ## Run the app
 
 Choose a run configuration for the Android app in Android Studio and run it.
+
+## To include PowerSync in your own Android app make sure to do the following:
+
+1. Add `jitpack` to `your settings.gradle.kts` so that the underlying android sqlite package can be downloaded:
+
+```gradle
+dependencyResolutionManagement {
+    repositories {
+        maven("https://jitpack.io")
+        ...
+    }
+}
+```
+
+2. Add the PowerSync SDK to your project by adding the following to your `build.gradle.kts` file:
+
+```kotlin
+
+kotlin {
+    //...
+    sourceSets {
+        commonMain.dependencies {
+            implementation("com.powersync:core:$powersyncVersion")
+        }
+        //...
+    }
+}
+```
+
+If want to use the Supabase Connector, also add the following to `commonMain.dependencies`:
+
+```kotlin
+    implementation("com.powersync:connector-supabase:$powersyncVersion")
+```
