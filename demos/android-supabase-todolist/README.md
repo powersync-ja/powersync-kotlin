@@ -4,7 +4,7 @@ This is a simple to-do list application demonstrating the use of the Kotlin Mult
 
 ## Set up your Supabase and PowerSync project
 
-To run this demo, you need Supabase and PowerSync projects. Detailed instructions for integrating PowerSync with Supabase can be found in [the integration guide](https://docs.powersync.com/integration-guides/supabase).
+To run this demo, you need a Supabase and PowerSync project. Detailed instructions for integrating PowerSync with Supabase can be found in [the integration guide](https://docs.powersync.com/integration-guides/supabase).
 
 Follow this guide to:
 1. Create and configure a Supabase project.
@@ -35,7 +35,7 @@ Choose a run configuration for the Android app in Android Studio and run it.
 
 ## To include PowerSync in your own Android app make sure to do the following:
 
-1. Add `jitpack` to `your settings.gradle.kts` so that the underlying android sqlite package can be downloaded:
+1. Add `jitpack` as a repository to `your settings.gradle.kts` so that the underlying android sqlite package can be downloaded:
 
 ```gradle
 dependencyResolutionManagement {
@@ -50,19 +50,17 @@ dependencyResolutionManagement {
 
 ```kotlin
 
-kotlin {
-    //...
-    sourceSets {
-        commonMain.dependencies {
-            implementation("com.powersync:core:$powersyncVersion")
-        }
-        //...
-    }
+dependencies {
+    implementation("com.powersync:core:$powersyncVersion")
+    ...
 }
 ```
 
-If want to use the Supabase Connector, also add the following to `commonMain.dependencies`:
+If you want to use the Supabase Connector, also add the following to `dependencies`:
 
 ```kotlin
+dependencies {
     implementation("com.powersync:connector-supabase:$powersyncVersion")
+    ...
+}
 ```
