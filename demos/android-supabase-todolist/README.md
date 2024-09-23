@@ -1,6 +1,6 @@
 # PowerSync + Supabase Android Demo: Todo List App
 
-This is a simple to-do list application demonstrating the use of the Kotlin Multiplatform SDK's Android package in an Android Kotlin project with [Supabase](https://supabase.com/).
+This is a simple to-do list application demonstrating the use of the Kotlin Multiplatform SDK's Android package in an [Android Kotlin](https://kotlinlang.org/docs/android-overview.html) project with [Supabase](https://supabase.com/).
 
 ## Set up your Supabase and PowerSync project
 
