@@ -1,10 +1,15 @@
 # PowerSync + Supabase Android Demo: Todo List App
 
-It is a simple to-do list application demonstrating use of the uses the Kotlin Multiplatform SDK's Android package in an Android Kotlin project with [Supabase](https://supabase.com/).
+This is a simple to-do list application demonstrating the use of the Kotlin Multiplatform SDK's Android package in an Android Kotlin project with [Supabase](https://supabase.com/).
 
-## Set up Supabase project
+## Set up your Supabase and PowerSync project
 
-A step-by-step guide on Supabase<>PowerSync integration is available [here](https://docs.powersync.com/integration-guides/supabase).
+To run this demo, you need Supabase and PowerSync projects. Detailed instructions for integrating PowerSync with Supabase can be found in [the integration guide](https://docs.powersync.com/integration-guides/supabase).
+
+Follow this guide to:
+1. Create and configure a Supabase project.
+2. Create a new PowerSync instance, connecting to the database of the Supabase project. See instructions [here](https://docs.powersync.com/integration-guides/supabase-+-powersync#connect-powersync-to-your-supabase).
+3. Deploy sync rules.
 
 ## Configure project in Android Studio
 

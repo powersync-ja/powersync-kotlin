@@ -20,7 +20,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "AndroidExample"
+rootProject.name = "PowersyncAndroidExample"
 include(":app")
 
 includeBuild("../..") {

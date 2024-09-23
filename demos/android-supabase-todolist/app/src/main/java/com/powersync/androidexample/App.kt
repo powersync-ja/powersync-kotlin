@@ -11,7 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import com.example.androidexample.BuildConfig
+import com.powersync.androidexample.BuildConfig
 import com.powersync.PowerSyncDatabase
 import com.powersync.compose.rememberDatabaseDriverFactory
 import com.powersync.connector.supabase.SupabaseConnector

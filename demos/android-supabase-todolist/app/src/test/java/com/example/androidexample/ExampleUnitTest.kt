@@ -1,4 +1,4 @@
-package com.example.androidexample
+package com.powersync.androidexample
 
 import org.junit.Test
 

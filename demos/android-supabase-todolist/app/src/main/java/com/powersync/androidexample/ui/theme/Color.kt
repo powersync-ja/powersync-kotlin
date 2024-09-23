@@ -1,4 +1,4 @@
-package com.example.androidexample.ui.theme
+package com.powersync.androidexample.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

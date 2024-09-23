@@ -17,7 +17,7 @@ fun getLocalProperty(key: String, defaultValue: String): String {
 }
 
 android {
-    namespace = "com.example.androidexample"
+    namespace = "com.powersync.androidexample"
     compileSdk = 34
 
     buildFeatures {
@@ -25,7 +25,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.androidexample"
+        applicationId = "com.powersync.androidexample"
         minSdk = 24
         targetSdk = 34
         versionCode = 1
