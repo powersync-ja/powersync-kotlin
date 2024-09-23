@@ -54,6 +54,9 @@ android {
             buildConfigField("boolean", "DEBUG", "true")
         }
     }
+    defaultConfig {
+        minSdk = libs.versions.android.minSdk.get().toInt()
+    }
 
     namespace = "com.powersync.persistence"
     compileSdk = libs.versions.android.compileSdk.get().toInt()

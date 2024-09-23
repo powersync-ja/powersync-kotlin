@@ -8,6 +8,9 @@ SELECT powersync_rs_version();
 replaceSchema:
 SELECT powersync_replace_schema(?);
 
+powersyncClear:
+SELECT powersync_clear(?);
+
 -- CRUD operations
 hasCrud:
 SELECT 1 FROM ps_crud LIMIT 1;

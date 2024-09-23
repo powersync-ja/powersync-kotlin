@@ -16,7 +16,7 @@ public class PowerSyncTypeResolver(private val parentResolver: TypeResolver) :
     TypeResolver by SqliteTypeResolver(parentResolver) {
     override fun functionType(functionExpr: SqlFunctionExpr): IntermediateType? {
         when (functionExpr.functionName.text) {
-            "sqlite_version", "powersync_rs_version", "powersync_replace_schema" -> return IntermediateType(
+            "sqlite_version", "powersync_rs_version", "powersync_replace_schema", "powersync_clear" -> return IntermediateType(
                 PrimitiveType.TEXT
             )
         }
