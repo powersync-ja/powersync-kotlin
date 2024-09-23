@@ -37,7 +37,7 @@ public interface PowerSyncDatabase : Queries {
         connector: PowerSyncBackendConnector,
         crudThrottleMs: Long = 1000L,
         retryDelayMs: Long = 5000L,
-        syncRuleParameters: Map<String, Any>? = null
+        syncRulesParameters: Map<String, Any>? = null
     )
 
 

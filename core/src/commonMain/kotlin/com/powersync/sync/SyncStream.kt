@@ -43,7 +43,7 @@ internal class SyncStream(
     private val uploadCrud: suspend () -> Unit,
     private val retryDelayMs: Long = 5000L,
     private val logger: Logger,
-    private val syncRuleParameters: Map<String, Any>?
+    private val syncRulesParameters: Map<String, Any>?
 ) {
     private var isUploadingCrud = AtomicBoolean(false)
 
@@ -248,7 +248,7 @@ internal class SyncStream(
         val req = StreamingSyncRequest(
             buckets = initialBuckets.map { (bucket, after) -> BucketRequest(bucket, after) },
             clientId = clientId!!,
-            parameters = convertMapToJson(syncRuleParameters)
+            parameters = convertMapToJson(syncRulesParameters)
         )
 
         streamingSyncRequest(req).collect { value ->

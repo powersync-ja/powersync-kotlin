@@ -21,7 +21,6 @@ import com.powersync.db.schema.Schema
 import com.powersync.sync.SyncStatus
 import com.powersync.sync.SyncStream
 import com.powersync.utils.JsonUtil
-import com.powersync.utils.Strings.quoteIdentifier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -89,7 +88,7 @@ internal class PowerSyncDatabaseImpl(
         connector: PowerSyncBackendConnector,
         crudThrottleMs: Long,
         retryDelayMs: Long,
-        syncRuleParameters: Map<String, Any>?)
+        syncRulesParameters: Map<String, Any>?)
     {
         // close connection if one is open
         disconnect()
@@ -101,7 +100,7 @@ internal class PowerSyncDatabaseImpl(
                 uploadCrud = suspend { connector.uploadData(this) },
                 retryDelayMs = retryDelayMs,
                 logger = logger,
-                syncRuleParameters = syncRuleParameters
+                syncRulesParameters = syncRulesParameters
             )
 
         syncJob = scope.launch {
