@@ -33,8 +33,12 @@ public interface PowerSyncDatabase : Queries {
      *  TODO: Internal Team - Status changes are reported on [statusStream].
      */
 
-    public suspend fun connect(connector: PowerSyncBackendConnector, crudThrottleMs: Long = 1000L,
-                               retryDelayMs: Long = 5000L)
+    public suspend fun connect(
+        connector: PowerSyncBackendConnector,
+        crudThrottleMs: Long = 1000L,
+        retryDelayMs: Long = 5000L,
+        syncRuleParameters: Map<String, Any>? = null
+    )
 
 
     /**

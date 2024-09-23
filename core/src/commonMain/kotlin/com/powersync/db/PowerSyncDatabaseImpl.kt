@@ -85,7 +85,12 @@ internal class PowerSyncDatabaseImpl(
     }
 
     @OptIn(FlowPreview::class)
-    override suspend fun connect(connector: PowerSyncBackendConnector, crudThrottleMs: Long, retryDelayMs: Long) {
+    override suspend fun connect(
+        connector: PowerSyncBackendConnector,
+        crudThrottleMs: Long,
+        retryDelayMs: Long,
+        syncRuleParameters: Map<String, Any>?)
+    {
         // close connection if one is open
         disconnect()
 
@@ -95,7 +100,8 @@ internal class PowerSyncDatabaseImpl(
                 connector = connector,
                 uploadCrud = suspend { connector.uploadData(this) },
                 retryDelayMs = retryDelayMs,
-                logger = logger
+                logger = logger,
+                syncRuleParameters = syncRuleParameters
             )
 
         syncJob = scope.launch {
