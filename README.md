@@ -2,7 +2,7 @@
   <a href="https://www.powersync.com" target="_blank"><img src="https://github.com/powersync-ja/.github/assets/7372448/d2538c43-c1a0-4c47-9a76-41462dba484f"/></a>
 </p>
 
-*[PowerSync](https://www.powersync.com) is a Postgres-SQLite sync engine, which helps developers to create local-first real-time reactive apps that work seamlessly both online and offline.*
+*[PowerSync](https://www.powersync.com) is a sync engine for building local-first apps with instantly-responsive UI/UX and simplified state transfer.*
 
 # PowerSync Kotlin Multiplatform SDK
 
@@ -23,11 +23,10 @@ our [community Discord](https://discord.gg/powersync) - we'd love to hear from y
 
 - [connectors](./connectors/)
 
-    - [SupabaseConnector.kt](./connectors/supabase/src/commonMain/kotlin/com/powersync/connector/supabase/SupabaseConnector.kt) An example connector implementation tailed for Supabase. The backend
-      connector provides
-      the connection between your application backend and the PowerSync managed database. It is used to:
+    - [SupabaseConnector.kt](./connectors/supabase/src/commonMain/kotlin/com/powersync/connector/supabase/SupabaseConnector.kt) An example connector implementation for Supabase (Postgres). The backend
+      connector provides the connection between your application backend and the PowerSync managed database. It is used to:
         1. Retrieve a token to connect to the PowerSync service.
-        2. Apply local changes on your backend application server (and from there, to Postgres).
+        2. Apply local changes on your backend application server (and from there, to your backend database).
 
 ## Demo Apps / Example Projects
 
