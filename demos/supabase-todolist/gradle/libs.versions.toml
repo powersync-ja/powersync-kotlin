@@ -6,9 +6,7 @@ android-compileSdk = "34"
 java = "17"
 
 # Dependencies
-powersync-core = "0.2.1"
-
-kotlin = "1.9.23"
+kotlin = "2.0.20"
 coroutines = "1.8.0"
 kotlinx-datetime = "0.5.0"
 kotlinx-io = "0.3.0"
@@ -20,16 +18,14 @@ supabase = "2.3.1"
 junit = "4.13.2"
 
 compose = "1.6.11"
-compose-preview = "1.6.8"
-compose-compiler = "1.5.14"
+compose-preview = "1.7.2"
 
 # plugins
 android-gradle-plugin = "8.5.1"
-skie = "0.8.2"
 
 # Sample - Android
 androidx-core = "1.13.1"
-androidx-activity-compose = "1.9.1"
+androidx-activity-compose = "1.9.2"
 
 androidx-appcompat = "1.7.0"
 androidx-espresso-core = "3.6.1"
@@ -37,8 +33,6 @@ androidx-material = "1.12.0"
 androidx-test-junit = "1.2.1"
 
 [libraries]
-powersync-sqlite-core = { module = "co.powersync:powersync-sqlite-core", version.ref = "powersync-core" }
-
 test-junit = { group = "junit", name = "junit", version.ref = "junit" }
 test-junitKtx = { module = "androidx.test.ext:junit-ktx", version.ref = "androidx-test-junit" }
 test-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
@@ -66,7 +60,6 @@ androidx-activity-compose = { module = "androidx.activity:activity-compose", ver
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "androidx-espresso-core" }
 androidx-material = { group = "com.google.android.material", name = "material", version.ref = "androidx-material" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "compose-preview" }
-compose-compiler = { module = "androidx.compose.compiler:compiler", version.ref = "compose-compiler" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "android-gradle-plugin" }
@@ -74,7 +67,7 @@ androidLibrary = { id = "com.android.library", version.ref = "android-gradle-plu
 jetbrainsCompose = { id = "org.jetbrains.compose", version.ref = "compose" }
 cocoapods = { id = "org.jetbrains.kotlin.native.cocoapods", version.ref = "kotlin" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
-skie = { id = "co.touchlab.skie", version.ref = "skie" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 buildKonfig = { id = "com.codingfeline.buildkonfig", version.ref = "buildKonfig" }
 
 [bundles]

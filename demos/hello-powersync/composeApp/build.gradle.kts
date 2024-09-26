@@ -7,6 +7,7 @@ plugins {
     alias(projectLibs.plugins.cocoapods)
     alias(projectLibs.plugins.androidApplication)
     alias(projectLibs.plugins.jetbrainsCompose)
+    alias(projectLibs.plugins.compose.compiler)
     alias(projectLibs.plugins.skie)
     alias(libs.plugins.buildKonfig)
 }
@@ -38,8 +39,8 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api("com.powersync:core")
-            api("com.powersync:connector-supabase")
-            api("com.powersync:compose")
+            implementation("com.powersync:connector-supabase")
+            implementation("com.powersync:compose")
             implementation(projectLibs.bundles.sqldelight)
             implementation(projectLibs.kotlinx.datetime)
             implementation(compose.runtime)
@@ -74,9 +75,6 @@ android {
     }
     buildFeatures {
         compose = true
-    }
-    composeOptions {
-        kotlinCompilerExtensionVersion = projectLibs.versions.compose.compiler.get()
     }
     packaging {
         resources {
