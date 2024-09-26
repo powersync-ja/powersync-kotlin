@@ -37,6 +37,8 @@ Demo applications are located in the [`demos/`](./demos) directory. See their re
 - [demos/hello-powersync](./demos/hello-powersync/README.md): A minimal example demonstrating the use of the PowerSync Kotlin Multiplatform SDK and the Supabase connector.
 
 - [demos/supabase-todolist](./demos/supabase-todolist/README.md): A simple to-do list application demonstrating the use of the PowerSync Kotlin Multiplatform SDK and the Supabase connector.
+- 
+- [demos/android-supabase-todolist](./demos/android-supabase-todolist/README.md): A simple to-do list application demonstrating the use of the PowerSync Kotlin Multiplatform SDK and the Supabase connector in an Android application.
 
 ## Current Limitations / Future work
 
