@@ -51,7 +51,7 @@ dependencyResolutionManagement {
 ```kotlin
 
 dependencies {
-    implementation("com.powersync:core:$powersyncVersion")
+    implementation("com.powersync:core-android:$powersyncVersion")
     ...
 }
 ```
