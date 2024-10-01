@@ -29,6 +29,7 @@ public interface PowerSyncDatabase : Queries {
      *
      *  Use @param [crudThrottleMs] to specify the time between CRUD operations. Defaults to 1000ms.
      *  Use @param [retryDelayMs] to specify the delay between retries after failure. Defaults to 5000ms.
+     *  Use @param [params] to specify sync parameters from the client
      *
      *  TODO: Internal Team - Status changes are reported on [statusStream].
      */
@@ -37,7 +38,7 @@ public interface PowerSyncDatabase : Queries {
         connector: PowerSyncBackendConnector,
         crudThrottleMs: Long = 1000L,
         retryDelayMs: Long = 5000L,
-        syncRulesParameters: Map<String, Any>? = null
+        params: Map<String, Any>? = null
     )
 
 

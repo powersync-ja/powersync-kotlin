@@ -88,7 +88,7 @@ internal class PowerSyncDatabaseImpl(
         connector: PowerSyncBackendConnector,
         crudThrottleMs: Long,
         retryDelayMs: Long,
-        syncRulesParameters: Map<String, Any>?)
+        params: Map<String, Any>?)
     {
         // close connection if one is open
         disconnect()
@@ -100,7 +100,7 @@ internal class PowerSyncDatabaseImpl(
                 uploadCrud = suspend { connector.uploadData(this) },
                 retryDelayMs = retryDelayMs,
                 logger = logger,
-                syncRulesParameters = syncRulesParameters
+                params = params
             )
 
         syncJob = scope.launch {
