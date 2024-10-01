@@ -23,6 +23,11 @@ public interface PowerSyncDatabase : Queries {
     public val currentStatus: SyncStatus
 
     /**
+     * Suspend function that resolves when the first sync has occurred
+     */
+    public suspend fun waitForFirstSync()
+
+    /**
      *  Connect to the PowerSync service, and keep the databases in sync.
      *
      *  The connection is automatically re-opened if it fails for any reason.

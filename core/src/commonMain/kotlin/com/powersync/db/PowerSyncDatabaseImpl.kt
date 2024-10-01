@@ -21,13 +21,13 @@ import com.powersync.db.schema.Schema
 import com.powersync.sync.SyncStatus
 import com.powersync.sync.SyncStream
 import com.powersync.utils.JsonUtil
-import com.powersync.utils.Strings.quoteIdentifier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
@@ -302,6 +302,8 @@ internal class PowerSyncDatabaseImpl(
                 val formattedDateTime = "${timestamp!!.replace(" ","T").toLocalDateTime()}Z"
                 val lastSyncedAt = Instant.parse(formattedDateTime)
                 currentStatus.update(hasSynced = hasSynced, lastSyncedAt = lastSyncedAt)
+                Logger.i("AFTER")
+                Logger.i(currentStatus.toString())
             }
         } catch (e: Exception) {
             if(e is NullPointerException) {
@@ -310,6 +312,29 @@ internal class PowerSyncDatabaseImpl(
                 return
             }
         }
+    }
+
+    override suspend fun waitForFirstSync() {
+        Logger.i("Waiting for first sync")
+        if (currentStatus.hasSynced == true) {
+            Logger.i("Sync has happened")
+            return
+        }
+
+        Logger.i("Sync has not happened")
+
+        currentStatus.asFlow().first { status ->
+            Logger.i("HERE")
+            Logger.i(currentStatus.toString())
+            if (status.hasSynced == true) {
+                Logger.i("Sync has just completed")
+                true
+            } else {
+                false
+            }
+        }
+        Logger.i("HELLO")
+
     }
 
     /**
