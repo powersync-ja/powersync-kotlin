@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.jetbrainsCompose)
+    alias(libs.plugins.compose.compiler)
     alias(libs.plugins.cocoapods)
     alias(libs.plugins.buildKonfig)
 }
@@ -38,8 +39,9 @@ kotlin {
     }
     sourceSets {
         commonMain.dependencies {
+            // Need to use api here otherwise Database driver can't be accessed
             api("com.powersync:core")
-            api("com.powersync:connector-supabase")
+            implementation("com.powersync:connector-supabase")
             implementation(libs.uuid)
             implementation(compose.runtime)
             implementation(compose.foundation)

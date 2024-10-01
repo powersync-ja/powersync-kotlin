@@ -6,6 +6,7 @@ xcuserdata
 local.properties
 .idea
 .fleet
+.kotlin
 .DS_Store
 captures
 .externalNativeBuild

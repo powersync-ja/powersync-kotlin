@@ -3,13 +3,13 @@
 android-minSdk = "24"
 android-targetSdk = "34"
 android-compileSdk = "34"
-configurationAnnotations = "0.8.2"
+configurationAnnotations = "0.8.4"
 java = "17"
 idea = "222.4459.24" # Flamingo | 2022.2.1 (see https://plugins.jetbrains.com/docs/intellij/android-studio-releases-list.html)
 
 # Dependencies
 kermit = "2.0.4"
-kotlin = "1.9.24"
+kotlin = "2.0.20"
 coroutines = "1.8.0"
 kotlinx-datetime = "0.5.0"
 kotlinx-io = "0.3.0"
@@ -24,30 +24,26 @@ supabase = "2.3.1"
 junit = "4.13.2"
 
 compose = "1.6.11"
-compose-preview = "1.6.8"
-compose-compiler = "1.5.14"
+compose-preview = "1.7.2"
 
 # plugins
 android-gradle-plugin = "8.5.1"
 kmmBridge = "0.5.7"
-skie = "0.8.2"
+skie = "0.9.0-RC.5"
 maven-publish = "0.27.0"
 download-plugin = "5.5.0"
 grammerKit = "0.1.12"
 
 # Sample - Android
 androidx-core = "1.13.1"
-androidx-activity-compose = "1.9.1"
+androidx-activity-compose = "1.9.2"
 
 androidx-appcompat = "1.7.0"
-androidx-constraintlayout = "2.1.4"
 androidx-espresso-core = "3.6.1"
 androidx-material = "1.12.0"
 androidx-test-junit = "1.2.1"
-org-jetbrains-kotlin-jvm = "1.9.22"
 
 [libraries]
-compose-compiler = { module = "androidx.compose.compiler:compiler", version.ref = "compose-compiler" }
 configuration-annotations = { module = "co.touchlab.skie:configuration-annotations", version.ref = "configurationAnnotations" }
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 powersync-sqlite-core = { module = "co.powersync:powersync-sqlite-core", version.ref = "powersync-core" }
@@ -97,6 +93,7 @@ compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview"
 androidApplication = { id = "com.android.application", version.ref = "android-gradle-plugin" }
 androidLibrary = { id = "com.android.library", version.ref = "android-gradle-plugin" }
 jetbrainsCompose = { id = "org.jetbrains.compose", version.ref = "compose" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 cocoapods = { id = "org.jetbrains.kotlin.native.cocoapods", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
