@@ -8,8 +8,9 @@ import com.powersync.bucket.Checkpoint
 import com.powersync.bucket.WriteCheckpointResponse
 import co.touchlab.stately.concurrency.AtomicBoolean
 import com.powersync.connectors.PowerSyncBackendConnector
+import com.powersync.utils.JsonParam
 import com.powersync.utils.JsonUtil
-import com.powersync.utils.convertMapToJson
+import com.powersync.utils.toJsonObject
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpTimeout
@@ -43,7 +44,7 @@ internal class SyncStream(
     private val uploadCrud: suspend () -> Unit,
     private val retryDelayMs: Long = 5000L,
     private val logger: Logger,
-    private val params: Map<String, Any>?
+    private val params: Map<String, JsonParam?>?
 ) {
     private var isUploadingCrud = AtomicBoolean(false)
 
@@ -248,7 +249,7 @@ internal class SyncStream(
         val req = StreamingSyncRequest(
             buckets = initialBuckets.map { (bucket, after) -> BucketRequest(bucket, after) },
             clientId = clientId!!,
-            parameters = convertMapToJson(params)
+            parameters = params?.toJsonObject()
         )
 
         streamingSyncRequest(req).collect { value ->

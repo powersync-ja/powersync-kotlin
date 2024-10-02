@@ -1,128 +1,232 @@
 package com.powersync.utils
 
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
+
+import kotlinx.serialization.json.*
 import kotlin.test.*
 
 class JsonTest {
     @Test
-    fun testEmptyMap() {
-        val emptyMap = emptyMap<String, Any>()
-        val result = convertMapToJson(emptyMap)
-        assertEquals(0, result.size)
+    fun testNumberToJsonElement() {
+        val number = JsonParam.Number(42)
+        val jsonElement = number.toJsonElement()
+        assertTrue(jsonElement is JsonPrimitive)
+        assertEquals(42, jsonElement.int)
     }
 
     @Test
-    fun testNull() {
-        val result = convertMapToJson(null)
-        assertEquals(JsonObject(mapOf()), result)
+    fun testStringToJsonElement() {
+        val string = JsonParam.String("test")
+        val jsonElement = string.toJsonElement()
+        assertTrue(jsonElement is JsonPrimitive)
+        assertEquals("test", jsonElement.content)
     }
 
     @Test
-    fun testIntegerMap() {
-        val testMap = mapOf("int" to 1)
-        val result = convertMapToJson(testMap)
-        assertEquals(JsonObject(mapOf("int" to JsonPrimitive(1))), result)
+    fun testBooleanToJsonElement() {
+        val boolean = JsonParam.Boolean(true)
+        val jsonElement = boolean.toJsonElement()
+        assertTrue(jsonElement is JsonPrimitive)
+        assertTrue(jsonElement.boolean)
     }
 
     @Test
-    fun testStringMap() {
-        val testMap = mapOf("string" to "string")
-        val result = convertMapToJson(testMap)
-        assertEquals(JsonObject(mapOf("string" to JsonPrimitive("string"))), result)
+    fun testMapToJsonElement() {
+        val map = JsonParam.Map(mapOf(
+            "key1" to JsonParam.String("value1"),
+            "key2" to JsonParam.Number(42)
+        ))
+        val jsonElement = map.toJsonElement()
+        assertTrue(jsonElement is JsonObject)
+        assertEquals("value1", jsonElement["key1"]?.jsonPrimitive?.content)
+        assertEquals(42, jsonElement["key2"]?.jsonPrimitive?.int)
     }
 
     @Test
-    fun testLongMap() {
-        val testMap = mapOf("double" to 123L)
-        val result = convertMapToJson(testMap)
-        assertEquals(JsonObject(mapOf("double" to JsonPrimitive(123L))), result)
+    fun testListToJsonElement() {
+        val list = JsonParam.Collection(listOf(
+            JsonParam.String("item1"),
+            JsonParam.Number(42)
+        ))
+        val jsonElement = list.toJsonElement()
+        assertTrue(jsonElement is JsonArray)
+        assertEquals("item1", jsonElement[0].jsonPrimitive.content)
+        assertEquals(42, jsonElement[1].jsonPrimitive.int)
     }
 
     @Test
-    fun testBooleanMap() {
-        val testMap = mapOf("boolean" to false)
-        val result = convertMapToJson(testMap)
-        assertEquals(JsonObject(mapOf("boolean" to JsonPrimitive(false))), result)
+    fun testJsonElementParamToJsonElement() {
+        val originalJson = buildJsonObject {
+            put("key", "value")
+        }
+        val jsonElementParam = JsonParam.JsonElement(originalJson)
+        val jsonElement = jsonElementParam.toJsonElement()
+        assertEquals(originalJson, jsonElement)
     }
 
     @Test
-    fun testDoubleMap() {
-        val testMap = mapOf("double" to 0.02)
-        val result = convertMapToJson(testMap)
-        assertEquals(JsonObject(mapOf("double" to JsonPrimitive(0.02))), result)
+    fun testNullToJsonElement() {
+        val nullParam = JsonParam.Null
+        val jsonElement = nullParam.toJsonElement()
+        assertTrue(jsonElement is JsonNull)
     }
 
     @Test
-    fun testArrayMap() {
-        val testMap = mapOf("array" to arrayOf(1, 2, 3))
-        val result = convertMapToJson(testMap)
-        assertEquals(JsonObject(mapOf("array" to JsonArray(listOf(JsonPrimitive(1), JsonPrimitive(2), JsonPrimitive(3))))), result)
+    fun testToJsonParamWithNull() {
+        val json = null.toJsonParam()
+        assertTrue(json is JsonParam.Null)
     }
 
     @Test
-    fun testListMap() {
-        val testMap = mapOf("list" to listOf("a", "b", "c"))
-        val result = convertMapToJson(testMap)
-        assertEquals(JsonObject(mapOf("list" to JsonArray(listOf(JsonPrimitive("a"), JsonPrimitive("b"), JsonPrimitive("c"))))), result)
+    fun testToJsonWithNumber() {
+        val json = 42.toJsonParam()
+        assertTrue(json is JsonParam.Number)
+        assertEquals(42, json.value)
     }
 
     @Test
-    fun testNestedMap() {
-        val testMap = mapOf(
-            "nested" to mapOf(
-                "int" to 1,
-                "string" to "value"
-            )
+    fun testToJsonWithString() {
+        val json = "test".toJsonParam()
+        assertTrue(json is JsonParam.String)
+        assertEquals("test", json.value)
+    }
+
+    @Test
+    fun testToJsonWithBoolean() {
+        val json = true.toJsonParam()
+        assertTrue(json is JsonParam.Boolean)
+        assertEquals(true, json.value)
+    }
+
+    @Test
+    fun testToJsonWithMap() {
+        val map = mapOf("key" to "value")
+        val json = map.toJsonParam()
+        assertTrue(json is JsonParam.Map)
+        assertEquals(1, json.value.size)
+        assertTrue(json.value["key"] is JsonParam.String)
+        assertEquals("value", (json.value["key"] as JsonParam.String).value)
+    }
+
+    @Test
+    fun testToJsonParamWithCollections() {
+        // Test with List
+        val list = listOf("item1", 42)
+        val jsonFromList = list.toJsonParam()
+        assertEquals(jsonFromList, JsonParam.Collection(list.map { it.toJsonParam() }))
+
+        // Test with Array
+        val array = arrayOf("item2", 84)
+        val jsonFromArray = array.toJsonParam()
+        assertEquals(jsonFromArray, JsonParam.Collection(array.map { it.toJsonParam() }))
+    }
+
+    @Test
+    fun testToJsonWithJsonElement() {
+        val jsonElement = JsonPrimitive("test")
+        val json = jsonElement.toJsonParam()
+        assertTrue(json is JsonParam.JsonElement)
+        assertEquals(jsonElement, (json).value)
+    }
+
+    @Test
+    fun testToJsonParamWithUnsupportedType() {
+        assertFailsWith<IllegalArgumentException> {
+            Any().toJsonParam()
+        }
+    }
+
+    @Test
+    fun testMapToJsonObject() {
+        val params = mapOf(
+            "string" to JsonParam.String("value"),
+            "number" to JsonParam.Number(42),
+            "boolean" to JsonParam.Boolean(true),
+            "null" to JsonParam.Null
         )
-        val result = convertMapToJson(testMap)
-        assertEquals(JsonObject(mapOf(
-            "nested" to JsonObject(mapOf(
-                "int" to JsonPrimitive(1),
-                "string" to JsonPrimitive("value")
-            ))
-        )), result)
+        val jsonObject = params.toJsonObject()
+        assertEquals("value", jsonObject["string"]?.jsonPrimitive?.content)
+        assertEquals(42, jsonObject["number"]?.jsonPrimitive?.int)
+        assertEquals(true, jsonObject["boolean"]?.jsonPrimitive?.boolean)
+        assertTrue(jsonObject["null"] is JsonNull)
     }
 
     @Test
-    fun testComplexNestedStructure() {
-        val testMap = mapOf(
-            "string" to "value",
-            "int" to 42,
-            "list" to listOf(1, "two", 3.0),
-            "nestedMap" to mapOf(
-                "array" to arrayOf(true, false),
-                "nestedList" to listOf(
-                    mapOf("key" to "value"),
-                    listOf(1, 2, 3)
-                )
-            )
-        )
-        val result = convertMapToJson(testMap)
-
-        val expected = JsonObject(mapOf(
-            "string" to JsonPrimitive("value"),
-            "int" to JsonPrimitive(42),
-            "list" to JsonArray(listOf(JsonPrimitive(1), JsonPrimitive("two"), JsonPrimitive(3.0))),
-            "nestedMap" to JsonObject(mapOf(
-                "array" to JsonArray(listOf(JsonPrimitive(true), JsonPrimitive(false))),
-                "nestedList" to JsonArray(listOf(
-                    JsonObject(mapOf("key" to JsonPrimitive("value"))),
-                    JsonArray(listOf(JsonPrimitive(1), JsonPrimitive(2), JsonPrimitive(3)))
+    fun testComplexNestedMapToJsonObject() {
+        val complexNestedMap = mapOf(
+            "string" to JsonParam.String("value"),
+            "number" to JsonParam.Number(42),
+            "boolean" to JsonParam.Boolean(true),
+            "null" to JsonParam.Null,
+            "nestedMap" to JsonParam.Map(mapOf(
+                "list" to JsonParam.Collection(listOf(
+                    JsonParam.Number(1),
+                    JsonParam.String("two"),
+                    JsonParam.Boolean(false)
+                )),
+                "deeplyNested" to JsonParam.Map(mapOf(
+                    "jsonElement" to JsonParam.JsonElement(buildJsonObject {
+                        put("key", "value")
+                        put("array", buildJsonArray {
+                            add(1)
+                            add("string")
+                            add(true)
+                        })
+                    }),
+                    "mixedList" to JsonParam.Collection(arrayListOf(
+                        JsonParam.Number(3.14),
+                        JsonParam.Map(mapOf(
+                            "key" to JsonParam.String("nestedValue")
+                        )),
+                        JsonParam.Null
+                    )
+                    )
                 ))
             ))
-        ))
+        )
 
-        assertEquals(expected, result)
-    }
+        val jsonObject = complexNestedMap.toJsonObject()
 
-    @OptIn(ExperimentalSerializationApi::class)
-    @Test
-    fun testMapWithUnsupportedType() {
-        val testMap = mapOf("unsupported" to object {})
-        val result = convertMapToJson(testMap)
-        assertEquals(JsonObject(mapOf("unsupported" to JsonPrimitive(null))), result)
+        // Verify top-level elements
+        assertEquals("value", jsonObject["string"]?.jsonPrimitive?.content)
+        assertEquals(42, jsonObject["number"]?.jsonPrimitive?.int)
+        assertEquals(true, jsonObject["boolean"]?.jsonPrimitive?.boolean)
+        assertTrue(jsonObject["null"] is JsonNull)
+
+        // Verify nested map
+        val nestedMap = jsonObject["nestedMap"]?.jsonObject
+        assertNotNull(nestedMap)
+
+        // Verify nested list
+        val nestedList = nestedMap["list"]?.jsonArray
+        assertNotNull(nestedList)
+        assertEquals(3, nestedList.size)
+        assertEquals(1, nestedList[0].jsonPrimitive.int)
+        assertEquals("two", nestedList[1].jsonPrimitive.content)
+        assertEquals(false, nestedList[2].jsonPrimitive.boolean)
+
+        // Verify deeply nested map
+        val deeplyNested = nestedMap["deeplyNested"]?.jsonObject
+        assertNotNull(deeplyNested)
+
+        // Verify JsonElement
+        val jsonElement = deeplyNested["jsonElement"]?.jsonObject
+        assertNotNull(jsonElement)
+        assertEquals("value", jsonElement["key"]?.jsonPrimitive?.content)
+        val jsonElementArray = jsonElement["array"]?.jsonArray
+        assertNotNull(jsonElementArray)
+        assertEquals(3, jsonElementArray.size)
+        assertEquals(1, jsonElementArray[0].jsonPrimitive.int)
+        assertEquals("string", jsonElementArray[1].jsonPrimitive.content)
+        assertEquals(true, jsonElementArray[2].jsonPrimitive.boolean)
+
+        // Verify mixed list
+        val mixedList = deeplyNested["mixedList"]?.jsonArray
+        assertNotNull(mixedList)
+        assertEquals(3, mixedList.size)
+        assertEquals(3.14, mixedList[0].jsonPrimitive.double)
+        val nestedMapInList = mixedList[1].jsonObject
+        assertNotNull(nestedMapInList)
+        assertEquals("nestedValue", nestedMapInList["key"]?.jsonPrimitive?.content)
+        assertTrue(mixedList[2] is JsonNull)
     }
 }

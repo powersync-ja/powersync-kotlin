@@ -5,6 +5,8 @@ import com.powersync.db.Queries
 import com.powersync.db.crud.CrudBatch
 import com.powersync.db.crud.CrudTransaction
 import com.powersync.sync.SyncStatus
+import com.powersync.utils.JsonParam
+import com.powersync.utils.toJsonParam
 
 /**
  * A PowerSync managed database.
@@ -27,10 +29,27 @@ public interface PowerSyncDatabase : Queries {
      *
      *  The connection is automatically re-opened if it fails for any reason.
      *
+     *  Use @param [connector] to specify the [PowerSyncBackendConnector].
      *  Use @param [crudThrottleMs] to specify the time between CRUD operations. Defaults to 1000ms.
      *  Use @param [retryDelayMs] to specify the delay between retries after failure. Defaults to 5000ms.
-     *  Use @param [params] to specify sync parameters from the client
+     *  Use @param [params] to specify sync parameters from the client. Can be constructed using [toJsonParam].
      *
+     *  Example usage:
+     *  ```
+     *  val params = mapOf(
+     *      "name" to "John",
+     *      "age" to 30,
+     *      "isStudent" to false,
+     *      "grades" to listOf(85, 90, 78)
+     *   ).mapValues { it.value.toJsonParam() }
+     *
+     *  connect(
+     *      connector = connector,
+     *      crudThrottleMs = 2000L,
+     *      retryDelayMs = 10000L,
+     *      params = params
+     *  )
+     *  ```
      *  TODO: Internal Team - Status changes are reported on [statusStream].
      */
 
@@ -38,7 +57,7 @@ public interface PowerSyncDatabase : Queries {
         connector: PowerSyncBackendConnector,
         crudThrottleMs: Long = 1000L,
         retryDelayMs: Long = 5000L,
-        params: Map<String, Any>? = null
+        params: Map<String, JsonParam?>? = null
     )
 
 
