@@ -37,19 +37,6 @@ public sealed class JsonParam {
     }
 }
 
-public fun Any?.toJsonParam(): JsonParam = when (this) {
-    is Number -> JsonParam.Number(this)
-    is String -> JsonParam.String(this)
-    is Boolean -> JsonParam.Boolean(this)
-    is Map<*, *> -> JsonParam.Map(this.mapKeys { it.key.toString() }
-        .mapValues { it.value.toJsonParam() })
-    is List<*> -> JsonParam.Collection(this.map { it.toJsonParam() })
-    is Array<*> -> JsonParam.Collection(this.map { it.toJsonParam() })
-    is JsonElement -> JsonParam.JsonElement(this)
-    null -> JsonParam.Null
-    else -> throw IllegalArgumentException("Unsupported type for JsonParam: $this")
-}
-
 public fun Map<String, JsonParam?>.toJsonObject(): JsonObject {
     return JsonObject(this.mapValues { (_, value) ->
         value?.toJsonElement() ?: JsonNull

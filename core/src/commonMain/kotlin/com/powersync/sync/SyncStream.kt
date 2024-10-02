@@ -44,7 +44,7 @@ internal class SyncStream(
     private val uploadCrud: suspend () -> Unit,
     private val retryDelayMs: Long = 5000L,
     private val logger: Logger,
-    private val params: Map<String, JsonParam?>?
+    private val params: JsonObject
 ) {
     private var isUploadingCrud = AtomicBoolean(false)
 
@@ -249,7 +249,7 @@ internal class SyncStream(
         val req = StreamingSyncRequest(
             buckets = initialBuckets.map { (bucket, after) -> BucketRequest(bucket, after) },
             clientId = clientId!!,
-            parameters = params?.toJsonObject()
+            parameters = params
         )
 
         streamingSyncRequest(req).collect { value ->

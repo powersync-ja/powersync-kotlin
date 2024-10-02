@@ -10,7 +10,7 @@ internal data class StreamingSyncRequest(
     val buckets: List<BucketRequest>,
     @SerialName("include_checksum") val includeChecksum: Boolean = true,
     @SerialName("client_id") val clientId: String,
-    val parameters: JsonObject? = JsonObject(mapOf())
+    val parameters: JsonObject = JsonObject(mapOf())
 ) {
     @SerialName("raw_data") private val rawData: Boolean = true
 }
