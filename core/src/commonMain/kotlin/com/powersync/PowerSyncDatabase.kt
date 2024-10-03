@@ -5,6 +5,7 @@ import com.powersync.db.Queries
 import com.powersync.db.crud.CrudBatch
 import com.powersync.db.crud.CrudTransaction
 import com.powersync.sync.SyncStatus
+import com.powersync.utils.JsonParam
 
 /**
  * A PowerSync managed database.
@@ -27,14 +28,37 @@ public interface PowerSyncDatabase : Queries {
      *
      *  The connection is automatically re-opened if it fails for any reason.
      *
+     *  Use @param [connector] to specify the [PowerSyncBackendConnector].
      *  Use @param [crudThrottleMs] to specify the time between CRUD operations. Defaults to 1000ms.
      *  Use @param [retryDelayMs] to specify the delay between retries after failure. Defaults to 5000ms.
+     *  Use @param [params] to specify sync parameters from the client.
      *
+     *  Example usage:
+     *  ```
+     *  val params = JsonParam.Map(
+     *      mapOf(
+     *          "name" to JsonParam.String("John Doe"),
+     *          "age" to JsonParam.Number(30),
+     *          "isStudent" to JsonParam.Boolean(false)
+     *      )
+     *   )
+     *
+     *  connect(
+     *      connector = connector,
+     *      crudThrottleMs = 2000L,
+     *      retryDelayMs = 10000L,
+     *      params = params
+     *  )
+     *  ```
      *  TODO: Internal Team - Status changes are reported on [statusStream].
      */
 
-    public suspend fun connect(connector: PowerSyncBackendConnector, crudThrottleMs: Long = 1000L,
-                               retryDelayMs: Long = 5000L)
+    public suspend fun connect(
+        connector: PowerSyncBackendConnector,
+        crudThrottleMs: Long = 1000L,
+        retryDelayMs: Long = 5000L,
+        params: Map<String, JsonParam?> = emptyMap()
+    )
 
 
     /**
