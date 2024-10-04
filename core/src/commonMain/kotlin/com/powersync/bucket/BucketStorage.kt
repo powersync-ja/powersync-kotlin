@@ -55,8 +55,6 @@ internal class BucketStorage(
 
     suspend fun nextCrudItem(): CrudEntry? {
         val next = db.queries.getCrudFirstEntry().awaitAsOneOrNull()
-        logger.i("Next Item")
-        logger.i(next.toString())
         val crudItem = next?.let { CrudEntry.fromRow(
             CrudRow(
                 id = it.id.toString(),
@@ -64,8 +62,6 @@ internal class BucketStorage(
                 txId = it.tx_id?.toInt()
             )
         ) }
-        logger.i("Crud Item")
-        logger.i(crudItem.toString())
 
         return crudItem
     }
