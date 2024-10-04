@@ -6,6 +6,8 @@ import com.powersync.db.internal.PsInternalDatabase
 import com.powersync.sync.SyncDataBatch
 import com.powersync.sync.SyncLocalDatabaseResult
 import co.touchlab.stately.concurrency.AtomicBoolean
+import com.powersync.db.crud.CrudEntry
+import com.powersync.db.crud.CrudRow
 import kotlinx.serialization.encodeToString
 import com.powersync.db.internal.InternalTable
 import com.powersync.utils.JsonUtil
@@ -49,6 +51,23 @@ internal class BucketStorage(
             it.getString(0)!!
         }
         return id ?: throw IllegalStateException("Client ID not found")
+    }
+
+    suspend fun nextCrudItem(): CrudEntry? {
+        val next = db.queries.getCrudFirstEntry().awaitAsOneOrNull()
+        logger.i("Next Item")
+        logger.i(next.toString())
+        val crudItem = next?.let { CrudEntry.fromRow(
+            CrudRow(
+                id = it.id.toString(),
+                data = it.data_!!,
+                txId = it.tx_id?.toInt()
+            )
+        ) }
+        logger.i("Crud Item")
+        logger.i(crudItem.toString())
+
+        return crudItem
     }
 
     suspend fun hasCrud(): Boolean {
