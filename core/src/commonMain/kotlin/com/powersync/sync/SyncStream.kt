@@ -144,7 +144,7 @@ internal class SyncStream(
             try {
                 val nextCrudItem = bucketStorage.nextCrudItem()
                 if (nextCrudItem != null) {
-                    if (nextCrudItem.clientId != checkedCrudItem?.clientId) {
+                    if (nextCrudItem.clientId == checkedCrudItem?.clientId) {
                         // This will force a higher log level than exceptions which are caught here.
                         logger.w(
                             """Potentially previously uploaded CRUD entries are still present in the upload queue.
