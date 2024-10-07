@@ -302,8 +302,6 @@ internal class PowerSyncDatabaseImpl(
                 val formattedDateTime = "${timestamp!!.replace(" ","T").toLocalDateTime()}Z"
                 val lastSyncedAt = Instant.parse(formattedDateTime)
                 currentStatus.update(hasSynced = hasSynced, lastSyncedAt = lastSyncedAt)
-                Logger.i("AFTER")
-                Logger.i(currentStatus.toString())
             }
         } catch (e: Exception) {
             if(e is NullPointerException) {
@@ -315,17 +313,11 @@ internal class PowerSyncDatabaseImpl(
     }
 
     override suspend fun waitForFirstSync() {
-        Logger.i("Waiting for first sync")
         if (currentStatus.hasSynced == true) {
-            Logger.i("Sync has happened")
             return
         }
 
-        Logger.i("Sync has not happened")
-
         currentStatus.asFlow().first { status ->
-            Logger.i("HERE")
-            Logger.i(currentStatus.toString())
             if (status.hasSynced == true) {
                 Logger.i("Sync has just completed")
                 true
@@ -333,8 +325,6 @@ internal class PowerSyncDatabaseImpl(
                 false
             }
         }
-        Logger.i("HELLO")
-
     }
 
     /**
