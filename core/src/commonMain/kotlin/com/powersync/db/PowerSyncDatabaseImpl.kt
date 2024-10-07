@@ -318,12 +318,7 @@ internal class PowerSyncDatabaseImpl(
         }
 
         currentStatus.asFlow().first { status ->
-            if (status.hasSynced == true) {
-                Logger.i("Sync has just completed")
-                true
-            } else {
-                false
-            }
+            status.hasSynced == true
         }
     }
 
