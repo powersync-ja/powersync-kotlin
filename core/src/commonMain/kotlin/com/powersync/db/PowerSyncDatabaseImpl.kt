@@ -29,6 +29,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
@@ -316,6 +317,16 @@ internal class PowerSyncDatabaseImpl(
                 // and can be safely ignored.
                 return
             }
+        }
+    }
+
+    override suspend fun waitForFirstSync() {
+        if (currentStatus.hasSynced == true) {
+            return
+        }
+
+        currentStatus.asFlow().first { status ->
+            status.hasSynced == true
         }
     }
 
