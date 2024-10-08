@@ -29,6 +29,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
@@ -191,7 +192,8 @@ internal class PowerSyncDatabaseImpl(
             }
 
             return@readTransaction CrudTransaction(
-                crud = entries, transactionId = txId,
+                crud = entries,
+                transactionId = txId,
                 complete = { writeCheckpoint ->
                     logger.i { "[CrudTransaction::complete] Completing transaction with checkpoint $writeCheckpoint" }
                     handleWriteCheckpoint(entries.last().clientId, writeCheckpoint)
@@ -259,12 +261,12 @@ internal class PowerSyncDatabaseImpl(
 
             if (writeCheckpoint != null && bucketStorage.hasCrud()) {
                 tx.execute(
-                    "UPDATE ps_buckets SET target_op = CAST(? as INTEGER) WHERE name='\$local'",
+                    "UPDATE ps_buckets SET target_op = CAST(? AS INTEGER) WHERE name='\$local'",
                     listOf(writeCheckpoint),
                 )
             } else {
                 tx.execute(
-                    "UPDATE ps_buckets SET target_op = CAST(? as INTEGER) WHERE name='\$local'",
+                    "UPDATE ps_buckets SET target_op = CAST(? AS INTEGER) WHERE name='\$local'",
                     listOf(bucketStorage.getMaxOpId()),
                 )
             }
@@ -316,6 +318,16 @@ internal class PowerSyncDatabaseImpl(
                 // and can be safely ignored.
                 return
             }
+        }
+    }
+
+    override suspend fun waitForFirstSync() {
+        if (currentStatus.hasSynced == true) {
+            return
+        }
+
+        currentStatus.asFlow().first { status ->
+            status.hasSynced == true
         }
     }
 

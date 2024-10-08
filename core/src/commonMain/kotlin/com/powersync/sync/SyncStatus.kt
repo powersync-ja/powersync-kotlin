@@ -150,7 +150,7 @@ public data class SyncStatus internal constructor(
         get() = data.downloadError
 
     override fun toString(): String {
-        return "SyncStatus(connected=$connected, connecting=$connecting, downloading=$downloading, uploading=$uploading, lastSyncedAt=$lastSyncedAt, hasSynced: $hasSynced, error=$anyError)"
+        return "SyncStatus(connected=$connected, connecting=$connecting, downloading=$downloading, uploading=$uploading, lastSyncedAt=$lastSyncedAt, hasSynced=$hasSynced, error=$anyError)"
     }
 
     public companion object {

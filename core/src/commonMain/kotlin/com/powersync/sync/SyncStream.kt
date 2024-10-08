@@ -171,10 +171,21 @@ internal class SyncStream(
         status.update(uploading = false)
     }
 
+    private suspend fun uploadCrudBatch(): Boolean {
+        if (bucketStorage.hasCrud()) {
+            status.update(uploading = true)
+            uploadCrud()
+            return false
+        } else {
+            // This isolate is the only one triggering
+            return bucketStorage.updateLocalTarget { getWriteCheckpoint() }
+        }
+    }
+
     private suspend fun getWriteCheckpoint(): String {
         val credentials = connector.getCredentialsCached()
         require(credentials != null) { "Not logged in" }
-        val uri = credentials.endpointUri("write-checkpoint2.json?client_id=$clientId'")
+        val uri = credentials.endpointUri("write-checkpoint2.json?client_id=$clientId")
 
         val response = httpClient.get(uri) {
             contentType(ContentType.Application.Json)
@@ -267,9 +278,7 @@ internal class SyncStream(
         jsonString: String,
         state: SyncStreamState
     ): SyncStreamState {
-        logger.i { "[handleInstruction] Received Instruction: $jsonString" }
         val obj = JsonUtil.json.parseToJsonElement(jsonString).jsonObject
-
         // TODO: Clean up
         when {
             isStreamingSyncCheckpoint(obj) -> return handleStreamingSyncCheckpoint(obj, state)
@@ -297,7 +306,6 @@ internal class SyncStream(
     ): SyncStreamState {
         val checkpoint =
             JsonUtil.json.decodeFromJsonElement<Checkpoint>(jsonObj["checkpoint"] as JsonElement)
-
         state.targetCheckpoint = checkpoint
         val bucketsToDelete = state.bucketSet!!.toMutableList()
         val newBuckets = mutableSetOf<String>()
@@ -392,8 +400,6 @@ internal class SyncStream(
         jsonObj: JsonObject,
         state: SyncStreamState
     ): SyncStreamState {
-
-
         val syncBuckets =
             listOf<SyncDataBucket>(JsonUtil.json.decodeFromJsonElement(jsonObj["data"] as JsonElement))
 

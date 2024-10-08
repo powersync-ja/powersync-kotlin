@@ -89,10 +89,10 @@ internal class BucketStorage(
 
         logger.i { "[updateLocalTarget] Updating target to checkpoint $opId" }
 
-        return db.readTransaction {
+        return db.writeTransaction {
             if (hasCrud()) {
                 logger.w { "[updateLocalTarget] ps crud is not empty" }
-                return@readTransaction false
+                return@writeTransaction false
             }
 
             val seqAfter =
@@ -103,15 +103,17 @@ internal class BucketStorage(
                     throw AssertionError("Sqlite Sequence should not be empty")
 
             if (seqAfter != seqBefore) {
+                logger.d("seqAfter != seqBefore seqAfter: $seqAfter seqBefore: $seqBefore")
                 // New crud data may have been uploaded since we got the checkpoint. Abort.
-                return@readTransaction false
+                return@writeTransaction false
             }
 
             db.execute(
-                "UPDATE ${InternalTable.BUCKETS} SET target_op = ? WHERE name='\$local'",
+                "UPDATE ${InternalTable.BUCKETS} SET target_op = CAST(? as INTEGER) WHERE name='\$local'",
                 listOf(opId)
             )
-            return@readTransaction true
+
+            return@writeTransaction true
         }
     }
 
@@ -128,7 +130,7 @@ internal class BucketStorage(
 
     suspend fun getBucketStates(): List<BucketState> {
         return db.getAll(
-            "SELECT name as bucket, cast(last_op as TEXT) as op_id FROM ${InternalTable.BUCKETS} WHERE pending_delete = 0",
+            "SELECT name AS bucket, CAST(last_op AS TEXT) AS op_id FROM ${InternalTable.BUCKETS} WHERE pending_delete = 0",
             mapper = { cursor ->
                 BucketState(
                     bucket = cursor.getString(0)!!,
@@ -152,6 +154,8 @@ internal class BucketStorage(
                 listOf("delete_bucket", bucketName)
             )
         }
+
+        Logger.d("[deleteBucket] Done deleting")
 
         this.pendingBucketDeletes.value = true
     }
@@ -221,7 +225,7 @@ internal class BucketStorage(
 
     private suspend fun validateChecksums(checkpoint: Checkpoint): SyncLocalDatabaseResult {
         val res = db.getOptional(
-            "SELECT powersync_validate_checkpoint(?) as result",
+            "SELECT powersync_validate_checkpoint(?) AS result",
             parameters = listOf(JsonUtil.json.encodeToString(checkpoint)),
             mapper = { cursor ->
                 cursor.getString(0)!!
@@ -242,10 +246,15 @@ internal class BucketStorage(
      */
     private suspend fun updateObjectsFromBuckets(): Boolean {
         return db.writeTransaction { tx ->
-            val res = tx.execute(
+
+            tx.execute(
                 "INSERT INTO powersync_operations(op, data) VALUES(?, ?)",
                 listOf("sync_local", "")
             )
+
+            val res = tx.get("select last_insert_rowid()") { cursor ->
+                cursor.getLong(0)!!
+            }
 
             return@writeTransaction res == 1L
         }
@@ -275,12 +284,9 @@ internal class BucketStorage(
 
         db.writeTransaction { tx ->
             tx.execute(
-                "DELETE FROM ps_oplog WHERE bucket IN (SELECT name FROM ps_buckets WHERE pending_delete = 1 AND last_applied_op = last_op AND last_op >= target_op)",
+                "INSERT INTO powersync_operations(op, data) VALUES (?, ?)", listOf("delete_pending_buckets","")
             )
 
-            tx.execute(
-                "DELETE FROM ps_buckets WHERE pending_delete = 1 AND last_applied_op = last_op AND last_op >= target_op",
-            )
             // Executed once after start-up, and again when there are pending deletes.
             pendingBucketDeletes.value = false
         }
