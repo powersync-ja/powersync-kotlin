@@ -1,10 +1,12 @@
 package com.powersync.demos.powersync
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.powersync.PowerSyncDatabase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 internal class ListContent(
@@ -37,7 +39,7 @@ internal class ListContent(
     }
 
     fun onItemDeleteClicked(item: ListItem) {
-        runBlocking {
+        viewModelScope.launch {
             db.writeTransaction { tx ->
                 tx.execute("DELETE FROM $LISTS_TABLE WHERE id = ?", listOf(item.id))
                 tx.execute("DELETE FROM $TODOS_TABLE WHERE list_id = ?", listOf(item.id))
@@ -48,7 +50,7 @@ internal class ListContent(
     fun onAddItemClicked() {
         if (_inputText.value.isBlank()) return
 
-        runBlocking {
+        viewModelScope.launch {
             db.writeTransaction { tx ->
                 tx.execute(
                     "INSERT INTO $LISTS_TABLE (id, created_at, name, owner_id) VALUES (uuid(), datetime(), ?, ?)",

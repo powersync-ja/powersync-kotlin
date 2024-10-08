@@ -192,7 +192,8 @@ internal class PowerSyncDatabaseImpl(
             }
 
             return@readTransaction CrudTransaction(
-                crud = entries, transactionId = txId,
+                crud = entries,
+                transactionId = txId,
                 complete = { writeCheckpoint ->
                     logger.i { "[CrudTransaction::complete] Completing transaction with checkpoint $writeCheckpoint" }
                     handleWriteCheckpoint(entries.last().clientId, writeCheckpoint)
@@ -260,12 +261,12 @@ internal class PowerSyncDatabaseImpl(
 
             if (writeCheckpoint != null && bucketStorage.hasCrud()) {
                 tx.execute(
-                    "UPDATE ps_buckets SET target_op = CAST(? as INTEGER) WHERE name='\$local'",
+                    "UPDATE ps_buckets SET target_op = CAST(? AS INTEGER) WHERE name='\$local'",
                     listOf(writeCheckpoint),
                 )
             } else {
                 tx.execute(
-                    "UPDATE ps_buckets SET target_op = CAST(? as INTEGER) WHERE name='\$local'",
+                    "UPDATE ps_buckets SET target_op = CAST(? AS INTEGER) WHERE name='\$local'",
                     listOf(bucketStorage.getMaxOpId()),
                 )
             }
