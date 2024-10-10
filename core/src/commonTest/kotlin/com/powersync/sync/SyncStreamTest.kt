@@ -13,10 +13,10 @@ import com.powersync.db.crud.UpdateType
 import dev.mokkery.answering.returns
 import dev.mokkery.everySuspend
 import dev.mokkery.mock
-import dev.mokkery.resetAnswers
 import dev.mokkery.verify
 import kotlinx.coroutines.test.runTest
 
+@OptIn(co.touchlab.kermit.ExperimentalKermitApi::class)
 class SyncStreamTest {
     private lateinit var bucketStorage: BucketStorage
     private lateinit var connector: PowerSyncBackendConnector
@@ -76,7 +76,7 @@ class SyncStreamTest {
         syncStream.triggerCrudUpload()
 
         testLogWriter.assertCount(2)
-
+        
         with(testLogWriter.logs[0]) {
             assertContains(
                 message,
@@ -84,6 +84,7 @@ class SyncStreamTest {
             )
             assertEquals(Severity.Warn, severity)
         }
+
         with(testLogWriter.logs[1]) {
             assertEquals(message,"Error uploading crud")
             assertEquals(Severity.Error, severity)
