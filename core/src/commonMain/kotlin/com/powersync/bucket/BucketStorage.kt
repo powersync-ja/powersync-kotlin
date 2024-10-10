@@ -2,18 +2,18 @@ package com.powersync.bucket
 
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import co.touchlab.kermit.Logger
-import com.powersync.db.internal.PsInternalDatabase
 import com.powersync.sync.SyncDataBatch
 import com.powersync.sync.SyncLocalDatabaseResult
 import co.touchlab.stately.concurrency.AtomicBoolean
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.CrudRow
+import com.powersync.db.internal.InternalDatabase
 import kotlinx.serialization.encodeToString
 import com.powersync.db.internal.InternalTable
 import com.powersync.utils.JsonUtil
 
 internal class BucketStorage(
-    private val db: PsInternalDatabase,
+    private val db: InternalDatabase,
     private val logger: Logger
 ) {
     private val tableNames: MutableSet<String> = mutableSetOf()

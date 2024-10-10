@@ -14,7 +14,7 @@ import com.powersync.db.crud.CrudBatch
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.CrudRow
 import com.powersync.db.crud.CrudTransaction
-import com.powersync.db.internal.PsInternalDatabase
+import com.powersync.db.internal.InternalDatabaseImpl
 import com.powersync.db.internal.InternalTable
 import com.powersync.db.internal.PowerSyncTransaction
 import com.powersync.db.schema.Schema
@@ -53,7 +53,7 @@ internal class PowerSyncDatabaseImpl(
     val logger: Logger = Logger,
     driver: PsSqlDriver = factory.createDriver(scope, dbFilename),
 ) : PowerSyncDatabase {
-    private val internalDb = PsInternalDatabase(driver, scope)
+    private val internalDb = InternalDatabaseImpl(driver, scope)
     private val bucketStorage: BucketStorage = BucketStorage(internalDb, logger)
 
     /**
@@ -73,6 +73,7 @@ internal class PowerSyncDatabaseImpl(
             logger.d { "SQLiteVersion: $sqliteVersion" }
             checkVersion()
             logger.d { "PowerSyncVersion: ${getPowerSyncVersion()}" }
+            internalDb.get("SELECT powersync_init()") {}
             applySchema()
             updateHasSynced()
         }
