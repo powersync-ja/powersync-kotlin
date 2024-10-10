@@ -1,6 +1,5 @@
 package com.powersync.bucket
 
-import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import co.touchlab.kermit.Logger
 import com.powersync.sync.SyncDataBatch
 import com.powersync.sync.SyncLocalDatabaseResult
@@ -54,20 +53,24 @@ internal class BucketStorage(
     }
 
     suspend fun nextCrudItem(): CrudEntry? {
-        val next = db.queries.getCrudFirstEntry().awaitAsOneOrNull()
-        val crudItem = next?.let { CrudEntry.fromRow(
-            CrudRow(
-                id = it.id.toString(),
-                data = it.data_!!,
-                txId = it.tx_id?.toInt()
+        val crudItem = db.getOptional("SELECT id, tx_id, data FROM ${InternalTable.CRUD} ORDER BY id ASC LIMIT 1") { cursor ->
+            CrudEntry.fromRow(
+                CrudRow(
+                    id = cursor.getString(0)!!,
+                    txId = cursor.getString(1)?.toInt(),
+                    data = cursor.getString(2)!!
+                )
             )
-        ) }
+        }
 
         return crudItem
     }
 
     suspend fun hasCrud(): Boolean {
-        return db.queries.hasCrud().awaitAsOneOrNull() == 1L
+        val res = db.getOptional("SELECT 1 FROM ps_crud LIMIT 1") {
+            it.getLong(0)!!
+        }
+        return res == 1L
     }
 
     suspend fun updateLocalTarget(checkpointCallback: suspend () -> String): Boolean {
@@ -144,7 +147,6 @@ internal class BucketStorage(
             deleteBucket(bucketName)
         }
     }
-
 
     private suspend fun deleteBucket(bucketName: String) {
 

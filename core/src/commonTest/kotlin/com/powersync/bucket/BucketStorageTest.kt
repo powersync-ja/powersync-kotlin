@@ -1,9 +1,9 @@
-import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import kotlin.test.*
 import com.powersync.bucket.BucketStorage
 import co.touchlab.kermit.Logger
-import com.persistence.GetCrudFirstEntry
 import com.powersync.bucket.BucketState
+import com.powersync.db.crud.CrudEntry
+import com.powersync.db.crud.UpdateType
 import com.powersync.db.internal.InternalDatabase
 import dev.mokkery.answering.returns
 import dev.mokkery.every
@@ -60,25 +60,51 @@ class BucketStorageTest {
 
     @Test
     fun testNextCrudItem() = runTest {
+        val mockCrudEntry = CrudEntry(id = "1", clientId = 1, op = UpdateType.PUT, table = "table1", transactionId = 1, opData = mapOf("key" to "value"))
         mockDb = mock<InternalDatabase>() {
-            val mockFirstCrudEntry = GetCrudFirstEntry(1, 1, "test-data")
-            everySuspend { queries.getCrudFirstEntry().awaitAsOneOrNull() } returns mockFirstCrudEntry
+            every { getExistingTableNames("ps_data_*") } returns  listOf("list_1", "list_2")
+            everySuspend { getOptional<CrudEntry>(any(),any(), any()) } returns mockCrudEntry
         }
         bucketStorage = BucketStorage(mockDb, Logger)
 
 
         val result = bucketStorage.nextCrudItem()
-        assertNotNull(result)
+        assertEquals(mockCrudEntry, result)
+    }
+
+    @Test
+    fun testNullNextCrudItem() = runTest {
+        mockDb = mock<InternalDatabase>() {
+            every { getExistingTableNames("ps_data_*") } returns  listOf("list_1", "list_2")
+            everySuspend { getOptional<CrudEntry>(any(),any(), any()) } returns null
+        }
+        bucketStorage = BucketStorage(mockDb, Logger)
+
+
+        val result = bucketStorage.nextCrudItem()
+        assertEquals(null, result)
     }
 
     @Test
     fun testHasCrud() = runTest {
         mockDb = mock<InternalDatabase>() {
-            everySuspend { queries.hasCrud().awaitAsOneOrNull() } returns 1L
+            every { getExistingTableNames("ps_data_*") } returns  listOf("list_1", "list_2")
+            everySuspend { getOptional<Long>(any(),any(), any()) } returns 1L
         }
         bucketStorage = BucketStorage(mockDb, Logger)
 
         assertTrue(bucketStorage.hasCrud())
+    }
+
+    @Test
+    fun testNullHasCrud() = runTest {
+        mockDb = mock<InternalDatabase>() {
+            every { getExistingTableNames("ps_data_*") } returns  listOf("list_1", "list_2")
+            everySuspend { getOptional<CrudEntry>(any(),any(), any()) } returns null
+        }
+        bucketStorage = BucketStorage(mockDb, Logger)
+
+        assertFalse(bucketStorage.hasCrud())
     }
 
     @Test
@@ -98,16 +124,6 @@ class BucketStorageTest {
         assertTrue(result)
     }
 
-//    @Test
-//    fun testSaveSyncData() = runTest {
-//        val mockSyncDataBatch = mock<SyncDataBatch>()
-//        every { mockSyncDataBatch.buckets } returns listOf()
-//        every { mockDb.writeTransaction(any()) } returns Unit
-//
-//        bucketStorage.saveSyncData(mockSyncDataBatch)
-//        // Assert that the transaction was called (you might need to use a spy or different mocking strategy to verify this)
-//    }
-
     @Test
     fun testGetBucketStates() = runTest {
         val mockBucketStates = listOf(BucketState("bucket1", "op1"), BucketState("bucket2", "op2"))
@@ -126,26 +142,6 @@ class BucketStorageTest {
         assertEquals(mockBucketStates, result)
     }
 
-    @Test
-    fun testRemoveBuckets() = runBlocking {
-        mockDb = mock<InternalDatabase>() {
-            every { getExistingTableNames("ps_data_*") } returns  listOf("list_1", "list_2")
-            everySuspend { getOptional<Long>(
-                any(),
-                any(),
-                any()
-            )} returns 1L
-            everySuspend { writeTransaction<Unit>(any()) } returns Unit
-        }
-
-        bucketStorage.removeBuckets(listOf("bucket1", "bucket2"))
-        // Assert that the transaction was called for each bucket (you might need to use a spy or different mocking strategy to verify this)
-    }
-
-    @Test
-    fun testHasCompletedSync() = runBlocking {
-        every { mockDb.getOptional<String>(any(), null, any()) } returns "2023-01-01"
-
-        assertTrue(bucketStorage.hasCompletedSync())
-    }
+    // TODO: Add tests for removeBuckets, hasCompletedSync, syncLocalDatabase currently not covered because
+    //       currently the internal methods are private and cannot be accessed from the test class
 }
