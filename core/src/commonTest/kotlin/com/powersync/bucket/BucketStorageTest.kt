@@ -1,5 +1,5 @@
 import kotlin.test.*
-import com.powersync.bucket.BucketStorage
+import com.powersync.bucket.BucketStorageImpl
 import co.touchlab.kermit.Logger
 import com.powersync.bucket.BucketState
 import com.powersync.db.crud.CrudEntry
@@ -14,7 +14,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 
 class BucketStorageTest {
-    private lateinit var bucketStorage: BucketStorage
+    private lateinit var bucketStorage: BucketStorageImpl
     private lateinit var mockDb: InternalDatabase
 
     @Test
@@ -22,7 +22,7 @@ class BucketStorageTest {
         mockDb = mock<InternalDatabase>() {
             every { getExistingTableNames("ps_data_*") } returns  listOf("list_1", "list_2")
         }
-        bucketStorage = BucketStorage(mockDb, Logger)
+        bucketStorage = BucketStorageImpl(mockDb, Logger)
         assertEquals("9223372036854775807", bucketStorage.getMaxOpId())
     }
 
@@ -36,7 +36,7 @@ class BucketStorageTest {
                 any()
             )} returns "test-client-id"
         }
-        bucketStorage = BucketStorage(mockDb, Logger)
+        bucketStorage = BucketStorageImpl(mockDb, Logger)
         val clientId = bucketStorage.getClientId()
         assertEquals("test-client-id", clientId)
     }
@@ -51,7 +51,7 @@ class BucketStorageTest {
                 any()
             )} returns null
         }
-        bucketStorage = BucketStorage(mockDb, Logger)
+        bucketStorage = BucketStorageImpl(mockDb, Logger)
 
         assertFailsWith<IllegalStateException> {
             bucketStorage.getClientId()
@@ -65,7 +65,7 @@ class BucketStorageTest {
             every { getExistingTableNames("ps_data_*") } returns  listOf("list_1", "list_2")
             everySuspend { getOptional<CrudEntry>(any(),any(), any()) } returns mockCrudEntry
         }
-        bucketStorage = BucketStorage(mockDb, Logger)
+        bucketStorage = BucketStorageImpl(mockDb, Logger)
 
 
         val result = bucketStorage.nextCrudItem()
@@ -78,7 +78,7 @@ class BucketStorageTest {
             every { getExistingTableNames("ps_data_*") } returns  listOf("list_1", "list_2")
             everySuspend { getOptional<CrudEntry>(any(),any(), any()) } returns null
         }
-        bucketStorage = BucketStorage(mockDb, Logger)
+        bucketStorage = BucketStorageImpl(mockDb, Logger)
 
 
         val result = bucketStorage.nextCrudItem()
@@ -91,7 +91,7 @@ class BucketStorageTest {
             every { getExistingTableNames("ps_data_*") } returns  listOf("list_1", "list_2")
             everySuspend { getOptional<Long>(any(),any(), any()) } returns 1L
         }
-        bucketStorage = BucketStorage(mockDb, Logger)
+        bucketStorage = BucketStorageImpl(mockDb, Logger)
 
         assertTrue(bucketStorage.hasCrud())
     }
@@ -102,7 +102,7 @@ class BucketStorageTest {
             every { getExistingTableNames("ps_data_*") } returns  listOf("list_1", "list_2")
             everySuspend { getOptional<CrudEntry>(any(),any(), any()) } returns null
         }
-        bucketStorage = BucketStorage(mockDb, Logger)
+        bucketStorage = BucketStorageImpl(mockDb, Logger)
 
         assertFalse(bucketStorage.hasCrud())
     }
@@ -118,7 +118,7 @@ class BucketStorageTest {
             )} returns 1L
             everySuspend { writeTransaction<Boolean>(any()) } returns true
         }
-        bucketStorage = BucketStorage(mockDb, Logger)
+        bucketStorage = BucketStorageImpl(mockDb, Logger)
 
         val result = bucketStorage.updateLocalTarget { "new-checkpoint" }
         assertTrue(result)
@@ -136,7 +136,7 @@ class BucketStorageTest {
             )} returns 1L
             everySuspend { getAll<BucketState>(any(), any(), any()) } returns mockBucketStates
         }
-        bucketStorage = BucketStorage(mockDb, Logger)
+        bucketStorage = BucketStorageImpl(mockDb, Logger)
 
         val result = bucketStorage.getBucketStates()
         assertEquals(mockBucketStates, result)

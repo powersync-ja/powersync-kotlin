@@ -8,6 +8,7 @@ import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
 import com.powersync.PsSqlDriver
 import com.powersync.bucket.BucketStorage
+import com.powersync.bucket.BucketStorageImpl
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.crud.CrudBatch
 import com.powersync.db.crud.CrudEntry
@@ -53,7 +54,7 @@ internal class PowerSyncDatabaseImpl(
     driver: PsSqlDriver = factory.createDriver(scope, dbFilename),
 ) : PowerSyncDatabase {
     private val internalDb = InternalDatabaseImpl(driver, scope)
-    private val bucketStorage: BucketStorage = BucketStorage(internalDb, logger)
+    private val bucketStorage: BucketStorage = BucketStorageImpl(internalDb, logger)
 
     /**
      * The current sync status.

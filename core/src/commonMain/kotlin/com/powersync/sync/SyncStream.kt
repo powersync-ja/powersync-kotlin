@@ -3,10 +3,10 @@ package com.powersync.sync
 import co.touchlab.kermit.Logger
 import com.powersync.bucket.BucketChecksum
 import com.powersync.bucket.BucketRequest
-import com.powersync.bucket.BucketStorage
 import com.powersync.bucket.Checkpoint
 import com.powersync.bucket.WriteCheckpointResponse
 import co.touchlab.stately.concurrency.AtomicBoolean
+import com.powersync.bucket.BucketStorage
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.crud.CrudEntry
 import com.powersync.utils.JsonUtil
@@ -135,7 +135,7 @@ internal class SyncStream(
 
     private suspend fun uploadAllCrud() {
         var checkedCrudItem: CrudEntry? = null
-
+        logger.i(checkedCrudItem.toString())
         while (true) {
             status.update(uploading = true)
             /**
@@ -145,7 +145,6 @@ internal class SyncStream(
                 val nextCrudItem = bucketStorage.nextCrudItem()
                 if (nextCrudItem != null) {
                     if (nextCrudItem.clientId == checkedCrudItem?.clientId) {
-                        // This will force a higher log level than exceptions which are caught here.
                         logger.w(
                             """Potentially previously uploaded CRUD entries are still present in the upload queue.
                         Make sure to handle uploads and complete CRUD transactions or batches by calling and awaiting their [.complete()] method.
@@ -169,17 +168,6 @@ internal class SyncStream(
             }
         }
         status.update(uploading = false)
-    }
-
-    private suspend fun uploadCrudBatch(): Boolean {
-        if (bucketStorage.hasCrud()) {
-            status.update(uploading = true)
-            uploadCrud()
-            return false
-        } else {
-            // This isolate is the only one triggering
-            return bucketStorage.updateLocalTarget { getWriteCheckpoint() }
-        }
     }
 
     private suspend fun getWriteCheckpoint(): String {
@@ -388,7 +376,7 @@ internal class SyncStream(
 
         val bucketsToDelete = checkpointDiff.removedBuckets
         if (bucketsToDelete.isNotEmpty()) {
-            logger.i { "Remove buckets $bucketsToDelete" }
+            logger.d { "Remove buckets $bucketsToDelete" }
         }
         bucketStorage.removeBuckets(bucketsToDelete)
         bucketStorage.setTargetCheckpoint(state.targetCheckpoint!!)
