@@ -27,7 +27,7 @@ kotlin {
         ios.deploymentTarget = "14.1"
         podfile = project.file("../iosApp/Podfile")
         pod("powersync-sqlite-core") {
-            version = "0.2.1"
+            version = "0.3.0"
             linkOnly = true
         }
 

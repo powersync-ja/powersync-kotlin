@@ -351,7 +351,7 @@ internal class PowerSyncDatabaseImpl(
         }
 
         // Validate ^0.2.0
-        if (versionInts[0] != 0 || versionInts[1] != 2 || versionInts[2] < 0) {
+        if (versionInts[0] != 0 || versionInts[1] < 2 || versionInts[2] < 0) {
             throw Exception("Unsupported powersync extension version. Need ^0.2.0, got: $version")
         }
     }
