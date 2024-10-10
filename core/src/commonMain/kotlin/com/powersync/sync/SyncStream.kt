@@ -135,7 +135,7 @@ internal class SyncStream(
 
     private suspend fun uploadAllCrud() {
         var checkedCrudItem: CrudEntry? = null
-        logger.i(checkedCrudItem.toString())
+        
         while (true) {
             status.update(uploading = true)
             /**
