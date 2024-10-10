@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.mavenPublishPlugin)
     alias(libs.plugins.downloadPlugin)
     id("com.powersync.plugins.sonatype")
+    alias(libs.plugins.mokkery)
 }
 
 val sqliteVersion = "3450000"
@@ -115,6 +116,8 @@ kotlin {
 
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.test.coroutines)
+            implementation(libs.kermit.test)
         }
     }
 }

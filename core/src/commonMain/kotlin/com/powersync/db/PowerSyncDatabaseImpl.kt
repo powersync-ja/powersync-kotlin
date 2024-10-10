@@ -2,19 +2,19 @@ package com.powersync.db
 
 import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOne
-import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import app.cash.sqldelight.db.SqlCursor
 import co.touchlab.kermit.Logger
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
 import com.powersync.PsSqlDriver
 import com.powersync.bucket.BucketStorage
+import com.powersync.bucket.BucketStorageImpl
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.crud.CrudBatch
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.CrudRow
 import com.powersync.db.crud.CrudTransaction
-import com.powersync.db.internal.PsInternalDatabase
+import com.powersync.db.internal.InternalDatabaseImpl
 import com.powersync.db.internal.InternalTable
 import com.powersync.db.internal.PowerSyncTransaction
 import com.powersync.db.schema.Schema
@@ -53,8 +53,8 @@ internal class PowerSyncDatabaseImpl(
     val logger: Logger = Logger,
     driver: PsSqlDriver = factory.createDriver(scope, dbFilename),
 ) : PowerSyncDatabase {
-    private val internalDb = PsInternalDatabase(driver, scope)
-    private val bucketStorage: BucketStorage = BucketStorage(internalDb, logger)
+    private val internalDb = InternalDatabaseImpl(driver, scope)
+    private val bucketStorage: BucketStorage = BucketStorageImpl(internalDb, logger)
 
     /**
      * The current sync status.
@@ -73,6 +73,7 @@ internal class PowerSyncDatabaseImpl(
             logger.d { "SQLiteVersion: $sqliteVersion" }
             checkVersion()
             logger.d { "PowerSyncVersion: ${getPowerSyncVersion()}" }
+            internalDb.get("SELECT powersync_init()") {}
             applySchema()
             updateHasSynced()
         }
@@ -164,23 +165,15 @@ internal class PowerSyncDatabaseImpl(
 
     override suspend fun getNextCrudTransaction(): CrudTransaction? {
         return this.readTransaction {
-            val firstEntry = internalDb.queries.getCrudFirstEntry().awaitAsOneOrNull()
+            val entry = bucketStorage.nextCrudItem()
                 ?: return@readTransaction null
 
-            val first = CrudEntry.fromRow(
-                CrudRow(
-                    id = firstEntry.id.toString(),
-                    data = firstEntry.data_!!,
-                    txId = firstEntry.tx_id?.toInt()
-                )
-            )
 
-            val txId = first.transactionId
-            val entries: List<CrudEntry>
-            if (txId == null) {
-                entries = listOf(first)
+            val txId = entry.transactionId
+            val entries: List<CrudEntry> = if (txId == null) {
+                listOf(entry)
             } else {
-                entries = internalDb.queries.getCrudEntryByTxId(txId.toLong()).awaitAsList().map {
+                internalDb.queries.getCrudEntryByTxId(txId.toLong()).awaitAsList().map {
                     CrudEntry.fromRow(
                         CrudRow(
                             id = it.id.toString(),

@@ -26,7 +26,7 @@ public abstract class PowerSyncBackendConnector {
      *
      * These credentials may have expired already.
      */
-    public suspend fun getCredentialsCached(): PowerSyncCredentials? {
+    public open suspend fun getCredentialsCached(): PowerSyncCredentials? {
         cachedCredentials?.let { return it }
         prefetchCredentials()?.join()
         return cachedCredentials
@@ -37,7 +37,7 @@ public abstract class PowerSyncBackendConnector {
      *
      * This may be called when the current credentials have expired.
      */
-    public fun invalidateCredentials() {
+    public open fun invalidateCredentials() {
         cachedCredentials = null
     }
 
@@ -49,7 +49,7 @@ public abstract class PowerSyncBackendConnector {
      *
      * This may be called before the current credentials have expired.
      */
-    public suspend fun prefetchCredentials(): Job? {
+    public open suspend fun prefetchCredentials(): Job? {
         fetchRequest?.takeIf { it.isActive }?.let { return it }
 
         fetchRequest = scope.launch {

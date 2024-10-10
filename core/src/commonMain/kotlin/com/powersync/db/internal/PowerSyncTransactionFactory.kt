@@ -2,10 +2,10 @@ package com.powersync
 
 import app.cash.sqldelight.db.SqlCursor
 import com.powersync.db.internal.PowerSyncTransaction
-import com.powersync.db.internal.PsInternalDatabase
+import com.powersync.db.internal.InternalDatabaseImpl
 
 internal fun PowerSyncTransaction(
-    internalDatabase: PsInternalDatabase,
+    internalDatabase: InternalDatabaseImpl,
 ): PowerSyncTransaction {
     val transaction = object : PowerSyncTransaction {
 

@@ -12,14 +12,8 @@ powersyncClear:
 SELECT powersync_clear(?);
 
 -- CRUD operations
-hasCrud:
-SELECT 1 FROM ps_crud LIMIT 1;
-
 getCrudEntries:
 SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC LIMIT ?;
-
-getCrudFirstEntry:
-SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC LIMIT 1;
 
 getCrudEntryByTxId:
 SELECT id, tx_id, data FROM ps_crud WHERE tx_id = ? ORDER BY id ASC;
