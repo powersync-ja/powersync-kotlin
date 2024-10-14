@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.0.0-BETA3
+
+* Add `waitForFirstSync` function - which resolves after the initial sync is completed
+* Upgrade to Kotlin 2.0.20 - should not cause any issues with users who are still on Kotlin 1.9
+* Upgrade `powersync-sqlite-core` to 0.3.0 - improves incremental sync performance
+* Add client sync parameters - which allows you specify sync parameters from the client https://docs.powersync.com/usage/sync-rules/advanced-topics/client-parameters-beta
+```kotlin
+val params = JsonParam.Map(
+  mapOf(
+    "name" to JsonParam.String("John Doe"),
+    "age" to JsonParam.Number(30),
+    "isStudent" to JsonParam.Boolean(false)
+  )
+)
+
+connect(
+...
+  params = params
+)
+```
+* Add schema validation when schema is generated
+
 ## 1.0.0-BETA2
 
 * Publish persistence package
