@@ -14,6 +14,15 @@ plugins {
     alias(libs.plugins.downloadPlugin) apply false
 }
 
+// Having different versions of this lead to the issue mentioned here
+// https://stackoverflow.com/questions/76479563/could-not-found-kotlinx-atomicfu-compose-multiplatform-ios
+// This and the `apply(plugin = "kotlinx-atomicfu")` in allprojects below solve the issue but can be deleted in future when
+// the issue is resolved https://github.com/Kotlin/kotlinx-atomicfu/issues/469
+buildscript {
+    dependencies {
+        classpath("org.jetbrains.kotlinx:atomicfu-gradle-plugin:0.23.1")
+    }
+}
 
 allprojects {
     repositories {
@@ -44,6 +53,8 @@ allprojects {
         exclude(group = "ai.grazie.nlp")
     }
 
+    //
+    apply(plugin = "kotlinx-atomicfu")
 }
 subprojects {
     val GROUP: String by project

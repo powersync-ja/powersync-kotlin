@@ -3,14 +3,13 @@ package com.powersync.sync
 import co.touchlab.kermit.Logger
 import com.powersync.bucket.BucketChecksum
 import com.powersync.bucket.BucketRequest
-import com.powersync.bucket.BucketStorage
 import com.powersync.bucket.Checkpoint
 import com.powersync.bucket.WriteCheckpointResponse
 import co.touchlab.stately.concurrency.AtomicBoolean
+import com.powersync.bucket.BucketStorage
 import com.powersync.connectors.PowerSyncBackendConnector
-import com.powersync.utils.JsonParam
+import com.powersync.db.crud.CrudEntry
 import com.powersync.utils.JsonUtil
-import com.powersync.utils.toJsonObject
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpTimeout
@@ -135,14 +134,30 @@ internal class SyncStream(
     }
 
     private suspend fun uploadAllCrud() {
+        var checkedCrudItem: CrudEntry? = null
+        
         while (true) {
+            status.update(uploading = true)
+            /**
+             * This is the first item in the FIFO CRUD queue.
+             */
             try {
-                val done = uploadCrudBatch()
-                if (status.uploadError == true) {
-                    status.update(clearUploadError = true)
-                }
+                val nextCrudItem = bucketStorage.nextCrudItem()
+                if (nextCrudItem != null) {
+                    if (nextCrudItem.clientId == checkedCrudItem?.clientId) {
+                        logger.w(
+                            """Potentially previously uploaded CRUD entries are still present in the upload queue.
+                        Make sure to handle uploads and complete CRUD transactions or batches by calling and awaiting their [.complete()] method.
+                        The next upload iteration will be delayed."""
+                        )
+                        throw Exception("Delaying due to previously encountered CRUD item.")
+                    }
 
-                if (done) {
+                        checkedCrudItem = nextCrudItem
+                        uploadCrud()
+                    } else {
+                    // Uploading is completed
+                    bucketStorage.updateLocalTarget { getWriteCheckpoint() }
                     break
                 }
             } catch (e: Exception) {
@@ -153,17 +168,6 @@ internal class SyncStream(
             }
         }
         status.update(uploading = false)
-    }
-
-    private suspend fun uploadCrudBatch(): Boolean {
-        if (bucketStorage.hasCrud()) {
-            status.update(uploading = true)
-            uploadCrud()
-            return false
-        } else {
-            // This isolate is the only one triggering
-            return bucketStorage.updateLocalTarget { getWriteCheckpoint() }
-        }
     }
 
     private suspend fun getWriteCheckpoint(): String {
@@ -372,7 +376,7 @@ internal class SyncStream(
 
         val bucketsToDelete = checkpointDiff.removedBuckets
         if (bucketsToDelete.isNotEmpty()) {
-            logger.i { "Remove buckets $bucketsToDelete" }
+            logger.d { "Remove buckets $bucketsToDelete" }
         }
         bucketStorage.removeBuckets(bucketsToDelete)
         bucketStorage.setTargetCheckpoint(state.targetCheckpoint!!)
