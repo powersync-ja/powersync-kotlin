@@ -5,6 +5,7 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,8 +36,9 @@ fun App(factory: DatabaseDriverFactory, modifier: Modifier = Modifier) {
         )
     }
     val db = remember { PowerSyncDatabase(factory, schema) }
-    val syncStatus = db.currentStatus
-    val status = syncStatus.asFlow().collectAsState(initial = null)
+    val status = db.currentStatus.asFlow().collectAsState(initial = null)
+    val hasSynced by remember { derivedStateOf { status.value?.hasSynced } }
+
 
     val navController = remember { NavController(Screen.Home) }
     val authViewModel = remember {
@@ -91,6 +93,7 @@ fun App(factory: DatabaseDriverFactory, modifier: Modifier = Modifier) {
                 onItemDeleteClicked = lists.value::onItemDeleteClicked,
                 onAddItemClicked = lists.value::onAddItemClicked,
                 onInputTextChanged = lists.value::onInputTextChanged,
+                hasSynced = hasSynced
             )
         }
 
