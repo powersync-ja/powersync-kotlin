@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.0-BETA4
+
+* Fix sync status being reset when `update` function is run
+
+
 ## 1.0.0-BETA3
 
 * Add `waitForFirstSync` function - which resolves after the initial sync is completed
@@ -21,6 +26,7 @@ connect(
 )
 ```
 * Add schema validation when schema is generated
+* Add warning message if there is a crudItem in the queue that has not yet been synced and after a delay rerun the upload
 
 ## 1.0.0-BETA2
 
