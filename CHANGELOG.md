@@ -26,7 +26,7 @@ connect(
 )
 ```
 * Add schema validation when schema is generated
-* Add warning message if there is a crudItem in the queue that has not yet been synced and rerun the upload
+* Add warning message if there is a crudItem in the queue that has not yet been synced and after a delay rerun the upload
 
 ## 1.0.0-BETA2
 
