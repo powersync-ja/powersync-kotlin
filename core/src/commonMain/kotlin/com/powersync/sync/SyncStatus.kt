@@ -98,26 +98,26 @@ public data class SyncStatus internal constructor(
      * Updates the internal sync status indicators and emits Flow updates
      */
     internal fun update(
-        connected: Boolean = data.connected,
-        connecting: Boolean = data.connecting,
-        downloading: Boolean = data.downloading,
-        uploading: Boolean = data.uploading,
-        hasSynced: Boolean? = data.hasSynced,
-        lastSyncedAt: Instant? = data.lastSyncedAt,
-        uploadError: Any? = data.uploadError,
-        downloadError: Any? = data.downloadError,
-        clearUploadError: Boolean? = false,
-        clearDownloadError: Boolean? = false,
+        connected: Boolean? = null,
+        connecting: Boolean? = null,
+        downloading: Boolean? = null,
+        uploading: Boolean? = null,
+        hasSynced: Boolean? = null,
+        lastSyncedAt: Instant? = null,
+        uploadError: Any? = null,
+        downloadError: Any? = null,
+        clearUploadError: Boolean = false,
+        clearDownloadError: Boolean = false,
     ) {
         data = data.copy(
-            connected = connected,
-            connecting = connecting,
-            downloading = downloading,
-            uploading = uploading,
-            lastSyncedAt = lastSyncedAt,
-            hasSynced = hasSynced,
-            uploadError = if (clearUploadError == true) null else uploadError,
-            downloadError = if (clearDownloadError == true) null else downloadError,
+            connected = connected ?: data.connected,
+            connecting = connecting ?: data.connecting,
+            downloading = downloading ?: data.downloading,
+            uploading = uploading ?: data.uploading,
+            lastSyncedAt = lastSyncedAt ?: data.lastSyncedAt,
+            hasSynced = hasSynced ?: data.hasSynced,
+            uploadError = if (clearUploadError) null else uploadError,
+            downloadError = if (clearDownloadError) null else downloadError,
         )
         stateFlow.value = data
     }
