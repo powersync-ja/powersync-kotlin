@@ -337,7 +337,7 @@ internal class SyncStream(
         }
 
         state.validatedCheckpoint = state.targetCheckpoint
-        status.update(lastSyncedAt = Clock.System.now(), clearDownloadError = true)
+        status.update(lastSyncedAt = Clock.System.now(), hasSynced = true, clearDownloadError = true)
 
         return state
     }

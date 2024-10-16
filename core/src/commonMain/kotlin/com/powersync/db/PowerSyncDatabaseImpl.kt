@@ -73,7 +73,7 @@ internal class PowerSyncDatabaseImpl(
             logger.d { "SQLiteVersion: $sqliteVersion" }
             checkVersion()
             logger.d { "PowerSyncVersion: ${getPowerSyncVersion()}" }
-            internalDb.get("SELECT powersync_init()") {}
+            internalDb.queries.powersyncInit()
             applySchema()
             updateHasSynced()
         }
