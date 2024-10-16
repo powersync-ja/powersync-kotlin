@@ -1,9 +1,14 @@
 # Changelog
 
+
+## 1.0.0-BETA5
+
+* Fix `hasSynced` not updating after `disconnectAndClear`
+* Fix error being thrown in iOS app launch
+
 ## 1.0.0-BETA4
 
 * Fix sync status being reset when `update` function is run
-
 
 ## 1.0.0-BETA3
 
