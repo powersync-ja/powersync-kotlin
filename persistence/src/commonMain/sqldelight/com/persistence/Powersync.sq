@@ -1,4 +1,7 @@
 -- Core queries
+powersyncInit:
+SELECT powersync_init();
+
 sqliteVersion:
 SELECT sqlite_version();
 
