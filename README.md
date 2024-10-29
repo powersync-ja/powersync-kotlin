@@ -37,7 +37,6 @@ Demo applications are located in the [`demos/`](./demos) directory. See their re
 - [demos/hello-powersync](./demos/hello-powersync/README.md): A minimal example demonstrating the use of the PowerSync Kotlin Multiplatform SDK and the Supabase connector.
 
 - [demos/supabase-todolist](./demos/supabase-todolist/README.md): A simple to-do list application demonstrating the use of the PowerSync Kotlin Multiplatform SDK and the Supabase connector.
-- 
 - [demos/android-supabase-todolist](./demos/android-supabase-todolist/README.md): A simple to-do list application demonstrating the use of the PowerSync Kotlin Multiplatform SDK and the Supabase connector in an Android application.
 
 ## Current Limitations / Future work
@@ -99,6 +98,11 @@ cocoapods {
 ```
 
 Note: The `linkOnly` attribute is set to `true` and framework is set to `isStatic = true` to ensure that the `powersync-sqlite-core` binaries are only statically linked.
+
+## Formatting and Linting
+
+This repo uses [ktlint](https://pinterest.github.io/ktlint/) to handle formatting and linting. If you would like the IDE to automatically format your code and show linting errors install the [ktlint plugin](https://plugins.jetbrains.com/plugin/15057-ktlint). Then in Settings go to Tools -> Ktlint -> Select Distract free (recommended) mode.
+It will automatically use the rules set in the `.editorconfig` file.
 
 ## Getting Started
 
