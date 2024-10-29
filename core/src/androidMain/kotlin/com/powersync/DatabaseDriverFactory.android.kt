@@ -10,8 +10,11 @@ import io.requery.android.database.sqlite.SQLiteCustomExtension
 import kotlinx.coroutines.CoroutineScope
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
-public actual class DatabaseDriverFactory(private val context: Context) {
+public actual class DatabaseDriverFactory(
+    private val context: Context,
+) {
     private var driver: PsSqlDriver? = null
+
     private external fun setupSqliteBinding()
 
     @Suppress("unused")
@@ -36,43 +39,50 @@ public actual class DatabaseDriverFactory(private val context: Context) {
     ): PsSqlDriver {
         val schema = InternalSchema.synchronous()
 
-        this.driver = PsSqlDriver(scope = scope, driver = AndroidSqliteDriver(
-            context = context,
-            schema = schema,
-            name = dbFilename,
-            factory = RequerySQLiteOpenHelperFactory(
-                listOf(RequerySQLiteOpenHelperFactory.ConfigurationOptions { config ->
-                    config.customExtensions.add(
-                        SQLiteCustomExtension(
-                            "libpowersync",
-                            "sqlite3_powersync_init"
-                        )
-                    )
-                    config.customExtensions.add(
-                        SQLiteCustomExtension(
-                            "libpowersync-sqlite",
-                            "powersync_init"
-                        )
-                    )
-                    config
-                })
-            ),
-            callback = object : AndroidSqliteDriver.Callback(schema) {
-                override fun onConfigure(db: SupportSQLiteDatabase) {
-                    db.enableWriteAheadLogging()
-                    super.onConfigure(db)
-                }
-            }
-        ))
+        this.driver =
+            PsSqlDriver(
+                scope = scope,
+                driver =
+                    AndroidSqliteDriver(
+                        context = context,
+                        schema = schema,
+                        name = dbFilename,
+                        factory =
+                            RequerySQLiteOpenHelperFactory(
+                                listOf(
+                                    RequerySQLiteOpenHelperFactory.ConfigurationOptions { config ->
+                                        config.customExtensions.add(
+                                            SQLiteCustomExtension(
+                                                "libpowersync",
+                                                "sqlite3_powersync_init",
+                                            ),
+                                        )
+                                        config.customExtensions.add(
+                                            SQLiteCustomExtension(
+                                                "libpowersync-sqlite",
+                                                "powersync_init",
+                                            ),
+                                        )
+                                        config
+                                    },
+                                ),
+                            ),
+                        callback =
+                            object : AndroidSqliteDriver.Callback(schema) {
+                                override fun onConfigure(db: SupportSQLiteDatabase) {
+                                    db.enableWriteAheadLogging()
+                                    super.onConfigure(db)
+                                }
+                            },
+                    ),
+            )
         setupSqliteBinding()
         return this.driver as PsSqlDriver
     }
-
 
     public companion object {
         init {
             System.loadLibrary("powersync-sqlite")
         }
     }
-
 }

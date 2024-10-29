@@ -32,9 +32,8 @@ public data class Table constructor(
     /**
      * Override the name for the view
      */
-    private val viewNameOverride: String? = null
+    private val viewNameOverride: String? = null,
 ) {
-
     init {
         /**
          * Need to set the column definition for each index column.
@@ -42,8 +41,9 @@ public data class Table constructor(
          */
         indexes.forEach { index ->
             index.columns.forEach {
-                val matchingColumn = columns.find { c -> c.name == it.column }
-                    ?: throw AssertionError("Could not find column definition for index ${index.name}:${it.column}")
+                val matchingColumn =
+                    columns.find { c -> c.name == it.column }
+                        ?: throw AssertionError("Could not find column definition for index ${index.name}:${it.column}")
                 it.setColumnDefinition(column = matchingColumn)
             }
         }
@@ -59,17 +59,16 @@ public data class Table constructor(
             name: String,
             columns: List<Column>,
             indexes: List<Index> = listOf(),
-            viewName: String? = null
-        ): Table {
-            return Table(
+            viewName: String? = null,
+        ): Table =
+            Table(
                 name,
                 columns,
                 indexes,
                 localOnly = true,
                 insertOnly = false,
-                viewNameOverride = viewName
+                viewNameOverride = viewName,
             )
-        }
 
         /**
          * Create a table that only supports inserts.
@@ -78,16 +77,19 @@ public data class Table constructor(
          *
          * SELECT queries on the table will always return 0 rows.
          */
-        public fun insertOnly(name: String, columns: List<Column>, viewName: String? = null): Table {
-            return Table(
+        public fun insertOnly(
+            name: String,
+            columns: List<Column>,
+            viewName: String? = null,
+        ): Table =
+            Table(
                 name,
                 columns,
                 indexes = listOf(),
                 localOnly = false,
                 insertOnly = true,
-                viewNameOverride = viewName
+                viewNameOverride = viewName,
             )
-        }
     }
 
     /**
@@ -98,19 +100,20 @@ public data class Table constructor(
     internal val internalName: String
         get() = if (localOnly) "ps_data_local__$name" else "ps_data__$name"
 
-    public operator fun get(columnName: String): Column {
-        return columns.first { it.name == columnName }
-    }
+    public operator fun get(columnName: String): Column = columns.first { it.name == columnName }
 
     /**
      * Whether this table name is valid.
      */
     val validName: Boolean
-        get() = !invalidSqliteCharacters.containsMatchIn(name) &&
-                (viewNameOverride == null || !invalidSqliteCharacters.containsMatchIn(
-                    viewNameOverride
-                ))
-
+        get() =
+            !invalidSqliteCharacters.containsMatchIn(name) &&
+                (
+                    viewNameOverride == null ||
+                        !invalidSqliteCharacters.containsMatchIn(
+                            viewNameOverride,
+                        )
+                )
 
     /**
      * Check that there are no issues in the table definition.
@@ -124,8 +127,9 @@ public data class Table constructor(
             throw AssertionError("Invalid characters in table name: $name")
         }
 
-        if (viewNameOverride != null && invalidSqliteCharacters.containsMatchIn(
-                viewNameOverride
+        if (viewNameOverride != null &&
+            invalidSqliteCharacters.containsMatchIn(
+                viewNameOverride,
             )
         ) {
             throw AssertionError("Invalid characters in view name: $viewNameOverride")

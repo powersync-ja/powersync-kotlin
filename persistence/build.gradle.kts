@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.sqldelight)
     alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.kotlinter)
     id("com.powersync.plugins.sonatype")
 }
 
@@ -41,7 +42,6 @@ android {
         jvmToolchain(17)
     }
 
-
     buildFeatures {
         buildConfig = true
     }
@@ -55,11 +55,17 @@ android {
         }
     }
     defaultConfig {
-        minSdk = libs.versions.android.minSdk.get().toInt()
+        minSdk =
+            libs.versions.android.minSdk
+                .get()
+                .toInt()
     }
 
     namespace = "com.powersync.persistence"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
+    compileSdk =
+        libs.versions.android.compileSdk
+            .get()
+            .toInt()
 }
 
 sqldelight {
@@ -70,6 +76,14 @@ sqldelight {
             dialect(project(":dialect"))
         }
     }
+}
+
+tasks.formatKotlinCommonMain {
+    exclude { it.file.path.contains("generated/") }
+}
+
+tasks.lintKotlinCommonMain {
+    exclude { it.file.path.contains("generated/") }
 }
 
 setupGithubRepository()

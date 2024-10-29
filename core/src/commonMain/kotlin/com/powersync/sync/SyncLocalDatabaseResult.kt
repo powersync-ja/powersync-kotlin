@@ -7,8 +7,7 @@ import kotlinx.serialization.Serializable
 internal data class SyncLocalDatabaseResult(
     var ready: Boolean = true,
     @SerialName("valid") val checkpointValid: Boolean = true,
-    @SerialName("failed_buckets") val checkpointFailures: List<String>? = null
+    @SerialName("failed_buckets") val checkpointFailures: List<String>? = null,
 ) {
-    override fun toString() =
-        "SyncLocalDatabaseResult<ready=$ready, checkpointValid=$checkpointValid, failures=$checkpointFailures>"
+    override fun toString() = "SyncLocalDatabaseResult<ready=$ready, checkpointValid=$checkpointValid, failures=$checkpointFailures>"
 }

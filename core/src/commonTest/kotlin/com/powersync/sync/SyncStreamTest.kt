@@ -1,7 +1,5 @@
 package com.powersync.sync
 
-import kotlin.test.*
-import kotlinx.serialization.json.JsonObject
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import co.touchlab.kermit.TestConfig
@@ -15,21 +13,28 @@ import dev.mokkery.everySuspend
 import dev.mokkery.mock
 import dev.mokkery.verify
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.JsonObject
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertContains
+import kotlin.test.assertEquals
 
 @OptIn(co.touchlab.kermit.ExperimentalKermitApi::class)
 class SyncStreamTest {
     private lateinit var bucketStorage: BucketStorage
     private lateinit var connector: PowerSyncBackendConnector
     private lateinit var syncStream: SyncStream
-    private val testLogWriter = TestLogWriter(
-        loggable = Severity.Verbose
-    )
-    private val logger = Logger(
-        TestConfig(
-            minSeverity = Severity.Debug,
-            logWriterList = listOf(testLogWriter)
+    private val testLogWriter =
+        TestLogWriter(
+            loggable = Severity.Verbose,
         )
-    )
+    private val logger =
+        Logger(
+            TestConfig(
+                minSeverity = Severity.Debug,
+                logWriterList = listOf(testLogWriter),
+            ),
+        )
 
     @BeforeTest
     fun setup() {
@@ -38,56 +43,73 @@ class SyncStreamTest {
     }
 
     @Test
-    fun testInvalidateCredentials() = runTest {
-        connector = mock<PowerSyncBackendConnector>() {
-            everySuspend { invalidateCredentials() } returns  Unit
+    fun testInvalidateCredentials() =
+        runTest {
+            connector =
+                mock<PowerSyncBackendConnector> {
+                    everySuspend { invalidateCredentials() } returns Unit
+                }
+
+            syncStream =
+                SyncStream(
+                    bucketStorage = bucketStorage,
+                    connector = connector,
+                    uploadCrud = {},
+                    logger = logger,
+                    params = JsonObject(emptyMap()),
+                )
+
+            syncStream.invalidateCredentials()
+            verify { connector.invalidateCredentials() }
         }
-
-        syncStream = SyncStream(
-            bucketStorage = bucketStorage,
-            connector = connector,
-            uploadCrud = {},
-            logger = logger,
-            params = JsonObject(emptyMap())
-        )
-
-        syncStream.invalidateCredentials()
-        verify { connector.invalidateCredentials() }
-    }
 
     // TODO: Work on improving testing this without needing to test the logs are displayed
     @Test
-    fun testTriggerCrudUploadWhenAlreadyUploading() = runTest {
-        val mockCrudEntry = CrudEntry(id = "1", clientId = 1, op = UpdateType.PUT, table = "table1", transactionId = 1, opData = mapOf("key" to "value"))
-        bucketStorage = mock<BucketStorage>() {
-            everySuspend { nextCrudItem() } returns mockCrudEntry
+    fun testTriggerCrudUploadWhenAlreadyUploading() =
+        runTest {
+            val mockCrudEntry =
+                CrudEntry(
+                    id = "1",
+                    clientId = 1,
+                    op = UpdateType.PUT,
+                    table = "table1",
+                    transactionId = 1,
+                    opData =
+                        mapOf(
+                            "key" to "value",
+                        ),
+                )
+            bucketStorage =
+                mock<BucketStorage> {
+                    everySuspend { nextCrudItem() } returns mockCrudEntry
+                }
+
+            syncStream =
+                SyncStream(
+                    bucketStorage = bucketStorage,
+                    connector = connector,
+                    uploadCrud = { },
+                    retryDelayMs = 10,
+                    logger = logger,
+                    params = JsonObject(emptyMap()),
+                )
+
+            syncStream.status.update(connected = true)
+            syncStream.triggerCrudUpload()
+
+            testLogWriter.assertCount(2)
+
+            with(testLogWriter.logs[0]) {
+                assertContains(
+                    message,
+                    "Potentially previously uploaded CRUD entries are still present in the upload queue.",
+                )
+                assertEquals(Severity.Warn, severity)
+            }
+
+            with(testLogWriter.logs[1]) {
+                assertEquals(message, "Error uploading crud")
+                assertEquals(Severity.Error, severity)
+            }
         }
-
-        syncStream = SyncStream(
-            bucketStorage = bucketStorage,
-            connector = connector,
-            uploadCrud = { },
-            retryDelayMs = 10,
-            logger = logger,
-            params = JsonObject(emptyMap())
-        )
-
-        syncStream.status.update(connected = true)
-        syncStream.triggerCrudUpload()
-
-        testLogWriter.assertCount(2)
-        
-        with(testLogWriter.logs[0]) {
-            assertContains(
-                message,
-                "Potentially previously uploaded CRUD entries are still present in the upload queue."
-            )
-            assertEquals(Severity.Warn, severity)
-        }
-
-        with(testLogWriter.logs[1]) {
-            assertEquals(message,"Error uploading crud")
-            assertEquals(Severity.Error, severity)
-        }
-    }
 }

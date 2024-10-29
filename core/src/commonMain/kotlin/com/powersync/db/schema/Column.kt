@@ -7,7 +7,6 @@ import kotlinx.serialization.Serializable
 public data class Column(
     /** Name of the column. */
     val name: String,
-
     /** Type of the column.
      *
      * If the underlying data does not match this type,
@@ -16,7 +15,7 @@ public data class Column(
      * For details on the cast, see:
      * https://www.sqlite.org/lang_expr.html#castexpr
      */
-    val type: ColumnType
+    val type: ColumnType,
 ) {
     public companion object {
         /** Create a TEXT column. */

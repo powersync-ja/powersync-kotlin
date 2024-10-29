@@ -9,8 +9,10 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
-public class PsSqlDriver(private val driver: SqlDriver, private val scope: CoroutineScope) :
-    SqlDriver by driver {
+public class PsSqlDriver(
+    private val driver: SqlDriver,
+    private val scope: CoroutineScope,
+) : SqlDriver by driver {
     // MutableSharedFlow to emit batched table updates
     private val tableUpdatesFlow = MutableSharedFlow<List<String>>(replay = 0)
 
@@ -26,14 +28,10 @@ public class PsSqlDriver(private val driver: SqlDriver, private val scope: Corou
     }
 
     // Flows on table updates
-    public fun tableUpdates(): Flow<List<String>> {
-        return tableUpdatesFlow.asSharedFlow()
-    }
+    public fun tableUpdates(): Flow<List<String>> = tableUpdatesFlow.asSharedFlow()
 
     // Flows on table updates containing a specific table
-    public fun updatesOnTable(tableName: String): Flow<Unit> {
-        return tableUpdates().filter { it.contains(tableName) }.map { }
-    }
+    public fun updatesOnTable(tableName: String): Flow<Unit> = tableUpdates().filter { it.contains(tableName) }.map { }
 
     public fun fireTableUpdates() {
         val updates = pendingUpdates.toList()

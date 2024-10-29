@@ -9,14 +9,14 @@ internal object InternalSchema : SqlSchema<QueryResult.AsyncValue<Unit>> {
     override val version: Long
         get() = 1
 
-    override fun create(driver: SqlDriver): QueryResult.AsyncValue<Unit> = QueryResult.AsyncValue {
-    }
+    override fun create(driver: SqlDriver): QueryResult.AsyncValue<Unit> =
+        QueryResult.AsyncValue {}
 
     override fun migrate(
         driver: SqlDriver,
         oldVersion: Long,
         newVersion: Long,
         vararg callbacks: AfterVersion,
-    ): QueryResult.AsyncValue<Unit> = QueryResult.AsyncValue {
-    }
+    ): QueryResult.AsyncValue<Unit> =
+        QueryResult.AsyncValue {}
 }

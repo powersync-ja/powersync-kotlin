@@ -12,5 +12,6 @@ internal interface InternalDatabase : Queries {
     val queries: PowersyncQueries
 
     fun getExistingTableNames(tableGlob: String): List<String>
+
     fun updatesOnTable(tableName: String): Flow<Unit>
 }

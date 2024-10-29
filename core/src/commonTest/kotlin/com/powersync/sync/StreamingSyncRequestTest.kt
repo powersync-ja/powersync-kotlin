@@ -4,33 +4,38 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlin.test.*
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class StreamingSyncRequestTest {
-
     private val json = Json { ignoreUnknownKeys = true }
 
     @Test
     fun testSerialization() {
-        val request = StreamingSyncRequest(
-            buckets = listOf(BucketRequest("table1", "op1"), BucketRequest("table2", "op2")),
-            includeChecksum = true,
-            clientId = "client123",
-            parameters = JsonObject(mapOf("param1" to JsonPrimitive("value1")))
-        )
+        val request =
+            StreamingSyncRequest(
+                buckets = listOf(BucketRequest("table1", "op1"), BucketRequest("table2", "op2")),
+                includeChecksum = true,
+                clientId = "client123",
+                parameters = JsonObject(mapOf("param1" to JsonPrimitive("value1"))),
+            )
 
         val serialized = json.encodeToString(request)
 
-        val expected = """
+        val expected =
+            """
             {"buckets":[{"name":"table1","after":"op1"},{"name":"table2","after":"op2"}],"client_id":"client123","parameters":{"param1":"value1"}}
-        """.trimIndent().replace("\n", "")
+            """.trimIndent().replace("\n", "")
 
         assertEquals(expected, serialized)
     }
 
     @Test
     fun testDeserialization() {
-        val jsonString = """
+        val jsonString =
+            """
             {
                 "buckets": [{"name": "table1", "after": "op1"}, {"name": "table2", "after": "op2"}],
                 "include_checksum": false,
@@ -38,7 +43,7 @@ class StreamingSyncRequestTest {
                 "parameters": {"param2": "value2"},
                 "raw_data": true
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val deserialized = json.decodeFromString<StreamingSyncRequest>(jsonString)
 
@@ -49,23 +54,25 @@ class StreamingSyncRequestTest {
         assertEquals("op2", deserialized.buckets[1].after)
         assertFalse(deserialized.includeChecksum)
         assertEquals("client456", deserialized.clientId)
-        assertEquals(JsonPrimitive("value2"), deserialized.parameters?.get("param2"))
+        assertEquals(JsonPrimitive("value2"), deserialized.parameters.get("param2"))
     }
 
     @Test
     fun testDefaultValues() {
-        val request = StreamingSyncRequest(
-            buckets = listOf(),
-            clientId = "client789"
-        )
+        val request =
+            StreamingSyncRequest(
+                buckets = listOf(),
+                clientId = "client789",
+            )
 
         assertTrue(request.includeChecksum)
         assertEquals(request.parameters, JsonObject(mapOf()))
 
         val serialized = json.encodeToString(request)
-        val expected = """
+        val expected =
+            """
             {"buckets":[],"client_id":"client789"}
-        """.trimIndent().replace("\n", "")
+            """.trimIndent().replace("\n", "")
         assertEquals(serialized, expected)
     }
 }

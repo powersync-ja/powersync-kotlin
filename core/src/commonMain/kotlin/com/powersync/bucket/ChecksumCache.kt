@@ -6,5 +6,5 @@ import kotlinx.serialization.Serializable
 @Serializable
 internal data class ChecksumCache(
     @SerialName("last_op_id") val lostOpId: String,
-    val checksums: Map<String, BucketChecksum>
+    val checksums: Map<String, BucketChecksum>,
 )

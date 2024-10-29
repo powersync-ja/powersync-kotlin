@@ -21,11 +21,11 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 
-
 @OptIn(FlowPreview::class)
-internal class InternalDatabaseImpl(override val driver: PsSqlDriver, private val scope: CoroutineScope):
-    InternalDatabase {
-
+internal class InternalDatabaseImpl(
+    override val driver: PsSqlDriver,
+    private val scope: CoroutineScope,
+) : InternalDatabase {
     override val transactor: PsDatabase = PsDatabase(driver)
     override val queries = transactor.powersyncQueries
 
@@ -52,72 +52,77 @@ internal class InternalDatabaseImpl(override val driver: PsSqlDriver, private va
 
     override suspend fun execute(
         sql: String,
-        parameters: List<Any?>?
+        parameters: List<Any?>?,
     ): Long {
         val numParams = parameters?.size ?: 0
 
-        return driver.execute(
-            identifier = null,
-            sql = sql,
-            parameters = numParams,
-            binders = getBindersFromParams(parameters)
-        ).await()
+        return driver
+            .execute(
+                identifier = null,
+                sql = sql,
+                parameters = numParams,
+                binders = getBindersFromParams(parameters),
+            ).await()
     }
 
     override suspend fun <RowType : Any> get(
         sql: String,
         parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType
+        mapper: (SqlCursor) -> RowType,
     ): RowType {
-        val result = this.createQuery(
-            query = sql,
-            parameters = parameters?.size ?: 0,
-            binders = getBindersFromParams(parameters),
-            mapper = mapper
-        ).awaitAsOneOrNull()
+        val result =
+            this
+                .createQuery(
+                    query = sql,
+                    parameters = parameters?.size ?: 0,
+                    binders = getBindersFromParams(parameters),
+                    mapper = mapper,
+                ).awaitAsOneOrNull()
         return requireNotNull(result) { "Query returned no result" }
     }
 
     override suspend fun <RowType : Any> getAll(
         sql: String,
         parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType
-    ): List<RowType> {
-        return this.createQuery(
-            query = sql,
-            parameters = parameters?.size ?: 0,
-            binders = getBindersFromParams(parameters),
-            mapper = mapper
-        ).awaitAsList()
-    }
+        mapper: (SqlCursor) -> RowType,
+    ): List<RowType> =
+        this
+            .createQuery(
+                query = sql,
+                parameters = parameters?.size ?: 0,
+                binders = getBindersFromParams(parameters),
+                mapper = mapper,
+            ).awaitAsList()
 
     override suspend fun <RowType : Any> getOptional(
         sql: String,
         parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType
-    ): RowType? {
-        return this.createQuery(
-            query = sql,
-            parameters = parameters?.size ?: 0,
-            binders = getBindersFromParams(parameters),
-            mapper = mapper
-        ).awaitAsOneOrNull()
-    }
+        mapper: (SqlCursor) -> RowType,
+    ): RowType? =
+        this
+            .createQuery(
+                query = sql,
+                parameters = parameters?.size ?: 0,
+                binders = getBindersFromParams(parameters),
+                mapper = mapper,
+            ).awaitAsOneOrNull()
 
     override fun <RowType : Any> watch(
         sql: String,
         parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType
+        mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>> {
-
-        val tables = getSourceTables(sql, parameters).map { toFriendlyTableName(it) }
-            .filter { it.isNotBlank() }.toSet()
+        val tables =
+            getSourceTables(sql, parameters)
+                .map { toFriendlyTableName(it) }
+                .filter { it.isNotBlank() }
+                .toSet()
         return watchQuery(
             query = sql,
             parameters = parameters?.size ?: 0,
             binders = getBindersFromParams(parameters),
             mapper = mapper,
-            tables = tables
+            tables = tables,
         ).asFlow().mapToList(scope.coroutineContext)
     }
 
@@ -126,26 +131,22 @@ internal class InternalDatabaseImpl(override val driver: PsSqlDriver, private va
         mapper: (SqlCursor) -> T,
         parameters: Int = 0,
         binders: (SqlPreparedStatement.() -> Unit)? = null,
-    ): ExecutableQuery<T> {
-        return object : ExecutableQuery<T>(mapper) {
-            override fun <R> execute(mapper: (SqlCursor) -> QueryResult<R>): QueryResult<R> {
-                return driver.executeQuery(null, query, mapper, parameters, binders)
-            }
+    ): ExecutableQuery<T> =
+        object : ExecutableQuery<T>(mapper) {
+            override fun <R> execute(mapper: (SqlCursor) -> QueryResult<R>): QueryResult<R> =
+                driver.executeQuery(null, query, mapper, parameters, binders)
         }
-    }
 
     private fun <T : Any> watchQuery(
         query: String,
         mapper: (SqlCursor) -> T,
         parameters: Int = 0,
         binders: (SqlPreparedStatement.() -> Unit)? = null,
-        tables: Set<String> = setOf()
-    ): Query<T> {
-
-        return object : Query<T>(mapper) {
-            override fun <R> execute(mapper: (SqlCursor) -> QueryResult<R>): QueryResult<R> {
-                return driver.executeQuery(null, query, mapper, parameters, binders)
-            }
+        tables: Set<String> = setOf(),
+    ): Query<T> =
+        object : Query<T>(mapper) {
+            override fun <R> execute(mapper: (SqlCursor) -> QueryResult<R>): QueryResult<R> =
+                driver.executeQuery(null, query, mapper, parameters, binders)
 
             override fun addListener(listener: Listener) {
                 driver.addListener(queryKeys = tables.toTypedArray(), listener = listener)
@@ -155,31 +156,24 @@ internal class InternalDatabaseImpl(override val driver: PsSqlDriver, private va
                 driver.removeListener(queryKeys = tables.toTypedArray(), listener = listener)
             }
         }
-    }
 
-    override suspend fun <R> readTransaction(callback: suspend (PowerSyncTransaction) -> R): R {
-        return transactor.transactionWithResult(noEnclosing = true) {
+    override suspend fun <R> readTransaction(callback: suspend (PowerSyncTransaction) -> R): R =
+        transactor.transactionWithResult(noEnclosing = true) {
             val transaction = PowerSyncTransaction(this@InternalDatabaseImpl)
             callback(transaction)
         }
-    }
 
-    override suspend fun <R> writeTransaction(callback: suspend (PowerSyncTransaction) -> R): R {
-        return transactor.transactionWithResult(noEnclosing = true) {
+    override suspend fun <R> writeTransaction(callback: suspend (PowerSyncTransaction) -> R): R =
+        transactor.transactionWithResult(noEnclosing = true) {
             val transaction = PowerSyncTransaction(this@InternalDatabaseImpl)
             callback(transaction)
         }
-    }
 
     // Register callback for table updates
-    private fun tableUpdates(): Flow<List<String>> {
-        return driver.tableUpdates()
-    }
+    private fun tableUpdates(): Flow<List<String>> = driver.tableUpdates()
 
     // Register callback for table updates on a specific table
-    override fun updatesOnTable(tableName: String): Flow<Unit> {
-        return driver.updatesOnTable(tableName)
-    }
+    override fun updatesOnTable(tableName: String): Flow<Unit> = driver.updatesOnTable(tableName)
 
     private fun toFriendlyTableName(tableName: String): String {
         val regex = POWERSYNC_TABLE_MATCH.toRegex()
@@ -193,20 +187,21 @@ internal class InternalDatabaseImpl(override val driver: PsSqlDriver, private va
         sql: String,
         parameters: List<Any?>?,
     ): Set<String> {
-        val rows = createQuery(
-            query = "EXPLAIN $sql",
-            parameters = parameters?.size ?: 0,
-            binders = getBindersFromParams(parameters),
-            mapper = {
-                ExplainQueryResult(
-                    addr = it.getString(0)!!,
-                    opcode = it.getString(1)!!,
-                    p1 = it.getLong(2)!!,
-                    p2 = it.getLong(3)!!,
-                    p3 = it.getLong(4)!!
-                )
-            }
-        ).executeAsList()
+        val rows =
+            createQuery(
+                query = "EXPLAIN $sql",
+                parameters = parameters?.size ?: 0,
+                binders = getBindersFromParams(parameters),
+                mapper = {
+                    ExplainQueryResult(
+                        addr = it.getString(0)!!,
+                        opcode = it.getString(1)!!,
+                        p1 = it.getLong(2)!!,
+                        p2 = it.getLong(3)!!,
+                        p3 = it.getLong(4)!!,
+                    )
+                },
+            ).executeAsList()
 
         val rootPages = mutableListOf<Long>()
         for (row in rows) {
@@ -215,28 +210,31 @@ internal class InternalDatabaseImpl(override val driver: PsSqlDriver, private va
             }
         }
         val params = listOf(JsonUtil.json.encodeToString(rootPages))
-        val tableRows = createQuery(
-            "SELECT tbl_name FROM sqlite_master WHERE rootpage IN (SELECT json_each.value FROM json_each(?))",
-            parameters = params.size,
-            binders = {
-                bindString(0, params[0])
-            }, mapper = { it.getString(0)!! }
-        ).executeAsList()
+        val tableRows =
+            createQuery(
+                "SELECT tbl_name FROM sqlite_master WHERE rootpage IN (SELECT json_each.value FROM json_each(?))",
+                parameters = params.size,
+                binders = {
+                    bindString(0, params[0])
+                },
+                mapper = { it.getString(0)!! },
+            ).executeAsList()
 
         return tableRows.toSet()
     }
 
     override fun getExistingTableNames(tableGlob: String): List<String> {
-        val existingTableNames = createQuery(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB ?",
-            parameters = 1,
-            binders = {
-                bindString(0, tableGlob)
-            },
-            mapper = { cursor ->
-                cursor.getString(0)!!
-            }
-        ).executeAsList()
+        val existingTableNames =
+            createQuery(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB ?",
+                parameters = 1,
+                binders = {
+                    bindString(0, tableGlob)
+                },
+                mapper = { cursor ->
+                    cursor.getString(0)!!
+                },
+            ).executeAsList()
         return existingTableNames
     }
 
@@ -262,7 +260,7 @@ internal fun getBindersFromParams(parameters: List<Any?>?): (SqlPreparedStatemen
                 is Double -> bindDouble(index, parameter)
                 is ByteArray -> bindBytes(index, parameter)
                 else -> {
-                    if(parameter != null) {
+                    if (parameter != null) {
                         throw IllegalArgumentException("Unsupported parameter type: ${parameter::class}, at index $index")
                     }
                 }

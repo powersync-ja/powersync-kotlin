@@ -4,9 +4,8 @@ import kotlinx.coroutines.CoroutineScope
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 public expect class DatabaseDriverFactory {
-
     public fun createDriver(
         scope: CoroutineScope,
-        dbFilename: String
+        dbFilename: String,
     ): PsSqlDriver
 }

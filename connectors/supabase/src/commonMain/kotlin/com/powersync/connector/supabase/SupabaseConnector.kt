@@ -21,34 +21,42 @@ import kotlinx.coroutines.flow.StateFlow
  */
 public class SupabaseConnector(
     public val supabaseClient: SupabaseClient,
-    public val powerSyncEndpoint: String
+    public val powerSyncEndpoint: String,
 ) : PowerSyncBackendConnector() {
-
     public constructor(
         supabaseUrl: String,
         supabaseKey: String,
-        powerSyncEndpoint: String
+        powerSyncEndpoint: String,
     ) : this(
-        supabaseClient = createSupabaseClient(supabaseUrl, supabaseKey) {
-            install(Auth)
-            install(Postgrest)
-        },
-        powerSyncEndpoint = powerSyncEndpoint
+        supabaseClient =
+            createSupabaseClient(supabaseUrl, supabaseKey) {
+                install(Auth)
+                install(Postgrest)
+            },
+        powerSyncEndpoint = powerSyncEndpoint,
     )
 
     init {
         require(supabaseClient.pluginManager.getPluginOrNull(Auth) != null) { "The Auth plugin must be installed on the Supabase client" }
-        require(supabaseClient.pluginManager.getPluginOrNull(Postgrest) != null) { "The Postgrest plugin must be installed on the Supabase client" }
+        require(
+            supabaseClient.pluginManager.getPluginOrNull(Postgrest) != null,
+        ) { "The Postgrest plugin must be installed on the Supabase client" }
     }
 
-    public suspend fun login(email: String, password: String) {
+    public suspend fun login(
+        email: String,
+        password: String,
+    ) {
         supabaseClient.auth.signInWith(Email) {
             this.email = email
             this.password = password
         }
     }
 
-    public suspend fun signUp(email: String, password: String) {
+    public suspend fun signUp(
+        email: String,
+        password: String,
+    ) {
         supabaseClient.auth.signUpWith(Email) {
             this.email = email
             this.password = password
@@ -59,9 +67,7 @@ public class SupabaseConnector(
         supabaseClient.auth.signOut()
     }
 
-    public fun session(): UserSession? {
-        return supabaseClient.auth.currentSessionOrNull()
-    }
+    public fun session(): UserSession? = supabaseClient.auth.currentSessionOrNull()
 
     public val sessionStatus: StateFlow<SessionStatus> = supabaseClient.auth.sessionStatus
 
@@ -84,7 +90,7 @@ public class SupabaseConnector(
         return PowerSyncCredentials(
             endpoint = powerSyncEndpoint,
             token = session.accessToken, // Use the access token to authenticate against PowerSync
-            userId = session.user!!.id
+            userId = session.user!!.id,
         )
     }
 
@@ -95,12 +101,10 @@ public class SupabaseConnector(
      * If this call throws an error, it is retried periodically.
      */
     override suspend fun uploadData(database: PowerSyncDatabase) {
-
         val transaction = database.getNextCrudTransaction() ?: return
 
         var lastEntry: CrudEntry? = null
         try {
-
             for (entry in transaction.crud) {
                 lastEntry = entry
 
@@ -131,7 +135,6 @@ public class SupabaseConnector(
             }
 
             transaction.complete(null)
-
         } catch (e: Exception) {
             println("Data upload error - retrying last entry: ${lastEntry!!}, $e")
             throw e

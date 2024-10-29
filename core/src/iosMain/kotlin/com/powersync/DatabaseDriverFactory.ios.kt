@@ -28,7 +28,12 @@ public actual class DatabaseDriverFactory {
     }
 
     @Suppress("unused", "UNUSED_PARAMETER")
-    private fun updateTableHook(opType: Int, databaseName: String, tableName: String, rowId: Long) {
+    private fun updateTableHook(
+        opType: Int,
+        databaseName: String,
+        tableName: String,
+        rowId: Long,
+    ) {
         driver?.updateTable(tableName)
     }
 
@@ -47,25 +52,31 @@ public actual class DatabaseDriverFactory {
         dbFilename: String,
     ): PsSqlDriver {
         val schema = InternalSchema.synchronous()
-        this.driver = PsSqlDriver(scope = scope, driver = NativeSqliteDriver(
-            configuration = DatabaseConfiguration(
-                name = dbFilename,
-                version = schema.version.toInt(),
-                create = { connection -> wrapConnection(connection) { schema.create(it) } },
-                lifecycleConfig = DatabaseConfiguration.Lifecycle(
-                    onCreateConnection = { connection ->
-                        setupSqliteBinding(connection)
-                        wrapConnection(connection) { driver ->
-                            schema.create(driver)
-                        }
-                    },
-                    onCloseConnection = { connection ->
-                        deregisterSqliteBinding(connection)
-                    }
-                )
+        this.driver =
+            PsSqlDriver(
+                scope = scope,
+                driver =
+                    NativeSqliteDriver(
+                        configuration =
+                            DatabaseConfiguration(
+                                name = dbFilename,
+                                version = schema.version.toInt(),
+                                create = { connection -> wrapConnection(connection) { schema.create(it) } },
+                                lifecycleConfig =
+                                    DatabaseConfiguration.Lifecycle(
+                                        onCreateConnection = { connection ->
+                                            setupSqliteBinding(connection)
+                                            wrapConnection(connection) { driver ->
+                                                schema.create(driver)
+                                            }
+                                        },
+                                        onCloseConnection = { connection ->
+                                            deregisterSqliteBinding(connection)
+                                        },
+                                    ),
+                            ),
+                    ),
             )
-        )
-        )
         return this.driver as PsSqlDriver
     }
 
@@ -77,16 +88,17 @@ public actual class DatabaseDriverFactory {
             ptr,
             staticCFunction { usrPtr, updateType, dbName, tableName, rowId ->
                 val callback =
-                    usrPtr!!.asStableRef<(Int, String, String, Long) -> Unit>()
+                    usrPtr!!
+                        .asStableRef<(Int, String, String, Long) -> Unit>()
                         .get()
                 callback(
                     updateType,
                     dbName!!.toKString(),
                     tableName!!.toKString(),
-                    rowId
+                    rowId,
                 )
             },
-            StableRef.create(::updateTableHook).asCPointer()
+            StableRef.create(::updateTableHook).asCPointer(),
         )
 
         // Register transaction hooks
@@ -97,7 +109,7 @@ public actual class DatabaseDriverFactory {
                 callback(true)
                 0
             },
-            StableRef.create(::onTransactionCommit).asCPointer()
+            StableRef.create(::onTransactionCommit).asCPointer(),
         )
         sqlite3_rollback_hook(
             ptr,
@@ -105,7 +117,7 @@ public actual class DatabaseDriverFactory {
                 val callback = usrPtr!!.asStableRef<(Boolean) -> Unit>().get()
                 callback(false)
             },
-            StableRef.create(::onTransactionCommit).asCPointer()
+            StableRef.create(::onTransactionCommit).asCPointer(),
         )
     }
 
@@ -114,8 +126,7 @@ public actual class DatabaseDriverFactory {
         sqlite3_update_hook(
             ptr,
             null,
-            null
+            null,
         )
     }
 }
-

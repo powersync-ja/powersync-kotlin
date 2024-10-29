@@ -8,13 +8,11 @@ public data class Index(
      * Descriptive name of the index.
      */
     val name: String,
-
     /**
      * List of columns used for the index.
      */
-    val columns: List<IndexedColumn>
+    val columns: List<IndexedColumn>,
 ) {
-
     /**
      * @param name Descriptive name of the index.
      * @param columns List of columns used for the index.
@@ -25,18 +23,17 @@ public data class Index(
      * Construct a new index with the specified column names.
      */
     public companion object {
-        public fun ascending(name: String, columns: List<String>): Index {
-            return Index(name, columns.map { IndexedColumn.ascending(it) })
-        }
+        public fun ascending(
+            name: String,
+            columns: List<String>,
+        ): Index = Index(name, columns.map { IndexedColumn.ascending(it) })
     }
 
     /**
      * Internal use only.
      * Specifies the full name of this index on a table.
      */
-    internal fun fullName(table: Table): String {
-        return "${table.internalName}__$name"
-    }
+    internal fun fullName(table: Table): String = "${table.internalName}__$name"
 
     /**
      * Internal use only.

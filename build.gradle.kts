@@ -12,6 +12,7 @@ plugins {
     alias(libs.plugins.grammarKitComposer) apply false
     alias(libs.plugins.mavenPublishPlugin) apply false
     alias(libs.plugins.downloadPlugin) apply false
+    alias(libs.plugins.kotlinter) apply false
 }
 
 // Having different versions of this lead to the issue mentioned here
@@ -37,7 +38,6 @@ allprojects {
             content { includeGroup("com.github.requery") }
         }
     }
-
 
     configurations.configureEach {
         exclude(group = "com.jetbrains.rd")
