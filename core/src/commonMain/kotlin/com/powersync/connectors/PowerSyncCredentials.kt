@@ -1,7 +1,7 @@
 package com.powersync.connectors
 
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Temporary credentials to connect to the PowerSync service.
@@ -19,13 +19,9 @@ public data class PowerSyncCredentials(
     /**
      * User ID.
      */
-    @SerialName("user_id") val userId: String?
+    @SerialName("user_id") val userId: String?,
 ) {
-    override fun toString(): String {
-        return "PowerSyncCredentials<endpoint: $endpoint userId: $userId>"
-    }
+    override fun toString(): String = "PowerSyncCredentials<endpoint: $endpoint userId: $userId>"
 
-    public fun endpointUri(path: String): String {
-        return "$endpoint/$path"
-    }
+    public fun endpointUri(path: String): String = "$endpoint/$path"
 }

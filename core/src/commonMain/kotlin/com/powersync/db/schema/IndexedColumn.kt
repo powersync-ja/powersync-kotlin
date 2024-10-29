@@ -13,21 +13,19 @@ public data class IndexedColumn(
      */
     @SerialName("name")
     val column: String,
-
     /**
      * Whether this column is stored in ascending order in the index.
      */
     private val ascending: Boolean = true,
-
     private var columnDefinition: Column? = null,
-
     /**
      * The column definition type
      */
-    var type: ColumnType? = null
+    var type: ColumnType? = null,
 ) {
     public companion object {
         public fun ascending(column: String): IndexedColumn = IndexedColumn(column, true)
+
         public fun descending(column: String): IndexedColumn = IndexedColumn(column, false)
     }
 
@@ -36,8 +34,8 @@ public data class IndexedColumn(
      * is required for the serialized JSON payload of powersync_replace_schema
      */
     internal fun setColumnDefinition(column: Column) {
-        this.type = column.type;
-        this.columnDefinition = column;
+        this.type = column.type
+        this.columnDefinition = column
     }
 
     internal fun toSql(table: Table): String {
@@ -48,6 +46,4 @@ public data class IndexedColumn(
     }
 }
 
-internal fun mapColumn(column: Column): String {
-    return "CAST(json_extract(data, ${column.name}) as ${column.type})"
-}
+internal fun mapColumn(column: Column): String = "CAST(json_extract(data, ${column.name}) as ${column.type})"

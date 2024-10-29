@@ -1,8 +1,23 @@
 package com.powersync.utils
 
-
-import kotlinx.serialization.json.*
-import kotlin.test.*
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.double
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class JsonTest {
     @Test
@@ -31,10 +46,13 @@ class JsonTest {
 
     @Test
     fun testMapToJsonElement() {
-        val map = JsonParam.Map(mapOf(
-            "key1" to JsonParam.String("value1"),
-            "key2" to JsonParam.Number(42)
-        ))
+        val map =
+            JsonParam.Map(
+                mapOf(
+                    "key1" to JsonParam.String("value1"),
+                    "key2" to JsonParam.Number(42),
+                ),
+            )
         val jsonElement = map.toJsonElement()
         assertTrue(jsonElement is JsonObject)
         assertEquals("value1", jsonElement["key1"]?.jsonPrimitive?.content)
@@ -43,10 +61,13 @@ class JsonTest {
 
     @Test
     fun testListToJsonElement() {
-        val list = JsonParam.Collection(listOf(
-            JsonParam.String("item1"),
-            JsonParam.Number(42)
-        ))
+        val list =
+            JsonParam.Collection(
+                listOf(
+                    JsonParam.String("item1"),
+                    JsonParam.Number(42),
+                ),
+            )
         val jsonElement = list.toJsonElement()
         assertTrue(jsonElement is JsonArray)
         assertEquals("item1", jsonElement[0].jsonPrimitive.content)
@@ -55,9 +76,10 @@ class JsonTest {
 
     @Test
     fun testJsonElementParamToJsonElement() {
-        val originalJson = buildJsonObject {
-            put("key", "value")
-        }
+        val originalJson =
+            buildJsonObject {
+                put("key", "value")
+            }
         val jsonElementParam = JsonParam.JsonElement(originalJson)
         val jsonElement = jsonElementParam.toJsonElement()
         assertEquals(originalJson, jsonElement)
@@ -72,12 +94,13 @@ class JsonTest {
 
     @Test
     fun testMapToJsonObject() {
-        val params = mapOf(
-            "string" to JsonParam.String("value"),
-            "number" to JsonParam.Number(42),
-            "boolean" to JsonParam.Boolean(true),
-            "null" to JsonParam.Null
-        )
+        val params =
+            mapOf(
+                "string" to JsonParam.String("value"),
+                "number" to JsonParam.Number(42),
+                "boolean" to JsonParam.Boolean(true),
+                "null" to JsonParam.Null,
+            )
         val jsonObject = params.toJsonObject()
         assertEquals("value", jsonObject["string"]?.jsonPrimitive?.content)
         assertEquals(42, jsonObject["number"]?.jsonPrimitive?.int)
@@ -87,37 +110,57 @@ class JsonTest {
 
     @Test
     fun testComplexNestedMapToJsonObject() {
-        val complexNestedMap = mapOf(
-            "string" to JsonParam.String("value"),
-            "number" to JsonParam.Number(42),
-            "boolean" to JsonParam.Boolean(true),
-            "null" to JsonParam.Null,
-            "nestedMap" to JsonParam.Map(mapOf(
-                "list" to JsonParam.Collection(listOf(
-                    JsonParam.Number(1),
-                    JsonParam.String("two"),
-                    JsonParam.Boolean(false)
-                )),
-                "deeplyNested" to JsonParam.Map(mapOf(
-                    "jsonElement" to JsonParam.JsonElement(buildJsonObject {
-                        put("key", "value")
-                        put("array", buildJsonArray {
-                            add(1)
-                            add("string")
-                            add(true)
-                        })
-                    }),
-                    "mixedList" to JsonParam.Collection(arrayListOf(
-                        JsonParam.Number(3.14),
-                        JsonParam.Map(mapOf(
-                            "key" to JsonParam.String("nestedValue")
-                        )),
-                        JsonParam.Null
-                    )
-                    )
-                ))
-            ))
-        )
+        val complexNestedMap =
+            mapOf(
+                "string" to JsonParam.String("value"),
+                "number" to JsonParam.Number(42),
+                "boolean" to JsonParam.Boolean(true),
+                "null" to JsonParam.Null,
+                "nestedMap" to
+                    JsonParam.Map(
+                        mapOf(
+                            "list" to
+                                JsonParam.Collection(
+                                    listOf(
+                                        JsonParam.Number(1),
+                                        JsonParam.String("two"),
+                                        JsonParam.Boolean(false),
+                                    ),
+                                ),
+                            "deeplyNested" to
+                                JsonParam.Map(
+                                    mapOf(
+                                        "jsonElement" to
+                                            JsonParam.JsonElement(
+                                                buildJsonObject {
+                                                    put("key", "value")
+                                                    put(
+                                                        "array",
+                                                        buildJsonArray {
+                                                            add(1)
+                                                            add("string")
+                                                            add(true)
+                                                        },
+                                                    )
+                                                },
+                                            ),
+                                        "mixedList" to
+                                            JsonParam.Collection(
+                                                arrayListOf(
+                                                    JsonParam.Number(3.14),
+                                                    JsonParam.Map(
+                                                        mapOf(
+                                                            "key" to JsonParam.String("nestedValue"),
+                                                        ),
+                                                    ),
+                                                    JsonParam.Null,
+                                                ),
+                                            ),
+                                    ),
+                                ),
+                        ),
+                    ),
+            )
 
         val jsonObject = complexNestedMap.toJsonObject()
 

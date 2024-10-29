@@ -1,20 +1,20 @@
 package com.powersync.bucket
 
 import co.touchlab.kermit.Logger
-import com.powersync.sync.SyncDataBatch
-import com.powersync.sync.SyncLocalDatabaseResult
 import co.touchlab.stately.concurrency.AtomicBoolean
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.CrudRow
 import com.powersync.db.internal.InternalDatabase
-import kotlinx.serialization.encodeToString
 import com.powersync.db.internal.InternalTable
+import com.powersync.sync.SyncDataBatch
+import com.powersync.sync.SyncLocalDatabaseResult
 import com.powersync.utils.JsonUtil
+import kotlinx.serialization.encodeToString
 
 internal class BucketStorageImpl(
     private val db: InternalDatabase,
-    private val logger: Logger
-): BucketStorage {
+    private val logger: Logger,
+) : BucketStorage {
     private val tableNames: MutableSet<String> = mutableSetOf()
     private var hasCompletedSync = AtomicBoolean(false)
     private var pendingBucketDeletes = AtomicBoolean(false)
@@ -41,35 +41,36 @@ internal class BucketStorageImpl(
         tableNames.addAll(names)
     }
 
-    override fun getMaxOpId(): String {
-        return MAX_OP_ID
-    }
+    override fun getMaxOpId(): String = MAX_OP_ID
 
     override suspend fun getClientId(): String {
-        val id = db.getOptional("SELECT powersync_client_id() as client_id") {
-            it.getString(0)!!
-        }
+        val id =
+            db.getOptional("SELECT powersync_client_id() as client_id") {
+                it.getString(0)!!
+            }
         return id ?: throw IllegalStateException("Client ID not found")
     }
 
     override suspend fun nextCrudItem(): CrudEntry? {
-        val crudItem = db.getOptional("SELECT id, tx_id, data FROM ${InternalTable.CRUD} ORDER BY id ASC LIMIT 1") { cursor ->
-            CrudEntry.fromRow(
-                CrudRow(
-                    id = cursor.getString(0)!!,
-                    txId = cursor.getString(1)?.toInt(),
-                    data = cursor.getString(2)!!
+        val crudItem =
+            db.getOptional("SELECT id, tx_id, data FROM ${InternalTable.CRUD} ORDER BY id ASC LIMIT 1") { cursor ->
+                CrudEntry.fromRow(
+                    CrudRow(
+                        id = cursor.getString(0)!!,
+                        txId = cursor.getString(1)?.toInt(),
+                        data = cursor.getString(2)!!,
+                    ),
                 )
-            )
-        }
+            }
 
         return crudItem
     }
 
     override suspend fun hasCrud(): Boolean {
-        val res = db.getOptional("SELECT 1 FROM ps_crud LIMIT 1") {
-            it.getLong(0)!!
-        }
+        val res =
+            db.getOptional("SELECT 1 FROM ps_crud LIMIT 1") {
+                it.getLong(0)!!
+            }
         return res == 1L
     }
 
@@ -77,7 +78,7 @@ internal class BucketStorageImpl(
         db.getOptional(
             "SELECT target_op FROM ${InternalTable.BUCKETS} WHERE name = '\$local' AND target_op = ?",
             parameters = listOf(MAX_OP_ID),
-            mapper = { cursor -> cursor.getLong(0)!! }
+            mapper = { cursor -> cursor.getLong(0)!! },
         )
             ?: // Nothing to update
             return false
@@ -86,7 +87,7 @@ internal class BucketStorageImpl(
             db.getOptional("SELECT seq FROM sqlite_sequence WHERE name = '${InternalTable.CRUD}'") {
                 it.getLong(0)!!
             } ?: // Nothing to update
-            return false
+                return false
 
         val opId = checkpointCallback()
 
@@ -113,7 +114,7 @@ internal class BucketStorageImpl(
 
             db.execute(
                 "UPDATE ${InternalTable.BUCKETS} SET target_op = CAST(? as INTEGER) WHERE name='\$local'",
-                listOf(opId)
+                listOf(opId),
             )
 
             return@writeTransaction true
@@ -125,22 +126,22 @@ internal class BucketStorageImpl(
             val jsonString = JsonUtil.json.encodeToString(syncDataBatch)
             tx.execute(
                 "INSERT INTO powersync_operations(op, data) VALUES(?, ?)",
-                listOf("save", jsonString)
+                listOf("save", jsonString),
             )
         }
         this.compactCounter += syncDataBatch.buckets.sumOf { it.data.size }
     }
 
-    override suspend fun getBucketStates(): List<BucketState> {
-        return db.getAll(
+    override suspend fun getBucketStates(): List<BucketState> =
+        db.getAll(
             "SELECT name AS bucket, CAST(last_op AS TEXT) AS op_id FROM ${InternalTable.BUCKETS} WHERE pending_delete = 0",
             mapper = { cursor ->
                 BucketState(
                     bucket = cursor.getString(0)!!,
-                    opId = cursor.getString(1)!!
+                    opId = cursor.getString(1)!!,
                 )
-            })
-    }
+            },
+        )
 
     override suspend fun removeBuckets(bucketsToDelete: List<String>) {
         bucketsToDelete.forEach { bucketName ->
@@ -149,11 +150,10 @@ internal class BucketStorageImpl(
     }
 
     private suspend fun deleteBucket(bucketName: String) {
-
-        db.writeTransaction{ tx ->
+        db.writeTransaction { tx ->
             tx.execute(
                 "INSERT INTO powersync_operations(op, data) VALUES(?, ?)",
-                listOf("delete_bucket", bucketName)
+                listOf("delete_bucket", bucketName),
             )
         }
 
@@ -167,11 +167,13 @@ internal class BucketStorageImpl(
             return true
         }
 
-        val completedSync = db.getOptional(
-            "SELECT powersync_last_synced_at()",
-            mapper = { cursor ->
-                cursor.getString(0)!!
-            })
+        val completedSync =
+            db.getOptional(
+                "SELECT powersync_last_synced_at()",
+                mapper = { cursor ->
+                    cursor.getString(0)!!
+                },
+            )
 
         return if (completedSync != null) {
             hasCompletedSync.value = true
@@ -198,7 +200,7 @@ internal class BucketStorageImpl(
         db.writeTransaction { tx ->
             tx.execute(
                 "UPDATE ps_buckets SET last_op = ? WHERE name IN (SELECT json_each.value FROM json_each(?))",
-                listOf(targetCheckpoint.lastOpId, JsonUtil.json.encodeToString(bucketNames))
+                listOf(targetCheckpoint.lastOpId, JsonUtil.json.encodeToString(bucketNames)),
             )
 
             if (targetCheckpoint.writeCheckpoint != null) {
@@ -226,17 +228,19 @@ internal class BucketStorageImpl(
     }
 
     private suspend fun validateChecksums(checkpoint: Checkpoint): SyncLocalDatabaseResult {
-        val res = db.getOptional(
-            "SELECT powersync_validate_checkpoint(?) AS result",
-            parameters = listOf(JsonUtil.json.encodeToString(checkpoint)),
-            mapper = { cursor ->
-                cursor.getString(0)!!
-            })
-            ?: //no result
-            return SyncLocalDatabaseResult(
-                ready = false,
-                checkpointValid = false,
+        val res =
+            db.getOptional(
+                "SELECT powersync_validate_checkpoint(?) AS result",
+                parameters = listOf(JsonUtil.json.encodeToString(checkpoint)),
+                mapper = { cursor ->
+                    cursor.getString(0)!!
+                },
             )
+                ?: // no result
+                return SyncLocalDatabaseResult(
+                    ready = false,
+                    checkpointValid = false,
+                )
 
         return JsonUtil.json.decodeFromString<SyncLocalDatabaseResult>(res)
     }
@@ -251,12 +255,13 @@ internal class BucketStorageImpl(
 
             tx.execute(
                 "INSERT INTO powersync_operations(op, data) VALUES(?, ?)",
-                listOf("sync_local", "")
+                listOf("sync_local", ""),
             )
 
-            val res = tx.get("select last_insert_rowid()") { cursor ->
-                cursor.getLong(0)!!
-            }
+            val res =
+                tx.get("select last_insert_rowid()") { cursor ->
+                    cursor.getLong(0)!!
+                }
 
             return@writeTransaction res == 1L
         }
@@ -269,7 +274,6 @@ internal class BucketStorageImpl(
 
         this.autoCompact()
     }
-
 
     private suspend fun autoCompact() {
         // 1. Delete buckets
@@ -286,7 +290,8 @@ internal class BucketStorageImpl(
 
         db.writeTransaction { tx ->
             tx.execute(
-                "INSERT INTO powersync_operations(op, data) VALUES (?, ?)", listOf("delete_pending_buckets","")
+                "INSERT INTO powersync_operations(op, data) VALUES (?, ?)",
+                listOf("delete_pending_buckets", ""),
             )
 
             // Executed once after start-up, and again when there are pending deletes.
@@ -302,7 +307,7 @@ internal class BucketStorageImpl(
         db.writeTransaction { tx ->
             tx.execute(
                 "INSERT INTO powersync_operations(op, data) VALUES (?, ?)",
-                listOf("clear_remove_ops", "")
+                listOf("clear_remove_ops", ""),
             )
         }
         this.compactCounter = 0

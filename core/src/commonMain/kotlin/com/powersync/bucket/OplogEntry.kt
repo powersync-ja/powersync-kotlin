@@ -15,5 +15,5 @@ internal data class OplogEntry(
      * There may be multiple source entries for a single "rowType + rowId" combination.
      */
     val subkey: String? = null,
-    val data: String? = null
+    val data: String? = null,
 )

@@ -9,29 +9,24 @@ import kotlinx.serialization.json.jsonPrimitive
  * A single client-side change.
  */
 public data class CrudEntry(
-
     /**
      * ID of the changed row.
      */
     val id: String,
-
     /**
      * Auto-incrementing client-side id.
      *
      * Reset whenever the database is re-created.
      */
     val clientId: Int,
-
     /**
      * Type of change.
      */
     val op: UpdateType,
-
     /**
      * Table that contained the change.
      */
     val table: String,
-
     /**
      * Auto-incrementing transaction id. This is the same for all operations
      * within the same transaction.
@@ -42,7 +37,6 @@ public data class CrudEntry(
      * This may change in the future.
      */
     val transactionId: Int?,
-
     /**
      * Data associated with the change.
      *
@@ -52,7 +46,7 @@ public data class CrudEntry(
      *
      * For DELETE, this is null.
      */
-    val opData: Map<String, String?>?
+    val opData: Map<String, String?>?,
 ) {
     public companion object {
         public fun fromRow(row: CrudRow): CrudEntry {
@@ -61,17 +55,15 @@ public data class CrudEntry(
                 id = data["id"]!!.jsonPrimitive.content,
                 clientId = row.id.toInt(),
                 op = UpdateType.fromJsonChecked(data["op"]!!.jsonPrimitive.content),
-                opData = data["data"]?.jsonObject?.mapValues { (_, value) ->
-                    value.jsonPrimitive.contentOrNull
-                },
+                opData =
+                    data["data"]?.jsonObject?.mapValues { (_, value) ->
+                        value.jsonPrimitive.contentOrNull
+                    },
                 table = data["type"]!!.jsonPrimitive.content,
                 transactionId = row.txId,
             )
         }
     }
 
-    override fun toString(): String {
-        return "CrudEntry<$transactionId/$clientId ${op.toJson()} $table/$id $opData>"
-    }
-
+    override fun toString(): String = "CrudEntry<$transactionId/$clientId ${op.toJson()} $table/$id $opData>"
 }

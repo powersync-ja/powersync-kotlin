@@ -1,6 +1,5 @@
 import co.touchlab.faktory.artifactmanager.ArtifactManager
 import co.touchlab.faktory.capitalized
-import co.touchlab.skie.configuration.SuspendInterop
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import java.net.URL
 import java.security.MessageDigest
@@ -10,6 +9,7 @@ plugins {
     alias(libs.plugins.kmmbridge)
     alias(libs.plugins.skie)
     alias(libs.plugins.mavenPublishPlugin)
+    alias(libs.plugins.kotlinter)
     id("com.powersync.plugins.sonatype")
 }
 
@@ -17,7 +17,7 @@ kotlin {
     listOf(
         iosX64(),
         iosArm64(),
-        iosSimulatorArm64()
+        iosSimulatorArm64(),
     ).forEach {
         it.binaries.framework {
             export(project(":core"))
@@ -36,16 +36,6 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(project(":core"))
-        }
-    }
-}
-
-skie {
-    features {
-        group {
-            // We turn this off as the suspend interop feature results in
-            // threading issues when implementing SDK in Swift
-            SuspendInterop.Enabled(false)
         }
     }
 }
@@ -70,19 +60,22 @@ class SonatypePortalPublishArtifactManager(
     val project: Project,
     private val publicationName: String = "KMMBridgeFramework",
     artifactSuffix: String = "kmmbridge",
-    private val repositoryName: String?,
+    private val repositoryName: String?
 ) : ArtifactManager {
     private val group: String = project.group.toString().replace(".", "/")
     private val kmmbridgeArtifactId =
-        "${project.name}-${artifactSuffix}"
+        "${project.name}-$artifactSuffix"
     private val LIBRARY_VERSION: String by project
+
     // This is the URL that will be added to Package.swift in Github package so that
     // KMMBridge is downloaded when a user includes the package in XCode
     private val MAVEN_CENTRAL_PACKAGE_ZIP_URL = "https://repo1.maven.org/maven2/com/powersync/${kmmbridgeArtifactId.lowercase()}/${LIBRARY_VERSION}/${kmmbridgeArtifactId.lowercase()}-${LIBRARY_VERSION}.zip"
 
-    override fun deployArtifact(project: Project, zipFilePath: File, version: String): String {
-        return MAVEN_CENTRAL_PACKAGE_ZIP_URL
-    }
+    override fun deployArtifact(
+        project: Project,
+        zipFilePath: File,
+        version: String
+    ): String = MAVEN_CENTRAL_PACKAGE_ZIP_URL
 
     override fun configure(
         project: Project,
@@ -91,12 +84,14 @@ class SonatypePortalPublishArtifactManager(
         kmmPublishTask: TaskProvider<Task>
     ) {
         project.extensions.getByType<PublishingExtension>().publications.create(
-            publicationName, MavenPublication::class.java
+            publicationName,
+            MavenPublication::class.java,
         ) {
             this.version = version
-            val archiveProvider = project.tasks.named("zipXCFramework", Zip::class.java).flatMap {
-                it.archiveFile
-            }
+            val archiveProvider =
+                project.tasks.named("zipXCFramework", Zip::class.java).flatMap {
+                    it.archiveFile
+                }
             artifact(archiveProvider) {
                 extension = "zip"
             }
@@ -136,11 +131,14 @@ class SonatypePortalPublishArtifactManager(
 
         // Either the user has supplied a correct name, or we use the default. If neither is found, fail.
         val publicationNameCap =
-            publishingExtension.publications.getByName(
-                publicationName
-            ).name.capitalized()
+            publishingExtension.publications
+                .getByName(
+                    publicationName,
+                ).name
+                .capitalized()
 
-        return publishingExtension.repositories.filterIsInstance<MavenArtifactRepository>()
+        return publishingExtension.repositories
+            .filterIsInstance<MavenArtifactRepository>()
             .map { repo ->
                 val repositoryName = repo.name.capitalized()
                 val publishTaskName =
@@ -175,26 +173,27 @@ abstract class UpdatePackageSwiftChecksumTask : DefaultTask() {
         }
 
         // Compute the checksum
-        val checksum = zipFile.inputStream().use { input ->
-            val digest = MessageDigest.getInstance("SHA-256")
-            val buffer = ByteArray(8192)
-            var bytes = input.read(buffer)
-            while (bytes >= 0) {
-                digest.update(buffer, 0, bytes)
-                bytes = input.read(buffer)
+        val checksum =
+            zipFile.inputStream().use { input ->
+                val digest = MessageDigest.getInstance("SHA-256")
+                val buffer = ByteArray(8192)
+                var bytes = input.read(buffer)
+                while (bytes >= 0) {
+                    digest.update(buffer, 0, bytes)
+                    bytes = input.read(buffer)
+                }
+                digest.digest().joinToString("") { "%02x".format(it) }
             }
-            digest.digest().joinToString("") { "%02x".format(it) }
-        }
 
         // Update Package.swift
         val packageSwiftFile = project.rootProject.file("Package.swift")
-        val updatedContent = packageSwiftFile.readText().replace(
-            Regex("let remoteKotlinChecksum = \"[a-f0-9]+\""),
-            "let remoteKotlinChecksum = \"$checksum\""
-        )
+        val updatedContent =
+            packageSwiftFile.readText().replace(
+                Regex("let remoteKotlinChecksum = \"[a-f0-9]+\""),
+                "let remoteKotlinChecksum = \"$checksum\"",
+            )
         packageSwiftFile.writeText(updatedContent)
 
         println("Updated Package.swift with new checksum: $checksum")
     }
 }
-

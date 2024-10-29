@@ -5,10 +5,10 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 internal data class WriteCheckpointResponse(
-    val data: WriteCheckpointData
+    val data: WriteCheckpointData,
 )
 
 @Serializable
 internal data class WriteCheckpointData(
-    @SerialName("write_checkpoint") val writeCheckpoint: String
+    @SerialName("write_checkpoint") val writeCheckpoint: String,
 )

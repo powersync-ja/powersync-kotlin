@@ -1,15 +1,19 @@
 package com.powersync.db.schema
 
-import kotlin.test.*
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class TableTest {
-
     @Test
     fun testTableInitialization() {
-        val columns = listOf(
-            Column("name", ColumnType.TEXT),
-            Column("age", ColumnType.INTEGER)
-        )
+        val columns =
+            listOf(
+                Column("name", ColumnType.TEXT),
+                Column("age", ColumnType.INTEGER),
+            )
         val table = Table("users", columns)
 
         assertEquals("users", table.name)
@@ -37,10 +41,11 @@ class TableTest {
 
     @Test
     fun testColumnRetrieval() {
-        val columns = listOf(
-            Column("name", ColumnType.TEXT),
-            Column("age", ColumnType.INTEGER)
-        )
+        val columns =
+            listOf(
+                Column("name", ColumnType.TEXT),
+                Column("age", ColumnType.INTEGER),
+            )
         val table = Table("users", columns)
 
         assertEquals(ColumnType.TEXT, table["name"].type)
@@ -60,7 +65,7 @@ class TableTest {
         val columns = listOf(Column("name", ColumnType.TEXT))
         val table = Table("valid_table_name", columns, viewNameOverride = "new_view_name")
 
-        assertEquals(table.viewName,"new_view_name")
+        assertEquals(table.viewName, "new_view_name")
     }
 
     @Test
@@ -73,10 +78,11 @@ class TableTest {
 
     @Test
     fun testValidation() {
-        val columns = listOf(
-            Column("name", ColumnType.TEXT),
-            Column("age", ColumnType.INTEGER)
-        )
+        val columns =
+            listOf(
+                Column("name", ColumnType.TEXT),
+                Column("age", ColumnType.INTEGER),
+            )
         val table = Table("users", columns)
 
         // This should not throw an exception
@@ -85,15 +91,17 @@ class TableTest {
 
     @Test
     fun testValidationFailsDuplicateColumn() {
-        val columns = listOf(
-            Column("name", ColumnType.TEXT),
-            Column("name", ColumnType.TEXT)
-        )
+        val columns =
+            listOf(
+                Column("name", ColumnType.TEXT),
+                Column("name", ColumnType.TEXT),
+            )
         val table = Table("users", columns)
 
-        val exception = assertFailsWith<AssertionError> {
-            table.validate()
-        }
+        val exception =
+            assertFailsWith<AssertionError> {
+                table.validate()
+            }
         assertEquals(exception.message, "Duplicate column users.name")
     }
 
@@ -102,9 +110,10 @@ class TableTest {
         val columns = listOf(Column("#invalid-name", ColumnType.TEXT))
         val table = Table("users", columns)
 
-        val exception = assertFailsWith<AssertionError> {
-            table.validate()
-        }
+        val exception =
+            assertFailsWith<AssertionError> {
+                table.validate()
+            }
         assertEquals(exception.message, "Invalid characters in column name: users.#invalid-name")
     }
 
@@ -113,10 +122,11 @@ class TableTest {
         val columns = List(64) { Column("column$it", ColumnType.TEXT) }
         val table = Table("users", columns)
 
-        val exception = assertFailsWith<AssertionError> {
-            table.validate()
-        }
-        assertEquals(exception.message,"Table users has more than 63 columns, which is not supported")
+        val exception =
+            assertFailsWith<AssertionError> {
+                table.validate()
+            }
+        assertEquals(exception.message, "Table users has more than 63 columns, which is not supported")
     }
 
     @Test
@@ -124,9 +134,10 @@ class TableTest {
         val columns = listOf(Column("name", ColumnType.TEXT))
         val indexes = listOf(Index("idx_age", listOf(IndexedColumn("age"))))
 
-        val exception = assertFailsWith<AssertionError> {
-            Table("users", columns, indexes)
-        }
+        val exception =
+            assertFailsWith<AssertionError> {
+                Table("users", columns, indexes)
+            }
         assertEquals(exception.message, "Could not find column definition for index idx_age:age")
     }
 
@@ -136,10 +147,11 @@ class TableTest {
         val indexes = listOf(Index("#name_index", listOf(IndexedColumn("name"))))
         val table = Table("users", columns, indexes)
 
-        val exception = assertFailsWith<AssertionError> {
-            table.validate()
-        }
-        assertEquals(exception.message,"Invalid characters in index name: users.#name_index")
+        val exception =
+            assertFailsWith<AssertionError> {
+                table.validate()
+            }
+        assertEquals(exception.message, "Invalid characters in index name: users.#name_index")
     }
 
     @Test
@@ -148,23 +160,24 @@ class TableTest {
         val indexes = listOf(Index("name_index", listOf(IndexedColumn("name"))), Index("name_index", listOf(IndexedColumn("name"))))
         val table = Table("users", columns, indexes)
 
-        val exception = assertFailsWith<AssertionError> {
-            table.validate()
-        }
+        val exception =
+            assertFailsWith<AssertionError> {
+                table.validate()
+            }
 
-        assertEquals(exception.message,"Duplicate index users.name_index")
+        assertEquals(exception.message, "Duplicate index users.name_index")
     }
-
 
     @Test
     fun testValidationOfIdColumn() {
         val columns = listOf(Column("id", ColumnType.TEXT))
         val table = Table("users", columns)
 
-        val exception = assertFailsWith<AssertionError> {
-            table.validate()
-        }
+        val exception =
+            assertFailsWith<AssertionError> {
+                table.validate()
+            }
 
-        assertEquals(exception.message,"users: id column is automatically added, custom id columns are not supported")
+        assertEquals(exception.message, "users: id column is automatically added, custom id columns are not supported")
     }
 }

@@ -17,7 +17,6 @@ import com.powersync.utils.JsonParam
  * All changes to local tables are automatically recorded, whether connected or not. Once connected, the changes are uploaded.
  */
 public interface PowerSyncDatabase : Queries {
-
     /**
      * The current sync status.
      */
@@ -62,9 +61,8 @@ public interface PowerSyncDatabase : Queries {
         connector: PowerSyncBackendConnector,
         crudThrottleMs: Long = 1000L,
         retryDelayMs: Long = 5000L,
-        params: Map<String, JsonParam?> = emptyMap()
+        params: Map<String, JsonParam?> = emptyMap(),
     )
-
 
     /**
      * Get a batch of crud data to upload.
@@ -84,7 +82,6 @@ public interface PowerSyncDatabase : Queries {
      * and a single transaction may be split over multiple batches.
      */
     public suspend fun getCrudBatch(limit: Int = 100): CrudBatch?
-
 
     /**
      * Get the next recorded transaction to upload.

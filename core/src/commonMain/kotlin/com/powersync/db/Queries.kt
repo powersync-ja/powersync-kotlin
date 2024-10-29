@@ -1,16 +1,17 @@
 package com.powersync.db
 
-import app.cash.sqldelight.SuspendingTransactionWithReturn
 import app.cash.sqldelight.db.SqlCursor
 import com.powersync.db.internal.PowerSyncTransaction
 import kotlinx.coroutines.flow.Flow
 
 public interface Queries {
-
     /**
      * Execute a write query (INSERT, UPDATE, DELETE)
      */
-    public suspend fun execute(sql: String, parameters: List<Any?>? = listOf()): Long
+    public suspend fun execute(
+        sql: String,
+        parameters: List<Any?>? = listOf(),
+    ): Long
 
     /**
      * Execute a read-only (SELECT) query and return a single result.
@@ -20,7 +21,7 @@ public interface Queries {
     public suspend fun <RowType : Any> get(
         sql: String,
         parameters: List<Any?>? = listOf(),
-        mapper: (SqlCursor) -> RowType
+        mapper: (SqlCursor) -> RowType,
     ): RowType
 
     /**
@@ -29,7 +30,7 @@ public interface Queries {
     public suspend fun <RowType : Any> getAll(
         sql: String,
         parameters: List<Any?>? = listOf(),
-        mapper: (SqlCursor) -> RowType
+        mapper: (SqlCursor) -> RowType,
     ): List<RowType>
 
     /**
@@ -38,7 +39,7 @@ public interface Queries {
     public suspend fun <RowType : Any> getOptional(
         sql: String,
         parameters: List<Any?>? = listOf(),
-        mapper: (SqlCursor) -> RowType
+        mapper: (SqlCursor) -> RowType,
     ): RowType?
 
     /**
@@ -47,7 +48,7 @@ public interface Queries {
     public fun <RowType : Any> watch(
         sql: String,
         parameters: List<Any?>? = listOf(),
-        mapper: (SqlCursor) -> RowType
+        mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>>
 
     public suspend fun <R> writeTransaction(callback: suspend (PowerSyncTransaction) -> R): R

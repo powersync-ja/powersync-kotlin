@@ -52,12 +52,13 @@ public abstract class PowerSyncBackendConnector {
     public open suspend fun prefetchCredentials(): Job? {
         fetchRequest?.takeIf { it.isActive }?.let { return it }
 
-        fetchRequest = scope.launch {
-            fetchCredentials().also { value ->
-                cachedCredentials = value
-                fetchRequest = null
+        fetchRequest =
+            scope.launch {
+                fetchCredentials().also { value ->
+                    cachedCredentials = value
+                    fetchRequest = null
+                }
             }
-        }
 
         return fetchRequest
     }

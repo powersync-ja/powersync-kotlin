@@ -8,13 +8,13 @@ import co.touchlab.kermit.Severity
  * if no Logger is provided.
 */
 public fun generateLogger(logger: Logger?): Logger {
-    if(logger != null) {
+    if (logger != null) {
         return logger
     }
 
     val defaultLogger: Logger = Logger
 
-    if(BuildConfig.isDebug) {
+    if (BuildConfig.isDebug) {
         Logger.setMinSeverity(Severity.Verbose)
     } else {
         Logger.setMinSeverity(Severity.Warn)

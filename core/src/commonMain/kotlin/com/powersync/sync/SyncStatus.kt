@@ -1,9 +1,9 @@
 package com.powersync.sync
 
+import com.powersync.connectors.PowerSyncBackendConnector
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import com.powersync.connectors.PowerSyncBackendConnector
 import kotlinx.datetime.Instant
 
 public interface SyncStatusData {
@@ -81,18 +81,15 @@ internal data class SyncStatusDataContainer(
         get() = downloadError ?: uploadError
 }
 
-
 public data class SyncStatus internal constructor(
-    private var data: SyncStatusDataContainer = SyncStatusDataContainer()
+    private var data: SyncStatusDataContainer = SyncStatusDataContainer(),
 ) : SyncStatusData {
     private val stateFlow: MutableStateFlow<SyncStatusDataContainer> = MutableStateFlow(data)
 
     /**
      * @returns a flow which emits whenever the sync status has changed
      */
-    public fun asFlow(): SharedFlow<SyncStatusData> {
-        return stateFlow.asSharedFlow()
-    }
+    public fun asFlow(): SharedFlow<SyncStatusData> = stateFlow.asSharedFlow()
 
     /**
      * Updates the internal sync status indicators and emits Flow updates
@@ -109,16 +106,17 @@ public data class SyncStatus internal constructor(
         clearUploadError: Boolean = false,
         clearDownloadError: Boolean = false,
     ) {
-        data = data.copy(
-            connected = connected ?: data.connected,
-            connecting = connecting ?: data.connecting,
-            downloading = downloading ?: data.downloading,
-            uploading = uploading ?: data.uploading,
-            lastSyncedAt = lastSyncedAt ?: data.lastSyncedAt,
-            hasSynced = hasSynced ?: data.hasSynced,
-            uploadError = if (clearUploadError) null else uploadError,
-            downloadError = if (clearDownloadError) null else downloadError,
-        )
+        data =
+            data.copy(
+                connected = connected ?: data.connected,
+                connecting = connecting ?: data.connecting,
+                downloading = downloading ?: data.downloading,
+                uploading = uploading ?: data.uploading,
+                lastSyncedAt = lastSyncedAt ?: data.lastSyncedAt,
+                hasSynced = hasSynced ?: data.hasSynced,
+                uploadError = if (clearUploadError) null else uploadError,
+                downloadError = if (clearDownloadError) null else downloadError,
+            )
         stateFlow.value = data
     }
 
@@ -149,9 +147,8 @@ public data class SyncStatus internal constructor(
     override val downloadError: Any?
         get() = data.downloadError
 
-    override fun toString(): String {
-        return "SyncStatus(connected=$connected, connecting=$connecting, downloading=$downloading, uploading=$uploading, lastSyncedAt=$lastSyncedAt, hasSynced=$hasSynced, error=$anyError)"
-    }
+    override fun toString(): String =
+        "SyncStatus(connected=$connected, connecting=$connecting, downloading=$downloading, uploading=$uploading, lastSyncedAt=$lastSyncedAt, hasSynced=$hasSynced, error=$anyError)"
 
     public companion object {
         public fun empty(): SyncStatus = SyncStatus()

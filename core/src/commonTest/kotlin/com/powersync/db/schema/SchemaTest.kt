@@ -1,9 +1,10 @@
 package com.powersync.db.schema
 
-import kotlin.test.*
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class SchemaTest {
-
     @Test
     fun schemaConstructionWithValidTablesShouldSucceed() {
         val table1 = Table("table1", listOf(Column("column1", ColumnType.TEXT)))
@@ -21,9 +22,10 @@ class SchemaTest {
         val validTable = Table("validTable", listOf(Column("column1", ColumnType.TEXT)))
         val invalidTable = Table("#invalid-table", listOf(Column("column1", ColumnType.TEXT)))
 
-        val exception = assertFailsWith<AssertionError> {
-            Schema(validTable, invalidTable)
-        }
+        val exception =
+            assertFailsWith<AssertionError> {
+                Schema(validTable, invalidTable)
+            }
         assertEquals(exception.message, "Invalid characters in table name: #invalid-table")
     }
 
@@ -32,9 +34,10 @@ class SchemaTest {
         val table1 = Table("table1", listOf(Column("column1", ColumnType.TEXT)))
         val table2 = Table("table1", listOf(Column("column2", ColumnType.INTEGER)))
 
-        val exception = assertFailsWith<AssertionError> {
-            Schema(table1, table2)
-        }
+        val exception =
+            assertFailsWith<AssertionError> {
+                Schema(table1, table2)
+            }
         assertEquals(exception.message, "Duplicate table name: table1")
     }
 }

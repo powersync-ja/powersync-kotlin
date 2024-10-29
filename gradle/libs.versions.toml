@@ -34,6 +34,7 @@ maven-publish = "0.27.0"
 download-plugin = "5.5.0"
 grammerKit = "0.1.12"
 mokkery = "2.4.0"
+kotlinter = "4.4.1"
 
 # Sample - Android
 androidx-core = "1.13.1"
@@ -107,6 +108,7 @@ grammarKitComposer = { id = "com.alecstrong.grammar.kit.composer", version.ref =
 mavenPublishPlugin = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }
 downloadPlugin = { id = "de.undercouch.download", version.ref = "download-plugin" }
 mokkery = { id = "dev.mokkery", version.ref = "mokkery" }
+kotlinter = { id = "org.jmailen.kotlinter", version.ref = "kotlinter" }
 
 [bundles]
 sqldelight = [

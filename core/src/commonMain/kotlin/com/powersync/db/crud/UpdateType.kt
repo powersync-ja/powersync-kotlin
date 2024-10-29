@@ -3,7 +3,9 @@ package com.powersync.db.crud
 /**
  * Type of local change.
  */
-public enum class UpdateType(private val json: String) {
+public enum class UpdateType(
+    private val json: String,
+) {
     /**
      * Insert or replace a row. All non-null columns are included in the data.
      */
@@ -17,16 +19,13 @@ public enum class UpdateType(private val json: String) {
     /**
      * Delete a row if it exists.
      */
-    DELETE("DELETE");
+    DELETE("DELETE"),
+    ;
 
-    public fun toJson(): String {
-        return json
-    }
+    public fun toJson(): String = json
 
     public companion object {
-        public fun fromJson(json: String): UpdateType? {
-            return entries.find { it.json == json }
-        }
+        public fun fromJson(json: String): UpdateType? = entries.find { it.json == json }
 
         public fun fromJsonChecked(json: String): UpdateType {
             val v = fromJson(json)

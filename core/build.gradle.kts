@@ -1,6 +1,6 @@
+import com.powersync.plugins.sonatype.setupGithubRepository
 import de.undercouch.gradle.tasks.download.Download
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
-import com.powersync.plugins.sonatype.setupGithubRepository
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.mavenPublishPlugin)
     alias(libs.plugins.downloadPlugin)
+    alias(libs.plugins.kotlinter)
     id("com.powersync.plugins.sonatype")
     alias(libs.plugins.mokkery)
 }
@@ -16,12 +17,14 @@ val sqliteVersion = "3450000"
 val sqliteReleaseYear = "2024"
 
 val sqliteSrcFolder =
-    project.layout.buildDirectory.dir("interop/sqlite").get()
+    project.layout.buildDirectory
+        .dir("interop/sqlite")
+        .get()
 
 val downloadSQLiteSources by tasks.registering(Download::class) {
     val zipFileName = "sqlite-amalgamation-$sqliteVersion.zip"
     val destination = sqliteSrcFolder.file(zipFileName).asFile
-    src("https://www.sqlite.org/$sqliteReleaseYear/${zipFileName}")
+    src("https://www.sqlite.org/$sqliteReleaseYear/$zipFileName")
     dest(destination)
     onlyIfNewer(true)
     overwrite(false)
@@ -30,15 +33,17 @@ val downloadSQLiteSources by tasks.registering(Download::class) {
 val unzipSQLiteSources by tasks.registering(Copy::class) {
     dependsOn(downloadSQLiteSources)
 
-    from(zipTree(downloadSQLiteSources.get().dest).matching {
-        include("*/sqlite3.*")
-        exclude {
-            it.isDirectory
-        }
-        eachFile {
-            this.path = this.name
-        }
-    })
+    from(
+        zipTree(downloadSQLiteSources.get().dest).matching {
+            include("*/sqlite3.*")
+            exclude {
+                it.isDirectory
+            }
+            eachFile {
+                this.path = this.name
+            }
+        },
+    )
     into(sqliteSrcFolder)
 }
 
@@ -53,8 +58,8 @@ val buildCInteropDef by tasks.registering {
             """
             package = com.powersync.sqlite3
             ---
-            
-        """.trimIndent() + cFile.readText()
+
+            """.trimIndent() + cFile.readText(),
         )
     }
     outputs.files(defFile)
@@ -75,7 +80,10 @@ kotlin {
             cinterops.create("sqlite") {
                 val cInteropTask = tasks[interopProcessingTaskName]
                 cInteropTask.dependsOn(buildCInteropDef)
-                defFile = buildCInteropDef.get().outputs.files.singleFile
+                defFile =
+                    buildCInteropDef
+                        .get()
+                        .outputs.files.singleFile
                 compilerOpts.addAll(listOf("-DHAVE_GETHOSTUUID=0"))
             }
             cinterops.create("powersync-sqlite-core")
@@ -127,7 +135,6 @@ android {
         jvmToolchain(17)
     }
 
-
     buildFeatures {
         buildConfig = true
     }
@@ -142,16 +149,22 @@ android {
     }
 
     namespace = "com.powersync"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
+    compileSdk =
+        libs.versions.android.compileSdk
+            .get()
+            .toInt()
     defaultConfig {
-        minSdk = libs.versions.android.minSdk.get().toInt()
+        minSdk =
+            libs.versions.android.minSdk
+                .get()
+                .toInt()
 
         externalNativeBuild {
             cmake {
                 arguments.addAll(
                     listOf(
-                        "-DSQLITE3_SRC_DIR=${sqliteSrcFolder.asFile.absolutePath}"
-                    )
+                        "-DSQLITE3_SRC_DIR=${sqliteSrcFolder.asFile.absolutePath}",
+                    ),
                 )
             }
         }
@@ -164,18 +177,18 @@ android {
     }
 }
 
-
 afterEvaluate {
-    val buildTasks = tasks.matching {
-        val taskName = it.name
-        if (taskName.contains("Clean")) {
+    val buildTasks =
+        tasks.matching {
+            val taskName = it.name
+            if (taskName.contains("Clean")) {
+                return@matching false
+            }
+            if (taskName.contains("externalNative") || taskName.contains("CMake") || taskName.contains("generateJsonModel")) {
+                return@matching true
+            }
             return@matching false
         }
-        if (taskName.contains("externalNative") || taskName.contains("CMake") || taskName.contains("generateJsonModel")) {
-            return@matching true
-        }
-        return@matching false
-    }
 
     buildTasks.forEach {
         it.dependsOn(buildCInteropDef)
@@ -183,4 +196,3 @@ afterEvaluate {
 }
 
 setupGithubRepository()
-
