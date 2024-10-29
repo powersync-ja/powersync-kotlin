@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.0.0-BETA6
+
+* Fix Custom Write Checkpoint application logic
 
 ## 1.0.0-BETA5
 

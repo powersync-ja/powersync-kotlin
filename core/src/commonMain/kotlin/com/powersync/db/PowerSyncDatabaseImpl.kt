@@ -247,7 +247,7 @@ internal class PowerSyncDatabaseImpl(
         writeTransaction { tx ->
             internalDb.queries.deleteEntriesWithIdLessThan(lastTransactionId.toLong())
 
-            if (writeCheckpoint != null && bucketStorage.hasCrud()) {
+            if (writeCheckpoint != null && !bucketStorage.hasCrud()) {
                 tx.execute(
                     "UPDATE ps_buckets SET target_op = CAST(? AS INTEGER) WHERE name='\$local'",
                     listOf(writeCheckpoint),
