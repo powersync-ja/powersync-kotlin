@@ -6,12 +6,12 @@ import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.UpdateType
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.auth.status.SessionStatus
+import io.github.jan.supabase.auth.user.UserSession
 import io.github.jan.supabase.createSupabaseClient
-import io.github.jan.supabase.gotrue.Auth
-import io.github.jan.supabase.gotrue.SessionStatus
-import io.github.jan.supabase.gotrue.auth
-import io.github.jan.supabase.gotrue.providers.builtin.Email
-import io.github.jan.supabase.gotrue.user.UserSession
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.flow.StateFlow

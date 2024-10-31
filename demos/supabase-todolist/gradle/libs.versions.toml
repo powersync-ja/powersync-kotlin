@@ -10,11 +10,11 @@ kotlin = "2.0.20"
 coroutines = "1.8.1"
 kotlinx-datetime = "0.5.0"
 kotlinx-io = "0.5.4"
-ktor = "2.3.12"
+ktor = "3.0.1"
 uuid = "0.8.2"
 buildKonfig = "0.15.1"
 
-supabase = "2.6.1"
+supabase = "3.0.1"
 junit = "4.13.2"
 
 compose = "1.6.11"
@@ -52,7 +52,7 @@ ktor-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json", 
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 
 supabase-client = { module = "io.github.jan-tennert.supabase:postgrest-kt", version.ref = "supabase" }
-supabase-gotrue = { module = "io.github.jan-tennert.supabase:gotrue-kt", version.ref = "supabase" }
+supabase-auth = { module = "io.github.jan-tennert.supabase:auth-kt", version.ref = "supabase" }
 
 androidx-core = { group = "androidx.core", name = "core-ktx", version.ref = "androidx-core" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidx-appcompat" }
