@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import com.powersync.PowerSyncDatabase
 import com.powersync.connector.supabase.SupabaseConnector
+import io.github.jan.supabase.auth.status.RefreshFailureCause
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,7 +39,12 @@ internal class AuthViewModel(
                     }
 
                     SessionStatus.Initializing -> Logger.e("Loading from storage")
-                    SessionStatus.RefreshFailure(cause) -> Logger.e("Network error")
+                    is SessionStatus.RefreshFailure -> {
+                        when (it.cause) {
+                            is RefreshFailureCause.NetworkError -> Logger.e("Network error occurred")
+                            is RefreshFailureCause.InternalServerError -> Logger.e("Internal server error occurred")
+                        }
+                    }
                     is SessionStatus.NotAuthenticated -> {
                         db.disconnectAndClear()
                         _authState.value = AuthState.SignedOut

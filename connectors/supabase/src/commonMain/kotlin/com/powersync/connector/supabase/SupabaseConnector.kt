@@ -1,5 +1,6 @@
 package com.powersync.connector.supabase
 
+import co.touchlab.kermit.Logger
 import com.powersync.PowerSyncDatabase
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.connectors.PowerSyncCredentials
@@ -12,6 +13,7 @@ import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserSession
 import io.github.jan.supabase.createSupabaseClient
+import io.github.jan.supabase.exceptions.BadRequestRestException
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.flow.StateFlow
@@ -136,8 +138,19 @@ public class SupabaseConnector(
 
             transaction.complete(null)
         } catch (e: Exception) {
-            println("Data upload error - retrying last entry: ${lastEntry!!}, $e")
-            throw e
+            when (e) {
+                is BadRequestRestException -> {
+                    if (e.message?.contains("violates not-null constraint") == true) {
+                        Logger.e("Not-null constraint violation: ${e.message}")
+                        transaction.complete(null)
+                        return
+                    }
+                }
+                else -> {
+                    Logger.e("Data upload error - retrying last entry: $lastEntry, $e")
+                    throw e
+                }
+            }
         }
     }
 }
