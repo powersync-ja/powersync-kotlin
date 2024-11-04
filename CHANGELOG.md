@@ -3,7 +3,7 @@
 ## 1.0.0-BETA7
 
 * Update supabase connector to use supabase-kt version 3
-* Handle null violation error in supabase connector
+* Handle postgres error codes in supabase connector
 
 ## 1.0.0-BETA6
 
