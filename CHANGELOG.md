@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.0-BETA7
+
+* Update supabase connector to use supabase-kt version 3
+* Handle postgres error codes in supabase connector
+
 ## 1.0.0-BETA6
 
 * Fix Custom Write Checkpoint application logic

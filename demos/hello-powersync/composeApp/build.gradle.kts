@@ -1,6 +1,6 @@
+import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING
 import org.jetbrains.compose.ExperimentalComposeLibrary
 import java.util.Properties
-import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING
 
 plugins {
     alias(projectLibs.plugins.kotlinMultiplatform)
@@ -60,7 +60,10 @@ kotlin {
 
 android {
     namespace = "com.powersync.demos"
-    compileSdk = projectLibs.versions.android.compileSdk.get().toInt()
+    compileSdk =
+        projectLibs.versions.android.compileSdk
+            .get()
+            .toInt()
 
     sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
     sourceSets["main"].res.srcDirs("src/androidMain/res")
@@ -68,8 +71,14 @@ android {
 
     defaultConfig {
         applicationId = "com.powersync.demos"
-        minSdk = projectLibs.versions.android.minSdk.get().toInt()
-        targetSdk = projectLibs.versions.android.targetSdk.get().toInt()
+        minSdk =
+            projectLibs.versions.android.minSdk
+                .get()
+                .toInt()
+        targetSdk =
+            projectLibs.versions.android.targetSdk
+                .get()
+                .toInt()
         versionCode = 1
         versionName = "1.0"
     }
@@ -96,13 +105,14 @@ android {
     }
 }
 
-val localProperties = Properties().apply {
-    try {
-        load(rootProject.file("local.properties").reader())
-    } catch (ignored: java.io.IOException) {
-        throw Error("local.properties file not found")
+val localProperties =
+    Properties().apply {
+        try {
+            load(rootProject.file("local.properties").reader())
+        } catch (ignored: java.io.IOException) {
+            throw Error("local.properties file not found")
+        }
     }
-}
 
 buildkonfig {
     packageName = "com.powersync.demos"

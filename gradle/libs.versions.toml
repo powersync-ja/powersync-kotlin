@@ -13,14 +13,14 @@ kotlin = "2.0.20"
 coroutines = "1.8.1"
 kotlinx-datetime = "0.5.0"
 kotlinx-io = "0.5.4"
-ktor = "2.3.12"
+ktor = "3.0.1"
 uuid = "0.8.2"
 powersync-core = "0.3.1"
 sqlite-android = "3.45.0"
 
 sqlDelight = "2.0.2"
 stately = "2.0.7"
-supabase = "2.6.1"
+supabase = "3.0.1"
 junit = "4.13.2"
 
 compose = "1.6.11"
@@ -82,7 +82,7 @@ sqldelight-compilerEnv = { module = "app.cash.sqldelight:compiler-env", version.
 
 stately-concurrency = { module = "co.touchlab:stately-concurrency", version.ref = "stately" }
 supabase-client = { module = "io.github.jan-tennert.supabase:postgrest-kt", version.ref = "supabase" }
-supabase-gotrue = { module = "io.github.jan-tennert.supabase:gotrue-kt", version.ref = "supabase" }
+supabase-auth = { module = "io.github.jan-tennert.supabase:auth-kt", version.ref = "supabase" }
 
 # Sample - Android
 androidx-core = { group = "androidx.core", name = "core-ktx", version.ref = "androidx-core" }
