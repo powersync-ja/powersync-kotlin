@@ -7,24 +7,50 @@ import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.UpdateType
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.annotations.SupabaseInternal
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserSession
 import io.github.jan.supabase.createSupabaseClient
-import io.github.jan.supabase.exceptions.BadRequestRestException
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
+import io.ktor.client.plugins.HttpSend
+import io.ktor.client.plugins.plugin
+import io.ktor.client.statement.bodyAsText
+import io.ktor.utils.io.InternalAPI
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.serialization.json.Json
 
 /**
  * Get a Supabase token to authenticate against the PowerSync instance.
  */
+@OptIn(SupabaseInternal::class, InternalAPI::class)
 public class SupabaseConnector(
     public val supabaseClient: SupabaseClient,
     public val powerSyncEndpoint: String,
 ) : PowerSyncBackendConnector() {
+    private var errorCode: String? = null
+
+    private object PostgresFatalCodes {
+        // Using Regex patterns for Postgres error codes
+        private val FATAL_RESPONSE_CODES =
+            listOf(
+                // Class 22 — Data Exception
+                "^22...".toRegex(),
+                // Class 23 — Integrity Constraint Violation
+                "^23...".toRegex(),
+                // INSUFFICIENT PRIVILEGE
+                "^42501$".toRegex(),
+            )
+
+        fun isFatalError(code: String): Boolean =
+            FATAL_RESPONSE_CODES.any { pattern ->
+                pattern.matches(code)
+            }
+    }
+
     public constructor(
         supabaseUrl: String,
         supabaseKey: String,
@@ -43,6 +69,25 @@ public class SupabaseConnector(
         require(
             supabaseClient.pluginManager.getPluginOrNull(Postgrest) != null,
         ) { "The Postgrest plugin must be installed on the Supabase client" }
+
+        // This retrieves the error code from the response
+        // as this is not accessible in the Supabase client RestException
+        // to handle fatal Postgres errors
+        supabaseClient.httpClient.httpClient.plugin(HttpSend).intercept { request ->
+            val resp = execute(request)
+            val response = resp.response
+            if (response.status.value == 400) {
+                val responseText = response.bodyAsText()
+
+                try {
+                    val error = Json { coerceInputValues = true }.decodeFromString<Map<String, String?>>(responseText)
+                    errorCode = error["code"]
+                } catch (e: Exception) {
+                    Logger.e("Failed to parse error response: $e")
+                }
+            }
+            resp
+        }
     }
 
     public suspend fun login(
@@ -111,6 +156,7 @@ public class SupabaseConnector(
                 lastEntry = entry
 
                 val table = supabaseClient.from(entry.table)
+
                 when (entry.op) {
                     UpdateType.PUT -> {
                         val data = entry.opData?.toMutableMap() ?: mutableMapOf()
@@ -138,19 +184,15 @@ public class SupabaseConnector(
 
             transaction.complete(null)
         } catch (e: Exception) {
-            when (e) {
-                is BadRequestRestException -> {
-                    if (e.message?.contains("violates not-null constraint") == true) {
-                        Logger.e("Not-null constraint violation: ${e.message}")
-                        transaction.complete(null)
-                        return
-                    }
-                }
-                else -> {
-                    Logger.e("Data upload error - retrying last entry: $lastEntry, $e")
-                    throw e
-                }
+            if (errorCode != null && PostgresFatalCodes.isFatalError(errorCode.toString())) {
+                Logger.e("Data upload error: ${e.message}")
+                Logger.e("Discarding entry: $lastEntry")
+                transaction.complete(null)
+                return
             }
+
+            Logger.e("Data upload error - retrying last entry: $lastEntry, $e")
+            throw e
         }
     }
 }
