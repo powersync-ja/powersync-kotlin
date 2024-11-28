@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0-BETA8
+
+* Disable Skie `SuspendInterop` plugin to fix overriding `suspend` functions in Swift
+
 ## 1.0.0-BETA7
 
 * Update supabase connector to use supabase-kt version 3
