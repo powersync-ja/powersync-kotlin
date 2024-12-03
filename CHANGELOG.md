@@ -1,13 +1,18 @@
 # Changelog
 
+## 1.0.0-BETA9
+
+* Re-enable SKIE `SuspendInterop`
+* Disable SKIE `SuspendInterop` for database transactions to avoid transactions not resolving in Swift
+
 ## 1.0.0-BETA8
 
-* Disable Skie `SuspendInterop` plugin to fix overriding `suspend` functions in Swift
+* Disable SKIE `SuspendInterop` plugin to fix overriding `suspend` functions in Swift
 
 ## 1.0.0-BETA7
 
 * Update supabase connector to use supabase-kt version 3
-* Handle postgres error codes in supabase connector
+* Handle Postgres error codes in supabase connector
 
 ## 1.0.0-BETA6
 

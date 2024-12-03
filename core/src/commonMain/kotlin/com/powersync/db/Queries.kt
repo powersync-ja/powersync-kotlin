@@ -1,6 +1,7 @@
 package com.powersync.db
 
 import app.cash.sqldelight.db.SqlCursor
+import co.touchlab.skie.configuration.annotations.SuspendInterop
 import com.powersync.db.internal.PowerSyncTransaction
 import kotlinx.coroutines.flow.Flow
 
@@ -51,7 +52,9 @@ public interface Queries {
         mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>>
 
+    @SuspendInterop.Disabled
     public suspend fun <R> writeTransaction(callback: suspend (PowerSyncTransaction) -> R): R
 
+    @SuspendInterop.Disabled
     public suspend fun <R> readTransaction(callback: suspend (PowerSyncTransaction) -> R): R
 }

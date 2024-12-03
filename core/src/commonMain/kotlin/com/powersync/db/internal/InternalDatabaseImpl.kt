@@ -9,6 +9,8 @@ import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlPreparedStatement
+import co.touchlab.skie.configuration.annotations.SuspendInterop
+import com.persistence.PowersyncQueries
 import com.powersync.PowerSyncTransaction
 import com.powersync.PsSqlDriver
 import com.powersync.persistence.PsDatabase
@@ -22,16 +24,16 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 
 @OptIn(FlowPreview::class)
-internal class InternalDatabaseImpl(
+public class InternalDatabaseImpl(
     override val driver: PsSqlDriver,
     private val scope: CoroutineScope,
 ) : InternalDatabase {
     override val transactor: PsDatabase = PsDatabase(driver)
-    override val queries = transactor.powersyncQueries
+    override val queries: PowersyncQueries = transactor.powersyncQueries
 
-    companion object {
-        const val POWERSYNC_TABLE_MATCH = "(^ps_data__|^ps_data_local__)"
-        const val DEFAULT_WATCH_THROTTLE_MS = 30L
+    public companion object {
+        public const val POWERSYNC_TABLE_MATCH: String = "(^ps_data__|^ps_data_local__)"
+        public const val DEFAULT_WATCH_THROTTLE_MS: Long = 30L
     }
 
     init {
@@ -157,12 +159,14 @@ internal class InternalDatabaseImpl(
             }
         }
 
+    @SuspendInterop.Disabled
     override suspend fun <R> readTransaction(callback: suspend (PowerSyncTransaction) -> R): R =
         transactor.transactionWithResult(noEnclosing = true) {
             val transaction = PowerSyncTransaction(this@InternalDatabaseImpl)
             callback(transaction)
         }
 
+    @SuspendInterop.Disabled
     override suspend fun <R> writeTransaction(callback: suspend (PowerSyncTransaction) -> R): R =
         transactor.transactionWithResult(noEnclosing = true) {
             val transaction = PowerSyncTransaction(this@InternalDatabaseImpl)

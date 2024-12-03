@@ -4,6 +4,7 @@ import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.cash.sqldelight.db.SqlCursor
 import co.touchlab.kermit.Logger
+import co.touchlab.skie.configuration.annotations.SuspendInterop
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
 import com.powersync.PsSqlDriver
@@ -225,11 +226,13 @@ internal class PowerSyncDatabaseImpl(
         mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>> = internalDb.watch(sql, parameters, mapper)
 
+    @SuspendInterop.Disabled
     override suspend fun <R> readTransaction(callback: suspend (tx: PowerSyncTransaction) -> R): R =
         internalDb.readTransaction { tx ->
             callback(tx)
         }
 
+    @SuspendInterop.Disabled
     override suspend fun <R> writeTransaction(callback: suspend (tx: PowerSyncTransaction) -> R): R =
         internalDb.writeTransaction { tx ->
             callback(tx)
