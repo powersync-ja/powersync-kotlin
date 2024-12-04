@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 
 @OptIn(FlowPreview::class)
-public class InternalDatabaseImpl(
+internal class InternalDatabaseImpl(
     override val driver: PsSqlDriver,
     private val scope: CoroutineScope,
 ) : InternalDatabase {
@@ -54,9 +54,9 @@ public class InternalDatabaseImpl(
             ): RowType? = this@InternalDatabaseImpl.getOptional(sql, parameters ?: emptyList(), mapper)
         }
 
-    public companion object {
-        public const val POWERSYNC_TABLE_MATCH: String = "(^ps_data__|^ps_data_local__)"
-        public const val DEFAULT_WATCH_THROTTLE_MS: Long = 30L
+    companion object {
+        const val POWERSYNC_TABLE_MATCH: String = "(^ps_data__|^ps_data_local__)"
+        const val DEFAULT_WATCH_THROTTLE_MS: Long = 30L
     }
 
     init {
