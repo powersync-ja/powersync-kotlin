@@ -41,16 +41,6 @@ kotlin {
     }
 }
 
-skie {
-    features {
-        group {
-            // We turn this off as the suspend interop feature results in
-            // threading issues when implementing SDK in Swift
-            SuspendInterop.Enabled(false)
-        }
-    }
-}
-
 kmmbridge {
     artifactManager.set(SonatypePortalPublishArtifactManager(project, repositoryName = null))
     artifactManager.finalizeValue()

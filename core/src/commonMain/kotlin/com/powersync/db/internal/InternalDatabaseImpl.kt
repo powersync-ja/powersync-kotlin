@@ -9,7 +9,7 @@ import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlPreparedStatement
-import com.powersync.PowerSyncTransaction
+import com.persistence.PowersyncQueries
 import com.powersync.PsSqlDriver
 import com.powersync.persistence.PsDatabase
 import com.powersync.utils.JsonUtil
@@ -27,11 +27,36 @@ internal class InternalDatabaseImpl(
     private val scope: CoroutineScope,
 ) : InternalDatabase {
     override val transactor: PsDatabase = PsDatabase(driver)
-    override val queries = transactor.powersyncQueries
+    override val queries: PowersyncQueries = transactor.powersyncQueries
+    private val transaction =
+        object : PowerSyncTransaction {
+            override suspend fun execute(
+                sql: String,
+                parameters: List<Any?>?,
+            ): Long = this@InternalDatabaseImpl.execute(sql, parameters ?: emptyList())
+
+            override suspend fun <RowType : Any> get(
+                sql: String,
+                parameters: List<Any?>?,
+                mapper: (SqlCursor) -> RowType,
+            ): RowType = this@InternalDatabaseImpl.get(sql, parameters ?: emptyList(), mapper)
+
+            override suspend fun <RowType : Any> getAll(
+                sql: String,
+                parameters: List<Any?>?,
+                mapper: (SqlCursor) -> RowType,
+            ): List<RowType> = this@InternalDatabaseImpl.getAll(sql, parameters ?: emptyList(), mapper)
+
+            override suspend fun <RowType : Any> getOptional(
+                sql: String,
+                parameters: List<Any?>?,
+                mapper: (SqlCursor) -> RowType,
+            ): RowType? = this@InternalDatabaseImpl.getOptional(sql, parameters ?: emptyList(), mapper)
+        }
 
     companion object {
-        const val POWERSYNC_TABLE_MATCH = "(^ps_data__|^ps_data_local__)"
-        const val DEFAULT_WATCH_THROTTLE_MS = 30L
+        const val POWERSYNC_TABLE_MATCH: String = "(^ps_data__|^ps_data_local__)"
+        const val DEFAULT_WATCH_THROTTLE_MS: Long = 30L
     }
 
     init {
@@ -159,13 +184,11 @@ internal class InternalDatabaseImpl(
 
     override suspend fun <R> readTransaction(callback: suspend (PowerSyncTransaction) -> R): R =
         transactor.transactionWithResult(noEnclosing = true) {
-            val transaction = PowerSyncTransaction(this@InternalDatabaseImpl)
             callback(transaction)
         }
 
     override suspend fun <R> writeTransaction(callback: suspend (PowerSyncTransaction) -> R): R =
         transactor.transactionWithResult(noEnclosing = true) {
-            val transaction = PowerSyncTransaction(this@InternalDatabaseImpl)
             callback(transaction)
         }
 
