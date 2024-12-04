@@ -3,7 +3,7 @@
 ## 1.0.0-BETA9
 
 * Re-enable SKIE `SuspendInterop`
-* Disable SKIE `SuspendInterop` for database transactions to avoid transactions not resolving in Swift
+* Move transaction functions out of `PowerSyncTransactionFactory` to avoid threading issues in Swift SDK
 
 ## 1.0.0-BETA8
 
