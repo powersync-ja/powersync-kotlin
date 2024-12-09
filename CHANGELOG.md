@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0-BETA10
+
+* Change Swift package name from `PowerSync` to `PowerSyncKotlin`
+
 ## 1.0.0-BETA9
 
 * Re-enable SKIE `SuspendInterop`
