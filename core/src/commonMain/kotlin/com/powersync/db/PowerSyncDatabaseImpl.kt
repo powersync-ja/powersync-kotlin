@@ -4,7 +4,6 @@ import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.cash.sqldelight.db.SqlCursor
 import co.touchlab.kermit.Logger
-import co.touchlab.skie.configuration.annotations.SuspendInterop
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
 import com.powersync.PsSqlDriver
