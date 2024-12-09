@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0-BETA11
+
+* Update version to fix deployment issue of previous release
+
 ## 1.0.0-BETA10
 
 * Change Swift package name from `PowerSync` to `PowerSyncKotlin`
