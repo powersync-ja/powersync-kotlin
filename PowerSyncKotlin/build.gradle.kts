@@ -64,12 +64,13 @@ class SonatypePortalPublishArtifactManager(
 ) : ArtifactManager {
     private val group: String = project.group.toString().replace(".", "/")
     private val kmmbridgeArtifactId =
-        "powersync-$artifactSuffix"
+        "${project.name}-$artifactSuffix"
+    private val zipName = "powersync-$artifactSuffix"
     private val LIBRARY_VERSION: String by project
 
     // This is the URL that will be added to Package.swift in Github package so that
     // KMMBridge is downloaded when a user includes the package in XCode
-    private val MAVEN_CENTRAL_PACKAGE_ZIP_URL = "https://repo1.maven.org/maven2/com/powersync/${kmmbridgeArtifactId.lowercase()}/${LIBRARY_VERSION}/${kmmbridgeArtifactId.lowercase()}-${LIBRARY_VERSION}.zip"
+    private val MAVEN_CENTRAL_PACKAGE_ZIP_URL = "https://repo1.maven.org/maven2/com/powersync/${zipName}/${LIBRARY_VERSION}/${zipName}-${LIBRARY_VERSION}.zip"
 
     override fun deployArtifact(
         project: Project,
