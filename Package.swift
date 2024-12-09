@@ -1,7 +1,7 @@
 // swift-tools-version:5.3
 import PackageDescription
 
-let packageName = "PowerSync"
+let packageName = "PowerSyncKotlin"
 
 let package = Package(
     name: packageName,
@@ -17,7 +17,7 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: packageName,
-            path: "./PowerSync/build/XCFrameworks/debug/PowerSync.xcframework"
+            path: "./PowerSyncKotlin/build/XCFrameworks/debug/PowerSyncKotlin.xcframework"
         )
         ,
     ]

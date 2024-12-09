@@ -25,7 +25,7 @@ include(":connectors:supabase")
 
 include(":dialect")
 include(":persistence")
-include(":PowerSync")
+include(":PowerSyncKotlin")
 
 include(":compose")
 
