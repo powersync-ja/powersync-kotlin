@@ -15,8 +15,9 @@ kotlinx-datetime = "0.5.0"
 kotlinx-io = "0.5.4"
 ktor = "3.0.1"
 uuid = "0.8.2"
-powersync-core = "0.3.1"
+powersync-core = "0.3.6"
 sqlite-android = "3.45.0"
+sqlite-jdbc = "3.45.2.0"
 
 sqlDelight = "2.0.2"
 stately = "2.0.7"
@@ -49,7 +50,7 @@ androidx-test-junit = "1.2.1"
 configuration-annotations = { module = "co.touchlab.skie:configuration-annotations", version.ref = "configurationAnnotations" }
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 kermit-test = { module = "co.touchlab:kermit-test", version.ref = "kermit" }
-powersync-sqlite-core = { module = "co.powersync:powersync-sqlite-core", version.ref = "powersync-core" }
+powersync-sqlite-core-android = { module = "co.powersync:powersync-sqlite-core", version.ref = "powersync-core" }
 mavenPublishPlugin = { module = "com.vanniktech:gradle-maven-publish-plugin", version.ref = "maven-publish" }
 
 test-junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -73,12 +74,15 @@ kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-c
 
 sqldelight-driver-ios = { module = "app.cash.sqldelight:native-driver", version.ref = "sqlDelight" }
 sqldelight-driver-android = { module = "app.cash.sqldelight:android-driver", version.ref = "sqlDelight" }
+sqldelight-driver-jdbc = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqlDelight" }
 requery-sqlite-android = { module = "com.github.requery:sqlite-android", version.ref = "sqlite-android" }
 sqldelight-coroutines = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqlDelight" }
 sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqlDelight" }
 sqldelight-dialect-sqlite338 = { module = "app.cash.sqldelight:sqlite-3-38-dialect", version.ref = "sqlDelight" }
 sqldelight-dialect-sqlite335 = { module = "app.cash.sqldelight:sqlite-3-35-dialect", version.ref = "sqlDelight" }
 sqldelight-compilerEnv = { module = "app.cash.sqldelight:compiler-env", version.ref = "sqlDelight" }
+
+sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite-jdbc" }
 
 stately-concurrency = { module = "co.touchlab:stately-concurrency", version.ref = "stately" }
 supabase-client = { module = "io.github.jan-tennert.supabase:postgrest-kt", version.ref = "supabase" }

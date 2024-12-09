@@ -13,6 +13,8 @@ kotlin {
         publishLibraryVariants("release", "debug")
     }
 
+    jvm()
+
     iosX64()
     iosArm64()
     iosSimulatorArm64()
@@ -27,8 +29,12 @@ kotlin {
 
         androidMain.dependencies {
             api(libs.sqldelight.driver.android)
-            api(libs.powersync.sqlite.core)
+            api(libs.powersync.sqlite.core.android)
             api(libs.requery.sqlite.android)
+        }
+
+        jvmMain.dependencies {
+            api(libs.sqldelight.driver.jdbc)
         }
 
         iosMain.dependencies {
