@@ -64,7 +64,7 @@ class SonatypePortalPublishArtifactManager(
 ) : ArtifactManager {
     private val group: String = project.group.toString().replace(".", "/")
     private val kmmbridgeArtifactId =
-        "${project.name}-$artifactSuffix"
+        "powersync-$artifactSuffix"
     private val LIBRARY_VERSION: String by project
 
     // This is the URL that will be added to Package.swift in Github package so that
