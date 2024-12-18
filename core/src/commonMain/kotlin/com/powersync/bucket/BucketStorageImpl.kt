@@ -93,14 +93,14 @@ internal class BucketStorageImpl(
 
         logger.i { "[updateLocalTarget] Updating target to checkpoint $opId" }
 
-        return db.writeTransaction {
+        return db.writeTransaction { tx ->
             if (hasCrud()) {
                 logger.w { "[updateLocalTarget] ps crud is not empty" }
                 return@writeTransaction false
             }
 
             val seqAfter =
-                db.getOptional("SELECT seq FROM sqlite_sequence WHERE name = '${InternalTable.CRUD}'") {
+                tx.getOptional("SELECT seq FROM sqlite_sequence WHERE name = '${InternalTable.CRUD}'") {
                     it.getLong(0)!!
                 }
                     ?: // assert isNotEmpty
@@ -112,7 +112,7 @@ internal class BucketStorageImpl(
                 return@writeTransaction false
             }
 
-            db.execute(
+            tx.execute(
                 "UPDATE ${InternalTable.BUCKETS} SET target_op = CAST(? as INTEGER) WHERE name='\$local'",
                 listOf(opId),
             )
