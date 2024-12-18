@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0-BETA12
+
+* Use transaction context in `writeTransaction` in `BucketStorageImpl` to avoid race condition issues in Swift SDK.
+
 ## 1.0.0-BETA11
 
 * Update version to fix deployment issue of previous release
