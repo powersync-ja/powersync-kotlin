@@ -17,6 +17,8 @@ import kotlinx.cinterop.asStableRef
 import kotlinx.cinterop.staticCFunction
 import kotlinx.cinterop.toKString
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 @OptIn(ExperimentalForeignApi::class)
@@ -51,10 +53,13 @@ public actual class DatabaseDriverFactory {
         scope: CoroutineScope,
         dbFilename: String,
     ): PsSqlDriver {
+        val dbDispatcher = Dispatchers.IO
+        val dbScope = CoroutineScope(scope.coroutineContext + dbDispatcher)
+
         val schema = InternalSchema.synchronous()
         this.driver =
             PsSqlDriver(
-                scope = scope,
+                scope = dbScope,
                 driver =
                     NativeSqliteDriver(
                         configuration =
