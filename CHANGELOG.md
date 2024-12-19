@@ -1,8 +1,12 @@
 # Changelog
 
+## 1.0.0-BETA13
+
+* Move iOS database driver to use IO dispatcher which should avoid race conditions and improve performance.
+
 ## 1.0.0-BETA12
 
-* Use transaction context in `writeTransaction` in `BucketStorageImpl` to avoid race condition issues in Swift SDK.
+* Use transaction context in `writeTransaction` in `BucketStorageImpl`.
 
 ## 1.0.0-BETA11
 
