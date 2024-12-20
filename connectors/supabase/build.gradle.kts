@@ -14,9 +14,13 @@ kotlin {
         publishLibraryVariants("release", "debug")
     }
 
+    jvm()
+
     targets.withType<KotlinNativeTarget> {
-        compilations.getByName("main") {
-            compilerOptions.options.freeCompilerArgs.add("-Xexport-kdoc")
+        compilations.named("main") {
+            compileTaskProvider {
+                compilerOptions.freeCompilerArgs.add("-Xexport-kdoc")
+            }
         }
     }
 

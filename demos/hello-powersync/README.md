@@ -85,9 +85,14 @@ SUPABASE_USER_PASSWORD=foo
 ```
 
 ## Run the App
-Choose a run configuration for the Android (`composeApp`) or iOS (`iosApp`) target in Android Studio and run it.
+
+- To run the Android app, run the `composeApp` Android Studio target configuration.
+- To run the iOS app, run the `iosApp` Android Studio target configuration.
 
 ![run-configuration](/docs/assets/android-studio-run-configuration.png)
+  
+- To run the desktop app, run the `run` Gradle task (in the "compose desktop" group) or execute `./gradlew run`.
+
 
 ## Project structure
 
@@ -98,7 +103,6 @@ Choose a run configuration for the Android (`composeApp`) or iOS (`iosApp`) targ
     - `commonMain` is for code that’s common for all targets.
     - Other folders are for Kotlin code that will be compiled for only the platform indicated in the
       folder name.
-      `iosMain` would be the right folder for such calls.
 
 * `/iosApp` contains iOS applications. Even if you’re sharing your UI with Compose Multiplatform,
   you need this entry point for your iOS app. This is also where you should add SwiftUI code for

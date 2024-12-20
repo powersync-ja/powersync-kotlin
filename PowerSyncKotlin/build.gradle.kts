@@ -1,6 +1,7 @@
 import co.touchlab.faktory.artifactmanager.ArtifactManager
 import co.touchlab.faktory.capitalized
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+import org.jetbrains.kotlin.ir.backend.js.compile
 import java.net.URL
 import java.security.MessageDigest
 
@@ -28,8 +29,10 @@ kotlin {
     explicitApi()
 
     targets.withType<KotlinNativeTarget> {
-        compilations.getByName("main") {
-            compilerOptions.options.freeCompilerArgs.add("-Xexport-kdoc")
+        compilations.named("main") {
+            compileTaskProvider {
+                compilerOptions.freeCompilerArgs.add("-Xexport-kdoc")
+            }
         }
     }
 

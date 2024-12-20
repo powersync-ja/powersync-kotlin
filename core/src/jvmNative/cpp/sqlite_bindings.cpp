@@ -1,7 +1,7 @@
 #include <jni.h>
-#include <inttypes.h>
 #include <sqlite3.h>
 #include <string>
+#include <cstring>
 
 typedef struct context {
     JavaVM *javaVM;
@@ -12,7 +12,8 @@ Context g_ctx;
 
 extern "C" {
 
-JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
+JNIEXPORT
+jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     JNIEnv *env;
     memset(&g_ctx, 0, sizeof(g_ctx));
     g_ctx.javaVM = vm;
@@ -24,9 +25,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     return JNI_VERSION_1_6;
 }
 
-static void
-update_hook_callback(void *pData, int opCode, char const *pDbName, char const *pTableName,
-                     sqlite3_int64 iRow) {
+static void update_hook_callback(void *pData, int opCode, char const *pDbName, char const *pTableName, sqlite3_int64 iRow) {
     // Get JNIEnv for the current thread
     JNIEnv *env;
     JavaVM *javaVM = g_ctx.javaVM;
@@ -41,8 +40,7 @@ update_hook_callback(void *pData, int opCode, char const *pDbName, char const *p
     }
 }
 
-static jint
-commit_hook(void *pool) {
+static int commit_hook(void *pool) {
     // Get JNIEnv for the current thread
     JNIEnv *env;
     JavaVM *javaVM = g_ctx.javaVM;
@@ -72,8 +70,8 @@ static void rollback_hook(void *pool) {
     }
 }
 
-jint powersync_init(sqlite3 *db, char **pzErrMsg,
-                    const sqlite3_api_routines *pApi) {
+int powersync_init(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *pApi) {
+    sqlite3_initialize();
 
     sqlite3_update_hook(db, update_hook_callback, NULL);
     sqlite3_commit_hook(db, commit_hook, NULL);
@@ -82,10 +80,11 @@ jint powersync_init(sqlite3 *db, char **pzErrMsg,
     return SQLITE_OK;
 }
 
-JNIEXPORT void JNICALL
-Java_com_powersync_DatabaseDriverFactory_setupSqliteBinding(JNIEnv *env, jobject thiz) {
+JNIEXPORT
+void JNICALL Java_com_powersync_DatabaseDriverFactory_setupSqliteBinding(JNIEnv *env, jobject thiz) {
     jclass clz = env->GetObjectClass(thiz);
     g_ctx.bindingsClz = (jclass) env->NewGlobalRef(clz);
     g_ctx.bindingsObj = env->NewGlobalRef(thiz);
 }
+
 }

@@ -8,7 +8,7 @@ set(BUILD_DIR ${CMAKE_SOURCE_DIR}/build)
 add_library(
         ${PACKAGE_NAME}
         SHARED
-        sqlite_bindings.cpp
+        ../../jvmNative/cpp/sqlite_bindings.cpp
         "${SQLITE3_SRC_DIR}/sqlite3.c"
 )
 
