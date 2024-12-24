@@ -3,6 +3,7 @@ import com.powersync.plugins.sonatype.setupGithubRepository
 import de.undercouch.gradle.tasks.download.Download
 import org.gradle.internal.os.OperatingSystem
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+import java.util.*
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -223,6 +224,13 @@ val getBinaries = if (binariesAreProvided) {
 } else {
     // Building locally for the current OS
 
+    val localProperties = Properties()
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localPropertiesFile.inputStream().use { localProperties.load(it) }
+    }
+    val cmakeExecutable = localProperties.getProperty("cmake.path") ?: "cmake"
+
     fun registerCMakeTasks(
         suffix: String,
         vararg defines: String,
@@ -237,7 +245,7 @@ val getBinaries = if (binariesAreProvided) {
                 sqliteSrcFolder,
             )
             outputs.dir(workingDir)
-            executable = "cmake"
+            executable = cmakeExecutable
             args(listOf(file("src/jvmMain/cpp/CMakeLists.txt").absolutePath, "-DSUFFIX=$suffix", "-DCMAKE_BUILD_TYPE=Release") + defines.map { "-D$it" })
             doFirst {
                 workingDir.mkdirs()
@@ -255,7 +263,7 @@ val getBinaries = if (binariesAreProvided) {
                 workingDir,
             )
             outputs.dir(workingDir.resolve(if (os.isWindows) "output/Release" else "output"))
-            executable = "cmake"
+            executable = cmakeExecutable
             args("--build", ".", "--config", "Release")
         }
 
