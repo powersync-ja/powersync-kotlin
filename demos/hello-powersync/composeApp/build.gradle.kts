@@ -15,6 +15,8 @@ plugins {
 kotlin {
     androidTarget()
 
+    jvm()
+
 //    iosX64() // uncomment to enable iOS x64
     iosArm64()
     iosSimulatorArm64()
@@ -54,6 +56,10 @@ kotlin {
         androidMain.dependencies {
             implementation(projectLibs.compose.ui.tooling.preview)
             implementation(projectLibs.androidx.activity.compose)
+        }
+
+        jvmMain.dependencies {
+            implementation(compose.desktop.currentOs)
         }
     }
 }
@@ -134,4 +140,8 @@ buildkonfig {
         stringConfigField("SUPABASE_USER_EMAIL")
         stringConfigField("SUPABASE_USER_PASSWORD")
     }
+}
+
+compose.desktop.application {
+    mainClass = "com.powersync.demos.MainKt"
 }
