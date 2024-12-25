@@ -33,6 +33,7 @@ jobs:
         run: |
           ./gradlew \
           -PGITHUB_PUBLISH_TOKEN=${{ secrets.GITHUB_TOKEN }} \
+          -Ppowersync.binaries.cross-arch=true \
           :core:cmakeJvmBuild
       - name: Upload build
         uses: actions/upload-artifact@v4
@@ -74,7 +75,7 @@ jobs:
           -PsigningInMemoryKeyPassword="${{ secrets.SIGNING_PASSWORD }}" \
           -PcentralPortal.username="${{secrets.SONATYPE_USERNAME}}" \
           -PcentralPortal.password="${{secrets.SONATYPE_PASSWORD}}" \
-          -Ppowersync.binaries.provided="true"
+          -Ppowersync.binaries.provided="true" \
           publishAllPublicationsToSonatypeRepository
   # This will change Package.swift in Github packages to direct to new maven central KMMBridge zip file
   call-kmmbridge-publish:

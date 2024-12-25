@@ -196,9 +196,12 @@ android {
 
 val os = OperatingSystem.current()
 val binariesAreProvided = project.findProperty("powersync.binaries.provided") == "true"
-val binariesFolder =
-    project.layout.buildDirectory
-        .dir("binaries/desktop")
+val crossArch = project.findProperty("powersync.binaries.cross-arch") == "true"
+val binariesFolder = project.layout.buildDirectory.dir("binaries/desktop")
+
+if (binariesAreProvided && crossArch) {
+    error("powersync.binaries.provided and powersync.binaries.cross-arch must not be both defined.")
+}
 
 val getBinaries = if (binariesAreProvided) {
     // Binaries for all OS must be provided (manually or by the CI) in binaries/desktop
@@ -270,20 +273,30 @@ val getBinaries = if (binariesAreProvided) {
         return cmakeBuild
     }
 
-    val cmakeJvmBuilds = when {
-        os.isMacOsX -> listOf(
-            registerCMakeTasks("aarch64", "CMAKE_OSX_ARCHITECTURES=arm64"),
-            registerCMakeTasks("x64", "CMAKE_OSX_ARCHITECTURES=x86_64"),
-        )
-        os.isLinux -> listOf(
-            registerCMakeTasks("aarch64", "CMAKE_C_COMPILER=aarch64-linux-gnu-gcc", "CMAKE_CXX_COMPILER=aarch64-linux-gnu-g++"),
-            registerCMakeTasks(
-                "x64", "CMAKE_C_COMPILER=x86_64-linux-gnu-gcc", "CMAKE_CXX_COMPILER=x86_64-linux-gnu-g++"),
-        )
-        os.isWindows -> listOf(
-            registerCMakeTasks("x64"),
-        )
+    val (aarch64, x64) = when {
+        os.isMacOsX -> {
+            val aarch64 = registerCMakeTasks("aarch64", "CMAKE_OSX_ARCHITECTURES=arm64")
+            val x64 = registerCMakeTasks("x64", "CMAKE_OSX_ARCHITECTURES=x86_64")
+            aarch64 to x64
+        }
+        os.isLinux -> {
+            val aarch64 = registerCMakeTasks("aarch64", "CMAKE_C_COMPILER=aarch64-linux-gnu-gcc", "CMAKE_CXX_COMPILER=aarch64-linux-gnu-g++")
+            val x64 = registerCMakeTasks("x64", "CMAKE_C_COMPILER=x86_64-linux-gnu-gcc", "CMAKE_CXX_COMPILER=x86_64-linux-gnu-g++")
+            aarch64 to x64
+        }
+        os.isWindows -> {
+            val x64 = registerCMakeTasks("x64")
+            null to x64
+        }
         else -> error("Unknown operating system: $os")
+    }
+
+    val arch = System.getProperty("os.arch")
+    val cmakeJvmBuilds = when {
+        crossArch -> listOfNotNull(aarch64, x64)
+        arch == "aarch64" -> listOfNotNull(aarch64)
+        arch == "amd64" -> listOfNotNull(x64)
+        else -> error("Unknown architecture: $arch")
     }
 
     tasks.register<Copy>("cmakeJvmBuild") {
@@ -296,26 +309,28 @@ val getBinaries = if (binariesAreProvided) {
 
 val downloadPowersyncDesktopBinaries = tasks.register<Download>("downloadPowersyncDesktopBinaries") {
     val coreVersion = libs.versions.powersync.core.get()
-    val linux = listOf(
-        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_aarch64.so",
-        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_x64.so",
-    )
-    val mac = listOf(
-        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_aarch64.dylib",
-        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_x64.dylib",
-    )
-    val windows = listOf(
-        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/powersync_x64.dll",
-    )
-    src(when {
-        binariesAreProvided -> linux + mac + windows
-        else -> when {
-            os.isLinux -> linux
-            os.isMacOsX -> mac
-            os.isWindows -> windows
+    val linux_aarch64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_aarch64.so"
+    val linux_x64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_x64.so"
+    val macos_aarch64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_aarch64.dylib"
+    val macos_x64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_x64.dylib"
+    val windows_x64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/powersync_x64.dll"
+    if (binariesAreProvided) {
+        src(listOf(linux_aarch64, linux_x64, macos_aarch64, macos_x64, windows_x64))
+    } else {
+        val (aarch64, x64) = when {
+            os.isLinux -> linux_aarch64 to linux_x64
+            os.isMacOsX -> macos_aarch64 to macos_x64
+            os.isWindows -> null to windows_x64
             else -> error("Unknown operating system: $os")
         }
-    })
+        val arch = System.getProperty("os.arch")
+        src(when {
+            crossArch -> listOfNotNull(aarch64, x64)
+            arch == "aarch64" -> listOfNotNull(aarch64)
+            arch == "amd64" -> listOfNotNull(x64)
+            else -> error("Unknown architecture: $arch")
+        })
+    }
     dest(binariesFolder.map { it.dir("powersync") })
     onlyIfModified(true)
 }
