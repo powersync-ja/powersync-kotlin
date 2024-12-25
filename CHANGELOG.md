@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.0-BETA13
+
+* Move iOS database driver to use IO dispatcher which should avoid race conditions and improve performance.
+
+## 1.0.0-BETA12
+
+* Use transaction context in `writeTransaction` in `BucketStorageImpl`.
+
 ## 1.0.0-BETA11
 
 * Update version to fix deployment issue of previous release

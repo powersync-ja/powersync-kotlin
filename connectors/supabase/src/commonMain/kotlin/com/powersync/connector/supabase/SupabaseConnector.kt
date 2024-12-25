@@ -185,6 +185,14 @@ public class SupabaseConnector(
             transaction.complete(null)
         } catch (e: Exception) {
             if (errorCode != null && PostgresFatalCodes.isFatalError(errorCode.toString())) {
+                /**
+                * Instead of blocking the queue with these errors,
+                * discard the (rest of the) transaction.
+                *
+                * Note that these errors typically indicate a bug in the application.
+                * If protecting against data loss is important, save the failing records
+                * elsewhere instead of discarding, and/or notify the user.
+                */
                 Logger.e("Data upload error: ${e.message}")
                 Logger.e("Discarding entry: $lastEntry")
                 transaction.complete(null)
