@@ -134,7 +134,7 @@ internal class BucketStorageImpl(
 
     override suspend fun getBucketStates(): List<BucketState> =
         db.getAll(
-            "SELECT name AS bucket, CAST(last_op AS TEXT) AS op_id FROM ${InternalTable.BUCKETS} WHERE pending_delete = 0",
+            "SELECT name AS bucket, CAST(last_op AS TEXT) AS op_id FROM ${InternalTable.BUCKETS} WHERE pending_delete = 0 AND name != '\$local'",
             mapper = { cursor ->
                 BucketState(
                     bucket = cursor.getString(0)!!,
