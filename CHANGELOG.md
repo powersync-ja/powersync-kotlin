@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.0-BETA14
+
+* Add JVM compatibility
+* Revert previous iOS changes as they resulted in further issues.
+
 ## 1.0.0-BETA13
 
 * Move iOS database driver to use IO dispatcher which should avoid race conditions and improve performance.
