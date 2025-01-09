@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0-BETA15
+
+* Update powersync-sqlite-core to 0.3.8
+
 ## 1.0.0-BETA14
 
 * Add JVM compatibility
