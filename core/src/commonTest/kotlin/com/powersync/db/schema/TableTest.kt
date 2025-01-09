@@ -119,14 +119,14 @@ class TableTest {
 
     @Test
     fun testValidationFailsTooManyColumns() {
-        val columns = List(64) { Column("column$it", ColumnType.TEXT) }
+        val columns = List(2000) { Column("column$it", ColumnType.TEXT) }
         val table = Table("users", columns)
 
         val exception =
             assertFailsWith<AssertionError> {
                 table.validate()
             }
-        assertEquals(exception.message, "Table users has more than 63 columns, which is not supported")
+        assertEquals(exception.message, "Table users has more than 1999 columns, which is not supported")
     }
 
     @Test
