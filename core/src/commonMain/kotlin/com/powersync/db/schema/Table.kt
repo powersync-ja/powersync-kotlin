@@ -2,7 +2,7 @@ package com.powersync.db.schema
 
 import kotlinx.serialization.Serializable
 
-private const val MAX_AMOUNT_OF_COLUMNS = 63
+private const val MAX_AMOUNT_OF_COLUMNS = 1999
 
 /**
  * A single table in the schema.
