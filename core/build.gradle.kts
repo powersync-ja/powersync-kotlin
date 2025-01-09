@@ -295,8 +295,8 @@ val getBinaries = if (binariesAreProvided) {
     val cmakeJvmBuilds = when {
         crossArch -> listOfNotNull(aarch64, x64)
         arch == "aarch64" -> listOfNotNull(aarch64)
-        arch == "amd64" -> listOfNotNull(x64)
-        else -> error("Unknown architecture: $arch")
+        arch == "amd64" || arch == "x86_64" -> listOfNotNull(x64)
+        else -> error("Unsupported architecture: $arch")
     }
 
     tasks.register<Copy>("cmakeJvmBuild") {
@@ -327,8 +327,8 @@ val downloadPowersyncDesktopBinaries = tasks.register<Download>("downloadPowersy
         src(when {
             crossArch -> listOfNotNull(aarch64, x64)
             arch == "aarch64" -> listOfNotNull(aarch64)
-            arch == "amd64" -> listOfNotNull(x64)
-            else -> error("Unknown architecture: $arch")
+            arch == "amd64" || arch == "x86_64" -> listOfNotNull(x64)
+            else -> error("Unsupported architecture: $arch")
         })
     }
     dest(binariesFolder.map { it.dir("powersync") })
