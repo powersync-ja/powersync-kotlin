@@ -6,7 +6,7 @@ with [Supabase](https://supabase.com/) in a basic Kotlin Multiplatform Compose A
 The app lists customers and allows you to add or delete rows.
 Data is [synced to users globally](https://docs.powersync.com/usage/sync-rules/example-global-data). For more advanced sync rules and functionality, see the [PowerSync+Supabase Todo-List](../supabase-todolist/README.md) demo application.
 
-Supported KMP targets: Android and iOS.
+Supported targets: Android and iOS, and Desktop (JVM).
 
 ## Beta release
 
