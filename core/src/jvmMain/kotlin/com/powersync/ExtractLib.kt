@@ -20,8 +20,8 @@ internal fun extractLib(fileName: String): Path {
     val arch =
         when (val sysArch = System.getProperty("os.arch")) {
             "aarch64" -> "aarch64"
-            "amd64" -> "x64"
-            else -> error("Unknown architecture: $sysArch")
+            "amd64", "x86_64" -> "x64"
+            else -> error("Unsupported architecture: $sysArch")
         }
 
     val path = "/$prefix${fileName}_$arch.$extension"
