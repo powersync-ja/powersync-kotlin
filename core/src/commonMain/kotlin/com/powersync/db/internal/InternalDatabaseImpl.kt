@@ -9,6 +9,7 @@ import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlPreparedStatement
+import co.touchlab.kermit.Logger
 import com.persistence.PowersyncQueries
 import com.powersync.PsSqlDriver
 import com.powersync.persistence.PsDatabase
@@ -189,7 +190,9 @@ internal class InternalDatabaseImpl(
 
     override suspend fun <R> writeTransaction(callback: suspend (PowerSyncTransaction) -> R): R =
         transactor.transactionWithResult(noEnclosing = true) {
-            callback(transaction)
+            val res = callback(transaction)
+            Logger.i("writeTransaction completed")
+            res
         }
 
     // Register callback for table updates
