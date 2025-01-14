@@ -2,7 +2,8 @@
 
 ## 1.0.0-BETA16
 
-*  Add `close` method to database methods
+* Add `close` method to database methods
+* Throw when error is a `CancellationError` in syncStream and only invalidate credentials when error is not IOException.
 
 ## 1.0.0-BETA15
 
