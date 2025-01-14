@@ -97,11 +97,11 @@ internal class SyncStream(
 //                    break;
 //                }
             } catch (e: Exception) {
-                // If the coroutine was cancelled, don't log an error
-                if (e !is CancellationException) {
-                    logger.e(e) { "Error in streamingSync: $e" }
+                if (e is CancellationException) {
+                    throw e
                 }
 
+                logger.e(e) { "Error in streamingSync: $e" }
                 // If there is a network issue don't invalidate the credentials
                 if (e !is IOException) {
                     invalidCredentials = true
