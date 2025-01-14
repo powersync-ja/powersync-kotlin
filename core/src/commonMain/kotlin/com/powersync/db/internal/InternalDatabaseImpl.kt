@@ -261,6 +261,10 @@ internal class InternalDatabaseImpl(
         return existingTableNames
     }
 
+    override fun close() {
+        this.driver.close()
+    }
+
     internal data class ExplainQueryResult(
         val addr: String,
         val opcode: String,

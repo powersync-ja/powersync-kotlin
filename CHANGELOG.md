@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0-BETA16
+
+*  Add `close` method to database methods
+
 ## 1.0.0-BETA15
 
 * Update powersync-sqlite-core to 0.3.8

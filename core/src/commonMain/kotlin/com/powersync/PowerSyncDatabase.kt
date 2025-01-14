@@ -120,4 +120,12 @@ public interface PowerSyncDatabase : Queries {
      * To preserve data in local-only tables, set clearLocal to false.
      */
     public suspend fun disconnectAndClear(clearLocal: Boolean = true)
+
+    /**
+     * Close the database, releasing resources.
+     * Also disconnects any active connection.
+     *
+     * Once close is called, this database cannot be used again - a new one must be constructed.
+     */
+    public suspend fun close()
 }
