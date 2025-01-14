@@ -31,6 +31,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.datetime.Clock
+import kotlinx.io.IOException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -98,9 +99,14 @@ internal class SyncStream(
             } catch (e: Exception) {
                 // If the coroutine was cancelled, don't log an error
                 if (e !is CancellationException) {
-                    logger.e(e) { "Error in streamingSync" }
+                    logger.e(e) { "Error in streamingSync: $e" }
                 }
-                invalidCredentials = true
+
+                // If there is a network issue don't invalidate the credentials
+                if (e !is IOException) {
+                    invalidCredentials = true
+                }
+
                 status.update(
                     downloadError = e,
                 )
