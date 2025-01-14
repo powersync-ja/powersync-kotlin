@@ -314,6 +314,11 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 
+    override suspend fun close() {
+        disconnect()
+        internalDb.close()
+    }
+
     /**
      * Check that a supported version of the powersync extension is loaded.
      */
