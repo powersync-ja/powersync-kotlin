@@ -96,11 +96,11 @@ internal class SyncStream(
 //                    break;
 //                }
             } catch (e: Exception) {
-                // If the coroutine was cancelled, don't log an error
-                if (e !is CancellationException) {
-                    logger.e(e) { "Error in streamingSync" }
+                if (e is CancellationException) {
+                    throw e
                 }
-                invalidCredentials = true
+
+                logger.e(e) { "Error in streamingSync: $e" }
                 status.update(
                     downloadError = e,
                 )

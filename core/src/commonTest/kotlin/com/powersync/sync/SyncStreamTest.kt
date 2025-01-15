@@ -6,13 +6,17 @@ import co.touchlab.kermit.TestConfig
 import co.touchlab.kermit.TestLogWriter
 import com.powersync.bucket.BucketStorage
 import com.powersync.connectors.PowerSyncBackendConnector
+import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.UpdateType
 import dev.mokkery.answering.returns
 import dev.mokkery.everySuspend
 import dev.mokkery.mock
 import dev.mokkery.verify
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.JsonObject
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -111,5 +115,55 @@ class SyncStreamTest {
                 assertEquals(message, "Error uploading crud")
                 assertEquals(Severity.Error, severity)
             }
+        }
+
+    @Test
+    fun testStreamingSyncBasicFlow() =
+        runTest {
+            bucketStorage =
+                mock<BucketStorage> {
+                    everySuspend { getClientId() } returns "test-client-id"
+                    everySuspend { getBucketStates() } returns emptyList()
+                }
+
+            connector =
+                mock<PowerSyncBackendConnector> {
+                    everySuspend { getCredentialsCached() } returns
+                        PowerSyncCredentials(
+                            token = "test-token",
+                            userId = "test-user",
+                            endpoint = "https://test.com",
+                        )
+                }
+
+            syncStream =
+                SyncStream(
+                    bucketStorage = bucketStorage,
+                    connector = connector,
+                    uploadCrud = { },
+                    retryDelayMs = 10,
+                    logger = logger,
+                    params = JsonObject(emptyMap()),
+                )
+
+            // Launch streaming sync in a coroutine that we'll cancel after verification
+            val job =
+                launch {
+                    syncStream.streamingSync()
+                }
+
+            // Wait for status to update
+            withTimeout(1000) {
+                while (!syncStream.status.connecting) {
+                    delay(10)
+                }
+            }
+
+            // Verify initial state
+            assertEquals(true, syncStream.status.connecting)
+            assertEquals(false, syncStream.status.connected)
+
+            // Clean up
+            job.cancel()
         }
 }

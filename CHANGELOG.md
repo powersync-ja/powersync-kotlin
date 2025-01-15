@@ -2,8 +2,8 @@
 
 ## 1.0.0-BETA16
 
-*  Add `close` method to database methods
-
+* Add `close` method to database methods
+* Throw when error is a `CancellationError` and remove invalidation for all errors in `streamingSync` catch.
 ## 1.0.0-BETA15
 
 * Update powersync-sqlite-core to 0.3.8
