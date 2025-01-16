@@ -1,7 +1,6 @@
 import co.touchlab.faktory.artifactmanager.ArtifactManager
 import co.touchlab.faktory.capitalized
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
-import org.jetbrains.kotlin.ir.backend.js.compile
 import java.net.URL
 import java.security.MessageDigest
 
@@ -19,6 +18,8 @@ kotlin {
         iosX64(),
         iosArm64(),
         iosSimulatorArm64(),
+        macosArm64(),
+        macosX64(),
     ).forEach {
         it.binaries.framework {
             export(project(":core"))
@@ -63,7 +64,7 @@ class SonatypePortalPublishArtifactManager(
     val project: Project,
     private val publicationName: String = "KMMBridgeFramework",
     artifactSuffix: String = "kmmbridge",
-    private val repositoryName: String?
+    private val repositoryName: String?,
 ) : ArtifactManager {
     private val group: String = project.group.toString().replace(".", "/")
     private val kmmbridgeArtifactId =
@@ -73,19 +74,19 @@ class SonatypePortalPublishArtifactManager(
 
     // This is the URL that will be added to Package.swift in Github package so that
     // KMMBridge is downloaded when a user includes the package in XCode
-    private val MAVEN_CENTRAL_PACKAGE_ZIP_URL = "https://repo1.maven.org/maven2/com/powersync/${zipName}/${LIBRARY_VERSION}/${zipName}-${LIBRARY_VERSION}.zip"
+    private val MAVEN_CENTRAL_PACKAGE_ZIP_URL = "https://repo1.maven.org/maven2/com/powersync/$zipName/${LIBRARY_VERSION}/$zipName-${LIBRARY_VERSION}.zip"
 
     override fun deployArtifact(
         project: Project,
         zipFilePath: File,
-        version: String
+        version: String,
     ): String = MAVEN_CENTRAL_PACKAGE_ZIP_URL
 
     override fun configure(
         project: Project,
         version: String,
         uploadTask: TaskProvider<Task>,
-        kmmPublishTask: TaskProvider<Task>
+        kmmPublishTask: TaskProvider<Task>,
     ) {
         project.extensions.getByType<PublishingExtension>().publications.create(
             publicationName,
