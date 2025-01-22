@@ -70,6 +70,7 @@ static void rollback_hook(void *pool) {
     }
 }
 
+JNIEXPORT
 int powersync_init(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *pApi) {
     sqlite3_initialize();
 
