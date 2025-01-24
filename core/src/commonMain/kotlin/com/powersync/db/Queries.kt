@@ -51,7 +51,7 @@ public interface Queries {
         mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>>
 
-    public suspend fun <R> writeTransaction(callback: suspend (PowerSyncTransaction) -> R): R
+    public suspend fun <R> writeTransaction(callback: (PowerSyncTransaction) -> R): R
 
-    public suspend fun <R> readTransaction(callback: suspend (PowerSyncTransaction) -> R): R
+    public suspend fun <R> readTransaction(callback: (PowerSyncTransaction) -> R): R
 }

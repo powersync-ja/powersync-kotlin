@@ -1,6 +1,5 @@
 package com.powersync
 
-import app.cash.sqldelight.async.coroutines.synchronous
 import app.cash.sqldelight.driver.native.NativeSqliteDriver
 import app.cash.sqldelight.driver.native.wrapConnection
 import co.touchlab.sqliter.DatabaseConfiguration
@@ -51,7 +50,7 @@ public actual class DatabaseDriverFactory {
         scope: CoroutineScope,
         dbFilename: String,
     ): PsSqlDriver {
-        val schema = InternalSchema.synchronous()
+        val schema = InternalSchema
         this.driver =
             PsSqlDriver(
                 scope = scope,

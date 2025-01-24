@@ -1,11 +1,13 @@
 package com.powersync.bucket
 
+import app.cash.sqldelight.db.SqlCursor
 import co.touchlab.kermit.Logger
 import co.touchlab.stately.concurrency.AtomicBoolean
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.CrudRow
 import com.powersync.db.internal.InternalDatabase
 import com.powersync.db.internal.InternalTable
+import com.powersync.db.internal.PowerSyncTransaction
 import com.powersync.sync.SyncDataBatch
 import com.powersync.sync.SyncLocalDatabaseResult
 import com.powersync.utils.JsonUtil
@@ -51,27 +53,36 @@ internal class BucketStorageImpl(
         return id ?: throw IllegalStateException("Client ID not found")
     }
 
-    override suspend fun nextCrudItem(): CrudEntry? {
-        val crudItem =
-            db.getOptional("SELECT id, tx_id, data FROM ${InternalTable.CRUD} ORDER BY id ASC LIMIT 1") { cursor ->
-                CrudEntry.fromRow(
-                    CrudRow(
-                        id = cursor.getString(0)!!,
-                        txId = cursor.getString(1)?.toInt(),
-                        data = cursor.getString(2)!!,
-                    ),
-                )
-            }
+    override suspend fun nextCrudItem(): CrudEntry? =
+        db.getOptional(sql = nextCrudQuery, mapper = nextCrudMapper)
 
-        return crudItem
+    override fun nextCrudItem(transaction: PowerSyncTransaction): CrudEntry? =
+        transaction.getOptional(sql = nextCrudQuery, mapper = nextCrudMapper)
+
+    private val nextCrudQuery = "SELECT id, tx_id, data FROM ${InternalTable.CRUD} ORDER BY id ASC LIMIT 1"
+    private val nextCrudMapper: (SqlCursor) -> CrudEntry = { cursor ->
+        CrudEntry.fromRow(
+            CrudRow(
+                id = cursor.getString(0)!!,
+                txId = cursor.getString(1)?.toInt(),
+                data = cursor.getString(2)!!,
+            ),
+        )
     }
 
     override suspend fun hasCrud(): Boolean {
-        val res =
-            db.getOptional("SELECT 1 FROM ps_crud LIMIT 1") {
-                it.getLong(0)!!
-            }
+        val res = db.getOptional(sql = hasCrudQuery, mapper = hasCrudMapper)
         return res == 1L
+    }
+
+    override fun hasCrud(transaction: PowerSyncTransaction): Boolean {
+        val res = transaction.getOptional(sql = hasCrudQuery, mapper = hasCrudMapper)
+        return res == 1L
+    }
+
+    private val hasCrudQuery = "SELECT 1 FROM ps_crud LIMIT 1"
+    private val hasCrudMapper:(SqlCursor) -> Long = {
+        it.getLong(0)!!
     }
 
     override suspend fun updateLocalTarget(checkpointCallback: suspend () -> String): Boolean {
@@ -94,7 +105,7 @@ internal class BucketStorageImpl(
         logger.i { "[updateLocalTarget] Updating target to checkpoint $opId" }
 
         return db.writeTransaction { tx ->
-            if (hasCrud()) {
+            if (hasCrud(tx)) {
                 logger.w { "[updateLocalTarget] ps crud is not empty" }
                 return@writeTransaction false
             }

@@ -1,7 +1,5 @@
 package com.powersync.db
 
-import app.cash.sqldelight.async.coroutines.awaitAsList
-import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.cash.sqldelight.db.SqlCursor
 import co.touchlab.kermit.Logger
 import com.powersync.DatabaseDriverFactory
@@ -69,7 +67,7 @@ internal class PowerSyncDatabaseImpl(
 
     init {
         runBlocking {
-            val sqliteVersion = internalDb.queries.sqliteVersion().awaitAsOne()
+            val sqliteVersion = internalDb.queries.sqliteVersion().executeAsOne()
             logger.d { "SQLiteVersion: $sqliteVersion" }
             checkVersion()
             logger.d { "PowerSyncVersion: ${getPowerSyncVersion()}" }
@@ -82,8 +80,8 @@ internal class PowerSyncDatabaseImpl(
     private suspend fun applySchema() {
         val schemaJson = JsonUtil.json.encodeToString(schema)
 
-        this.writeTransaction { tx ->
-            internalDb.queries.replaceSchema(schemaJson).awaitAsOne()
+        internalDb.writeTransaction {
+            internalDb.queries.replaceSchema(schemaJson).executeAsOne()
         }
     }
 
@@ -142,7 +140,7 @@ internal class PowerSyncDatabaseImpl(
         }
 
         val entries =
-            internalDb.queries.getCrudEntries((limit + 1).toLong()).awaitAsList().map {
+            internalDb.queries.getCrudEntries((limit + 1).toLong()).executeAsList().map {
                 CrudEntry.fromRow(
                     CrudRow(
                         id = it.id.toString(),
@@ -167,9 +165,9 @@ internal class PowerSyncDatabaseImpl(
     }
 
     override suspend fun getNextCrudTransaction(): CrudTransaction? {
-        return this.readTransaction {
+        return internalDb.readTransaction {
             val entry =
-                bucketStorage.nextCrudItem()
+                bucketStorage.nextCrudItem(this)
                     ?: return@readTransaction null
 
             val txId = entry.transactionId
@@ -177,7 +175,7 @@ internal class PowerSyncDatabaseImpl(
                 if (txId == null) {
                     listOf(entry)
                 } else {
-                    internalDb.queries.getCrudEntryByTxId(txId.toLong()).awaitAsList().map {
+                    internalDb.queries.getCrudEntryByTxId(txId.toLong()).executeAsList().map {
                         CrudEntry.fromRow(
                             CrudRow(
                                 id = it.id.toString(),
@@ -199,7 +197,7 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 
-    override suspend fun getPowerSyncVersion(): String = internalDb.queries.powerSyncVersion().awaitAsOne()
+    override suspend fun getPowerSyncVersion(): String = internalDb.queries.powerSyncVersion().executeAsOne()
 
     override suspend fun <RowType : Any> get(
         sql: String,
@@ -225,9 +223,11 @@ internal class PowerSyncDatabaseImpl(
         mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>> = internalDb.watch(sql, parameters, mapper)
 
-    override suspend fun <R> readTransaction(callback: suspend (tx: PowerSyncTransaction) -> R): R = internalDb.writeTransaction(callback)
+    override suspend fun <R> readTransaction(callback: (tx: PowerSyncTransaction) -> R): R =
+        internalDb.writeTransaction(callback)
 
-    override suspend fun <R> writeTransaction(callback: suspend (tx: PowerSyncTransaction) -> R): R = internalDb.writeTransaction(callback)
+    override suspend fun <R> writeTransaction(callback: (tx: PowerSyncTransaction) -> R): R =
+        internalDb.writeTransaction(callback)
 
     override suspend fun execute(
         sql: String,
@@ -238,16 +238,16 @@ internal class PowerSyncDatabaseImpl(
         lastTransactionId: Int,
         writeCheckpoint: String?,
     ) {
-        writeTransaction { tx ->
+        internalDb.writeTransaction {
             internalDb.queries.deleteEntriesWithIdLessThan(lastTransactionId.toLong())
 
-            if (writeCheckpoint != null && !bucketStorage.hasCrud()) {
-                tx.execute(
+            if (writeCheckpoint != null && !bucketStorage.hasCrud(this)) {
+                execute(
                     "UPDATE ps_buckets SET target_op = CAST(? AS INTEGER) WHERE name='\$local'",
                     listOf(writeCheckpoint),
                 )
             } else {
-                tx.execute(
+                execute(
                     "UPDATE ps_buckets SET target_op = CAST(? AS INTEGER) WHERE name='\$local'",
                     listOf(bucketStorage.getMaxOpId()),
                 )
@@ -275,8 +275,8 @@ internal class PowerSyncDatabaseImpl(
     override suspend fun disconnectAndClear(clearLocal: Boolean) {
         disconnect()
 
-        this.writeTransaction {
-            internalDb.queries.powersyncClear(if (clearLocal) "1" else "0").awaitAsOne()
+        internalDb.writeTransaction {
+            internalDb.queries.powersyncClear(if (clearLocal) "1" else "0").executeAsOne()
         }
         currentStatus.update(lastSyncedAt = null, hasSynced = false)
     }
