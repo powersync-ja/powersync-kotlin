@@ -46,7 +46,7 @@ public actual class DatabaseDriverFactory {
         }
     }
 
-    public actual fun createDriver(
+    internal actual fun createDriver(
         scope: CoroutineScope,
         dbFilename: String,
     ): PsSqlDriver {

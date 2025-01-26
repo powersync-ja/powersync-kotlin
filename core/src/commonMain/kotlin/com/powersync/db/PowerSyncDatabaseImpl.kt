@@ -1,6 +1,5 @@
 package com.powersync.db
 
-import app.cash.sqldelight.db.SqlCursor
 import co.touchlab.kermit.Logger
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase

@@ -1,6 +1,5 @@
 package com.powersync.db
 
-import app.cash.sqldelight.db.SqlCursor
 import com.powersync.db.internal.PowerSyncTransaction
 import kotlinx.coroutines.flow.Flow
 

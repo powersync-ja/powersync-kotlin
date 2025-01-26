@@ -5,10 +5,10 @@ import app.cash.sqldelight.Query
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.db.QueryResult
-import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlPreparedStatement
 import com.persistence.PowersyncQueries
 import com.powersync.PsSqlDriver
+import com.powersync.db.SqlCursor
 import com.powersync.persistence.PsDatabase
 import com.powersync.utils.JsonUtil
 import kotlinx.coroutines.CoroutineScope
@@ -184,8 +184,8 @@ internal class InternalDatabaseImpl(
         parameters: Int = 0,
         binders: (SqlPreparedStatement.() -> Unit)? = null,
     ): ExecutableQuery<T> =
-        object : ExecutableQuery<T>(mapper) {
-            override fun <R> execute(mapper: (SqlCursor) -> QueryResult<R>): QueryResult<R> =
+        object : ExecutableQuery<T>(wrapperMapper(mapper)) {
+            override fun <R> execute(mapper: (app.cash.sqldelight.db.SqlCursor) -> QueryResult<R>): QueryResult<R> =
                 driver.executeQuery(null, query, mapper, parameters, binders)
         }
 
@@ -196,8 +196,8 @@ internal class InternalDatabaseImpl(
         binders: (SqlPreparedStatement.() -> Unit)? = null,
         tables: Set<String> = setOf(),
     ): Query<T> =
-        object : Query<T>(mapper) {
-            override fun <R> execute(mapper: (SqlCursor) -> QueryResult<R>): QueryResult<R> =
+        object : Query<T>(wrapperMapper(mapper)) {
+            override fun <R> execute(mapper: (app.cash.sqldelight.db.SqlCursor) -> QueryResult<R>): QueryResult<R> =
                 driver.executeQuery(null, query, mapper, parameters, binders)
 
             override fun addListener(listener: Listener) {
