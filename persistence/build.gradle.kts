@@ -78,7 +78,6 @@ sqldelight {
     databases {
         create("PsDatabase") {
             packageName.set("com.powersync.persistence")
-            generateAsync.set(true)
             dialect(project(":dialect"))
         }
     }
