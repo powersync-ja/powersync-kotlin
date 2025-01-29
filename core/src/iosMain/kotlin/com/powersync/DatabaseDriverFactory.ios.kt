@@ -1,10 +1,10 @@
 package com.powersync
 
-import app.cash.sqldelight.driver.native.NativeSqliteDriver
-import app.cash.sqldelight.driver.native.wrapConnection
 import co.touchlab.sqliter.DatabaseConfiguration
 import co.touchlab.sqliter.DatabaseConnection
 import com.powersync.db.internal.InternalSchema
+import com.powersync.persistence.driver.NativeSqliteDriver
+import com.powersync.persistence.driver.wrapConnection
 import com.powersync.sqlite.core.init_powersync_sqlite_extension
 import com.powersync.sqlite.core.sqlite3_commit_hook
 import com.powersync.sqlite.core.sqlite3_rollback_hook

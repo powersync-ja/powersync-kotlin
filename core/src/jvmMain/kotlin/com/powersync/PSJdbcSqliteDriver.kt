@@ -8,7 +8,7 @@ import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.db.SqlPreparedStatement
 import app.cash.sqldelight.db.SqlSchema
-import app.cash.sqldelight.driver.jdbc.JdbcPreparedStatement
+import com.powersync.persistence.driver.JdbcPreparedStatement
 import org.sqlite.SQLiteConnection
 import java.nio.file.Path
 import java.sql.DriverManager

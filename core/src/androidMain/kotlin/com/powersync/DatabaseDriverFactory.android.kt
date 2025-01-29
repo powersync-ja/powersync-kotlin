@@ -2,8 +2,8 @@ package com.powersync
 
 import android.content.Context
 import androidx.sqlite.db.SupportSQLiteDatabase
-import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import com.powersync.db.internal.InternalSchema
+import com.powersync.persistence.driver.AndroidSqliteDriver
 import io.requery.android.database.sqlite.RequerySQLiteOpenHelperFactory
 import io.requery.android.database.sqlite.SQLiteCustomExtension
 import kotlinx.coroutines.CoroutineScope
