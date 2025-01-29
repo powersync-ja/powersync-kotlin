@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0-BETA18
+
+* BREAKING CHANGE: Move from async sqldelight calls to synchronous calls. This will only affect `readTransaction` and `writeTransaction`where the callback function is no longer asynchronous.
+
 ## 1.0.0-BETA17
 
 * Add fix for Windows using JVM build
