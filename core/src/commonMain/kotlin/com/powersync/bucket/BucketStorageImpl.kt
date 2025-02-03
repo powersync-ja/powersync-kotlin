@@ -1,8 +1,8 @@
 package com.powersync.bucket
 
-import app.cash.sqldelight.db.SqlCursor
 import co.touchlab.kermit.Logger
 import co.touchlab.stately.concurrency.AtomicBoolean
+import com.powersync.db.SqlCursor
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.CrudRow
 import com.powersync.db.internal.InternalDatabase

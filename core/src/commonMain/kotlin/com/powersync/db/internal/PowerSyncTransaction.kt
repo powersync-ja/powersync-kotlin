@@ -1,6 +1,6 @@
 package com.powersync.db.internal
 
-import app.cash.sqldelight.db.SqlCursor
+import com.powersync.db.SqlCursor
 
 public interface PowerSyncTransaction {
     public fun execute(
