@@ -3,7 +3,7 @@
 ## 1.0.0-BETA19
 
 * Allow cursor to columns by name
-* POTENTIAL BREAKING CHANGE: If you were using `SqlCursor` from SqlDelight previously for your own custom mapper then you must now change to `SqlCursor` exported by the PowerSync module.
+* BREAKING CHANGE: If you were using `SqlCursor` from SqlDelight previously for your own custom mapper then you must now change to `SqlCursor` exported by the PowerSync module.
 
   Previously you would import it like this:
 
