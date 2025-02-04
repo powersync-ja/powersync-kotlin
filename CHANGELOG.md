@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.0.0-BETA19
+
+* Allow cursor to columns by name
+* BREAKING CHANGE: If you were using `SqlCursor` from SqlDelight previously for your own custom mapper then you must now change to `SqlCursor` exported by the PowerSync module.
+
+  Previously you would import it like this:
+
+  ```kotlin
+  import app.cash.sqldelight.db.SqlCursor
+  ```
+
+  now it has been changed to:
+
+  ```kotlin
+  import com.powersync.db.SqlCursor
+  ```
+
+
+
 ## 1.0.0-BETA18
 
 * BREAKING CHANGE: Move from async sqldelight calls to synchronous calls. This will only affect `readTransaction` and `writeTransaction`where the callback function is no longer asynchronous.
