@@ -1,8 +1,13 @@
 # Changelog
 
+## 1.0.0-BETA20
+* Add cursor optional functions: `getStringOptional`, `getLongOptional`, `getDoubleOptional`, `getBooleanOptional` and `getBytesOptional` when using the column name which allow for optional return types
+* Throw errors for invalid column on all cursor functions
+* `getString`, `getLong`, `getBytes`, `getDouble` and `getBoolean` used with the column name will now throw an error for non-null values and expect a non optional return type
+
 ## 1.0.0-BETA19
 
-* Allow cursor to columns by name
+* Allow cursor to get values by column name e.g. `getStringOptional("id")`
 * BREAKING CHANGE: If you were using `SqlCursor` from SqlDelight previously for your own custom mapper then you must now change to `SqlCursor` exported by the PowerSync module.
 
   Previously you would import it like this:

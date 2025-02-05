@@ -3,11 +3,11 @@ package com.powersync.demos.powersync
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.powersync.PowerSyncDatabase
+import com.powersync.db.getString
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 internal class ListContent(
     private val db: PowerSyncDatabase,
@@ -30,10 +30,10 @@ internal class ListContent(
             GROUP BY $LISTS_TABLE.id
         """) { cursor ->
             ListItem(
-                id = cursor.getString(0)!!,
-                createdAt = cursor.getString(1)!!,
-                name = cursor.getString(2)!!,
-                ownerId = cursor.getString(3)!!
+                id = cursor.getString("id"),
+                createdAt = cursor.getString("created_at"),
+                name = cursor.getString("name"),
+                ownerId = cursor.getString("owner_id")
             )
         }
     }

@@ -3,24 +3,25 @@ package com.powersync.demos.powersync
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.powersync.PowerSyncDatabase
+import com.powersync.db.getString
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 internal class ListContent(
     private val db: PowerSyncDatabase,
-    private val userId: String?
-): ViewModel() {
+    private val userId: String?,
+) : ViewModel() {
     private val _selectedListId = MutableStateFlow<String?>(null)
     val selectedListId: StateFlow<String?> = _selectedListId
 
     private val _inputText = MutableStateFlow<String>("")
     val inputText: StateFlow<String> = _inputText
 
-    fun watchItems(): Flow<List<ListItem>> {
-        return db.watch("""
+    fun watchItems(): Flow<List<ListItem>> =
+        db.watch(
+            """
             SELECT
                 *
             FROM
@@ -28,15 +29,15 @@ internal class ListContent(
             LEFT JOIN $TODOS_TABLE
             ON  $LISTS_TABLE.id = $TODOS_TABLE.list_id
             GROUP BY $LISTS_TABLE.id
-        """) { cursor ->
+        """,
+        ) { cursor ->
             ListItem(
-                id = cursor.getString(0)!!,
-                createdAt = cursor.getString(1)!!,
-                name = cursor.getString(2)!!,
-                ownerId = cursor.getString(3)!!
+                id = cursor.getString("id"),
+                createdAt = cursor.getString("created_at"),
+                name = cursor.getString("name"),
+                ownerId = cursor.getString("owner_id"),
             )
         }
-    }
 
     fun onItemDeleteClicked(item: ListItem) {
         viewModelScope.launch {
@@ -54,7 +55,7 @@ internal class ListContent(
             db.writeTransaction { tx ->
                 tx.execute(
                     "INSERT INTO $LISTS_TABLE (id, created_at, name, owner_id) VALUES (uuid(), datetime(), ?, ?)",
-                    listOf(_inputText.value, userId)
+                    listOf(_inputText.value, userId),
                 )
             }
             _inputText.value = ""
