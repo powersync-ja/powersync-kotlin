@@ -3,6 +3,7 @@ package com.powersync.demos
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
 import com.powersync.connector.supabase.SupabaseConnector
+import com.powersync.db.getString
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.runBlocking
 
@@ -18,7 +19,7 @@ class PowerSync(
     private val database = PowerSyncDatabase(driverFactory, AppSchema)
 
     val db: PowerSyncDatabase
-        get() = database;
+        get() = database
 
     init {
         runBlocking {
@@ -38,9 +39,9 @@ class PowerSync(
     fun watchUsers(): Flow<List<User>> {
         return database.watch("SELECT * FROM customers", mapper = { cursor ->
             User(
-                id = cursor.getString(0)!!,
-                name = cursor.getString(1)!!,
-                email = cursor.getString(2)!!
+                id = cursor.getString("id"),
+                name = cursor.getString("name"),
+                email = cursor.getString("email")
             )
         })
     }

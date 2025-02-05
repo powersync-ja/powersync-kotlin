@@ -1,5 +1,7 @@
 package com.powersync.db
 
+import co.touchlab.skie.configuration.annotations.FunctionInterop
+
 public interface SqlCursor {
     public fun getBoolean(index: Int): Boolean?
 
@@ -18,8 +20,42 @@ public interface SqlCursor {
     public val columnNames: Map<String, Int>
 }
 
-public fun SqlCursor.getBoolean(name: String): Boolean? = columnNames[name]?.let { getBoolean(it) }
-public fun SqlCursor.getBytes(name: String): ByteArray? = columnNames[name]?.let { getBytes(it) }
-public fun SqlCursor.getDouble(name: String): Double? = columnNames[name]?.let { getDouble(it) }
-public fun SqlCursor.getLong(name: String): Long? = columnNames[name]?.let { getLong(it) }
-public fun SqlCursor.getString(name: String): String? = columnNames[name]?.let { getString(it) }
+private inline fun <T> SqlCursor.getColumnValue(
+    name: String,
+    getValue: (Int) -> T?,
+): T {
+    val index = columnNames[name] ?: throw IllegalArgumentException("Column '$name' not found")
+    return getValue(index) ?: throw IllegalArgumentException("Null value found for column '$name'")
+}
+
+private inline fun <T> SqlCursor.getColumnValueOptional(
+    name: String,
+    getValue: (Int) -> T?,
+): T? = columnNames[name]?.let { getValue(it) }
+
+// This causes a collision the functions created in Swift and there we need to disable this conversion
+@FunctionInterop.FileScopeConversion.Disabled
+public fun SqlCursor.getBoolean(name: String): Boolean = getColumnValue(name) { getBoolean(it) }
+
+@FunctionInterop.FileScopeConversion.Disabled
+public fun SqlCursor.getBytes(name: String): ByteArray = getColumnValue(name) { getBytes(it) }
+
+@FunctionInterop.FileScopeConversion.Disabled
+public fun SqlCursor.getDouble(name: String): Double = getColumnValue(name) { getDouble(it) }
+
+@FunctionInterop.FileScopeConversion.Disabled
+public fun SqlCursor.getLong(name: String): Long = getColumnValue(name) { getLong(it) }
+
+@FunctionInterop.FileScopeConversion.Disabled
+public fun SqlCursor.getString(name: String): String = getColumnValue(name) { getString(it) }
+
+public fun SqlCursor.getBooleanOptional(name: String): Boolean? = getColumnValueOptional(name) { getBoolean(it) }
+
+public fun SqlCursor.getBytesOptional(name: String): ByteArray? = getColumnValueOptional(name) { getBytes(it) }
+
+public fun SqlCursor.getDoubleOptional(name: String): Double? = getColumnValueOptional(name) { getDouble(it) }
+
+public fun SqlCursor.getLongOptional(name: String): Long? = getColumnValueOptional(name) { getLong(it) }
+
+@FunctionInterop.FileScopeConversion.Disabled
+public fun SqlCursor.getStringOptional(name: String): String? = getColumnValueOptional(name) { getString(it) }

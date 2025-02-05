@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import com.powersync.PowerSyncDatabase
+import com.powersync.db.getLongOptional
+import com.powersync.db.getString
+import com.powersync.db.getStringOptional
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,15 +34,15 @@ internal class Todo(
         if(listId != null) listOf(listId) else null
         ) { cursor ->
             TodoItem(
-                id = cursor.getString(0)!!,
-                createdAt = cursor.getString(1),
-                completedAt = cursor.getString(2),
-                description = cursor.getString(3)!!,
-                createdBy = cursor.getString(4),
-                completedBy = cursor.getString(5),
-                completed = cursor.getLong(6) == 1L,
-                listId = cursor.getString(7)!!,
-                photoId = cursor.getString(8)
+                id = cursor.getString("id"),
+                createdAt = cursor.getStringOptional("created_at"),
+                completedAt = cursor.getStringOptional("completed_at"),
+                description = cursor.getString("description"),
+                createdBy = cursor.getStringOptional("created_by"),
+                completedBy = cursor.getStringOptional("completed_by"),
+                completed = cursor.getLongOptional("completed") == 1L,
+                listId = cursor.getString("list_id"),
+                photoId = cursor.getStringOptional("photo_id"),
             )
         }
     }
