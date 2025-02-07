@@ -6,6 +6,7 @@ import com.powersync.db.crud.CrudBatch
 import com.powersync.db.crud.CrudTransaction
 import com.powersync.sync.SyncStatus
 import com.powersync.utils.JsonParam
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * A PowerSync managed database.
@@ -25,6 +26,7 @@ public interface PowerSyncDatabase : Queries {
     /**
      * Suspend function that resolves when the first sync has occurred
      */
+    @Throws(PowerSyncException::class, CancellationException::class)
     public suspend fun waitForFirstSync()
 
     /**
@@ -56,7 +58,7 @@ public interface PowerSyncDatabase : Queries {
      *  ```
      *  TODO: Internal Team - Status changes are reported on [statusStream].
      */
-
+    @Throws(PowerSyncException::class, CancellationException::class)
     public suspend fun connect(
         connector: PowerSyncBackendConnector,
         crudThrottleMs: Long = 1000L,
@@ -81,6 +83,7 @@ public interface PowerSyncDatabase : Queries {
      * data by transaction. One batch may contain data from multiple transactions,
      * and a single transaction may be split over multiple batches.
      */
+    @Throws(PowerSyncException::class, CancellationException::class)
     public suspend fun getCrudBatch(limit: Int = 100): CrudBatch?
 
     /**
@@ -96,12 +99,13 @@ public interface PowerSyncDatabase : Queries {
      * Unlike [getCrudBatch], this only returns data from a single transaction at a time.
      * All data for the transaction is loaded into memory.
      */
-
+    @Throws(PowerSyncException::class, CancellationException::class)
     public suspend fun getNextCrudTransaction(): CrudTransaction?
 
     /**
      * Convenience method to get the current version of PowerSync.
      */
+    @Throws(PowerSyncException::class, CancellationException::class)
     public suspend fun getPowerSyncVersion(): String
 
     /**
@@ -109,6 +113,7 @@ public interface PowerSyncDatabase : Queries {
      *
      * Use [connect] to connect again.
      */
+    @Throws(PowerSyncException::class, CancellationException::class)
     public suspend fun disconnect()
 
     /**
@@ -119,6 +124,7 @@ public interface PowerSyncDatabase : Queries {
      *
      * To preserve data in local-only tables, set clearLocal to false.
      */
+    @Throws(PowerSyncException::class, CancellationException::class)
     public suspend fun disconnectAndClear(clearLocal: Boolean = true)
 
     /**
@@ -127,5 +133,6 @@ public interface PowerSyncDatabase : Queries {
      *
      * Once close is called, this database cannot be used again - a new one must be constructed.
      */
+    @Throws(PowerSyncException::class, CancellationException::class)
     public suspend fun close()
 }

@@ -9,6 +9,7 @@ import app.cash.sqldelight.db.SqlPreparedStatement
 import com.persistence.PowersyncQueries
 import com.powersync.PsSqlDriver
 import com.powersync.db.SqlCursor
+import com.powersync.db.runWrapped
 import com.powersync.persistence.PsDatabase
 import com.powersync.utils.JsonUtil
 import kotlinx.coroutines.CoroutineScope
@@ -82,7 +83,7 @@ internal class InternalDatabaseImpl(
     override suspend fun execute(
         sql: String,
         parameters: List<Any?>?,
-    ): Long = withContext(dbContext) { executeSync(sql, parameters) }
+    ): Long = withContext(dbContext) { runWrapped { executeSync(sql, parameters) } }
 
     private fun executeSync(
         sql: String,
@@ -103,7 +104,7 @@ internal class InternalDatabaseImpl(
         sql: String,
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType,
-    ): RowType = withContext(dbContext) { getSync(sql, parameters, mapper) }
+    ): RowType = withContext(dbContext) { runWrapped { getSync(sql, parameters, mapper) } }
 
     private fun <RowType : Any> getSync(
         sql: String,
@@ -125,7 +126,7 @@ internal class InternalDatabaseImpl(
         sql: String,
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType,
-    ): List<RowType> = withContext(dbContext) { getAllSync(sql, parameters, mapper) }
+    ): List<RowType> = withContext(dbContext) { runWrapped { getAllSync(sql, parameters, mapper) } }
 
     private fun <RowType : Any> getAllSync(
         sql: String,
@@ -144,7 +145,7 @@ internal class InternalDatabaseImpl(
         sql: String,
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType,
-    ): RowType? = withContext(dbContext) { getOptionalSync(sql, parameters, mapper) }
+    ): RowType? = withContext(dbContext) { runWrapped { getOptionalSync(sql, parameters, mapper) } }
 
     private fun <RowType : Any> getOptionalSync(
         sql: String,
@@ -211,15 +212,19 @@ internal class InternalDatabaseImpl(
 
     override suspend fun <R> readTransaction(callback: PowerSyncTransaction.() -> R): R =
         withContext(dbContext) {
-            transactor.transactionWithResult(noEnclosing = true) {
-                callback(transaction)
+            runWrapped {
+                transactor.transactionWithResult(noEnclosing = true) {
+                    callback(transaction)
+                }
             }
         }
 
     override suspend fun <R> writeTransaction(callback: PowerSyncTransaction.() -> R): R =
         withContext(dbContext) {
-            transactor.transactionWithResult(noEnclosing = true) {
-                callback(transaction)
+            runWrapped {
+                transactor.transactionWithResult(noEnclosing = true) {
+                    callback(transaction)
+                }
             }
         }
 
@@ -279,21 +284,23 @@ internal class InternalDatabaseImpl(
 
     override fun getExistingTableNames(tableGlob: String): List<String> {
         val existingTableNames =
-            createQuery(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB ?",
-                parameters = 1,
-                binders = {
-                    bindString(0, tableGlob)
-                },
-                mapper = { cursor ->
-                    cursor.getString(0)!!
-                },
-            ).executeAsList()
+            runWrapped {
+                createQuery(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB ?",
+                    parameters = 1,
+                    binders = {
+                        bindString(0, tableGlob)
+                    },
+                    mapper = { cursor ->
+                        cursor.getString(0)!!
+                    },
+                ).executeAsList()
+            }
         return existingTableNames
     }
 
     override fun close() {
-        this.driver.close()
+        runWrapped { this.driver.close() }
     }
 
     internal data class ExplainQueryResult(

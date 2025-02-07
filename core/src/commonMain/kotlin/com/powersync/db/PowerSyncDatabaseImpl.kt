@@ -290,7 +290,7 @@ internal class PowerSyncDatabaseImpl(
 
             val hasSynced = timestamp != null
             if (hasSynced != currentStatus.hasSynced) {
-                val formattedDateTime = "${timestamp!!.replace(" ","T").toLocalDateTime()}Z"
+                val formattedDateTime = "${timestamp!!.replace(" ", "T").toLocalDateTime()}Z"
                 val lastSyncedAt = Instant.parse(formattedDateTime)
                 currentStatus.update(hasSynced = hasSynced, lastSyncedAt = lastSyncedAt)
             }
