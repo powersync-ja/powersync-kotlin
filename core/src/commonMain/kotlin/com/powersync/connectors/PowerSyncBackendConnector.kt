@@ -1,11 +1,14 @@
 package com.powersync.connectors
 
 import com.powersync.PowerSyncDatabase
+import com.powersync.PowerSyncException
+import com.powersync.db.runWrappedSuspending
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Implement this to connect an app backend.
@@ -26,10 +29,13 @@ public abstract class PowerSyncBackendConnector {
      *
      * These credentials may have expired already.
      */
+    @Throws(PowerSyncException::class, CancellationException::class)
     public open suspend fun getCredentialsCached(): PowerSyncCredentials? {
-        cachedCredentials?.let { return it }
-        prefetchCredentials()?.join()
-        return cachedCredentials
+        return runWrappedSuspending {
+            cachedCredentials?.let { return@runWrappedSuspending it }
+            prefetchCredentials()?.join()
+            cachedCredentials
+        }
     }
 
     /**
@@ -49,6 +55,7 @@ public abstract class PowerSyncBackendConnector {
      *
      * This may be called before the current credentials have expired.
      */
+    @Throws(PowerSyncException::class, CancellationException::class)
     public open suspend fun prefetchCredentials(): Job? {
         fetchRequest?.takeIf { it.isActive }?.let { return it }
 
@@ -74,6 +81,7 @@ public abstract class PowerSyncBackendConnector {
      *
      * This token is kept for the duration of a sync connection.
      */
+    @Throws(PowerSyncException::class, CancellationException::class)
     public abstract suspend fun fetchCredentials(): PowerSyncCredentials?
 
     /**
@@ -83,5 +91,6 @@ public abstract class PowerSyncBackendConnector {
      *
      * Any thrown errors will result in a retry after the configured wait period (default: 5 seconds).
      */
+    @Throws(PowerSyncException::class, CancellationException::class)
     public abstract suspend fun uploadData(database: PowerSyncDatabase)
 }

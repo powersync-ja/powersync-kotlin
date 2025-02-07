@@ -2,10 +2,12 @@ package com.powersync.connector.supabase
 
 import co.touchlab.kermit.Logger
 import com.powersync.PowerSyncDatabase
+import com.powersync.PowerSyncException
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.UpdateType
+import com.powersync.db.runWrappedSuspending
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.annotations.SupabaseInternal
 import io.github.jan.supabase.auth.Auth
@@ -90,55 +92,70 @@ public class SupabaseConnector(
         }
     }
 
+    @Throws(PowerSyncException::class)
     public suspend fun login(
         email: String,
         password: String,
     ) {
-        supabaseClient.auth.signInWith(Email) {
-            this.email = email
-            this.password = password
+        runWrappedSuspending {
+            supabaseClient.auth.signInWith(Email) {
+                this.email = email
+                this.password = password
+            }
         }
     }
 
+    @Throws(PowerSyncException::class)
     public suspend fun signUp(
         email: String,
         password: String,
     ) {
-        supabaseClient.auth.signUpWith(Email) {
-            this.email = email
-            this.password = password
+        runWrappedSuspending {
+            supabaseClient.auth.signUpWith(Email) {
+                this.email = email
+                this.password = password
+            }
         }
     }
 
+    @Throws(PowerSyncException::class)
     public suspend fun signOut() {
-        supabaseClient.auth.signOut()
+        runWrappedSuspending {
+            supabaseClient.auth.signOut()
+        }
     }
 
     public fun session(): UserSession? = supabaseClient.auth.currentSessionOrNull()
 
     public val sessionStatus: StateFlow<SessionStatus> = supabaseClient.auth.sessionStatus
 
+    @Throws(PowerSyncException::class)
     public suspend fun loginAnonymously() {
-        supabaseClient.auth.signInAnonymously()
+        runWrappedSuspending {
+            supabaseClient.auth.signInAnonymously()
+        }
     }
 
     /**
      * Get credentials for PowerSync.
      */
+    @Throws(PowerSyncException::class)
     override suspend fun fetchCredentials(): PowerSyncCredentials {
-        check(supabaseClient.auth.sessionStatus.value is SessionStatus.Authenticated) { "Supabase client is not authenticated" }
+        return runWrappedSuspending {
+            check(supabaseClient.auth.sessionStatus.value is SessionStatus.Authenticated) { "Supabase client is not authenticated" }
 
-        // Use Supabase token for PowerSync
-        val session = supabaseClient.auth.currentSessionOrNull() ?: error("Could not fetch Supabase credentials")
+            // Use Supabase token for PowerSync
+            val session = supabaseClient.auth.currentSessionOrNull() ?: error("Could not fetch Supabase credentials")
 
-        check(session.user != null) { "No user data" }
+            check(session.user != null) { "No user data" }
 
-        // userId is for debugging purposes only
-        return PowerSyncCredentials(
-            endpoint = powerSyncEndpoint,
-            token = session.accessToken, // Use the access token to authenticate against PowerSync
-            userId = session.user!!.id,
-        )
+            // userId is for debugging purposes only
+            PowerSyncCredentials(
+                endpoint = powerSyncEndpoint,
+                token = session.accessToken, // Use the access token to authenticate against PowerSync
+                userId = session.user!!.id,
+            )
+        }
     }
 
     /**
@@ -147,60 +164,63 @@ public class SupabaseConnector(
      * This function is called whenever there is data to upload, whether the device is online or offline.
      * If this call throws an error, it is retried periodically.
      */
+    @Throws(PowerSyncException::class)
     override suspend fun uploadData(database: PowerSyncDatabase) {
-        val transaction = database.getNextCrudTransaction() ?: return
+        return runWrappedSuspending {
+            val transaction = database.getNextCrudTransaction() ?: return@runWrappedSuspending
 
-        var lastEntry: CrudEntry? = null
-        try {
-            for (entry in transaction.crud) {
-                lastEntry = entry
+            var lastEntry: CrudEntry? = null
+            try {
+                for (entry in transaction.crud) {
+                    lastEntry = entry
 
-                val table = supabaseClient.from(entry.table)
+                    val table = supabaseClient.from(entry.table)
 
-                when (entry.op) {
-                    UpdateType.PUT -> {
-                        val data = entry.opData?.toMutableMap() ?: mutableMapOf()
-                        data["id"] = entry.id
-                        table.upsert(data)
-                    }
+                    when (entry.op) {
+                        UpdateType.PUT -> {
+                            val data = entry.opData?.toMutableMap() ?: mutableMapOf()
+                            data["id"] = entry.id
+                            table.upsert(data)
+                        }
 
-                    UpdateType.PATCH -> {
-                        table.update(entry.opData!!) {
-                            filter {
-                                eq("id", entry.id)
+                        UpdateType.PATCH -> {
+                            table.update(entry.opData!!) {
+                                filter {
+                                    eq("id", entry.id)
+                                }
                             }
                         }
-                    }
 
-                    UpdateType.DELETE -> {
-                        table.delete {
-                            filter {
-                                eq("id", entry.id)
+                        UpdateType.DELETE -> {
+                            table.delete {
+                                filter {
+                                    eq("id", entry.id)
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            transaction.complete(null)
-        } catch (e: Exception) {
-            if (errorCode != null && PostgresFatalCodes.isFatalError(errorCode.toString())) {
-                /**
-                * Instead of blocking the queue with these errors,
-                * discard the (rest of the) transaction.
-                *
-                * Note that these errors typically indicate a bug in the application.
-                * If protecting against data loss is important, save the failing records
-                * elsewhere instead of discarding, and/or notify the user.
-                */
-                Logger.e("Data upload error: ${e.message}")
-                Logger.e("Discarding entry: $lastEntry")
                 transaction.complete(null)
-                return
-            }
+            } catch (e: Exception) {
+                if (errorCode != null && PostgresFatalCodes.isFatalError(errorCode.toString())) {
+                    /**
+                     * Instead of blocking the queue with these errors,
+                     * discard the (rest of the) transaction.
+                     *
+                     * Note that these errors typically indicate a bug in the application.
+                     * If protecting against data loss is important, save the failing records
+                     * elsewhere instead of discarding, and/or notify the user.
+                     */
+                    Logger.e("Data upload error: ${e.message}")
+                    Logger.e("Discarding entry: $lastEntry")
+                    transaction.complete(null)
+                    return@runWrappedSuspending
+                }
 
-            Logger.e("Data upload error - retrying last entry: $lastEntry, $e")
-            throw e
+                Logger.e("Data upload error - retrying last entry: $lastEntry, $e")
+                throw e
+            }
         }
     }
 }

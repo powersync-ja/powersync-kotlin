@@ -2,13 +2,22 @@ package com.powersync.db
 
 import com.powersync.PowerSyncException
 
-internal fun <R> runWrapped(block: () -> R): R =
-    runCatching(block).let { result ->
-        if (result.isSuccess) {
-            result.getOrThrow()
-        } else {
-            val thrownException = result.exceptionOrNull()
-                ?: IllegalStateException() // This shouldn't be possible, but we want to make sure our thrown exceptions are all wrapped
-            throw PowerSyncException(message = thrownException.message ?: "Unknown internal exception", thrownException)
-        }
+public fun <R> runWrapped(block: () -> R): R = try {
+    block()
+} catch (t: Throwable) {
+    if (t is PowerSyncException) {
+        throw t
+    } else {
+        throw PowerSyncException(t.message ?: "Unknown internal exception", t)
     }
+}
+
+public suspend fun <R> runWrappedSuspending(block: suspend () -> R): R = try {
+    block()
+} catch (t: Throwable) {
+    if (t is PowerSyncException) {
+        throw t
+    } else {
+        throw PowerSyncException(t.message ?: "Unknown internal exception", t)
+    }
+}
