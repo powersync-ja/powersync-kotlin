@@ -6,7 +6,9 @@ import com.powersync.db.Queries
 import com.powersync.persistence.PsDatabase
 import kotlinx.coroutines.flow.Flow
 
-internal interface InternalDatabase : Queries, Closeable {
+internal interface InternalDatabase :
+    Queries,
+    Closeable {
     val transactor: PsDatabase
     val queries: PowersyncQueries
 

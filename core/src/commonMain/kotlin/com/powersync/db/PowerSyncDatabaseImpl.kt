@@ -222,11 +222,9 @@ internal class PowerSyncDatabaseImpl(
         mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>> = internalDb.watch(sql, parameters, mapper)
 
-    override suspend fun <R> readTransaction(callback: (tx: PowerSyncTransaction) -> R): R =
-        internalDb.writeTransaction(callback)
+    override suspend fun <R> readTransaction(callback: (tx: PowerSyncTransaction) -> R): R = internalDb.writeTransaction(callback)
 
-    override suspend fun <R> writeTransaction(callback: (tx: PowerSyncTransaction) -> R): R =
-        internalDb.writeTransaction(callback)
+    override suspend fun <R> writeTransaction(callback: (tx: PowerSyncTransaction) -> R): R = internalDb.writeTransaction(callback)
 
     override suspend fun execute(
         sql: String,
@@ -282,24 +280,16 @@ internal class PowerSyncDatabaseImpl(
 
     private suspend fun updateHasSynced() {
         // Query the database to see if any data has been synced.
-        try {
-            val timestamp =
-                internalDb.getOptional("SELECT powersync_last_synced_at() as synced_at", null) { cursor ->
-                    cursor.getString(0)!!
-                }
+        val timestamp =
+            internalDb.getOptional("SELECT powersync_last_synced_at() as synced_at", null) { cursor ->
+                cursor.getString(0) ?: ""
+            }
 
-            val hasSynced = timestamp != null
-            if (hasSynced != currentStatus.hasSynced) {
-                val formattedDateTime = "${timestamp!!.replace(" ", "T").toLocalDateTime()}Z"
-                val lastSyncedAt = Instant.parse(formattedDateTime)
-                currentStatus.update(hasSynced = hasSynced, lastSyncedAt = lastSyncedAt)
-            }
-        } catch (e: Exception) {
-            if (e is NullPointerException) {
-                // No data has been synced which results in a null pointer exception
-                // and can be safely ignored.
-                return
-            }
+        val hasSynced = timestamp != ""
+        if (hasSynced != currentStatus.hasSynced) {
+            val formattedDateTime = "${timestamp!!.replace(" ", "T").toLocalDateTime()}Z"
+            val lastSyncedAt = Instant.parse(formattedDateTime)
+            currentStatus.update(hasSynced = hasSynced, lastSyncedAt = lastSyncedAt)
         }
     }
 

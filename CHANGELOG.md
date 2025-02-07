@@ -1,6 +1,12 @@
 # Changelog
 
+## 1.0.0-BETA21
+
+* Improve error handling for Swift by adding @Throws annotation so errors can be handled in Swift
+* Throw PowerSync exceptions for all public facing methods
+
 ## 1.0.0-BETA20
+
 * Add cursor optional functions: `getStringOptional`, `getLongOptional`, `getDoubleOptional`, `getBooleanOptional` and `getBytesOptional` when using the column name which allow for optional return types
 * Throw errors for invalid column on all cursor functions
 * `getString`, `getLong`, `getBytes`, `getDouble` and `getBoolean` used with the column name will now throw an error for non-null values and expect a non optional return type
@@ -21,8 +27,6 @@
   ```kotlin
   import com.powersync.db.SqlCursor
   ```
-
-
 
 ## 1.0.0-BETA18
 

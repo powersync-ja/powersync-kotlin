@@ -53,16 +53,22 @@ public actual class DatabaseDriverFactory {
         dbFilename: String,
     ): PsSqlDriver {
         val schema = InternalSchema
-        val sqlLogger = object : Logger {
-            override val eActive: Boolean
-                get() = false
-            override val vActive: Boolean
-                get() = false
+        val sqlLogger =
+            object : Logger {
+                override val eActive: Boolean
+                    get() = false
+                override val vActive: Boolean
+                    get() = false
 
-            override fun eWrite(message: String, exception: Throwable?) {}
-            override fun trace(message: String) {}
-            override fun vWrite(message: String) {}
-        }
+                override fun eWrite(
+                    message: String,
+                    exception: Throwable?,
+                ) {}
+
+                override fun trace(message: String) {}
+
+                override fun vWrite(message: String) {}
+            }
 
         this.driver =
             PsSqlDriver(

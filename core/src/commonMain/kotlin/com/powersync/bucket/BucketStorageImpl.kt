@@ -53,8 +53,7 @@ internal class BucketStorageImpl(
         return id ?: throw IllegalStateException("Client ID not found")
     }
 
-    override suspend fun nextCrudItem(): CrudEntry? =
-        db.getOptional(sql = nextCrudQuery, mapper = nextCrudMapper)
+    override suspend fun nextCrudItem(): CrudEntry? = db.getOptional(sql = nextCrudQuery, mapper = nextCrudMapper)
 
     override fun nextCrudItem(transaction: PowerSyncTransaction): CrudEntry? =
         transaction.getOptional(sql = nextCrudQuery, mapper = nextCrudMapper)
@@ -81,7 +80,7 @@ internal class BucketStorageImpl(
     }
 
     private val hasCrudQuery = "SELECT 1 FROM ps_crud LIMIT 1"
-    private val hasCrudMapper:(SqlCursor) -> Long = {
+    private val hasCrudMapper: (SqlCursor) -> Long = {
         it.getLong(0)!!
     }
 

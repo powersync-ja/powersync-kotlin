@@ -83,7 +83,7 @@ internal class InternalDatabaseImpl(
     override suspend fun execute(
         sql: String,
         parameters: List<Any?>?,
-    ): Long = withContext(dbContext) { runWrapped { executeSync(sql, parameters) } }
+    ): Long = withContext(dbContext) { executeSync(sql, parameters) }
 
     private fun executeSync(
         sql: String,
@@ -104,7 +104,7 @@ internal class InternalDatabaseImpl(
         sql: String,
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType,
-    ): RowType = withContext(dbContext) { runWrapped { getSync(sql, parameters, mapper) } }
+    ): RowType = withContext(dbContext) { getSync(sql, parameters, mapper) }
 
     private fun <RowType : Any> getSync(
         sql: String,
@@ -126,7 +126,7 @@ internal class InternalDatabaseImpl(
         sql: String,
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType,
-    ): List<RowType> = withContext(dbContext) { runWrapped { getAllSync(sql, parameters, mapper) } }
+    ): List<RowType> = withContext(dbContext) { getAllSync(sql, parameters, mapper) }
 
     private fun <RowType : Any> getAllSync(
         sql: String,
@@ -145,7 +145,7 @@ internal class InternalDatabaseImpl(
         sql: String,
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType,
-    ): RowType? = withContext(dbContext) { runWrapped { getOptionalSync(sql, parameters, mapper) } }
+    ): RowType? = withContext(dbContext) { getOptionalSync(sql, parameters, mapper) }
 
     private fun <RowType : Any> getOptionalSync(
         sql: String,
@@ -187,7 +187,9 @@ internal class InternalDatabaseImpl(
     ): ExecutableQuery<T> =
         object : ExecutableQuery<T>(wrapperMapper(mapper)) {
             override fun <R> execute(mapper: (app.cash.sqldelight.db.SqlCursor) -> QueryResult<R>): QueryResult<R> =
-                driver.executeQuery(null, query, mapper, parameters, binders)
+                runWrapped {
+                    driver.executeQuery(null, query, mapper, parameters, binders)
+                }
         }
 
     private fun <T : Any> watchQuery(
@@ -199,7 +201,9 @@ internal class InternalDatabaseImpl(
     ): Query<T> =
         object : Query<T>(wrapperMapper(mapper)) {
             override fun <R> execute(mapper: (app.cash.sqldelight.db.SqlCursor) -> QueryResult<R>): QueryResult<R> =
-                driver.executeQuery(null, query, mapper, parameters, binders)
+                runWrapped {
+                    driver.executeQuery(null, query, mapper, parameters, binders)
+                }
 
             override fun addListener(listener: Listener) {
                 driver.addListener(queryKeys = tables.toTypedArray(), listener = listener)
@@ -212,19 +216,15 @@ internal class InternalDatabaseImpl(
 
     override suspend fun <R> readTransaction(callback: PowerSyncTransaction.() -> R): R =
         withContext(dbContext) {
-            runWrapped {
-                transactor.transactionWithResult(noEnclosing = true) {
-                    callback(transaction)
-                }
+            transactor.transactionWithResult(noEnclosing = true) {
+                callback(transaction)
             }
         }
 
     override suspend fun <R> writeTransaction(callback: PowerSyncTransaction.() -> R): R =
         withContext(dbContext) {
-            runWrapped {
-                transactor.transactionWithResult(noEnclosing = true) {
-                    callback(transaction)
-                }
+            transactor.transactionWithResult(noEnclosing = true) {
+                callback(transaction)
             }
         }
 
@@ -284,18 +284,16 @@ internal class InternalDatabaseImpl(
 
     override fun getExistingTableNames(tableGlob: String): List<String> {
         val existingTableNames =
-            runWrapped {
-                createQuery(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB ?",
-                    parameters = 1,
-                    binders = {
-                        bindString(0, tableGlob)
-                    },
-                    mapper = { cursor ->
-                        cursor.getString(0)!!
-                    },
-                ).executeAsList()
-            }
+            createQuery(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB ?",
+                parameters = 1,
+                binders = {
+                    bindString(0, tableGlob)
+                },
+                mapper = { cursor ->
+                    cursor.getString(0)!!
+                },
+            ).executeAsList()
         return existingTableNames
     }
 

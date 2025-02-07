@@ -3,7 +3,9 @@ package com.powersync.db.internal
 import app.cash.sqldelight.db.SqlCursor
 import com.powersync.persistence.driver.ColNamesSqlCursor
 
-internal class SqlCursorWrapper(val realCursor: ColNamesSqlCursor) : com.powersync.db.SqlCursor {
+internal class SqlCursorWrapper(
+    val realCursor: ColNamesSqlCursor,
+) : com.powersync.db.SqlCursor {
     override fun getBoolean(index: Int): Boolean? = realCursor.getBoolean(index)
 
     override fun getBytes(index: Int): ByteArray? = realCursor.getBytes(index)
@@ -42,6 +44,5 @@ internal class SqlCursorWrapper(val realCursor: ColNamesSqlCursor) : com.powersy
     }
 }
 
-internal fun <T> wrapperMapper(mapper: (com.powersync.db.SqlCursor) -> T): (SqlCursor) -> T {
-    return { realCursor -> mapper(SqlCursorWrapper(realCursor as ColNamesSqlCursor)) }
-}
+internal fun <T> wrapperMapper(mapper: (com.powersync.db.SqlCursor) -> T): (SqlCursor) -> T =
+    { realCursor -> mapper(SqlCursorWrapper(realCursor as ColNamesSqlCursor)) }
