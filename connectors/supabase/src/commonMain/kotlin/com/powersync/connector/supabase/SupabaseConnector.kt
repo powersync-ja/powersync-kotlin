@@ -2,7 +2,6 @@ package com.powersync.connector.supabase
 
 import co.touchlab.kermit.Logger
 import com.powersync.PowerSyncDatabase
-import com.powersync.PowerSyncException
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.db.crud.CrudEntry
@@ -92,7 +91,6 @@ public class SupabaseConnector(
         }
     }
 
-    @Throws(PowerSyncException::class)
     public suspend fun login(
         email: String,
         password: String,
@@ -105,7 +103,6 @@ public class SupabaseConnector(
         }
     }
 
-    @Throws(PowerSyncException::class)
     public suspend fun signUp(
         email: String,
         password: String,
@@ -118,7 +115,6 @@ public class SupabaseConnector(
         }
     }
 
-    @Throws(PowerSyncException::class)
     public suspend fun signOut() {
         runWrappedSuspending {
             supabaseClient.auth.signOut()
@@ -129,7 +125,6 @@ public class SupabaseConnector(
 
     public val sessionStatus: StateFlow<SessionStatus> = supabaseClient.auth.sessionStatus
 
-    @Throws(PowerSyncException::class)
     public suspend fun loginAnonymously() {
         runWrappedSuspending {
             supabaseClient.auth.signInAnonymously()
@@ -139,9 +134,8 @@ public class SupabaseConnector(
     /**
      * Get credentials for PowerSync.
      */
-    @Throws(PowerSyncException::class)
-    override suspend fun fetchCredentials(): PowerSyncCredentials {
-        return runWrappedSuspending {
+    override suspend fun fetchCredentials(): PowerSyncCredentials =
+        runWrappedSuspending {
             check(supabaseClient.auth.sessionStatus.value is SessionStatus.Authenticated) { "Supabase client is not authenticated" }
 
             // Use Supabase token for PowerSync
@@ -156,7 +150,6 @@ public class SupabaseConnector(
                 userId = session.user!!.id,
             )
         }
-    }
 
     /**
      * Upload local changes to the app backend (in this case Supabase).
@@ -164,7 +157,6 @@ public class SupabaseConnector(
      * This function is called whenever there is data to upload, whether the device is online or offline.
      * If this call throws an error, it is retried periodically.
      */
-    @Throws(PowerSyncException::class)
     override suspend fun uploadData(database: PowerSyncDatabase) {
         return runWrappedSuspending {
             val transaction = database.getNextCrudTransaction() ?: return@runWrappedSuspending
