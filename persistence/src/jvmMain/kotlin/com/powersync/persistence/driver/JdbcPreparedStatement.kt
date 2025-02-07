@@ -138,7 +138,7 @@ internal class JdbcCursor(val resultSet: ResultSet) : ColNamesSqlCursor {
     override fun getString(index: Int): String? = resultSet.getString(index + 1)
     override fun getBytes(index: Int): ByteArray? = resultSet.getBytes(index + 1)
     override fun getBoolean(index: Int): Boolean? = getAtIndex(index, resultSet::getBoolean)
-    override fun columnName(index: Int): String? = resultSet.metaData.getColumnName(index)
+    override fun columnName(index: Int): String? = resultSet.metaData.getColumnName(index + 1)
     override val columnCount: Int = resultSet.metaData.columnCount
 
     fun getByte(index: Int): Byte? = getAtIndex(index, resultSet::getByte)

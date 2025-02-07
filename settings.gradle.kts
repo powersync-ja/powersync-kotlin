@@ -21,6 +21,7 @@ dependencyResolutionManagement {
 rootProject.name = "powersync-root"
 
 include(":core")
+include(":core-test")
 include(":connectors:supabase")
 
 include(":dialect")

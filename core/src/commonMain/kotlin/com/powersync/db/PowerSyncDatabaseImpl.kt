@@ -286,7 +286,12 @@ internal class PowerSyncDatabaseImpl(
             }
 
         val hasSynced = timestamp != ""
-        if (hasSynced != currentStatus.hasSynced) {
+        if(!hasSynced){
+            // No data has been synced which results in an empty timestamp string
+            // and can be safely ignored.
+            return
+        }
+        if (currentStatus.hasSynced != true) {
             val formattedDateTime = "${timestamp!!.replace(" ", "T").toLocalDateTime()}Z"
             val lastSyncedAt = Instant.parse(formattedDateTime)
             currentStatus.update(hasSynced = hasSynced, lastSyncedAt = lastSyncedAt)
