@@ -279,17 +279,24 @@ internal class PowerSyncDatabaseImpl(
     }
 
     private suspend fun updateHasSynced() {
-        // Query the database to see if any data has been synced.
+        data class SyncedAt(
+            val syncedAt: String?,
+        )
+        // Query the database to see if any data has been synced
         val timestamp =
-            internalDb.getOptional("SELECT powersync_last_synced_at() as synced_at", null) { cursor ->
-                cursor.getString(0) ?: ""
+            internalDb
+                .getOptional("SELECT powersync_last_synced_at() as synced_at", null) { cursor ->
+                    SyncedAt(syncedAt = cursor.getStringOptional("synced_at"))
+                }?.syncedAt
+        if (timestamp != null) {
+            val hasSynced = true
+            if (currentStatus.hasSynced != null && hasSynced != currentStatus.hasSynced) {
+                val formattedDateTime = "${timestamp.replace(" ", "T").toLocalDateTime()}Z"
+                val lastSyncedAt = Instant.parse(formattedDateTime)
+                currentStatus.update(hasSynced = hasSynced, lastSyncedAt = lastSyncedAt)
             }
-
-        val hasSynced = timestamp != ""
-        if (hasSynced != currentStatus.hasSynced) {
-            val formattedDateTime = "${timestamp!!.replace(" ", "T").toLocalDateTime()}Z"
-            val lastSyncedAt = Instant.parse(formattedDateTime)
-            currentStatus.update(hasSynced = hasSynced, lastSyncedAt = lastSyncedAt)
+        } else {
+            currentStatus.update(hasSynced = false)
         }
     }
 

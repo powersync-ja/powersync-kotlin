@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.0.0-BETA22
+* Fix `updateHasSynced` internal null pointer exception
+
 ## 1.0.0-BETA21
 
 * Improve error handling for Swift by adding @Throws annotation so errors can be handled in Swift
