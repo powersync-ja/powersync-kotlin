@@ -26,6 +26,7 @@ junit = "4.13.2"
 
 compose = "1.6.11"
 compose-preview = "1.7.2"
+androidxSqlite = "2.4.0"
 
 # plugins
 android-gradle-plugin = "8.5.1"
@@ -87,6 +88,8 @@ sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite-jdbc" }
 stately-concurrency = { module = "co.touchlab:stately-concurrency", version.ref = "stately" }
 supabase-client = { module = "io.github.jan-tennert.supabase:postgrest-kt", version.ref = "supabase" }
 supabase-auth = { module = "io.github.jan-tennert.supabase:auth-kt", version.ref = "supabase" }
+
+androidx-sqliteFramework = { module = "androidx.sqlite:sqlite-framework", version.ref = "androidxSqlite" }
 
 # Sample - Android
 androidx-core = { group = "androidx.core", name = "core-ktx", version.ref = "androidx-core" }

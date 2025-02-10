@@ -33,6 +33,7 @@ kotlin {
             api(libs.sqldelight.driver.android)
             api(libs.powersync.sqlite.core.android)
             api(libs.requery.sqlite.android)
+            implementation(libs.androidx.sqliteFramework)
         }
 
         jvmMain.dependencies {
@@ -80,7 +81,6 @@ sqldelight {
     databases {
         create("PsDatabase") {
             packageName.set("com.powersync.persistence")
-            generateAsync.set(true)
             dialect(project(":dialect"))
         }
     }

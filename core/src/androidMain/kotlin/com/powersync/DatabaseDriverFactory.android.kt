@@ -2,9 +2,8 @@ package com.powersync
 
 import android.content.Context
 import androidx.sqlite.db.SupportSQLiteDatabase
-import app.cash.sqldelight.async.coroutines.synchronous
-import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import com.powersync.db.internal.InternalSchema
+import com.powersync.persistence.driver.AndroidSqliteDriver
 import io.requery.android.database.sqlite.RequerySQLiteOpenHelperFactory
 import io.requery.android.database.sqlite.SQLiteCustomExtension
 import kotlinx.coroutines.CoroutineScope
@@ -33,11 +32,11 @@ public actual class DatabaseDriverFactory(
         }
     }
 
-    public actual fun createDriver(
+    internal actual fun createDriver(
         scope: CoroutineScope,
         dbFilename: String,
     ): PsSqlDriver {
-        val schema = InternalSchema.synchronous()
+        val schema = InternalSchema
 
         this.driver =
             PsSqlDriver(

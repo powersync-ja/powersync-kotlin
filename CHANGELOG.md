@@ -1,9 +1,46 @@
 # Changelog
 
+## 1.0.0-BETA21
+
+* Improve error handling for Swift by adding @Throws annotation so errors can be handled in Swift
+* Throw PowerSync exceptions for all public facing methods
+
+## 1.0.0-BETA20
+
+* Add cursor optional functions: `getStringOptional`, `getLongOptional`, `getDoubleOptional`, `getBooleanOptional` and `getBytesOptional` when using the column name which allow for optional return types
+* Throw errors for invalid column on all cursor functions
+* `getString`, `getLong`, `getBytes`, `getDouble` and `getBoolean` used with the column name will now throw an error for non-null values and expect a non optional return type
+
+## 1.0.0-BETA19
+
+* Allow cursor to get values by column name e.g. `getStringOptional("id")`
+* BREAKING CHANGE: If you were using `SqlCursor` from SqlDelight previously for your own custom mapper then you must now change to `SqlCursor` exported by the PowerSync module.
+
+  Previously you would import it like this:
+
+  ```kotlin
+  import app.cash.sqldelight.db.SqlCursor
+  ```
+
+  now it has been changed to:
+
+  ```kotlin
+  import com.powersync.db.SqlCursor
+  ```
+
+## 1.0.0-BETA18
+
+* BREAKING CHANGE: Move from async sqldelight calls to synchronous calls. This will only affect `readTransaction` and `writeTransaction`where the callback function is no longer asynchronous.
+
+## 1.0.0-BETA17
+
+* Add fix for Windows using JVM build
+
 ## 1.0.0-BETA16
 
 * Add `close` method to database methods
 * Throw when error is a `CancellationError` and remove invalidation for all errors in `streamingSync` catch.
+
 ## 1.0.0-BETA15
 
 * Update powersync-sqlite-core to 0.3.8

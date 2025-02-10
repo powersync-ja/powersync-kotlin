@@ -1,11 +1,12 @@
 package com.powersync
 
-import app.cash.sqldelight.async.coroutines.synchronous
-import app.cash.sqldelight.driver.native.NativeSqliteDriver
-import app.cash.sqldelight.driver.native.wrapConnection
 import co.touchlab.sqliter.DatabaseConfiguration
+import co.touchlab.sqliter.DatabaseConfiguration.Logging
 import co.touchlab.sqliter.DatabaseConnection
+import co.touchlab.sqliter.interop.Logger
 import com.powersync.db.internal.InternalSchema
+import com.powersync.persistence.driver.NativeSqliteDriver
+import com.powersync.persistence.driver.wrapConnection
 import com.powersync.sqlite.core.init_powersync_sqlite_extension
 import com.powersync.sqlite.core.sqlite3_commit_hook
 import com.powersync.sqlite.core.sqlite3_rollback_hook
@@ -47,11 +48,28 @@ public actual class DatabaseDriverFactory {
         }
     }
 
-    public actual fun createDriver(
+    internal actual fun createDriver(
         scope: CoroutineScope,
         dbFilename: String,
     ): PsSqlDriver {
-        val schema = InternalSchema.synchronous()
+        val schema = InternalSchema
+        val sqlLogger =
+            object : Logger {
+                override val eActive: Boolean
+                    get() = false
+                override val vActive: Boolean
+                    get() = false
+
+                override fun eWrite(
+                    message: String,
+                    exception: Throwable?,
+                ) {}
+
+                override fun trace(message: String) {}
+
+                override fun vWrite(message: String) {}
+            }
+
         this.driver =
             PsSqlDriver(
                 scope = scope,
@@ -62,6 +80,7 @@ public actual class DatabaseDriverFactory {
                                 name = dbFilename,
                                 version = schema.version.toInt(),
                                 create = { connection -> wrapConnection(connection) { schema.create(it) } },
+                                loggingConfig = Logging(logger = sqlLogger),
                                 lifecycleConfig =
                                     DatabaseConfiguration.Lifecycle(
                                         onCreateConnection = { connection ->

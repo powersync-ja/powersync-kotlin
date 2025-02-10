@@ -1,6 +1,5 @@
 package com.powersync
 
-import app.cash.sqldelight.async.coroutines.synchronous
 import com.powersync.db.internal.InternalSchema
 import kotlinx.coroutines.CoroutineScope
 import java.nio.file.Path
@@ -30,11 +29,11 @@ public actual class DatabaseDriverFactory {
         }
     }
 
-    public actual fun createDriver(
+    internal actual fun createDriver(
         scope: CoroutineScope,
         dbFilename: String,
     ): PsSqlDriver {
-        val schema = InternalSchema.synchronous()
+        val schema = InternalSchema
 
         val driver =
             PSJdbcSqliteDriver(
