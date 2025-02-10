@@ -288,11 +288,13 @@ internal class PowerSyncDatabaseImpl(
                 .getOptional("SELECT powersync_last_synced_at() as synced_at", null) { cursor ->
                     SyncedAt(syncedAt = cursor.getStringOptional("synced_at"))
                 }?.syncedAt
-        val hasSynced = timestamp != null
-        if (currentStatus.hasSynced != null && hasSynced != currentStatus.hasSynced) {
-            val formattedDateTime = "${timestamp!!.replace(" ","T").toLocalDateTime()}Z"
-            val lastSyncedAt = Instant.parse(formattedDateTime)
-            currentStatus.update(hasSynced = hasSynced, lastSyncedAt = lastSyncedAt)
+        if (timestamp != null) {
+            val hasSynced = true
+            if (currentStatus.hasSynced != null && hasSynced != currentStatus.hasSynced) {
+                val formattedDateTime = "${timestamp.replace(" ", "T").toLocalDateTime()}Z"
+                val lastSyncedAt = Instant.parse(formattedDateTime)
+                currentStatus.update(hasSynced = hasSynced, lastSyncedAt = lastSyncedAt)
+            }
         }
     }
 
