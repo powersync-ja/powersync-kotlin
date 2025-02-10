@@ -1,7 +1,7 @@
 # Changelog
 
 ## 1.0.0-BETA22
-* Revert `updateHasSynced` internal change that resulted in an error
+* Fix `updateHasSynced` internal null pointer exception
 
 ## 1.0.0-BETA21
 
