@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.0.0-BETA22
+* Revert `updateHasSynced` internal change that resulted in an error
+
 ## 1.0.0-BETA21
 
 * Improve error handling for Swift by adding @Throws annotation so errors can be handled in Swift
