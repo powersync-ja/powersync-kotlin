@@ -295,6 +295,8 @@ internal class PowerSyncDatabaseImpl(
                 val lastSyncedAt = Instant.parse(formattedDateTime)
                 currentStatus.update(hasSynced = hasSynced, lastSyncedAt = lastSyncedAt)
             }
+        } else {
+            currentStatus.update(hasSynced = false)
         }
     }
 
