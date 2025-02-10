@@ -1,7 +1,9 @@
 package com.powersync
 
 import co.touchlab.sqliter.DatabaseConfiguration
+import co.touchlab.sqliter.DatabaseConfiguration.Logging
 import co.touchlab.sqliter.DatabaseConnection
+import co.touchlab.sqliter.interop.Logger
 import com.powersync.db.internal.InternalSchema
 import com.powersync.persistence.driver.NativeSqliteDriver
 import com.powersync.persistence.driver.wrapConnection
@@ -51,6 +53,23 @@ public actual class DatabaseDriverFactory {
         dbFilename: String,
     ): PsSqlDriver {
         val schema = InternalSchema
+        val sqlLogger =
+            object : Logger {
+                override val eActive: Boolean
+                    get() = false
+                override val vActive: Boolean
+                    get() = false
+
+                override fun eWrite(
+                    message: String,
+                    exception: Throwable?,
+                ) {}
+
+                override fun trace(message: String) {}
+
+                override fun vWrite(message: String) {}
+            }
+
         this.driver =
             PsSqlDriver(
                 scope = scope,
@@ -61,6 +80,7 @@ public actual class DatabaseDriverFactory {
                                 name = dbFilename,
                                 version = schema.version.toInt(),
                                 create = { connection -> wrapConnection(connection) { schema.create(it) } },
+                                loggingConfig = Logging(logger = sqlLogger),
                                 lifecycleConfig =
                                     DatabaseConfiguration.Lifecycle(
                                         onCreateConnection = { connection ->

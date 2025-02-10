@@ -100,7 +100,7 @@ internal class SyncStream(
                     throw e
                 }
 
-                logger.e(e) { "Error in streamingSync: $e" }
+                logger.e("Error in streamingSync: ${e.message}")
                 status.update(
                     downloadError = e,
                 )
@@ -152,7 +152,7 @@ internal class SyncStream(
                     break
                 }
             } catch (e: Exception) {
-                logger.e(e) { "Error uploading crud" }
+                logger.e { "Error uploading crud: ${e.message}" }
                 status.update(uploading = false, uploadError = e)
                 delay(retryDelayMs)
                 break

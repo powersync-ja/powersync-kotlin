@@ -9,6 +9,7 @@ import app.cash.sqldelight.db.SqlPreparedStatement
 import com.persistence.PowersyncQueries
 import com.powersync.PsSqlDriver
 import com.powersync.db.SqlCursor
+import com.powersync.db.runWrapped
 import com.powersync.persistence.PsDatabase
 import com.powersync.utils.JsonUtil
 import kotlinx.coroutines.CoroutineScope
@@ -186,7 +187,9 @@ internal class InternalDatabaseImpl(
     ): ExecutableQuery<T> =
         object : ExecutableQuery<T>(wrapperMapper(mapper)) {
             override fun <R> execute(mapper: (app.cash.sqldelight.db.SqlCursor) -> QueryResult<R>): QueryResult<R> =
-                driver.executeQuery(null, query, mapper, parameters, binders)
+                runWrapped {
+                    driver.executeQuery(null, query, mapper, parameters, binders)
+                }
         }
 
     private fun <T : Any> watchQuery(
@@ -198,7 +201,9 @@ internal class InternalDatabaseImpl(
     ): Query<T> =
         object : Query<T>(wrapperMapper(mapper)) {
             override fun <R> execute(mapper: (app.cash.sqldelight.db.SqlCursor) -> QueryResult<R>): QueryResult<R> =
-                driver.executeQuery(null, query, mapper, parameters, binders)
+                runWrapped {
+                    driver.executeQuery(null, query, mapper, parameters, binders)
+                }
 
             override fun addListener(listener: Listener) {
                 driver.addListener(queryKeys = tables.toTypedArray(), listener = listener)
@@ -293,7 +298,7 @@ internal class InternalDatabaseImpl(
     }
 
     override fun close() {
-        this.driver.close()
+        runWrapped { this.driver.close() }
     }
 
     internal data class ExplainQueryResult(

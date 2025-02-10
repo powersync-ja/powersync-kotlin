@@ -112,7 +112,7 @@ class SyncStreamTest {
             }
 
             with(testLogWriter.logs[1]) {
-                assertEquals(message, "Error uploading crud")
+                assertEquals(message, "Error uploading crud: Delaying due to previously encountered CRUD item.")
                 assertEquals(Severity.Error, severity)
             }
         }
