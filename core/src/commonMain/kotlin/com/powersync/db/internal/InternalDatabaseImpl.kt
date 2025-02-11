@@ -91,13 +91,15 @@ internal class InternalDatabaseImpl(
     ): Long {
         val numParams = parameters?.size ?: 0
 
-        return driver
-            .execute(
-                identifier = null,
-                sql = sql,
-                parameters = numParams,
-                binders = getBindersFromParams(parameters),
-            ).value
+        return runWrapped {
+            driver
+                .execute(
+                    identifier = null,
+                    sql = sql,
+                    parameters = numParams,
+                    binders = getBindersFromParams(parameters),
+                ).value
+        }
     }
 
     override suspend fun <RowType : Any> get(
