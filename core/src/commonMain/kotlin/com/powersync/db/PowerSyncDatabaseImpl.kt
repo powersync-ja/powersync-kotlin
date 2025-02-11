@@ -127,9 +127,10 @@ internal class PowerSyncDatabaseImpl(
 
         uploadJob =
             scope.launch {
-                internalDb.updatesOnTable(InternalTable.CRUD.toString()).debounce(crudThrottleMs).collect {
-                    syncStream!!.triggerCrudUpload()
-                }
+                internalDb.updatesOnTable(InternalTable.CRUD.toString()).debounce(crudThrottleMs)
+                    .collect {
+                        syncStream!!.triggerCrudUpload()
+                    }
             }
     }
 
@@ -164,9 +165,9 @@ internal class PowerSyncDatabaseImpl(
     }
 
     override suspend fun getNextCrudTransaction(): CrudTransaction? {
-        return internalDb.readTransaction {
+        return internalDb.readTransaction { tx ->
             val entry =
-                bucketStorage.nextCrudItem(this)
+                bucketStorage.nextCrudItem(tx)
                     ?: return@readTransaction null
 
             val txId = entry.transactionId
@@ -196,7 +197,8 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 
-    override suspend fun getPowerSyncVersion(): String = internalDb.queries.powerSyncVersion().executeAsOne()
+    override suspend fun getPowerSyncVersion(): String =
+        internalDb.queries.powerSyncVersion().executeAsOne()
 
     override suspend fun <RowType : Any> get(
         sql: String,
@@ -222,9 +224,11 @@ internal class PowerSyncDatabaseImpl(
         mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>> = internalDb.watch(sql, parameters, mapper)
 
-    override suspend fun <R> readTransaction(callback: (tx: PowerSyncTransaction) -> R): R = internalDb.writeTransaction(callback)
+    override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R =
+        internalDb.writeTransaction(callback)
 
-    override suspend fun <R> writeTransaction(callback: (tx: PowerSyncTransaction) -> R): R = internalDb.writeTransaction(callback)
+    override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R =
+        internalDb.writeTransaction(callback)
 
     override suspend fun execute(
         sql: String,
@@ -235,16 +239,16 @@ internal class PowerSyncDatabaseImpl(
         lastTransactionId: Int,
         writeCheckpoint: String?,
     ) {
-        internalDb.writeTransaction {
+        internalDb.writeTransaction { tx ->
             internalDb.queries.deleteEntriesWithIdLessThan(lastTransactionId.toLong())
 
-            if (writeCheckpoint != null && !bucketStorage.hasCrud(this)) {
-                execute(
+            if (writeCheckpoint != null && !bucketStorage.hasCrud(tx)) {
+                tx.execute(
                     "UPDATE ps_buckets SET target_op = CAST(? AS INTEGER) WHERE name='\$local'",
                     listOf(writeCheckpoint),
                 )
             } else {
-                execute(
+                tx.execute(
                     "UPDATE ps_buckets SET target_op = CAST(? AS INTEGER) WHERE name='\$local'",
                     listOf(bucketStorage.getMaxOpId()),
                 )
@@ -266,7 +270,11 @@ internal class PowerSyncDatabaseImpl(
             syncStream = null
         }
 
-        currentStatus.update(connected = false, connecting = false, lastSyncedAt = currentStatus.lastSyncedAt)
+        currentStatus.update(
+            connected = false,
+            connecting = false,
+            lastSyncedAt = currentStatus.lastSyncedAt
+        )
     }
 
     override suspend fun disconnectAndClear(clearLocal: Boolean) {

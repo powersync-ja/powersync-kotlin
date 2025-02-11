@@ -9,6 +9,7 @@ import app.cash.sqldelight.db.SqlPreparedStatement
 import com.persistence.PowersyncQueries
 import com.powersync.PsSqlDriver
 import com.powersync.db.SqlCursor
+import com.powersync.db.ThrowableTransactionCallback
 import com.powersync.db.runWrapped
 import com.powersync.persistence.PsDatabase
 import com.powersync.utils.JsonUtil
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
+
 
 @OptIn(FlowPreview::class)
 internal class InternalDatabaseImpl(
@@ -50,13 +52,15 @@ internal class InternalDatabaseImpl(
                 sql: String,
                 parameters: List<Any?>?,
                 mapper: (SqlCursor) -> RowType,
-            ): List<RowType> = this@InternalDatabaseImpl.getAllSync(sql, parameters ?: emptyList(), mapper)
+            ): List<RowType> =
+                this@InternalDatabaseImpl.getAllSync(sql, parameters ?: emptyList(), mapper)
 
             override fun <RowType : Any> getOptional(
                 sql: String,
                 parameters: List<Any?>?,
                 mapper: (SqlCursor) -> RowType,
-            ): RowType? = this@InternalDatabaseImpl.getOptionalSync(sql, parameters ?: emptyList(), mapper)
+            ): RowType? =
+                this@InternalDatabaseImpl.getOptionalSync(sql, parameters ?: emptyList(), mapper)
         }
 
     companion object {
@@ -73,7 +77,8 @@ internal class InternalDatabaseImpl(
                 .onEach { tables -> accumulatedUpdates.addAll(tables) }
                 .debounce(DEFAULT_WATCH_THROTTLE_MS)
                 .collect {
-                    val dataTables = accumulatedUpdates.map { toFriendlyTableName(it) }.filter { it.isNotBlank() }
+                    val dataTables = accumulatedUpdates.map { toFriendlyTableName(it) }
+                        .filter { it.isNotBlank() }
                     driver.notifyListeners(queryKeys = dataTables.toTypedArray())
                     accumulatedUpdates.clear()
                 }
@@ -216,17 +221,17 @@ internal class InternalDatabaseImpl(
             }
         }
 
-    override suspend fun <R> readTransaction(callback: PowerSyncTransaction.() -> R): R =
+    override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R =
         withContext(dbContext) {
             transactor.transactionWithResult(noEnclosing = true) {
-                callback(transaction)
+                callback.execute(transaction)
             }
         }
 
-    override suspend fun <R> writeTransaction(callback: PowerSyncTransaction.() -> R): R =
+    override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R =
         withContext(dbContext) {
             transactor.transactionWithResult(noEnclosing = true) {
-                callback(transaction)
+                callback.execute(transaction)
             }
         }
 

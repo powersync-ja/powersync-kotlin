@@ -5,6 +5,15 @@ import com.powersync.db.internal.PowerSyncTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlin.coroutines.cancellation.CancellationException
 
+
+/**
+ * Kotlin allows SAM (Single Abstract Method) interfaces to be treated like lambda expressions.
+ */
+public fun interface ThrowableTransactionCallback<R> {
+    @Throws(Exception::class) // Specify the exceptions you expect
+    public fun execute(transaction: PowerSyncTransaction): R
+}
+
 public interface Queries {
     /**
      * Execute a write query (INSERT, UPDATE, DELETE)
@@ -58,8 +67,8 @@ public interface Queries {
     ): Flow<List<RowType>>
 
     @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun <R> writeTransaction(callback: (PowerSyncTransaction) -> R): R
+    public suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R
 
     @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun <R> readTransaction(callback: (PowerSyncTransaction) -> R): R
+    public suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R
 }
