@@ -2,7 +2,7 @@
 
 ## 1.0.0-BETA23
 
-* Make `execute` throwable for Swift
+* Make `execute` and `PowerSyncTransaction` functions throwable for Swift
 
 ## 1.0.0-BETA22
 

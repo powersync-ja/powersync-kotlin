@@ -164,9 +164,9 @@ internal class PowerSyncDatabaseImpl(
     }
 
     override suspend fun getNextCrudTransaction(): CrudTransaction? {
-        return internalDb.readTransaction {
+        return internalDb.readTransaction { transaction ->
             val entry =
-                bucketStorage.nextCrudItem(this)
+                bucketStorage.nextCrudItem(transaction)
                     ?: return@readTransaction null
 
             val txId = entry.transactionId
@@ -222,9 +222,9 @@ internal class PowerSyncDatabaseImpl(
         mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>> = internalDb.watch(sql, parameters, mapper)
 
-    override suspend fun <R> readTransaction(callback: (tx: PowerSyncTransaction) -> R): R = internalDb.writeTransaction(callback)
+    override suspend fun <R> readTransaction(callback: (PowerSyncTransaction) -> R): R = internalDb.writeTransaction(callback)
 
-    override suspend fun <R> writeTransaction(callback: (tx: PowerSyncTransaction) -> R): R = internalDb.writeTransaction(callback)
+    override suspend fun <R> writeTransaction(callback: (PowerSyncTransaction) -> R): R = internalDb.writeTransaction(callback)
 
     override suspend fun execute(
         sql: String,
@@ -235,16 +235,16 @@ internal class PowerSyncDatabaseImpl(
         lastTransactionId: Int,
         writeCheckpoint: String?,
     ) {
-        internalDb.writeTransaction {
+        internalDb.writeTransaction { transaction ->
             internalDb.queries.deleteEntriesWithIdLessThan(lastTransactionId.toLong())
 
-            if (writeCheckpoint != null && !bucketStorage.hasCrud(this)) {
-                execute(
+            if (writeCheckpoint != null && !bucketStorage.hasCrud(transaction)) {
+                transaction.execute(
                     "UPDATE ps_buckets SET target_op = CAST(? AS INTEGER) WHERE name='\$local'",
                     listOf(writeCheckpoint),
                 )
             } else {
-                execute(
+                transaction.execute(
                     "UPDATE ps_buckets SET target_op = CAST(? AS INTEGER) WHERE name='\$local'",
                     listOf(bucketStorage.getMaxOpId()),
                 )

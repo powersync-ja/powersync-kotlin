@@ -219,14 +219,24 @@ internal class InternalDatabaseImpl(
     override suspend fun <R> readTransaction(callback: PowerSyncTransaction.() -> R): R =
         withContext(dbContext) {
             transactor.transactionWithResult(noEnclosing = true) {
-                callback(transaction)
+                val res = callback(transaction)
+                if (res == TransactionResponse.ROLLBACK) {
+                    rollback(null as R)
+                } else {
+                    res
+                }
             }
         }
 
     override suspend fun <R> writeTransaction(callback: PowerSyncTransaction.() -> R): R =
         withContext(dbContext) {
             transactor.transactionWithResult(noEnclosing = true) {
-                callback(transaction)
+                val res = callback(transaction)
+                if (res == TransactionResponse.ROLLBACK) {
+                    rollback(null as R)
+                } else {
+                    res
+                }
             }
         }
 
@@ -333,3 +343,8 @@ internal fun getBindersFromParams(parameters: List<Any?>?): (SqlPreparedStatemen
         }
     }
 }
+
+public enum class TransactionResponse {
+    ROLLBACK,
+}
+
