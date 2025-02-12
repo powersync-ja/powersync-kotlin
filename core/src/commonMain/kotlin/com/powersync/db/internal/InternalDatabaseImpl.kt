@@ -216,7 +216,7 @@ internal class InternalDatabaseImpl(
             }
         }
 
-    override suspend fun <R> readTransaction(callback: PowerSyncTransaction.() -> R): R =
+    override suspend fun <R> readTransaction(callback: (PowerSyncTransaction) -> R): R =
         withContext(dbContext) {
             transactor.transactionWithResult(noEnclosing = true) {
                 val res = callback(transaction)
@@ -228,7 +228,7 @@ internal class InternalDatabaseImpl(
             }
         }
 
-    override suspend fun <R> writeTransaction(callback: PowerSyncTransaction.() -> R): R =
+    override suspend fun <R> writeTransaction(callback: (PowerSyncTransaction) -> R): R =
         withContext(dbContext) {
             transactor.transactionWithResult(noEnclosing = true) {
                 val res = callback(transaction)
