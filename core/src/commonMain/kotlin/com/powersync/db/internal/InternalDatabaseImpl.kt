@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -34,6 +35,13 @@ internal class InternalDatabaseImpl(
 ) : InternalDatabase {
     override val transactor: PsDatabase = PsDatabase(driver)
     override val queries: PowersyncQueries = transactor.powersyncQueries
+
+    // Register callback for table updates
+    private fun tableUpdates(): Flow<List<String>> = driver.tableUpdates()
+
+    // Debounced by transaction completion
+    private val transactionTableUpdatesController = MutableSharedFlow<List<String>>()
+    private val transactionTableUpdates = mutableSetOf<String>()
 
     // Could be scope.coroutineContext, but the default is GlobalScope, which seems like a bad idea. To discuss.
     private val dbContext = Dispatchers.IO
@@ -54,13 +62,15 @@ internal class InternalDatabaseImpl(
                 sql: String,
                 parameters: List<Any?>?,
                 mapper: (SqlCursor) -> RowType,
-            ): List<RowType> = this@InternalDatabaseImpl.getAllSync(sql, parameters ?: emptyList(), mapper)
+            ): List<RowType> =
+                this@InternalDatabaseImpl.getAllSync(sql, parameters ?: emptyList(), mapper)
 
             override fun <RowType : Any> getOptional(
                 sql: String,
                 parameters: List<Any?>?,
                 mapper: (SqlCursor) -> RowType,
-            ): RowType? = this@InternalDatabaseImpl.getOptionalSync(sql, parameters ?: emptyList(), mapper)
+            ): RowType? =
+                this@InternalDatabaseImpl.getOptionalSync(sql, parameters ?: emptyList(), mapper)
         }
 
     companion object {
@@ -77,9 +87,12 @@ internal class InternalDatabaseImpl(
                 .onEach { tables -> accumulatedUpdates.addAll(tables) }
                 .debounce(DEFAULT_WATCH_THROTTLE_MS)
                 .collect {
-                    val dataTables = accumulatedUpdates.map { toFriendlyTableName(it) }.filter { it.isNotBlank() }
+                    val dataTables = accumulatedUpdates.map { toFriendlyTableName(it) }
+                        .filter { it.isNotBlank() }
                     driver.notifyListeners(queryKeys = dataTables.toTypedArray())
                     transactionTableUpdates.addAll(accumulatedUpdates)
+                    // Emit so that subscribers can get the list of changed tables
+
                     accumulatedUpdates.clear()
                 }
         }
@@ -88,7 +101,9 @@ internal class InternalDatabaseImpl(
     override suspend fun execute(
         sql: String,
         parameters: List<Any?>?,
-    ): Long = withContext(dbContext) { executeSync(sql, parameters) }
+    ): Long = withContext(dbContext) {
+        writeTransaction { tx -> tx.execute(sql, parameters) }
+    }
 
     private fun executeSync(
         sql: String,
@@ -213,13 +228,19 @@ internal class InternalDatabaseImpl(
                 }
 
             override fun addListener(listener: Listener) {
-                driver.addListener(queryKeys = tables.toTypedArray(), listener = listener)
-                transactionTableUpdatesController.asSharedFlow().onEach { listener.queryResultsChanged() }
+//                Remove the original call
+//                driver.addListener(queryKeys = tables.toTypedArray(), listener = listener)
+//                Filter the flow of accumulated table changes based on the intersection of the tables provided in the params
+//                Store a reference of this flow in order to dispose it later.
+                val consumer = transactionTableUpdatesController.asSharedFlow().filter {
+//                    Do an intersection set check here
+                }.onEach { listener.queryResultsChanged() }
             }
 
             override fun removeListener(listener: Listener) {
-                driver.removeListener(queryKeys = tables.toTypedArray(), listener = listener)
-                transactionTableUpdatesController.asSharedFlow().onEach { listener.queryResultsChanged() }
+//                driver.removeListener(queryKeys = tables.toTypedArray(), listener = listener)
+//                Dispose consumer if it was initialized already
+//                transactionTableUpdatesController.asSharedFlow().onEach { listener.queryResultsChanged() }
             }
         }
 
@@ -238,7 +259,7 @@ internal class InternalDatabaseImpl(
 
     override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R =
         withContext(dbContext) {
-            transactor.transactionWithResult(noEnclosing = true) {
+            val r = transactor.transactionWithResult(noEnclosing = true) {
                 runWrapped {
                     val result = callback.execute(transaction)
                     if (result is PowerSyncException) {
@@ -247,14 +268,11 @@ internal class InternalDatabaseImpl(
                     result
                 }
             }
+            transactionTableUpdatesController.emit(transactionTableUpdates.toList())
+            transactionTableUpdates.clear()
+            r
         }
 
-    // Register callback for table updates
-    private fun tableUpdates(): Flow<List<String>> = driver.tableUpdates()
-
-    // Debounced by transaction completion
-    private val transactionTableUpdatesController = MutableSharedFlow<List<String>>()
-    private val transactionTableUpdates = mutableSetOf<String>()
 
     // Register callback for table updates on a specific table
     override fun updatesOnTable(tableName: String): Flow<Unit> = driver.updatesOnTable(tableName)
