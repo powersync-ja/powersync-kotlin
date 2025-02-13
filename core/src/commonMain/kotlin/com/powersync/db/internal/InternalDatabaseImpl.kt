@@ -19,6 +19,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -62,8 +64,8 @@ internal class InternalDatabaseImpl(
         }
 
     companion object {
-        const val POWERSYNC_TABLE_MATCH: String = "(^ps_data__|^ps_data_local__)"
-        const val DEFAULT_WATCH_THROTTLE_MS: Long = 30L
+        const val POWERSYNC_TABLE_MATCH = "(^ps_data__|^ps_data_local__)"
+        const val DEFAULT_WATCH_THROTTLE_MS = 30L
     }
 
     init {
@@ -77,6 +79,7 @@ internal class InternalDatabaseImpl(
                 .collect {
                     val dataTables = accumulatedUpdates.map { toFriendlyTableName(it) }.filter { it.isNotBlank() }
                     driver.notifyListeners(queryKeys = dataTables.toTypedArray())
+                    transactionTableUpdates.addAll(accumulatedUpdates)
                     accumulatedUpdates.clear()
                 }
         }
@@ -211,10 +214,12 @@ internal class InternalDatabaseImpl(
 
             override fun addListener(listener: Listener) {
                 driver.addListener(queryKeys = tables.toTypedArray(), listener = listener)
+                transactionTableUpdatesController.asSharedFlow().onEach { listener.queryResultsChanged() }
             }
 
             override fun removeListener(listener: Listener) {
                 driver.removeListener(queryKeys = tables.toTypedArray(), listener = listener)
+                transactionTableUpdatesController.asSharedFlow().onEach { listener.queryResultsChanged() }
             }
         }
 
@@ -246,6 +251,10 @@ internal class InternalDatabaseImpl(
 
     // Register callback for table updates
     private fun tableUpdates(): Flow<List<String>> = driver.tableUpdates()
+
+    // Debounced by transaction completion
+    private val transactionTableUpdatesController = MutableSharedFlow<List<String>>()
+    private val transactionTableUpdates = mutableSetOf<String>()
 
     // Register callback for table updates on a specific table
     override fun updatesOnTable(tableName: String): Flow<Unit> = driver.updatesOnTable(tableName)
