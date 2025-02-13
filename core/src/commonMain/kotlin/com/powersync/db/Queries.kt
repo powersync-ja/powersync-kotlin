@@ -1,7 +1,7 @@
 package com.powersync.db
 
 import com.powersync.PowerSyncException
-import com.powersync.db.internal.PowerSyncTransaction
+import com.powersync.db.internal.ThrowableTransactionCallback
 import kotlinx.coroutines.flow.Flow
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -58,8 +58,8 @@ public interface Queries {
     ): Flow<List<RowType>>
 
     @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun <R> writeTransaction(callback: (PowerSyncTransaction) -> R): R
+    public suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R
 
     @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun <R> readTransaction(callback: (PowerSyncTransaction) -> R): R
+    public suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R
 }
