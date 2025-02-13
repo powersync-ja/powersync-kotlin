@@ -91,8 +91,6 @@ internal class InternalDatabaseImpl(
                         .filter { it.isNotBlank() }
                     driver.notifyListeners(queryKeys = dataTables.toTypedArray())
                     transactionTableUpdates.addAll(accumulatedUpdates)
-                    // Emit so that subscribers can get the list of changed tables
-
                     accumulatedUpdates.clear()
                 }
         }
