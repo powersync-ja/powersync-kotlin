@@ -1,6 +1,11 @@
 # Changelog
 
+## 1.0.0-BETA23
+
+* Make `execute` and `PowerSyncTransaction` functions throwable for Swift
+
 ## 1.0.0-BETA22
+
 * Fix `updateHasSynced` internal null pointer exception
 
 ## 1.0.0-BETA21

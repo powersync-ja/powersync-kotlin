@@ -7,11 +7,13 @@ import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlPreparedStatement
 import com.persistence.PowersyncQueries
+import com.powersync.PowerSyncException
 import com.powersync.PsSqlDriver
 import com.powersync.db.SqlCursor
 import com.powersync.db.runWrapped
 import com.powersync.persistence.PsDatabase
 import com.powersync.utils.JsonUtil
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -91,13 +93,15 @@ internal class InternalDatabaseImpl(
     ): Long {
         val numParams = parameters?.size ?: 0
 
-        return driver
-            .execute(
-                identifier = null,
-                sql = sql,
-                parameters = numParams,
-                binders = getBindersFromParams(parameters),
-            ).value
+        return runWrapped {
+            driver
+                .execute(
+                    identifier = null,
+                    sql = sql,
+                    parameters = numParams,
+                    binders = getBindersFromParams(parameters),
+                ).value
+        }
     }
 
     override suspend fun <RowType : Any> get(
@@ -214,17 +218,29 @@ internal class InternalDatabaseImpl(
             }
         }
 
-    override suspend fun <R> readTransaction(callback: PowerSyncTransaction.() -> R): R =
+    override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R =
         withContext(dbContext) {
             transactor.transactionWithResult(noEnclosing = true) {
-                callback(transaction)
+                runWrapped {
+                    val result = callback.execute(transaction)
+                    if (result is PowerSyncException) {
+                        throw result
+                    }
+                    result
+                }
             }
         }
 
-    override suspend fun <R> writeTransaction(callback: PowerSyncTransaction.() -> R): R =
+    override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R =
         withContext(dbContext) {
             transactor.transactionWithResult(noEnclosing = true) {
-                callback(transaction)
+                runWrapped {
+                    val result = callback.execute(transaction)
+                    if (result is PowerSyncException) {
+                        throw result
+                    }
+                    result
+                }
             }
         }
 
@@ -330,4 +346,12 @@ internal fun getBindersFromParams(parameters: List<Any?>?): (SqlPreparedStatemen
             }
         }
     }
+}
+
+/**
+ * Kotlin allows SAM (Single Abstract Method) interfaces to be treated like lambda expressions.
+ */
+public fun interface ThrowableTransactionCallback<R> {
+    @Throws(PowerSyncException::class, CancellationException::class)
+    public fun execute(transaction: PowerSyncTransaction): R
 }
