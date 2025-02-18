@@ -1,6 +1,7 @@
 package com.powersync.sync
 
 import com.powersync.bucket.BucketChecksum
+import com.powersync.bucket.BucketPriority
 import com.powersync.bucket.Checkpoint
 import com.powersync.bucket.OplogEntry
 import kotlinx.serialization.KSerializer
@@ -29,7 +30,7 @@ internal sealed interface SyncLine {
     @Serializable
     data class CheckpointPartiallyComplete(
         @SerialName("last_op_id") val lastOpId: String,
-        @SerialName("priority") val priority: Int
+        @SerialName("priority") val priority: BucketPriority
     ): SyncLine
 
     @Serializable
