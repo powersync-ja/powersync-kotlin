@@ -21,8 +21,10 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -82,16 +84,20 @@ internal class InternalDatabaseImpl(
         scope.launch {
             // Store table changes in an accumulated array which will be (debounced) emitted on transaction end
             tableUpdates()
+                .debounce(DEFAULT_WATCH_THROTTLE_MS)
                 .onEach { tables ->
                     val dataTables = tables.map { toFriendlyTableName(it) }
                         .filter { it.isNotBlank() }
                     transactionTableUpdates.addAll(dataTables)
                 }
-            // This flow will be emitted once the transaction ends
-            transactionTableUpdatesController.debounce(DEFAULT_WATCH_THROTTLE_MS).collect {
-                driver.notifyListeners(queryKeys = transactionTableUpdates.toTypedArray())
-                transactionTableUpdates.clear()
-            }
+                .combine(transactionTableUpdatesController) { _, _ ->
+                    val updates = transactionTableUpdates.toTypedArray()
+                    transactionTableUpdates.clear()
+                    updates
+                }
+                .collect { updates ->
+                    driver.notifyListeners(queryKeys = updates)
+                }
         }
 
     }
