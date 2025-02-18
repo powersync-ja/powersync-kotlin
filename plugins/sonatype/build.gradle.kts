@@ -11,6 +11,10 @@ gradlePlugin {
     }
 }
 
+tasks.compileJava {
+    options.release = 21
+}
+
 kotlin {
     explicitApi()
 }

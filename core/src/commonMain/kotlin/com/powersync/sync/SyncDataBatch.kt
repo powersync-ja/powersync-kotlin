@@ -4,5 +4,5 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 internal data class SyncDataBatch(
-    val buckets: List<SyncDataBucket>,
+    val buckets: List<SyncLine.SyncDataBucket>,
 )
