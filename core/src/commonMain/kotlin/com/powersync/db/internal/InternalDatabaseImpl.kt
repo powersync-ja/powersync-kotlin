@@ -40,7 +40,7 @@ internal class InternalDatabaseImpl(
     private fun tableUpdates(): Flow<List<String>> = driver.tableUpdates()
 
     // Debounced by transaction completion
-    private val transactionTableUpdatesController = MutableSharedFlow<List<String>>()
+    private val transactionTableUpdatesController = MutableSharedFlow<Unit>()
     private val transactionTableUpdates = mutableSetOf<String>()
 
     // Could be scope.coroutineContext, but the default is GlobalScope, which seems like a bad idea. To discuss.
@@ -80,20 +80,20 @@ internal class InternalDatabaseImpl(
 
     init {
         scope.launch {
-            val accumulatedUpdates = mutableSetOf<String>()
+            // Store table changes in an accumulated array which will be (debounced) emitted on transaction end
             tableUpdates()
-//               Debounce will discard any events which occur inside the debounce window
-//               This will accumulate those table updates
-                .onEach { tables -> accumulatedUpdates.addAll(tables) }
-                .debounce(DEFAULT_WATCH_THROTTLE_MS)
-                .collect {
-                    val dataTables = accumulatedUpdates.map { toFriendlyTableName(it) }
+                .onEach { tables ->
+                    val dataTables = tables.map { toFriendlyTableName(it) }
                         .filter { it.isNotBlank() }
-                    driver.notifyListeners(queryKeys = dataTables.toTypedArray())
-                    transactionTableUpdates.addAll(accumulatedUpdates)
-                    accumulatedUpdates.clear()
+                    transactionTableUpdates.addAll(dataTables)
                 }
+            // This flow will be emitted once the transaction ends
+            transactionTableUpdatesController.debounce(DEFAULT_WATCH_THROTTLE_MS).collect {
+                driver.notifyListeners(queryKeys = transactionTableUpdates.toTypedArray())
+                transactionTableUpdates.clear()
+            }
         }
+
     }
 
     override suspend fun execute(
@@ -226,19 +226,11 @@ internal class InternalDatabaseImpl(
                 }
 
             override fun addListener(listener: Listener) {
-//                Remove the original call
-//                driver.addListener(queryKeys = tables.toTypedArray(), listener = listener)
-//                Filter the flow of accumulated table changes based on the intersection of the tables provided in the params
-//                Store a reference of this flow in order to dispose it later.
-                val consumer = transactionTableUpdatesController.asSharedFlow().filter {
-//                    Do an intersection set check here
-                }.onEach { listener.queryResultsChanged() }
+                driver.addListener(queryKeys = tables.toTypedArray(), listener = listener)
             }
 
             override fun removeListener(listener: Listener) {
-//                driver.removeListener(queryKeys = tables.toTypedArray(), listener = listener)
-//                Dispose consumer if it was initialized already
-//                transactionTableUpdatesController.asSharedFlow().onEach { listener.queryResultsChanged() }
+                driver.removeListener(queryKeys = tables.toTypedArray(), listener = listener)
             }
         }
 
@@ -266,8 +258,8 @@ internal class InternalDatabaseImpl(
                     result
                 }
             }
-            transactionTableUpdatesController.emit(transactionTableUpdates.toList())
-            transactionTableUpdates.clear()
+            // Trigger watched queries
+            transactionTableUpdatesController.emit(Unit)
             r
         }
 
