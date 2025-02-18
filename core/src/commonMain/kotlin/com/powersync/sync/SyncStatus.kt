@@ -118,7 +118,7 @@ internal data class SyncStatusDataContainer(
 
 public data class SyncStatus internal constructor(
     private var data: SyncStatusDataContainer = SyncStatusDataContainer(),
-) : SyncStatusData by data {
+) : SyncStatusData {
     private val stateFlow: MutableStateFlow<SyncStatusDataContainer> = MutableStateFlow(data)
 
     /**
@@ -156,6 +156,36 @@ public data class SyncStatus internal constructor(
             )
         stateFlow.value = data
     }
+
+    override val anyError: Any?
+        get() = data.anyError
+
+    override val connected: Boolean
+        get() = data.connected
+
+    override val connecting: Boolean
+        get() = data.connecting
+
+    override val downloading: Boolean
+        get() = data.downloading
+
+    override val uploading: Boolean
+        get() = data.uploading
+
+    override val lastSyncedAt: Instant?
+        get() = data.lastSyncedAt
+
+    override val hasSynced: Boolean?
+        get() = data.hasSynced
+
+    override val uploadError: Any?
+        get() = data.uploadError
+
+    override val downloadError: Any?
+        get() = data.downloadError
+
+    override val priorityStatusEntries: List<PriorityStatusEntry>
+        get() = data.priorityStatusEntries
 
     override fun toString(): String =
         "SyncStatus(connected=$connected, connecting=$connecting, downloading=$downloading, uploading=$uploading, lastSyncedAt=$lastSyncedAt, hasSynced=$hasSynced, error=$anyError)"
