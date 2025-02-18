@@ -1,10 +1,17 @@
 package com.powersync.sync
 
+import com.powersync.bucket.BucketPriority
 import com.powersync.connectors.PowerSyncBackendConnector
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.datetime.Instant
+
+public data class PriorityStatusEntry internal constructor(
+    val priority: BucketPriority,
+    val lastSyncedAt: Instant?,
+    val hasSynced: Boolean?
+)
 
 public interface SyncStatusData {
     /**
@@ -65,6 +72,33 @@ public interface SyncStatusData {
      * Convenience getter for either the value of downloadError or uploadError
      */
     public val anyError: Any?
+
+    /**
+     * Available [PriorityStatusEntry] reporting the sync status for buckets within priorities.
+     *
+     * When buckets with different priorities are defined, this may contain entries before [hasSynced]
+     * and [lastSyncedAt] are set to indicate that a partial (but no complete) sync has completed.
+     * A completed [PriorityStatusEntry] at one priority level always includes all higher priorities too.
+     */
+    public val priorityStatusEntries: List<PriorityStatusEntry>
+
+    /**
+     * Status information for whether buckets in [priority] have been synchronized.
+     */
+    public fun priorityStatusFor(priority: BucketPriority): PriorityStatusEntry {
+        val byDescendingPriorities = priorityStatusEntries.sortedByDescending { it.priority }
+
+        for (entry in byDescendingPriorities) {
+            // Lower-priority buckets are synchronized after higher-priority buckets, so we look for the first
+            // entry that doesn't have a higher priority.
+            if (entry.priority <= priority) {
+                return entry
+            }
+        }
+
+        // A complete sync necessarily includes all priorities.
+        return PriorityStatusEntry(priority, lastSyncedAt, hasSynced)
+    }
 }
 
 internal data class SyncStatusDataContainer(
@@ -76,6 +110,7 @@ internal data class SyncStatusDataContainer(
     override val hasSynced: Boolean? = null,
     override val uploadError: Any? = null,
     override val downloadError: Any? = null,
+    override val priorityStatusEntries: List<PriorityStatusEntry> = emptyList(),
 ) : SyncStatusData {
     override val anyError
         get() = downloadError ?: uploadError
@@ -84,7 +119,7 @@ internal data class SyncStatusDataContainer(
 @ConsistentCopyVisibility
 public data class SyncStatus internal constructor(
     private var data: SyncStatusDataContainer = SyncStatusDataContainer(),
-) : SyncStatusData {
+) : SyncStatusData by data {
     private val stateFlow: MutableStateFlow<SyncStatusDataContainer> = MutableStateFlow(data)
 
     /**
@@ -106,6 +141,7 @@ public data class SyncStatus internal constructor(
         downloadError: Any? = null,
         clearUploadError: Boolean = false,
         clearDownloadError: Boolean = false,
+        priorityStatusEntries: List<PriorityStatusEntry>? = null,
     ) {
         data =
             data.copy(
@@ -115,38 +151,12 @@ public data class SyncStatus internal constructor(
                 uploading = uploading ?: data.uploading,
                 lastSyncedAt = lastSyncedAt ?: data.lastSyncedAt,
                 hasSynced = hasSynced ?: data.hasSynced,
+                priorityStatusEntries = priorityStatusEntries ?: data.priorityStatusEntries,
                 uploadError = if (clearUploadError) null else uploadError,
                 downloadError = if (clearDownloadError) null else downloadError,
             )
         stateFlow.value = data
     }
-
-    override val anyError: Any?
-        get() = data.anyError
-
-    override val connected: Boolean
-        get() = data.connected
-
-    override val connecting: Boolean
-        get() = data.connecting
-
-    override val downloading: Boolean
-        get() = data.downloading
-
-    override val uploading: Boolean
-        get() = data.uploading
-
-    override val lastSyncedAt: Instant?
-        get() = data.lastSyncedAt
-
-    override val hasSynced: Boolean?
-        get() = data.hasSynced
-
-    override val uploadError: Any?
-        get() = data.uploadError
-
-    override val downloadError: Any?
-        get() = data.downloadError
 
     override fun toString(): String =
         "SyncStatus(connected=$connected, connecting=$connecting, downloading=$downloading, uploading=$uploading, lastSyncedAt=$lastSyncedAt, hasSynced=$hasSynced, error=$anyError)"

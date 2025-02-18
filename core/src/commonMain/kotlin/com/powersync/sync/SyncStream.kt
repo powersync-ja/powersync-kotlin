@@ -173,7 +173,7 @@ internal class SyncStream(
         return body.data.writeCheckpoint
     }
 
-    private suspend fun streamingSyncRequest(req: StreamingSyncRequest): Flow<String> =
+    private fun streamingSyncRequest(req: StreamingSyncRequest): Flow<String> =
         flow {
             val credentials = connector.getCredentialsCached()
             require(credentials != null) { "Not logged in" }
@@ -252,7 +252,7 @@ internal class SyncStream(
         is SyncLine.FullCheckpoint -> handleStreamingSyncCheckpoint(line, state)
         is SyncLine.CheckpointDiff -> handleStreamingSyncCheckpointDiff(line, state)
         is SyncLine.CheckpointComplete -> handleStreamingSyncCheckpointComplete(state)
-        is SyncLine.CheckpointPartiallyComplete -> TODO()
+        is SyncLine.CheckpointPartiallyComplete -> handleStreamingSyncCheckpointPartiallyComplete(line, state)
         is SyncLine.KeepAlive -> handleStreamingKeepAlive(line, state)
         is SyncLine.SyncDataBucket -> handleStreamingSyncData(line, state)
         SyncLine.UnknownSyncLine -> {
@@ -309,6 +309,39 @@ internal class SyncStream(
         state.validatedCheckpoint = state.targetCheckpoint
         status.update(lastSyncedAt = Clock.System.now(), hasSynced = true, clearDownloadError = true)
 
+        return state
+    }
+
+    private suspend fun handleStreamingSyncCheckpointPartiallyComplete(line: SyncLine.CheckpointPartiallyComplete, state: SyncStreamState): SyncStreamState {
+        val priority = line.priority
+        val result = bucketStorage.syncLocalDatabase(state.targetCheckpoint!!, priority)
+        if (!result.checkpointValid) {
+            // This means checksums failed. Start again with a new checkpoint.
+            // TODO: better back-off
+            delay(50)
+            state.retry = true
+            // TODO handle retries
+            return state
+        } else if (!result.ready) {
+            // Checksums valid, but need more data for a consistent checkpoint.
+            // Continue waiting.
+        } else {
+            logger.i { "validated partial checkpoint ${state.appliedCheckpoint} up to priority of $priority" }
+        }
+
+        status.update(
+            priorityStatusEntries = buildList {
+                // All states with a higher priority can be deleted since this partial sync includes them.
+                addAll(status.priorityStatusEntries.filter { it.priority >= line.priority })
+                add(
+                    PriorityStatusEntry(
+                        priority=priority,
+                        lastSyncedAt = Clock.System.now(),
+                        hasSynced = true
+                    )
+                )
+            }
+        )
         return state
     }
 

@@ -1,5 +1,6 @@
 package com.powersync
 
+import com.powersync.bucket.BucketPriority
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.Queries
 import com.powersync.db.crud.CrudBatch
@@ -28,6 +29,13 @@ public interface PowerSyncDatabase : Queries {
      */
     @Throws(PowerSyncException::class, CancellationException::class)
     public suspend fun waitForFirstSync()
+
+    /**
+     * Suspend function that resolves when the first sync covering at least all buckets with the
+     * given [priority] (or a higher one, since those would be synchronized first) has completed.
+     */
+    @Throws(PowerSyncException::class, CancellationException::class)
+    public suspend fun waitForFirstSync(priority: BucketPriority);
 
     /**
      *  Connect to the PowerSync service, and keep the databases in sync.

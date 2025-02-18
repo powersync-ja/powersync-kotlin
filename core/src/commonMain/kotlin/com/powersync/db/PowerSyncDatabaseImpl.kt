@@ -4,6 +4,7 @@ import co.touchlab.kermit.Logger
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
 import com.powersync.PsSqlDriver
+import com.powersync.bucket.BucketPriority
 import com.powersync.bucket.BucketStorage
 import com.powersync.bucket.BucketStorageImpl
 import com.powersync.connectors.PowerSyncBackendConnector
@@ -16,6 +17,7 @@ import com.powersync.db.internal.InternalTable
 import com.powersync.db.internal.ThrowableTransactionCallback
 import com.powersync.db.schema.Schema
 import com.powersync.sync.SyncStatus
+import com.powersync.sync.SyncStatusData
 import com.powersync.sync.SyncStream
 import com.powersync.utils.JsonParam
 import com.powersync.utils.JsonUtil
@@ -300,14 +302,22 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 
-    override suspend fun waitForFirstSync() {
-        if (currentStatus.hasSynced == true) {
+    override suspend fun waitForFirstSync() = waitForFirstSyncImpl(null)
+
+    override suspend fun waitForFirstSync(priority: BucketPriority) = waitForFirstSyncImpl(priority)
+
+    private suspend fun waitForFirstSyncImpl(priority: BucketPriority?) {
+        val predicate: (SyncStatusData) -> Boolean = if (priority == null) {
+            { it.hasSynced == true }
+        } else {
+            { it.priorityStatusFor(priority).hasSynced == true }
+        }
+
+        if (predicate(currentStatus)) {
             return
         }
 
-        currentStatus.asFlow().first { status ->
-            status.hasSynced == true
-        }
+        currentStatus.asFlow().first(predicate)
     }
 
     override suspend fun close() {
