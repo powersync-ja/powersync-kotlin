@@ -21,9 +21,9 @@ public actual class DatabaseDriverFactory {
     @Suppress("unused")
     private fun onTransactionCommit(success: Boolean) {
         driver?.also { driver ->
-            if (success) {
-                driver.fireTableUpdates()
-            } else {
+            // Only clear updates on rollback
+            // We manually fire updates when a transaction ended
+            if (!success) {
                 driver.clearTableUpdates()
             }
         }

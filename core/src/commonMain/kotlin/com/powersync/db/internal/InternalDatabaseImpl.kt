@@ -41,14 +41,11 @@ internal class InternalDatabaseImpl(
     override val transactor: PsDatabase = PsDatabase(driver)
     override val queries: PowersyncQueries = transactor.powersyncQueries
 
-
     // Register callback for table updates
     private fun tableUpdates(): Flow<List<String>> = driver.tableUpdates()
 
     // Debounced by transaction completion
-    private val transactionTableUpdatesController = MutableSharedFlow<Unit>()
-    private val transactionTableUpdates = mutableSetOf<String>()
-    private val transactionTableUpdatesMutex = Mutex()
+    private val tableUpdatesMutex = Mutex()
 
     // Could be scope.coroutineContext, but the default is GlobalScope, which seems like a bad idea. To discuss.
     private val dbContext = Dispatchers.IO
@@ -87,26 +84,23 @@ internal class InternalDatabaseImpl(
 
     init {
         scope.launch {
+            val accumulatedUpdates = mutableSetOf<String>()
             // Store table changes in an accumulated array which will be (debounced) emitted on transaction end
             tableUpdates()
                 .onEach { tables ->
                     val dataTables = tables.map { toFriendlyTableName(it) }
                         .filter { it.isNotBlank() }
-                    transactionTableUpdatesMutex.withLock {
-                        transactionTableUpdates.addAll(dataTables)
+                    tableUpdatesMutex.withLock {
+                        accumulatedUpdates.addAll(dataTables)
                     }
                 }
                 // debounce ignores events inside the throttle. Debouncing needs to be done after accumulation
                 .debounce(DEFAULT_WATCH_THROTTLE_MS)
-                .zip(transactionTableUpdatesController) { _, _ ->
-                    transactionTableUpdatesMutex.withLock {
-                        val updates = transactionTableUpdates.toTypedArray()
-                        transactionTableUpdates.clear()
-                        updates
+                .collect { _ ->
+                    tableUpdatesMutex.withLock {
+                        driver.notifyListeners(queryKeys = accumulatedUpdates.toTypedArray())
+                        accumulatedUpdates.clear()
                     }
-                }
-                .collect { updates ->
-                    driver.notifyListeners(queryKeys = updates)
                 }
         }
 
@@ -275,7 +269,7 @@ internal class InternalDatabaseImpl(
                 }
             }
             // Trigger watched queries
-            transactionTableUpdatesController.emit(Unit)
+            driver.fireTableUpdates()
             r
         }
 
