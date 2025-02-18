@@ -26,9 +26,12 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.zip
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 @OptIn(FlowPreview::class)
 internal class InternalDatabaseImpl(
@@ -38,12 +41,14 @@ internal class InternalDatabaseImpl(
     override val transactor: PsDatabase = PsDatabase(driver)
     override val queries: PowersyncQueries = transactor.powersyncQueries
 
+
     // Register callback for table updates
     private fun tableUpdates(): Flow<List<String>> = driver.tableUpdates()
 
     // Debounced by transaction completion
     private val transactionTableUpdatesController = MutableSharedFlow<Unit>()
     private val transactionTableUpdates = mutableSetOf<String>()
+    private val transactionTableUpdatesMutex = Mutex()
 
     // Could be scope.coroutineContext, but the default is GlobalScope, which seems like a bad idea. To discuss.
     private val dbContext = Dispatchers.IO
@@ -87,14 +92,18 @@ internal class InternalDatabaseImpl(
                 .onEach { tables ->
                     val dataTables = tables.map { toFriendlyTableName(it) }
                         .filter { it.isNotBlank() }
-                    transactionTableUpdates.addAll(dataTables)
+                    transactionTableUpdatesMutex.withLock {
+                        transactionTableUpdates.addAll(dataTables)
+                    }
                 }
                 // debounce ignores events inside the throttle. Debouncing needs to be done after accumulation
                 .debounce(DEFAULT_WATCH_THROTTLE_MS)
-                .combine(transactionTableUpdatesController) { _, _ ->
-                    val updates = transactionTableUpdates.toTypedArray()
-                    transactionTableUpdates.clear()
-                    updates
+                .zip(transactionTableUpdatesController) { _, _ ->
+                    transactionTableUpdatesMutex.withLock {
+                        val updates = transactionTableUpdates.toTypedArray()
+                        transactionTableUpdates.clear()
+                        updates
+                    }
                 }
                 .collect { updates ->
                     driver.notifyListeners(queryKeys = updates)
