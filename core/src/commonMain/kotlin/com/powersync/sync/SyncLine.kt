@@ -73,6 +73,7 @@ private class SyncLineSerializer : KSerializer<SyncLine> {
             3 -> decodeSerializableElement(descriptor, 3, checkpointPartiallyComplete)
             4 -> decodeSerializableElement(descriptor, 4, data)
             5 -> SyncLine.KeepAlive(decodeIntElement(descriptor, 5))
+            CompositeDecoder.UNKNOWN_NAME, CompositeDecoder.DECODE_DONE -> SyncLine.UnknownSyncLine
             else -> error("Unexpected index: $index")
         }
 
