@@ -84,12 +84,13 @@ internal class InternalDatabaseImpl(
         scope.launch {
             // Store table changes in an accumulated array which will be (debounced) emitted on transaction end
             tableUpdates()
-                .debounce(DEFAULT_WATCH_THROTTLE_MS)
                 .onEach { tables ->
                     val dataTables = tables.map { toFriendlyTableName(it) }
                         .filter { it.isNotBlank() }
                     transactionTableUpdates.addAll(dataTables)
                 }
+                // debounce ignores events inside the throttle. Debouncing needs to be done after accumulation
+                .debounce(DEFAULT_WATCH_THROTTLE_MS)
                 .combine(transactionTableUpdatesController) { _, _ ->
                     val updates = transactionTableUpdates.toTypedArray()
                     transactionTableUpdates.clear()
