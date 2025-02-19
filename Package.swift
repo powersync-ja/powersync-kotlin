@@ -17,7 +17,7 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: packageName,
-            path: "./PowerSyncKotlin/build/XCFrameworks/debug/PowerSyncKotlin.xcframework"
+            path: "./PowerSyncKotlin/build/XCFrameworks/debug/\(packageName).xcframework"
         )
         ,
     ]

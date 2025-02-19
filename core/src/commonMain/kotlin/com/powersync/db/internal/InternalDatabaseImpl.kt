@@ -20,8 +20,11 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 
@@ -32,6 +35,12 @@ internal class InternalDatabaseImpl(
 ) : InternalDatabase {
     override val transactor: PsDatabase = PsDatabase(driver)
     override val queries: PowersyncQueries = transactor.powersyncQueries
+
+    // Register callback for table updates
+    private fun tableUpdates(): Flow<List<String>> = driver.tableUpdates()
+
+    // Debounced by transaction completion
+    private val tableUpdatesMutex = Mutex()
 
     // Could be scope.coroutineContext, but the default is GlobalScope, which seems like a bad idea. To discuss.
     private val dbContext = Dispatchers.IO
@@ -62,22 +71,31 @@ internal class InternalDatabaseImpl(
         }
 
     companion object {
-        const val POWERSYNC_TABLE_MATCH: String = "(^ps_data__|^ps_data_local__)"
-        const val DEFAULT_WATCH_THROTTLE_MS: Long = 30L
+        const val POWERSYNC_TABLE_MATCH = "(^ps_data__|^ps_data_local__)"
+        const val DEFAULT_WATCH_THROTTLE_MS = 30L
     }
 
     init {
         scope.launch {
             val accumulatedUpdates = mutableSetOf<String>()
+            // Store table changes in an accumulated array which will be (debounced) emitted on transaction end
             tableUpdates()
-//               Debounce will discard any events which occur inside the debounce window
-//               This will accumulate those table updates
-                .onEach { tables -> accumulatedUpdates.addAll(tables) }
+                .onEach { tables ->
+                    val dataTables =
+                        tables
+                            .map { toFriendlyTableName(it) }
+                            .filter { it.isNotBlank() }
+                    tableUpdatesMutex.withLock {
+                        accumulatedUpdates.addAll(dataTables)
+                    }
+                }
+                // debounce ignores events inside the throttle. Debouncing needs to be done after accumulation
                 .debounce(DEFAULT_WATCH_THROTTLE_MS)
-                .collect {
-                    val dataTables = accumulatedUpdates.map { toFriendlyTableName(it) }.filter { it.isNotBlank() }
-                    driver.notifyListeners(queryKeys = dataTables.toTypedArray())
-                    accumulatedUpdates.clear()
+                .collect { _ ->
+                    tableUpdatesMutex.withLock {
+                        driver.notifyListeners(queryKeys = accumulatedUpdates.toTypedArray())
+                        accumulatedUpdates.clear()
+                    }
                 }
         }
     }
@@ -85,7 +103,12 @@ internal class InternalDatabaseImpl(
     override suspend fun execute(
         sql: String,
         parameters: List<Any?>?,
-    ): Long = withContext(dbContext) { executeSync(sql, parameters) }
+    ): Long =
+        withContext(dbContext) {
+            val r = executeSync(sql, parameters)
+            driver.fireTableUpdates()
+            r
+        }
 
     private fun executeSync(
         sql: String,
@@ -233,19 +256,20 @@ internal class InternalDatabaseImpl(
 
     override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R =
         withContext(dbContext) {
-            transactor.transactionWithResult(noEnclosing = true) {
-                runWrapped {
-                    val result = callback.execute(transaction)
-                    if (result is PowerSyncException) {
-                        throw result
+            val r =
+                transactor.transactionWithResult(noEnclosing = true) {
+                    runWrapped {
+                        val result = callback.execute(transaction)
+                        if (result is PowerSyncException) {
+                            throw result
+                        }
+                        result
                     }
-                    result
                 }
-            }
+            // Trigger watched queries
+            driver.fireTableUpdates()
+            r
         }
-
-    // Register callback for table updates
-    private fun tableUpdates(): Flow<List<String>> = driver.tableUpdates()
 
     // Register callback for table updates on a specific table
     override fun updatesOnTable(tableName: String): Flow<Unit> = driver.updatesOnTable(tableName)
