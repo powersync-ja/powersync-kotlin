@@ -142,6 +142,8 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.test.coroutines)
             implementation(libs.kermit.test)
+            implementation(libs.ktor.client.mock)
+            implementation(libs.test.turbine)
         }
     }
 }

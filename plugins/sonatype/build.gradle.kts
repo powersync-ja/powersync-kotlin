@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id("java-gradle-plugin")
     alias(libs.plugins.kotlin.jvm)
@@ -11,8 +13,16 @@ gradlePlugin {
     }
 }
 
+tasks.compileJava {
+    options.release = 21
+}
+
 kotlin {
     explicitApi()
+
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_21)
+    }
 }
 
 dependencies {
