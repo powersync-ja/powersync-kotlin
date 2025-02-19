@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.0-BETA24
+
+* Improve internal handling of watch queries to avoid issues where updates are not being received due to transaction commits occurring after the query is run.
+* Fix issue in JVM build where `columnNames` was throwing an error due to the index of the JDBC driver starting at 1 instead of 0 as in the other drivers/
+* Throw and not just catch `CancellationExceptions` in `runWrappedSuspending`
+
 ## 1.0.0-BETA23
 
 * Make `execute` and `PowerSyncTransaction` functions throwable for Swift
