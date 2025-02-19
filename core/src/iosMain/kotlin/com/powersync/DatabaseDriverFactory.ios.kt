@@ -40,9 +40,9 @@ public actual class DatabaseDriverFactory {
 
     private fun onTransactionCommit(success: Boolean) {
         driver?.also { driver ->
-            if (success) {
-                driver.fireTableUpdates()
-            } else {
+            // Only clear updates on rollback
+            // We manually fire updates when a transaction ended
+            if (!success) {
                 driver.clearTableUpdates()
             }
         }
@@ -63,7 +63,8 @@ public actual class DatabaseDriverFactory {
                 override fun eWrite(
                     message: String,
                     exception: Throwable?,
-                ) {}
+                ) {
+                }
 
                 override fun trace(message: String) {}
 
@@ -74,27 +75,27 @@ public actual class DatabaseDriverFactory {
             PsSqlDriver(
                 scope = scope,
                 driver =
-                    NativeSqliteDriver(
-                        configuration =
-                            DatabaseConfiguration(
-                                name = dbFilename,
-                                version = schema.version.toInt(),
-                                create = { connection -> wrapConnection(connection) { schema.create(it) } },
-                                loggingConfig = Logging(logger = sqlLogger),
-                                lifecycleConfig =
-                                    DatabaseConfiguration.Lifecycle(
-                                        onCreateConnection = { connection ->
-                                            setupSqliteBinding(connection)
-                                            wrapConnection(connection) { driver ->
-                                                schema.create(driver)
-                                            }
-                                        },
-                                        onCloseConnection = { connection ->
-                                            deregisterSqliteBinding(connection)
-                                        },
-                                    ),
-                            ),
+                NativeSqliteDriver(
+                    configuration =
+                    DatabaseConfiguration(
+                        name = dbFilename,
+                        version = schema.version.toInt(),
+                        create = { connection -> wrapConnection(connection) { schema.create(it) } },
+                        loggingConfig = Logging(logger = sqlLogger),
+                        lifecycleConfig =
+                        DatabaseConfiguration.Lifecycle(
+                            onCreateConnection = { connection ->
+                                setupSqliteBinding(connection)
+                                wrapConnection(connection) { driver ->
+                                    schema.create(driver)
+                                }
+                            },
+                            onCloseConnection = { connection ->
+                                deregisterSqliteBinding(connection)
+                            },
+                        ),
                     ),
+                ),
             )
         return this.driver as PsSqlDriver
     }
