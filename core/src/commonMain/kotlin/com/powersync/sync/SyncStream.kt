@@ -10,8 +10,9 @@ import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.crud.CrudEntry
 import com.powersync.utils.JsonUtil
-import io.ktor.client.HttpClient
+import io.ktor.client.*
 import io.ktor.client.call.body
+import io.ktor.client.engine.*
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.timeout
@@ -45,6 +46,7 @@ internal class SyncStream(
     private val retryDelayMs: Long = 5000L,
     private val logger: Logger,
     private val params: JsonObject,
+    httpEngine: HttpClientEngine? = null,
 ) {
     private var isUploadingCrud = AtomicBoolean(false)
 
@@ -55,11 +57,24 @@ internal class SyncStream(
 
     private var clientId: String? = null
 
-    private val httpClient: HttpClient =
-        HttpClient {
+    private val httpClient: HttpClient
+
+    init {
+        fun HttpClientConfig<*>.configureClient() {
             install(HttpTimeout)
             install(ContentNegotiation)
         }
+
+        httpClient = if (httpEngine == null) {
+            HttpClient {
+                configureClient()
+            }
+        } else {
+            HttpClient(httpEngine) {
+                configureClient()
+            }
+        }
+    }
 
     fun invalidateCredentials() {
         connector.invalidateCredentials()
@@ -239,16 +254,18 @@ internal class SyncStream(
             )
 
         streamingSyncRequest(req).collect { value ->
-            state = handleInstruction(value, state)
+            val line = JsonUtil.json.decodeFromString<SyncLine>(value)
+            state = handleInstruction(line, value, state)
         }
 
         return state
     }
 
     private suspend fun handleInstruction(
+        line: SyncLine,
         jsonString: String,
         state: SyncStreamState,
-    ): SyncStreamState = when (val line = JsonUtil.json.decodeFromString<SyncLine>(jsonString)) {
+    ): SyncStreamState = when (line) {
         is SyncLine.FullCheckpoint -> handleStreamingSyncCheckpoint(line, state)
         is SyncLine.CheckpointDiff -> handleStreamingSyncCheckpointDiff(line, state)
         is SyncLine.CheckpointComplete -> handleStreamingSyncCheckpointComplete(state)
