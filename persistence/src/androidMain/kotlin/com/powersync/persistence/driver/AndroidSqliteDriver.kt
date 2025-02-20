@@ -63,13 +63,15 @@ public class AndroidSqliteDriver private constructor(
         windowSizeBytes: Long? = null,
     ) : this(
         database = null,
-        openHelper = factory.create(
-            SupportSQLiteOpenHelper.Configuration.builder(context)
-                .callback(callback)
-                .name(name)
-                .noBackupDirectory(useNoBackupDirectory)
-                .build(),
-        ),
+        openHelper =
+            factory.create(
+                SupportSQLiteOpenHelper.Configuration
+                    .builder(context)
+                    .callback(callback)
+                    .name(name)
+                    .noBackupDirectory(useNoBackupDirectory)
+                    .build(),
+            ),
         cacheSize = cacheSize,
         windowSizeBytes = windowSizeBytes,
     )
@@ -81,20 +83,24 @@ public class AndroidSqliteDriver private constructor(
         windowSizeBytes: Long? = null,
     ) : this(openHelper = null, database = database, cacheSize = cacheSize, windowSizeBytes = windowSizeBytes)
 
-    private val statements = object : LruCache<Int, AndroidStatement>(cacheSize) {
-        override fun entryRemoved(
-            evicted: Boolean,
-            key: Int,
-            oldValue: AndroidStatement,
-            newValue: AndroidStatement?,
-        ) {
-            if (evicted) oldValue.close()
+    private val statements =
+        object : LruCache<Int, AndroidStatement>(cacheSize) {
+            override fun entryRemoved(
+                evicted: Boolean,
+                key: Int,
+                oldValue: AndroidStatement,
+                newValue: AndroidStatement?,
+            ) {
+                if (evicted) oldValue.close()
+            }
         }
-    }
 
     private val listeners = linkedMapOf<String, MutableSet<Query.Listener>>()
 
-    override fun addListener(vararg queryKeys: String, listener: Query.Listener) {
+    override fun addListener(
+        vararg queryKeys: String,
+        listener: Query.Listener,
+    ) {
         synchronized(listeners) {
             queryKeys.forEach {
                 listeners.getOrPut(it, { linkedSetOf() }).add(listener)
@@ -102,7 +108,10 @@ public class AndroidSqliteDriver private constructor(
         }
     }
 
-    override fun removeListener(vararg queryKeys: String, listener: Query.Listener) {
+    override fun removeListener(
+        vararg queryKeys: String,
+        listener: Query.Listener,
+    ) {
         synchronized(listeners) {
             queryKeys.forEach {
                 listeners[it]?.remove(listener)
@@ -181,8 +190,7 @@ public class AndroidSqliteDriver private constructor(
         sql: String,
         parameters: Int,
         binders: (SqlPreparedStatement.() -> Unit)?,
-    ): QueryResult<Long> =
-        execute(identifier, { AndroidPreparedStatement(database.compileStatement(sql)) }, binders, { execute() })
+    ): QueryResult<Long> = execute(identifier, { AndroidPreparedStatement(database.compileStatement(sql)) }, binders, { execute() })
 
     override fun <R> executeQuery(
         identifier: Int?,
@@ -190,11 +198,12 @@ public class AndroidSqliteDriver private constructor(
         mapper: (SqlCursor) -> QueryResult<R>,
         parameters: Int,
         binders: (SqlPreparedStatement.() -> Unit)?,
-    ): QueryResult.Value<R> = execute(
-        identifier,
-        { AndroidQuery(sql, database, parameters, windowSizeBytes) },
-        binders
-    ) { executeQuery(mapper) }
+    ): QueryResult.Value<R> =
+        execute(
+            identifier,
+            { AndroidQuery(sql, database, parameters, windowSizeBytes) },
+            binders,
+        ) { executeQuery(mapper) }
 
     override fun close() {
         statements.evictAll()
@@ -205,9 +214,14 @@ public class AndroidSqliteDriver private constructor(
         private val schema: SqlSchema<QueryResult.Value<Unit>>,
         private vararg val callbacks: AfterVersion,
     ) : SupportSQLiteOpenHelper.Callback(
-        if (schema.version > Int.MAX_VALUE) error("Schema version is larger than Int.MAX_VALUE: ${schema.version}.") else schema.version.toInt(),
-    ) {
-
+            if (schema.version >
+                Int.MAX_VALUE
+            ) {
+                error("Schema version is larger than Int.MAX_VALUE: ${schema.version}.")
+            } else {
+                schema.version.toInt()
+            },
+        ) {
         override fun onCreate(db: SupportSQLiteDatabase) {
             schema.create(AndroidSqliteDriver(openHelper = null, database = db, cacheSize = 1))
         }
@@ -229,30 +243,47 @@ public class AndroidSqliteDriver private constructor(
 
 internal interface AndroidStatement : SqlPreparedStatement {
     fun execute(): Long
+
     fun <R> executeQuery(mapper: (SqlCursor) -> QueryResult<R>): R
+
     fun close()
 }
 
 private class AndroidPreparedStatement(
     private val statement: SupportSQLiteStatement,
 ) : AndroidStatement {
-    override fun bindBytes(index: Int, bytes: ByteArray?) {
+    override fun bindBytes(
+        index: Int,
+        bytes: ByteArray?,
+    ) {
         if (bytes == null) statement.bindNull(index + 1) else statement.bindBlob(index + 1, bytes)
     }
 
-    override fun bindLong(index: Int, long: Long?) {
+    override fun bindLong(
+        index: Int,
+        long: Long?,
+    ) {
         if (long == null) statement.bindNull(index + 1) else statement.bindLong(index + 1, long)
     }
 
-    override fun bindDouble(index: Int, double: Double?) {
+    override fun bindDouble(
+        index: Int,
+        double: Double?,
+    ) {
         if (double == null) statement.bindNull(index + 1) else statement.bindDouble(index + 1, double)
     }
 
-    override fun bindString(index: Int, string: String?) {
+    override fun bindString(
+        index: Int,
+        string: String?,
+    ) {
         if (string == null) statement.bindNull(index + 1) else statement.bindString(index + 1, string)
     }
 
-    override fun bindBoolean(index: Int, boolean: Boolean?) {
+    override fun bindBoolean(
+        index: Int,
+        boolean: Boolean?,
+    ) {
         if (boolean == null) {
             statement.bindNull(index + 1)
         } else {
@@ -262,9 +293,7 @@ private class AndroidPreparedStatement(
 
     override fun <R> executeQuery(mapper: (SqlCursor) -> QueryResult<R>): R = throw UnsupportedOperationException()
 
-    override fun execute(): Long {
-        return statement.executeUpdateDelete().toLong()
-    }
+    override fun execute(): Long = statement.executeUpdateDelete().toLong()
 
     override fun close() {
         statement.close()
@@ -280,23 +309,38 @@ private class AndroidQuery(
     AndroidStatement {
     private val binds = MutableList<((SupportSQLiteProgram) -> Unit)?>(argCount) { null }
 
-    override fun bindBytes(index: Int, bytes: ByteArray?) {
+    override fun bindBytes(
+        index: Int,
+        bytes: ByteArray?,
+    ) {
         binds[index] = { if (bytes == null) it.bindNull(index + 1) else it.bindBlob(index + 1, bytes) }
     }
 
-    override fun bindLong(index: Int, long: Long?) {
+    override fun bindLong(
+        index: Int,
+        long: Long?,
+    ) {
         binds[index] = { if (long == null) it.bindNull(index + 1) else it.bindLong(index + 1, long) }
     }
 
-    override fun bindDouble(index: Int, double: Double?) {
+    override fun bindDouble(
+        index: Int,
+        double: Double?,
+    ) {
         binds[index] = { if (double == null) it.bindNull(index + 1) else it.bindDouble(index + 1, double) }
     }
 
-    override fun bindString(index: Int, string: String?) {
+    override fun bindString(
+        index: Int,
+        string: String?,
+    ) {
         binds[index] = { if (string == null) it.bindNull(index + 1) else it.bindString(index + 1, string) }
     }
 
-    override fun bindBoolean(index: Int, boolean: Boolean?) {
+    override fun bindBoolean(
+        index: Int,
+        boolean: Boolean?,
+    ) {
         binds[index] = {
             if (boolean == null) {
                 it.bindNull(index + 1)
@@ -308,10 +352,10 @@ private class AndroidQuery(
 
     override fun execute() = throw UnsupportedOperationException()
 
-    override fun <R> executeQuery(mapper: (SqlCursor) -> QueryResult<R>): R {
-        return database.query(this)
+    override fun <R> executeQuery(mapper: (SqlCursor) -> QueryResult<R>): R =
+        database
+            .query(this)
             .use { cursor -> mapper(AndroidCursor(cursor, windowSizeBytes)).value }
-    }
 
     override fun bindTo(statement: SupportSQLiteProgram) {
         for (action in binds) {
@@ -339,12 +383,19 @@ private class AndroidCursor(
     }
 
     override fun next(): QueryResult.Value<Boolean> = QueryResult.Value(cursor.moveToNext())
+
     override fun getString(index: Int) = if (cursor.isNull(index)) null else cursor.getString(index)
+
     override fun getLong(index: Int) = if (cursor.isNull(index)) null else cursor.getLong(index)
+
     override fun getBytes(index: Int) = if (cursor.isNull(index)) null else cursor.getBlob(index)
+
     override fun getDouble(index: Int) = if (cursor.isNull(index)) null else cursor.getDouble(index)
+
     override fun getBoolean(index: Int) = if (cursor.isNull(index)) null else cursor.getLong(index) == 1L
+
     override fun columnName(index: Int): String? = cursor.getColumnName(index)
+
     override val columnCount: Int = cursor.columnCount
 }
 

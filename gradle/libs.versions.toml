@@ -8,7 +8,7 @@ java = "17"
 idea = "222.4459.24" # Flamingo | 2022.2.1 (see https://plugins.jetbrains.com/docs/intellij/android-studio-releases-list.html)
 
 # Dependencies
-kermit = "2.0.4"
+kermit = "2.0.5"
 kotlin = "2.0.20"
 coroutines = "1.8.1"
 kotlinx-datetime = "0.5.0"
@@ -20,7 +20,7 @@ sqlite-android = "3.45.0"
 sqlite-jdbc = "3.45.2.0"
 
 sqlDelight = "2.0.2"
-stately = "2.0.7"
+stately = "2.1.0"
 supabase = "3.0.1"
 junit = "4.13.2"
 
