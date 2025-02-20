@@ -1,4 +1,6 @@
 import com.powersync.plugins.sonatype.setupGithubRepository
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -11,9 +13,21 @@ plugins {
 kotlin {
     androidTarget {
         publishLibraryVariants("release", "debug")
+
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
     }
 
-    jvm()
+    jvm {
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_1_8)
+            // https://jakewharton.com/kotlins-jdk-release-compatibility-flag/
+            freeCompilerArgs.add("-Xjdk-release=8")
+        }
+    }
 
     iosX64()
     iosArm64()
@@ -45,8 +59,8 @@ kotlin {
 }
 
 android {
-    kotlin {
-        jvmToolchain(17)
+    compileOptions {
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     buildFeatures {

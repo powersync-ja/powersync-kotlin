@@ -9,7 +9,10 @@ import kotlin.concurrent.AtomicReference
  * A shared pool of connections. Borrowing is blocking when all connections are in use, and the pool has reached its
  * designated capacity.
  */
-internal class Pool<T : Closeable>(internal val capacity: Int, private val producer: () -> T) {
+internal class Pool<T : Closeable>(
+    internal val capacity: Int,
+    private val producer: () -> T,
+) {
     /**
      * Hold a list of active connections. If it is null, it means the MultiPool has been closed.
      */
@@ -19,9 +22,10 @@ internal class Pool<T : Closeable>(internal val capacity: Int, private val produ
     /**
      * For test purposes only
      */
-    internal fun entryCount(): Int = poolLock.withLock {
-        entriesRef.value?.size ?: 0
-    }
+    internal fun entryCount(): Int =
+        poolLock.withLock {
+            entriesRef.value?.size ?: 0
+        }
 
     fun borrowEntry(): Borrowed<T> {
         val snapshot = entriesRef.value ?: throw ClosedMultiPoolException
@@ -34,27 +38,28 @@ internal class Pool<T : Closeable>(internal val capacity: Int, private val produ
         }
 
         // Slowpath: Create a new entry if capacity limit has not been reached, or wait for the next available entry.
-        val nextAvailable = poolLock.withLock {
-            // Reload the list since it could've been updated by other threads concurrently.
-            val entries = entriesRef.value ?: throw ClosedMultiPoolException
+        val nextAvailable =
+            poolLock.withLock {
+                // Reload the list since it could've been updated by other threads concurrently.
+                val entries = entriesRef.value ?: throw ClosedMultiPoolException
 
-            if (entries.count() < capacity) {
-                // Capacity hasn't been reached — create a new entry to serve this call.
-                val newEntry = Entry(producer())
-                val done = newEntry.tryToAcquire()
-                check(done)
+                if (entries.count() < capacity) {
+                    // Capacity hasn't been reached — create a new entry to serve this call.
+                    val newEntry = Entry(producer())
+                    val done = newEntry.tryToAcquire()
+                    check(done)
 
-                entriesRef.value = (entries + listOf(newEntry))
-                return@withLock newEntry
-            } else {
-                // Capacity is reached — wait for the next available entry.
-                return@withLock loopForConditionalResult {
-                    // Reload the list, since the thread can be suspended here while the list of entries has been modified.
-                    val innerEntries = entriesRef.value ?: throw ClosedMultiPoolException
-                    innerEntries.firstOrNull { it.tryToAcquire() }
+                    entriesRef.value = (entries + listOf(newEntry))
+                    return@withLock newEntry
+                } else {
+                    // Capacity is reached — wait for the next available entry.
+                    return@withLock loopForConditionalResult {
+                        // Reload the list, since the thread can be suspended here while the list of entries has been modified.
+                        val innerEntries = entriesRef.value ?: throw ClosedMultiPoolException
+                        innerEntries.firstOrNull { it.tryToAcquire() }
+                    }
                 }
             }
-        }
 
         return nextAvailable.asBorrowed(poolLock)
     }
@@ -80,40 +85,43 @@ internal class Pool<T : Closeable>(internal val capacity: Int, private val produ
         entries?.forEach { it.value.close() }
     }
 
-    inner class Entry(val value: T) {
+    inner class Entry(
+        val value: T,
+    ) {
         val isAvailable = AtomicBoolean(true)
 
         fun tryToAcquire(): Boolean = isAvailable.compareAndSet(expected = true, new = false)
 
-        fun asBorrowed(poolLock: PoolLock): Borrowed<T> = object : Borrowed<T> {
-            override val value: T
-                get() = this@Entry.value
+        fun asBorrowed(poolLock: PoolLock): Borrowed<T> =
+            object : Borrowed<T> {
+                override val value: T
+                    get() = this@Entry.value
 
-            override fun release() {
-                /**
-                 * Mark-as-available should be done before signalling blocked threads via [PoolLock.notifyConditionChanged],
-                 * since the happens-before relationship guarantees the woken thread to see the
-                 * available entry (if not having been taken by other threads during the wake-up lead time).
-                 */
+                override fun release() {
+                    /**
+                     * Mark-as-available should be done before signalling blocked threads via [PoolLock.notifyConditionChanged],
+                     * since the happens-before relationship guarantees the woken thread to see the
+                     * available entry (if not having been taken by other threads during the wake-up lead time).
+                     */
 
-                val done = isAvailable.compareAndSet(expected = false, new = true)
-                check(done)
+                    val done = isAvailable.compareAndSet(expected = false, new = true)
+                    check(done)
 
-                // While signalling blocked threads does not require locking, doing so avoids a subtle race
-                // condition in which:
-                //
-                // 1. a [loopForConditionalResult] iteration in [borrowEntry] slow path is happening concurrently;
-                // 2. the iteration fails to see the atomic `isAvailable = true` above;
-                // 3. we signal availability here but it is a no-op due to no waiting blocker; and finally
-                // 4. the iteration entered an indefinite blocking wait, not being aware of us having signalled availability here.
-                //
-                // By acquiring the pool lock first, signalling cannot happen concurrently with the loop
-                // iterations in [borrowEntry], thus eliminating the race condition.
-                poolLock.withLock {
-                    poolLock.notifyConditionChanged()
+                    // While signalling blocked threads does not require locking, doing so avoids a subtle race
+                    // condition in which:
+                    //
+                    // 1. a [loopForConditionalResult] iteration in [borrowEntry] slow path is happening concurrently;
+                    // 2. the iteration fails to see the atomic `isAvailable = true` above;
+                    // 3. we signal availability here but it is a no-op due to no waiting blocker; and finally
+                    // 4. the iteration entered an indefinite blocking wait, not being aware of us having signalled availability here.
+                    //
+                    // By acquiring the pool lock first, signalling cannot happen concurrently with the loop
+                    // iterations in [borrowEntry], thus eliminating the race condition.
+                    poolLock.withLock {
+                        poolLock.notifyConditionChanged()
+                    }
                 }
             }
-        }
     }
 }
 

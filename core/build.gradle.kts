@@ -2,7 +2,10 @@ import app.cash.sqldelight.core.capitalize
 import com.powersync.plugins.sonatype.setupGithubRepository
 import de.undercouch.gradle.tasks.download.Download
 import org.gradle.internal.os.OperatingSystem
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+import org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest
 import java.util.*
 
 plugins {
@@ -76,8 +79,20 @@ val buildCInteropDef by tasks.registering {
 kotlin {
     androidTarget {
         publishLibraryVariants("release", "debug")
+
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
     }
-    jvm()
+    jvm {
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_1_8)
+            // https://jakewharton.com/kotlins-jdk-release-compatibility-flag/
+            freeCompilerArgs.add("-Xjdk-release=8")
+        }
+    }
 
     iosX64()
     iosArm64()
@@ -147,8 +162,8 @@ kotlin {
 }
 
 android {
-    kotlin {
-        jvmToolchain(17)
+    compileOptions {
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     buildFeatures {
@@ -338,6 +353,22 @@ val downloadPowersyncDesktopBinaries = tasks.register<Download>("downloadPowersy
 tasks.named<ProcessResources>(kotlin.jvm().compilations["main"].processResourcesTaskName) {
     from(getBinaries, downloadPowersyncDesktopBinaries)
 }
+
+// We want to build with recent JDKs, but need to make sure we support Java 8. https://jakewharton.com/build-on-latest-java-test-through-lowest-java/
+val testWithJava8 by tasks.registering(KotlinJvmTest::class) {
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
+
+    description = "Run tests with Java 8"
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+
+    // Copy inputs from the normal test task
+    val testTask = tasks.getByName("jvmTest") as KotlinJvmTest
+    classpath = testTask.classpath
+    testClassesDirs = testTask.testClassesDirs
+}
+tasks.named("check").configure { dependsOn(testWithJava8) }
 
 afterEvaluate {
     val buildTasks =
