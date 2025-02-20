@@ -32,6 +32,8 @@ kotlin {
     iosX64()
     iosArm64()
     iosSimulatorArm64()
+    macosX64()
+    macosArm64()
 
     explicitApi()
 
@@ -52,7 +54,7 @@ kotlin {
             api(libs.sqldelight.driver.jdbc)
         }
 
-        iosMain.dependencies {
+        appleMain.dependencies {
             api(libs.sqldelight.driver.ios)
         }
     }
