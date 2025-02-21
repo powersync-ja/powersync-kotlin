@@ -3,10 +3,10 @@ package com.powersync.testutils
 import com.powersync.DatabaseDriverFactory
 import java.io.File
 
-actual annotation class IgnoreOnAndroid
+actual typealias IgnoreOnAndroid = org.junit.Ignore
 
 actual val factory: DatabaseDriverFactory
-    get() = DatabaseDriverFactory()
+    get() = error("Unsupported")
 
 actual fun cleanup(path: String) {
     File(path).delete()

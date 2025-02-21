@@ -1,10 +1,13 @@
+import com.android.build.gradle.internal.tasks.factory.dependsOn
 import com.powersync.plugins.sonatype.setupGithubRepository
 import de.undercouch.gradle.tasks.download.Download
 import org.gradle.internal.os.OperatingSystem
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+import org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable
 import org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest
+import org.jetbrains.kotlin.konan.target.Family
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -74,6 +77,56 @@ val buildCInteropDef by tasks.registering {
     outputs.files(defFile)
 }
 
+val binariesFolder = project.layout.buildDirectory.dir("binaries/desktop")
+val downloadPowersyncDesktopBinaries by tasks.registering(Download::class) {
+    val coreVersion = libs.versions.powersync.core.get()
+    val linux_aarch64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_aarch64.so"
+    val linux_x64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_x64.so"
+    val macos_aarch64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_aarch64.dylib"
+    val macos_x64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_x64.dylib"
+    val windows_x64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/powersync_x64.dll"
+
+    if (binariesAreProvided) {
+        src(listOf(linux_aarch64, linux_x64, macos_aarch64, macos_x64, windows_x64))
+    } else {
+        val (aarch64, x64) = when {
+            os.isLinux -> linux_aarch64 to linux_x64
+            os.isMacOsX -> macos_aarch64 to macos_x64
+            os.isWindows -> null to windows_x64
+            else -> error("Unknown operating system: $os")
+        }
+        val arch = System.getProperty("os.arch")
+        src(when {
+            crossArch -> listOfNotNull(aarch64, x64)
+            arch == "aarch64" -> listOfNotNull(aarch64)
+            arch == "amd64" || arch == "x86_64" -> listOfNotNull(x64)
+            else -> error("Unsupported architecture: $arch")
+        })
+    }
+    dest(binariesFolder.map { it.dir("powersync") })
+    onlyIfModified(true)
+}
+
+val downloadPowersyncFramework by tasks.registering(Download::class) {
+    val coreVersion = libs.versions.powersync.core.get()
+    val framework = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/powersync-sqlite-core.xcframework.zip"
+
+    src(framework)
+    dest(binariesFolder.map { it.file("framework/powersync-sqlite-core.xcframework.zip") })
+    onlyIfModified(true)
+}
+
+val unzipPowersyncFramework by tasks.registering(Copy::class) {
+    dependsOn(downloadPowersyncFramework)
+
+    from(
+        zipTree(downloadPowersyncFramework.get().dest).matching {
+            include("powersync-sqlite-core.xcframework/**")
+        },
+    )
+    into(binariesFolder.map { it.dir("framework") })
+}
+
 kotlin {
     androidTarget {
         publishLibraryVariants("release", "debug")
@@ -92,7 +145,7 @@ kotlin {
         }
     }
 
-    iosX64()
+//    iosX64()
     iosArm64()
     iosSimulatorArm64()
 
@@ -111,6 +164,29 @@ kotlin {
                 compilerOpts.addAll(listOf("-DHAVE_GETHOSTUUID=0"))
             }
             cinterops.create("powersync-sqlite-core")
+        }
+
+        if (konanTarget.family == Family.IOS) {
+            binaries.withType<TestExecutable>().configureEach {
+                linkTaskProvider.dependsOn(unzipPowersyncFramework)
+                linkerOpts("-framework", "powersync-sqlite-core")
+
+                val framework = if (konanTarget.name.contains("simulator")) {
+                    "ios-arm64_x86_64-simulator"
+                } else {
+                    "ios-arm64"
+                }
+                val frameworkRoot = binariesFolder.map { it.dir("framework/powersync-sqlite-core.xcframework/$framework") }.get().asFile.path
+
+                linkerOpts("-F", frameworkRoot)
+                linkerOpts("-rpath", frameworkRoot)
+            }
+        } else {
+            binaries.withType<TestExecutable>().configureEach {
+                linkTaskProvider.dependsOn(downloadPowersyncDesktopBinaries)
+                linkerOpts("-lpowersync")
+                linkerOpts("-L", binariesFolder.map { it.dir("powersync") }.get().asFile.path)
+            }
         }
     }
 
@@ -138,7 +214,6 @@ kotlin {
             api(libs.kermit)
         }
 
-        androidMain.get()
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
         }
@@ -155,8 +230,8 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.test.coroutines)
-            implementation(libs.kermit.test)
             implementation(libs.test.turbine)
+            implementation(libs.kermit.test)
         }
     }
 }
@@ -212,38 +287,9 @@ android {
 val os = OperatingSystem.current()
 val binariesAreProvided = project.findProperty("powersync.binaries.provided") == "true"
 val crossArch = project.findProperty("powersync.binaries.cross-arch") == "true"
-val binariesFolder = project.layout.buildDirectory.dir("binaries/desktop")
 
 if (binariesAreProvided && crossArch) {
     error("powersync.binaries.provided and powersync.binaries.cross-arch must not be both defined.")
-}
-
-val downloadPowersyncDesktopBinaries = tasks.register<Download>("downloadPowersyncDesktopBinaries") {
-    val coreVersion = libs.versions.powersync.core.get()
-    val linux_aarch64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_aarch64.so"
-    val linux_x64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_x64.so"
-    val macos_aarch64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_aarch64.dylib"
-    val macos_x64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_x64.dylib"
-    val windows_x64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/powersync_x64.dll"
-    if (binariesAreProvided) {
-        src(listOf(linux_aarch64, linux_x64, macos_aarch64, macos_x64, windows_x64))
-    } else {
-        val (aarch64, x64) = when {
-            os.isLinux -> linux_aarch64 to linux_x64
-            os.isMacOsX -> macos_aarch64 to macos_x64
-            os.isWindows -> null to windows_x64
-            else -> error("Unknown operating system: $os")
-        }
-        val arch = System.getProperty("os.arch")
-        src(when {
-            crossArch -> listOfNotNull(aarch64, x64)
-            arch == "aarch64" -> listOfNotNull(aarch64)
-            arch == "amd64" || arch == "x86_64" -> listOfNotNull(x64)
-            else -> error("Unsupported architecture: $arch")
-        })
-    }
-    dest(binariesFolder.map { it.dir("powersync") })
-    onlyIfModified(true)
 }
 
 tasks.named<ProcessResources>(kotlin.jvm().compilations["main"].processResourcesTaskName) {

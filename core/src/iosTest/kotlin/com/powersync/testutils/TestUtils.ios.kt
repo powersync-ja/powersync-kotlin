@@ -4,9 +4,14 @@ import com.powersync.DatabaseDriverFactory
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 
+actual annotation class IgnoreOnAndroid
+
 actual val factory: DatabaseDriverFactory
     get() = DatabaseDriverFactory()
 
 actual fun cleanup(path: String) {
-    SystemFileSystem.delete(Path(path))
+    val resolved = Path(path)
+    if (SystemFileSystem.exists(resolved)) {
+        SystemFileSystem.delete(resolved)
+    }
 }
