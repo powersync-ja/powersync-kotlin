@@ -2,33 +2,11 @@ package com.powersync
 
 import com.powersync.db.internal.InternalSchema
 import kotlinx.coroutines.CoroutineScope
+import org.sqlite.SQLiteCommitListener
 import java.nio.file.Path
-import kotlin.io.path.absolutePathString
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING", "SqlNoDataSourceInspection")
 public actual class DatabaseDriverFactory {
-    private var driver: PsSqlDriver? = null
-
-    private external fun setupSqliteBinding()
-
-    // Used in native
-    @Suppress("unused")
-    private fun onTableUpdate(tableName: String) {
-        driver?.updateTable(tableName)
-    }
-
-    // Used in native
-    @Suppress("unused")
-    private fun onTransactionCommit(success: Boolean) {
-        driver?.also { driver ->
-            // Only clear updates on rollback
-            // We manually fire updates when a transaction ended
-            if (!success) {
-                driver.clearTableUpdates()
-            }
-        }
-    }
-
     internal actual fun createDriver(
         scope: CoroutineScope,
         dbFilename: String,
@@ -44,31 +22,29 @@ public actual class DatabaseDriverFactory {
 //        driver.enableWriteAheadLogging()
         driver.loadExtensions(
             powersyncExtension to "sqlite3_powersync_init",
-            jniExtension to "powersync_init",
         )
 
-        setupSqliteBinding()
+        val mappedDriver = PsSqlDriver(scope = scope, driver = driver)
 
-        this.driver =
-            PsSqlDriver(
-                scope = scope,
-                driver = driver,
-            )
+        driver.connection.database.addUpdateListener { _, _, table, _ ->
+            mappedDriver.updateTable(table)
+        }
+        driver.connection.database.addCommitListener(
+            object : SQLiteCommitListener {
+                override fun onCommit() {
+                    // We track transactions manually
+                }
 
-        return this.driver!!
+                override fun onRollback() {
+                    mappedDriver.clearTableUpdates()
+                }
+            },
+        )
+
+        return mappedDriver
     }
 
     public companion object {
-        private val jniExtension: Path
-        private val powersyncExtension: Path
-
-        init {
-            val nativeLib = extractLib("powersync-sqlite")
-            @Suppress("UnsafeDynamicallyLoadedCode")
-            System.load(nativeLib.absolutePathString())
-            jniExtension = nativeLib
-
-            powersyncExtension = extractLib("powersync")
-        }
+        private val powersyncExtension: Path = extractLib("powersync")
     }
 }

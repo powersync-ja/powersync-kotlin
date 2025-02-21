@@ -53,7 +53,7 @@ internal class PSJdbcSqliteDriver(
         listenersToNotify.forEach(Query.Listener::queryResultsChanged)
     }
 
-    private val connection: SQLiteConnection = DriverManager.getConnection(url, properties) as SQLiteConnection
+    val connection: SQLiteConnection = DriverManager.getConnection(url, properties) as SQLiteConnection
 
     private var transaction: Transaction? = null
 
