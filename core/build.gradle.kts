@@ -145,7 +145,7 @@ kotlin {
         }
     }
 
-//    iosX64()
+    iosX64()
     iosArm64()
     iosSimulatorArm64()
 
@@ -166,37 +166,40 @@ kotlin {
             cinterops.create("powersync-sqlite-core")
         }
 
-        if (konanTarget.family == Family.IOS) {
+        if (konanTarget.family == Family.IOS && konanTarget.name.contains("simulator")) {
             binaries.withType<TestExecutable>().configureEach {
                 linkTaskProvider.dependsOn(unzipPowersyncFramework)
                 linkerOpts("-framework", "powersync-sqlite-core")
-
-                val framework = if (konanTarget.name.contains("simulator")) {
-                    "ios-arm64_x86_64-simulator"
-                } else {
-                    "ios-arm64"
-                }
-                val frameworkRoot = binariesFolder.map { it.dir("framework/powersync-sqlite-core.xcframework/$framework") }.get().asFile.path
+                val frameworkRoot = binariesFolder.map { it.dir("framework/powersync-sqlite-core.xcframework/ios-arm64_x86_64-simulator") }.get().asFile.path
 
                 linkerOpts("-F", frameworkRoot)
                 linkerOpts("-rpath", frameworkRoot)
             }
-        } else {
+        }
+        /*
+        If we ever need macOS support:
+        {
             binaries.withType<TestExecutable>().configureEach {
                 linkTaskProvider.dependsOn(downloadPowersyncDesktopBinaries)
                 linkerOpts("-lpowersync")
                 linkerOpts("-L", binariesFolder.map { it.dir("powersync") }.get().asFile.path)
             }
         }
+         */
     }
 
     explicitApi()
 
+    applyDefaultHierarchyTemplate()
     sourceSets {
         all {
             languageSettings {
                 optIn("kotlinx.cinterop.ExperimentalForeignApi")
             }
+        }
+
+        val commonIntegrationTest by creating {
+            dependsOn(commonTest.get())
         }
 
         commonMain.dependencies {
@@ -233,6 +236,13 @@ kotlin {
             implementation(libs.test.turbine)
             implementation(libs.kermit.test)
         }
+
+        // We're putting the native libraries into our JAR, so integration tests for the JVM can run as part of the unit
+        // tests.
+        jvmTest.get().dependsOn(commonIntegrationTest)
+
+        // We're linking the xcframework for the simulator tests, so they can use integration tests too
+        iosSimulatorArm64Test.orNull?.dependsOn(commonIntegrationTest)
     }
 }
 

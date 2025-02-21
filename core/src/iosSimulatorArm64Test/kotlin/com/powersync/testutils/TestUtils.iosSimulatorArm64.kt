@@ -4,8 +4,6 @@ import com.powersync.DatabaseDriverFactory
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 
-actual annotation class IgnoreOnAndroid
-
 actual val factory: DatabaseDriverFactory
     get() = DatabaseDriverFactory()
 

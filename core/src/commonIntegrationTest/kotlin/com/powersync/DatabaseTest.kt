@@ -6,9 +6,6 @@ import com.powersync.db.getString
 import com.powersync.db.schema.Column
 import com.powersync.db.schema.Schema
 import com.powersync.db.schema.Table
-import com.powersync.testutils.IgnoreOnAndroid
-import com.powersync.testutils.cleanup
-import com.powersync.testutils.factory
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
@@ -16,7 +13,6 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-@IgnoreOnAndroid
 class DatabaseTest {
     private lateinit var database: PowerSyncDatabase
 
@@ -24,7 +20,7 @@ class DatabaseTest {
     fun setupDatabase() {
         database =
             PowerSyncDatabase(
-                factory = factory,
+                factory = com.powersync.testutils.factory,
                 schema =
                     Schema(
                         Table(name = "users", columns = listOf(Column.text("name"), Column.text("email"))),
@@ -40,7 +36,7 @@ class DatabaseTest {
     @AfterTest
     fun tearDown() {
         runBlocking { database.disconnectAndClear(true) }
-        cleanup("testdb")
+        com.powersync.testutils.cleanup("testdb")
     }
 
     @Test
@@ -58,12 +54,21 @@ class DatabaseTest {
                 // Wait for initial query
                 assertEquals(0, query.awaitItem().size)
 
-                database.execute("INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)", listOf("Test", "test@example.org"))
+                database.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf("Test", "test@example.org"),
+                )
                 assertEquals(1, query.awaitItem().size)
 
                 database.writeTransaction {
-                    it.execute("INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)", listOf("Test2", "test2@example.org"))
-                    it.execute("INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)", listOf("Test3", "test3@example.org"))
+                    it.execute(
+                        "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                        listOf("Test2", "test2@example.org"),
+                    )
+                    it.execute(
+                        "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                        listOf("Test3", "test3@example.org"),
+                    )
                 }
 
                 assertEquals(3, query.awaitItem().size)
@@ -77,7 +82,10 @@ class DatabaseTest {
                     // Ignore
                 }
 
-                database.execute("INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)", listOf("Test4", "test4@example.org"))
+                database.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf("Test4", "test4@example.org"),
+                )
                 assertEquals(4, query.awaitItem().size)
 
                 query.expectNoEvents()
