@@ -1,7 +1,10 @@
 package com.powersync
 
 import app.cash.sqldelight.db.SqlDriver
+import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -14,7 +17,7 @@ internal class PsSqlDriver(
     private val scope: CoroutineScope,
 ) : SqlDriver by driver {
     // MutableSharedFlow to emit batched table updates
-    private val tableUpdatesFlow = MutableSharedFlow<List<String>>(replay = 0)
+    private val tableUpdatesFlow = MutableSharedFlow<List<String>>(replay = 0, extraBufferCapacity = 64)
 
     // In-memory buffer to store table names before flushing
     private val pendingUpdates = mutableSetOf<String>()
@@ -38,9 +41,13 @@ internal class PsSqlDriver(
         if (updates.isEmpty()) {
             return
         }
-        scope.launch {
-            tableUpdatesFlow.emit(updates)
+
+        scope.launch(Dispatchers.IO) {
+            if (!tableUpdatesFlow.tryEmit(updates)) {
+                Logger.w("Failed to emit table updates")
+            } else {
+                pendingUpdates.clear()
+            }
         }
-        pendingUpdates.clear()
     }
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0-BETA26
+
+* Fix issue where event emissions were being suspended for an indeterminate amount of time which resulted in Swift watch queries not being re-run timeously.
+
 ## 1.0.0-BETA25
 
 * JVM: Lower minimum supported version from 17 to 8.
