@@ -8,41 +8,62 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class SyncLineTest {
-    private fun checkDeserializing(expected: SyncLine, json: String) {
+    private fun checkDeserializing(
+        expected: SyncLine,
+        json: String,
+    ) {
         assertEquals(expected, JsonUtil.json.decodeFromString<SyncLine>(json))
     }
 
     @Test
     fun testDeserializeCheckpoint() {
-        checkDeserializing(SyncLine.FullCheckpoint(Checkpoint(
-            lastOpId = "10",
-            checksums = listOf(),
-        )), """{"checkpoint": {"last_op_id": "10", "buckets": []}}""")
+        checkDeserializing(
+            SyncLine.FullCheckpoint(
+                Checkpoint(
+                    lastOpId = "10",
+                    checksums = listOf(),
+                ),
+            ),
+            """{"checkpoint": {"last_op_id": "10", "buckets": []}}""",
+        )
     }
 
     @Test
     fun testDeserializeCheckpointNoPriority() {
-        checkDeserializing(SyncLine.FullCheckpoint(Checkpoint(
-            lastOpId = "10",
-            checksums = listOf(BucketChecksum(bucket = "a", priority = BucketPriority(3), checksum = 10)),
-        )), """{"checkpoint": {"last_op_id": "10", "buckets": [{"bucket": "a", "checksum": 10}]}}""")
+        checkDeserializing(
+            SyncLine.FullCheckpoint(
+                Checkpoint(
+                    lastOpId = "10",
+                    checksums = listOf(BucketChecksum(bucket = "a", priority = BucketPriority(3), checksum = 10)),
+                ),
+            ),
+            """{"checkpoint": {"last_op_id": "10", "buckets": [{"bucket": "a", "checksum": 10}]}}""",
+        )
     }
 
     @Test
     fun testDeserializeCheckpointWithPriority() {
-        checkDeserializing(SyncLine.FullCheckpoint(Checkpoint(
-            lastOpId = "10",
-            checksums = listOf(BucketChecksum(bucket = "a", priority = BucketPriority(1), checksum = 10)),
-        )), """{"checkpoint": {"last_op_id": "10", "buckets": [{"bucket": "a", "priority": 1, "checksum": 10}]}}""")
+        checkDeserializing(
+            SyncLine.FullCheckpoint(
+                Checkpoint(
+                    lastOpId = "10",
+                    checksums = listOf(BucketChecksum(bucket = "a", priority = BucketPriority(1), checksum = 10)),
+                ),
+            ),
+            """{"checkpoint": {"last_op_id": "10", "buckets": [{"bucket": "a", "priority": 1, "checksum": 10}]}}""",
+        )
     }
 
     @Test
     fun testDeserializeCheckpointDiff() {
-        checkDeserializing(SyncLine.CheckpointDiff(
-            lastOpId = "10",
-            updatedBuckets = listOf(),
-            removedBuckets = listOf()
-        ), """{"checkpoint_diff": {"last_op_id": "10", "buckets": [], "updated_buckets": [], "removed_buckets": []}}""")
+        checkDeserializing(
+            SyncLine.CheckpointDiff(
+                lastOpId = "10",
+                updatedBuckets = listOf(),
+                removedBuckets = listOf(),
+            ),
+            """{"checkpoint_diff": {"last_op_id": "10", "buckets": [], "updated_buckets": [], "removed_buckets": []}}""",
+        )
     }
 
     @Test
@@ -52,20 +73,26 @@ class SyncLineTest {
 
     @Test
     fun testDeserializePartialCheckpointComplete() {
-        checkDeserializing(SyncLine.CheckpointPartiallyComplete(
-            lastOpId = "10",
-            priority = BucketPriority(1)
-        ), """{"partial_checkpoint_complete": {"last_op_id": "10", "priority": 1}}""")
+        checkDeserializing(
+            SyncLine.CheckpointPartiallyComplete(
+                lastOpId = "10",
+                priority = BucketPriority(1),
+            ),
+            """{"partial_checkpoint_complete": {"last_op_id": "10", "priority": 1}}""",
+        )
     }
 
     @Test
     fun testDeserializeData() {
-        checkDeserializing(SyncLine.SyncDataBucket(
-            bucket = "bkt",
-            data = emptyList(),
-            after = null,
-            nextAfter = null,
-        ), """{"data": {"bucket": "bkt", "data": [], "after": null, "next_after": null}}""")
+        checkDeserializing(
+            SyncLine.SyncDataBucket(
+                bucket = "bkt",
+                data = emptyList(),
+                after = null,
+                nextAfter = null,
+            ),
+            """{"data": {"bucket": "bkt", "data": [], "after": null, "next_after": null}}""",
+        )
     }
 
     @Test

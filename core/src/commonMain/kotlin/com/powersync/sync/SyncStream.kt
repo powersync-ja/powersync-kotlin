@@ -10,9 +10,10 @@ import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.crud.CrudEntry
 import com.powersync.utils.JsonUtil
-import io.ktor.client.*
+import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
 import io.ktor.client.call.body
-import io.ktor.client.engine.*
+import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.timeout
@@ -33,11 +34,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.decodeFromJsonElement
-import kotlinx.serialization.json.jsonObject
 
 internal class SyncStream(
     private val bucketStorage: BucketStorage,
@@ -65,15 +62,16 @@ internal class SyncStream(
             install(ContentNegotiation)
         }
 
-        httpClient = if (httpEngine == null) {
-            HttpClient {
-                configureClient()
+        httpClient =
+            if (httpEngine == null) {
+                HttpClient {
+                    configureClient()
+                }
+            } else {
+                HttpClient(httpEngine) {
+                    configureClient()
+                }
             }
-        } else {
-            HttpClient(httpEngine) {
-                configureClient()
-            }
-        }
     }
 
     fun invalidateCredentials() {
@@ -265,18 +263,19 @@ internal class SyncStream(
         line: SyncLine,
         jsonString: String,
         state: SyncStreamState,
-    ): SyncStreamState = when (line) {
-        is SyncLine.FullCheckpoint -> handleStreamingSyncCheckpoint(line, state)
-        is SyncLine.CheckpointDiff -> handleStreamingSyncCheckpointDiff(line, state)
-        is SyncLine.CheckpointComplete -> handleStreamingSyncCheckpointComplete(state)
-        is SyncLine.CheckpointPartiallyComplete -> handleStreamingSyncCheckpointPartiallyComplete(line, state)
-        is SyncLine.KeepAlive -> handleStreamingKeepAlive(line, state)
-        is SyncLine.SyncDataBucket -> handleStreamingSyncData(line, state)
-        SyncLine.UnknownSyncLine -> {
-            logger.w { "Unhandled instruction $jsonString" }
-            state
+    ): SyncStreamState =
+        when (line) {
+            is SyncLine.FullCheckpoint -> handleStreamingSyncCheckpoint(line, state)
+            is SyncLine.CheckpointDiff -> handleStreamingSyncCheckpointDiff(line, state)
+            is SyncLine.CheckpointComplete -> handleStreamingSyncCheckpointComplete(state)
+            is SyncLine.CheckpointPartiallyComplete -> handleStreamingSyncCheckpointPartiallyComplete(line, state)
+            is SyncLine.KeepAlive -> handleStreamingKeepAlive(line, state)
+            is SyncLine.SyncDataBucket -> handleStreamingSyncData(line, state)
+            SyncLine.UnknownSyncLine -> {
+                logger.w { "Unhandled instruction $jsonString" }
+                state
+            }
         }
-    }
 
     private suspend fun handleStreamingSyncCheckpoint(
         line: SyncLine.FullCheckpoint,
@@ -329,7 +328,10 @@ internal class SyncStream(
         return state
     }
 
-    private suspend fun handleStreamingSyncCheckpointPartiallyComplete(line: SyncLine.CheckpointPartiallyComplete, state: SyncStreamState): SyncStreamState {
+    private suspend fun handleStreamingSyncCheckpointPartiallyComplete(
+        line: SyncLine.CheckpointPartiallyComplete,
+        state: SyncStreamState,
+    ): SyncStreamState {
         val priority = line.priority
         val result = bucketStorage.syncLocalDatabase(state.targetCheckpoint!!, priority)
         if (!result.checkpointValid) {
@@ -347,17 +349,18 @@ internal class SyncStream(
         }
 
         status.update(
-            priorityStatusEntries = buildList {
-                // All states with a higher priority can be deleted since this partial sync includes them.
-                addAll(status.priorityStatusEntries.filter { it.priority >= line.priority })
-                add(
-                    PriorityStatusEntry(
-                        priority=priority,
-                        lastSyncedAt = Clock.System.now(),
-                        hasSynced = true
+            priorityStatusEntries =
+                buildList {
+                    // All states with a higher priority can be deleted since this partial sync includes them.
+                    addAll(status.priorityStatusEntries.filter { it.priority >= line.priority })
+                    add(
+                        PriorityStatusEntry(
+                            priority = priority,
+                            lastSyncedAt = Clock.System.now(),
+                            hasSynced = true,
+                        ),
                     )
-                )
-            }
+                },
         )
         return state
     }

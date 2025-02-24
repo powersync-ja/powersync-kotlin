@@ -194,7 +194,10 @@ internal class BucketStorageImpl(
         }
     }
 
-    override suspend fun syncLocalDatabase(targetCheckpoint: Checkpoint, partialPriority: BucketPriority?): SyncLocalDatabaseResult {
+    override suspend fun syncLocalDatabase(
+        targetCheckpoint: Checkpoint,
+        partialPriority: BucketPriority?,
+    ): SyncLocalDatabaseResult {
         val result = validateChecksums(targetCheckpoint, partialPriority)
 
         if (!result.checkpointValid) {
@@ -206,13 +209,15 @@ internal class BucketStorageImpl(
             return result
         }
 
-        val bucketNames = targetCheckpoint.checksums.let {
-            if (partialPriority == null) {
-                it
-            } else {
-                it.filter { cs -> cs.priority >= partialPriority }
-            }
-        }.map { it.bucket }
+        val bucketNames =
+            targetCheckpoint.checksums
+                .let {
+                    if (partialPriority == null) {
+                        it
+                    } else {
+                        it.filter { cs -> cs.priority >= partialPriority }
+                    }
+                }.map { it.bucket }
 
         db.writeTransaction { tx ->
             tx.execute(
@@ -244,12 +249,18 @@ internal class BucketStorageImpl(
         )
     }
 
-    private suspend fun validateChecksums(checkpoint: Checkpoint, priority: BucketPriority? = null): SyncLocalDatabaseResult {
-        val serializedCheckpoint = JsonUtil.json.encodeToString(when (priority) {
-            null -> checkpoint
-            // Only validate buckets with a priority included in this partial sync.
-            else -> checkpoint.copy(checksums = checkpoint.checksums.filter { it.priority >= priority })
-        })
+    private suspend fun validateChecksums(
+        checkpoint: Checkpoint,
+        priority: BucketPriority? = null,
+    ): SyncLocalDatabaseResult {
+        val serializedCheckpoint =
+            JsonUtil.json.encodeToString(
+                when (priority) {
+                    null -> checkpoint
+                    // Only validate buckets with a priority included in this partial sync.
+                    else -> checkpoint.copy(checksums = checkpoint.checksums.filter { it.priority >= priority })
+                },
+            )
 
         val res =
             db.getOptional(
@@ -273,21 +284,27 @@ internal class BucketStorageImpl(
      *
      * This includes creating new tables, dropping old tables, and copying data over from the oplog.
      */
-    private suspend fun updateObjectsFromBuckets(checkpoint: Checkpoint, priority: BucketPriority? = null): Boolean {
+    private suspend fun updateObjectsFromBuckets(
+        checkpoint: Checkpoint,
+        priority: BucketPriority? = null,
+    ): Boolean {
         @Serializable
         data class SyncLocalArgs(
             val priority: BucketPriority,
-            val buckets: List<String>
+            val buckets: List<String>,
         )
 
-        val args = if (priority != null) {
-            JsonUtil.json.encodeToString(SyncLocalArgs(
-                priority=priority,
-                buckets=checkpoint.checksums.filter { it.priority >= priority }.map { it.bucket }
-            ))
-        } else {
-            ""
-        }
+        val args =
+            if (priority != null) {
+                JsonUtil.json.encodeToString(
+                    SyncLocalArgs(
+                        priority = priority,
+                        buckets = checkpoint.checksums.filter { it.priority >= priority }.map { it.bucket },
+                    ),
+                )
+            } else {
+                ""
+            }
 
         return db.writeTransaction { tx ->
 

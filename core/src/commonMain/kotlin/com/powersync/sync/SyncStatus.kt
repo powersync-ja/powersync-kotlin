@@ -10,7 +10,7 @@ import kotlinx.datetime.Instant
 public data class PriorityStatusEntry internal constructor(
     val priority: BucketPriority,
     val lastSyncedAt: Instant?,
-    val hasSynced: Boolean?
+    val hasSynced: Boolean?,
 )
 
 public interface SyncStatusData {
