@@ -16,5 +16,11 @@ public value class BucketPriority(private val priorityCode: Int): Comparable<Buc
 
     public companion object {
         internal val FULL_SYNC_PRIORITY: BucketPriority = BucketPriority(Int.MAX_VALUE)
+
+        /**
+         * The assumed priority for buckets when talking to older sync service instances that don't
+         * support bucket priorities.
+         */
+        internal val DEFAULT_PRIORITY: BucketPriority = BucketPriority(3)
     }
 }

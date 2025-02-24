@@ -1,5 +1,6 @@
 package com.powersync.sync
 
+import com.powersync.bucket.BucketChecksum
 import com.powersync.bucket.BucketPriority
 import com.powersync.bucket.Checkpoint
 import com.powersync.utils.JsonUtil
@@ -17,6 +18,22 @@ class SyncLineTest {
             lastOpId = "10",
             checksums = listOf(),
         )), """{"checkpoint": {"last_op_id": "10", "buckets": []}}""")
+    }
+
+    @Test
+    fun testDeserializeCheckpointNoPriority() {
+        checkDeserializing(SyncLine.FullCheckpoint(Checkpoint(
+            lastOpId = "10",
+            checksums = listOf(BucketChecksum(bucket = "a", priority = BucketPriority(3), checksum = 10)),
+        )), """{"checkpoint": {"last_op_id": "10", "buckets": [{"bucket": "a", "checksum": 10}]}}""")
+    }
+
+    @Test
+    fun testDeserializeCheckpointWithPriority() {
+        checkDeserializing(SyncLine.FullCheckpoint(Checkpoint(
+            lastOpId = "10",
+            checksums = listOf(BucketChecksum(bucket = "a", priority = BucketPriority(1), checksum = 10)),
+        )), """{"checkpoint": {"last_op_id": "10", "buckets": [{"bucket": "a", "priority": 1, "checksum": 10}]}}""")
     }
 
     @Test
