@@ -1,26 +1,25 @@
 package com.powersync
 
 import app.cash.sqldelight.db.SqlDriver
-import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 
 internal class PsSqlDriver(
     private val driver: SqlDriver,
     private val scope: CoroutineScope,
 ) : SqlDriver by driver {
     // MutableSharedFlow to emit batched table updates
-    private val tableUpdatesFlow = MutableSharedFlow<List<String>>(replay = 0, extraBufferCapacity = 64)
+    private val tableUpdatesFlow =
+        MutableSharedFlow<List<String>>(replay = 0, extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
     // In-memory buffer to store table names before flushing
     private val pendingUpdates = mutableSetOf<String>()
+    private val currentUpdates = mutableSetOf<String>()
 
     fun updateTable(tableName: String) {
         pendingUpdates.add(tableName)
@@ -36,18 +35,14 @@ internal class PsSqlDriver(
     // Flows on table updates containing a specific table
     fun updatesOnTable(tableName: String): Flow<Unit> = tableUpdates().filter { it.contains(tableName) }.map { }
 
-    fun fireTableUpdates() {
+    suspend fun fireTableUpdates() {
         val updates = pendingUpdates.toList()
+
         if (updates.isEmpty()) {
             return
         }
+        tableUpdatesFlow.emit(updates)
 
-        scope.launch(Dispatchers.IO) {
-            if (!tableUpdatesFlow.tryEmit(updates)) {
-                Logger.w("Failed to emit table updates")
-            } else {
-                pendingUpdates.clear()
-            }
-        }
+        pendingUpdates.clear()
     }
 }
