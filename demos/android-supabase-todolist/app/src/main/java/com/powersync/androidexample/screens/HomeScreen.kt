@@ -13,12 +13,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.powersync.bucket.BucketPriority
 import com.powersync.demos.Screen
 import com.powersync.demos.components.Input
 import com.powersync.demos.components.ListContent
 import com.powersync.demos.components.Menu
 import com.powersync.demos.components.WifiIcon
 import com.powersync.demos.powersync.ListItem
+import com.powersync.sync.SyncStatusData
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,14 +28,13 @@ internal fun HomeScreen(
     modifier: Modifier = Modifier,
     items: List<ListItem>,
     inputText: String,
-    isConnected: Boolean?,
+    status: SyncStatusData,
     onSignOutSelected: () -> Unit,
     onItemClicked: (item: ListItem) -> Unit,
     onItemDeleteClicked: (item: ListItem) -> Unit,
     onAddItemClicked: () -> Unit,
     onInputTextChanged: (value: String) -> Unit,
 ) {
-
     Column(modifier) {
         TopAppBar(
             title = {
@@ -47,7 +48,7 @@ internal fun HomeScreen(
                 onSignOutSelected
             ) },
             actions = {
-                WifiIcon(isConnected ?: false)
+                WifiIcon(status.connected)
                 Spacer(modifier = Modifier.width(16.dp))
             }
         )
@@ -60,11 +61,20 @@ internal fun HomeScreen(
         )
 
         Box(Modifier.weight(1F)) {
-            ListContent(
-                items = items,
-                onItemClicked = onItemClicked,
-                onItemDeleteClicked = onItemDeleteClicked
-            )
+            // This assumes that the bucket for lists has a priority of 1 (but it will work fine
+            // with sync rules not defining any priorities at all too).
+            // When giving lists a higher priority than items, we can have a consistent snapshot of
+            // lists without items. In the case where many items exist (that might take longer to
+            // sync initially), this allows us to display lists earlier.
+            if (status.priorityStatusFor(BucketPriority(1)).hasSynced == true) {
+                ListContent(
+                    items = items,
+                    onItemClicked = onItemClicked,
+                    onItemDeleteClicked = onItemDeleteClicked
+                )
+            } else {
+                Text("Busy with sync...")
+            }
         }
     }
 }
