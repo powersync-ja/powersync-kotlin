@@ -19,13 +19,6 @@ public interface SqlCursor {
     public val columnCount: Int
 
     public val columnNames: Map<String, Int>
-
-    public fun asMap(): Map<String, Any?> =
-        buildMap {
-            columnNames.forEach { (name, index) ->
-                put(name, getString(index))
-            }
-        }
 }
 
 private inline fun <T> SqlCursor.getColumnValue(
