@@ -9,7 +9,6 @@ import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.db.SqlPreparedStatement
 import app.cash.sqldelight.db.SqlSchema
-import app.cash.sqldelight.internal.currentThreadId
 import co.touchlab.sqliter.DatabaseConfiguration
 import co.touchlab.sqliter.DatabaseConnection
 import co.touchlab.sqliter.DatabaseManager
@@ -32,8 +31,8 @@ public sealed class ConnectionWrapper : SqlDriver {
         sql: String,
         binders: (SqlPreparedStatement.() -> Unit)?,
         block: (Statement) -> R,
-    ): R {
-        return accessConnection(readOnly) {
+    ): R =
+        accessConnection(readOnly) {
             val statement = useStatement(identifier, sql)
             try {
                 if (binders != null) {
@@ -45,18 +44,18 @@ public sealed class ConnectionWrapper : SqlDriver {
                 clearIfNeeded(identifier, statement)
             }
         }
-    }
 
     final override fun execute(
         identifier: Int?,
         sql: String,
         parameters: Int,
         binders: (SqlPreparedStatement.() -> Unit)?,
-    ): QueryResult<Long> = QueryResult.Value(
-        accessStatement(false, identifier, sql, binders) { statement ->
-            statement.executeUpdateDelete().toLong()
-        },
-    )
+    ): QueryResult<Long> =
+        QueryResult.Value(
+            accessStatement(false, identifier, sql, binders) { statement ->
+                statement.executeUpdateDelete().toLong()
+            },
+        )
 
     final override fun <R> executeQuery(
         identifier: Int?,
@@ -64,9 +63,10 @@ public sealed class ConnectionWrapper : SqlDriver {
         mapper: (SqlCursor) -> QueryResult<R>,
         parameters: Int,
         binders: (SqlPreparedStatement.() -> Unit)?,
-    ): QueryResult<R> = accessStatement(true, identifier, sql, binders) { statement ->
-        mapper(SqliterSqlCursor(statement.query()))
-    }
+    ): QueryResult<R> =
+        accessStatement(true, identifier, sql, binders) { statement ->
+            mapper(SqliterSqlCursor(statement.query()))
+        }
 }
 
 /**
@@ -120,14 +120,22 @@ public class NativeSqliteDriver(
         onConfiguration: (DatabaseConfiguration) -> DatabaseConfiguration = { it },
         vararg callbacks: AfterVersion,
     ) : this(
-        configuration = DatabaseConfiguration(
-            name = name,
-            version = if (schema.version > Int.MAX_VALUE) error("Schema version is larger than Int.MAX_VALUE: ${schema.version}.") else schema.version.toInt(),
-            create = { connection -> wrapConnection(connection) { schema.create(it) } },
-            upgrade = { connection, oldVersion, newVersion ->
-                wrapConnection(connection) { schema.migrate(it, oldVersion.toLong(), newVersion.toLong(), *callbacks) }
-            },
-        ).let(onConfiguration),
+        configuration =
+            DatabaseConfiguration(
+                name = name,
+                version =
+                    if (schema.version >
+                        Int.MAX_VALUE
+                    ) {
+                        error("Schema version is larger than Int.MAX_VALUE: ${schema.version}.")
+                    } else {
+                        schema.version.toInt()
+                    },
+                create = { connection -> wrapConnection(connection) { schema.create(it) } },
+                upgrade = { connection, oldVersion, newVersion ->
+                    wrapConnection(connection) { schema.migrate(it, oldVersion.toLong(), newVersion.toLong(), *callbacks) }
+                },
+            ).let(onConfiguration),
         maxReaderConnections = maxReaderConnections,
     )
 
@@ -144,38 +152,44 @@ public class NativeSqliteDriver(
     init {
         if (databaseManager.configuration.isEphemeral) {
             // Single connection for transactions
-            transactionPool = Pool(1) {
-                ThreadConnection(databaseManager.createMultiThreadedConnection()) { _ ->
-                    borrowedConnectionThread.let {
-                        it.get()?.release()
-                        it.value = null
+            transactionPool =
+                Pool(1) {
+                    ThreadConnection(databaseManager.createMultiThreadedConnection()) { _ ->
+                        borrowedConnectionThread.let {
+                            it.get()?.release()
+                            it.value = null
+                        }
                     }
                 }
-            }
 
             readerPool = transactionPool
         } else {
             // Single connection for transactions
-            transactionPool = Pool(1) {
-                ThreadConnection(databaseManager.createMultiThreadedConnection()) { _ ->
-                    borrowedConnectionThread.let {
-                        it.get()?.release()
-                        it.value = null
+            transactionPool =
+                Pool(1) {
+                    ThreadConnection(databaseManager.createMultiThreadedConnection()) { _ ->
+                        borrowedConnectionThread.let {
+                            it.get()?.release()
+                            it.value = null
+                        }
                     }
                 }
-            }
 
-            readerPool = Pool(maxReaderConnections) {
-                val connection = databaseManager.createMultiThreadedConnection()
-                connection.withStatement("PRAGMA query_only = 1") { execute() } // Ensure read only
-                ThreadConnection(connection) {
-                    throw UnsupportedOperationException("Should never be in a transaction")
+            readerPool =
+                Pool(maxReaderConnections) {
+                    val connection = databaseManager.createMultiThreadedConnection()
+                    connection.withStatement("PRAGMA query_only = 1") { execute() } // Ensure read only
+                    ThreadConnection(connection) {
+                        throw UnsupportedOperationException("Should never be in a transaction")
+                    }
                 }
-            }
         }
     }
 
-    override fun addListener(vararg queryKeys: String, listener: Query.Listener) {
+    override fun addListener(
+        vararg queryKeys: String,
+        listener: Query.Listener,
+    ) {
         lock.withLock {
             queryKeys.forEach {
                 listeners.getOrPut(it) { mutableSetOf() }.add(listener)
@@ -183,7 +197,10 @@ public class NativeSqliteDriver(
         }
     }
 
-    override fun removeListener(vararg queryKeys: String, listener: Query.Listener) {
+    override fun removeListener(
+        vararg queryKeys: String,
+        listener: Query.Listener,
+    ) {
         lock.withLock {
             queryKeys.forEach {
                 listeners.get(it)?.remove(listener)
@@ -199,28 +216,32 @@ public class NativeSqliteDriver(
         listenersToNotify.forEach(Query.Listener::queryResultsChanged)
     }
 
-    override fun currentTransaction(): Transacter.Transaction? {
-        return borrowedConnectionThread.get()?.value?.transaction?.value
-    }
+    override fun currentTransaction(): Transacter.Transaction? =
+        borrowedConnectionThread
+            .get()
+            ?.value
+            ?.transaction
+            ?.value
 
     override fun newTransaction(): QueryResult<Transacter.Transaction> {
         val alreadyBorrowed = borrowedConnectionThread.get()
-        val transaction = if (alreadyBorrowed == null) {
-            val borrowed = transactionPool.borrowEntry()
+        val transaction =
+            if (alreadyBorrowed == null) {
+                val borrowed = transactionPool.borrowEntry()
 
-            try {
-                val trans = borrowed.value.newTransaction()
+                try {
+                    val trans = borrowed.value.newTransaction()
 
-                borrowedConnectionThread.value = borrowed
-                trans
-            } catch (e: Throwable) {
-                // Unlock on failure.
-                borrowed.release()
-                throw e
+                    borrowedConnectionThread.value = borrowed
+                    trans
+                } catch (e: Throwable) {
+                    // Unlock on failure.
+                    borrowed.release()
+                    throw e
+                }
+            } else {
+                alreadyBorrowed.value.newTransaction()
             }
-        } else {
-            alreadyBorrowed.value.newTransaction()
-        }
 
         return QueryResult.Value(transaction)
     }
@@ -260,19 +281,27 @@ public class NativeSqliteDriver(
  * Helper function to create an in-memory driver. In-memory drivers have a single connection, so
  * concurrent access will be block
  */
-public fun inMemoryDriver(schema: SqlSchema<QueryResult.Value<Unit>>): NativeSqliteDriver = NativeSqliteDriver(
-    DatabaseConfiguration(
-        name = null,
-        inMemory = true,
-        version = if (schema.version > Int.MAX_VALUE) error("Schema version is larger than Int.MAX_VALUE: ${schema.version}.") else schema.version.toInt(),
-        create = { connection ->
-            wrapConnection(connection) { schema.create(it) }
-        },
-        upgrade = { connection, oldVersion, newVersion ->
-            wrapConnection(connection) { schema.migrate(it, oldVersion.toLong(), newVersion.toLong()) }
-        },
-    ),
-)
+public fun inMemoryDriver(schema: SqlSchema<QueryResult.Value<Unit>>): NativeSqliteDriver =
+    NativeSqliteDriver(
+        DatabaseConfiguration(
+            name = null,
+            inMemory = true,
+            version =
+                if (schema.version >
+                    Int.MAX_VALUE
+                ) {
+                    error("Schema version is larger than Int.MAX_VALUE: ${schema.version}.")
+                } else {
+                    schema.version.toInt()
+                },
+            create = { connection ->
+                wrapConnection(connection) { schema.create(it) }
+            },
+            upgrade = { connection, oldVersion, newVersion ->
+                wrapConnection(connection) { schema.migrate(it, oldVersion.toLong(), newVersion.toLong()) }
+            },
+        ),
+    )
 
 /**
  * Sqliter's DatabaseConfiguration takes lambda arguments for it's create and upgrade operations,
@@ -304,19 +333,24 @@ internal class SqliterWrappedConnection(
     SqlDriver {
     override fun currentTransaction(): Transacter.Transaction? = threadConnection.transaction.value
 
-    override fun newTransaction(): QueryResult<Transacter.Transaction> =
-        QueryResult.Value(threadConnection.newTransaction())
+    override fun newTransaction(): QueryResult<Transacter.Transaction> = QueryResult.Value(threadConnection.newTransaction())
 
     override fun <R> accessConnection(
         readOnly: Boolean,
         block: ThreadConnection.() -> R,
     ): R = threadConnection.block()
 
-    override fun addListener(vararg queryKeys: String, listener: Query.Listener) {
+    override fun addListener(
+        vararg queryKeys: String,
+        listener: Query.Listener,
+    ) {
         // No-op
     }
 
-    override fun removeListener(vararg queryKeys: String, listener: Query.Listener) {
+    override fun removeListener(
+        vararg queryKeys: String,
+        listener: Query.Listener,
+    ) {
         // No-op
     }
 
@@ -346,17 +380,22 @@ internal class ThreadConnection(
 
     private val statementCache = mutableMapOf<Int, Statement>()
 
-    fun useStatement(identifier: Int?, sql: String): Statement {
-        return if (identifier != null) {
+    fun useStatement(
+        identifier: Int?,
+        sql: String,
+    ): Statement =
+        if (identifier != null) {
             statementCache.getOrPut(identifier) {
                 connection.createStatement(sql)
             }
         } else {
             connection.createStatement(sql)
         }
-    }
 
-    fun clearIfNeeded(identifier: Int?, statement: Statement) {
+    fun clearIfNeeded(
+        identifier: Int?,
+        statement: Statement,
+    ) {
         if (identifier == null || closed) {
             statement.finalizeStatement()
         }
@@ -394,7 +433,6 @@ internal class ThreadConnection(
     private inner class Transaction(
         override val enclosingTransaction: Transacter.Transaction?,
     ) : Transacter.Transaction() {
-
         override fun endTransaction(successful: Boolean): QueryResult<Unit> {
             transaction.value = enclosingTransaction
 

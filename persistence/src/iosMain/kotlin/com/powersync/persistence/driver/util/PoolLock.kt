@@ -22,24 +22,30 @@ import platform.posix.pthread_mutexattr_settype
 import platform.posix.pthread_mutexattr_t
 
 @OptIn(ExperimentalForeignApi::class)
-internal class PoolLock constructor(reentrant: Boolean = false) {
+internal class PoolLock constructor(
+    reentrant: Boolean = false,
+) {
     private val isActive = AtomicBoolean(true)
 
-    private val attr = nativeHeap.alloc<pthread_mutexattr_t>()
-        .apply {
-            pthread_mutexattr_init(ptr)
-            if (reentrant) {
-                pthread_mutexattr_settype(ptr, platform.posix.PTHREAD_MUTEX_RECURSIVE)
+    private val attr =
+        nativeHeap
+            .alloc<pthread_mutexattr_t>()
+            .apply {
+                pthread_mutexattr_init(ptr)
+                if (reentrant) {
+                    pthread_mutexattr_settype(ptr, platform.posix.PTHREAD_MUTEX_RECURSIVE)
+                }
             }
-        }
-    private val mutex = nativeHeap.alloc<pthread_mutex_t>()
-        .apply { pthread_mutex_init(ptr, attr.ptr) }
-    private val cond = nativeHeap.alloc<pthread_cond_t>()
-        .apply { pthread_cond_init(ptr, null) }
+    private val mutex =
+        nativeHeap
+            .alloc<pthread_mutex_t>()
+            .apply { pthread_mutex_init(ptr, attr.ptr) }
+    private val cond =
+        nativeHeap
+            .alloc<pthread_cond_t>()
+            .apply { pthread_cond_init(ptr, null) }
 
-    fun <R> withLock(
-        action: CriticalSection.() -> R,
-    ): R {
+    fun <R> withLock(action: CriticalSection.() -> R): R {
         check(isActive.value)
         pthread_mutex_lock(mutex.ptr)
 

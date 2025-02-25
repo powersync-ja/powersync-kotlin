@@ -75,27 +75,27 @@ public actual class DatabaseDriverFactory {
             PsSqlDriver(
                 scope = scope,
                 driver =
-                NativeSqliteDriver(
-                    configuration =
-                    DatabaseConfiguration(
-                        name = dbFilename,
-                        version = schema.version.toInt(),
-                        create = { connection -> wrapConnection(connection) { schema.create(it) } },
-                        loggingConfig = Logging(logger = sqlLogger),
-                        lifecycleConfig =
-                        DatabaseConfiguration.Lifecycle(
-                            onCreateConnection = { connection ->
-                                setupSqliteBinding(connection)
-                                wrapConnection(connection) { driver ->
-                                    schema.create(driver)
-                                }
-                            },
-                            onCloseConnection = { connection ->
-                                deregisterSqliteBinding(connection)
-                            },
-                        ),
+                    NativeSqliteDriver(
+                        configuration =
+                            DatabaseConfiguration(
+                                name = dbFilename,
+                                version = schema.version.toInt(),
+                                create = { connection -> wrapConnection(connection) { schema.create(it) } },
+                                loggingConfig = Logging(logger = sqlLogger),
+                                lifecycleConfig =
+                                    DatabaseConfiguration.Lifecycle(
+                                        onCreateConnection = { connection ->
+                                            setupSqliteBinding(connection)
+                                            wrapConnection(connection) { driver ->
+                                                schema.create(driver)
+                                            }
+                                        },
+                                        onCloseConnection = { connection ->
+                                            deregisterSqliteBinding(connection)
+                                        },
+                                    ),
+                            ),
                     ),
-                ),
             )
         return this.driver as PsSqlDriver
     }

@@ -51,6 +51,9 @@ allprojects {
         exclude(group = "ai.grazie.model")
         exclude(group = "ai.grazie.utils")
         exclude(group = "ai.grazie.nlp")
+
+        // We have a transitive dependency on this due to Kermit, but need the fixed version to support Java 8
+        resolutionStrategy.force("co.touchlab:stately-collections:${libs.versions.stately.get()}")
     }
 
     //

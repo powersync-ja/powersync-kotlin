@@ -42,38 +42,38 @@ public actual class DatabaseDriverFactory(
             PsSqlDriver(
                 scope = scope,
                 driver =
-                AndroidSqliteDriver(
-                    context = context,
-                    schema = schema,
-                    name = dbFilename,
-                    factory =
-                    RequerySQLiteOpenHelperFactory(
-                        listOf(
-                            RequerySQLiteOpenHelperFactory.ConfigurationOptions { config ->
-                                config.customExtensions.add(
-                                    SQLiteCustomExtension(
-                                        "libpowersync",
-                                        "sqlite3_powersync_init",
-                                    ),
-                                )
-                                config.customExtensions.add(
-                                    SQLiteCustomExtension(
-                                        "libpowersync-sqlite",
-                                        "powersync_init",
-                                    ),
-                                )
-                                config
+                    AndroidSqliteDriver(
+                        context = context,
+                        schema = schema,
+                        name = dbFilename,
+                        factory =
+                            RequerySQLiteOpenHelperFactory(
+                                listOf(
+                                    RequerySQLiteOpenHelperFactory.ConfigurationOptions { config ->
+                                        config.customExtensions.add(
+                                            SQLiteCustomExtension(
+                                                "libpowersync",
+                                                "sqlite3_powersync_init",
+                                            ),
+                                        )
+                                        config.customExtensions.add(
+                                            SQLiteCustomExtension(
+                                                "libpowersync-sqlite",
+                                                "powersync_init",
+                                            ),
+                                        )
+                                        config
+                                    },
+                                ),
+                            ),
+                        callback =
+                            object : AndroidSqliteDriver.Callback(schema) {
+                                override fun onConfigure(db: SupportSQLiteDatabase) {
+                                    db.enableWriteAheadLogging()
+                                    super.onConfigure(db)
+                                }
                             },
-                        ),
                     ),
-                    callback =
-                    object : AndroidSqliteDriver.Callback(schema) {
-                        override fun onConfigure(db: SupportSQLiteDatabase) {
-                            db.enableWriteAheadLogging()
-                            super.onConfigure(db)
-                        }
-                    },
-                ),
             )
         setupSqliteBinding()
         return this.driver as PsSqlDriver

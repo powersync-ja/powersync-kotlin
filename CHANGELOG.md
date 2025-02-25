@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0-BETA25
+
+* JVM: Lower minimum supported version from 17 to 8.
+
 ## 1.0.0-BETA24
 
 * Improve internal handling of watch queries to avoid issues where updates are not being received due to transaction commits occurring after the query is run.

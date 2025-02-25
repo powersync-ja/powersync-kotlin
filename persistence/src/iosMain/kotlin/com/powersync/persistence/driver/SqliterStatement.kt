@@ -13,23 +13,38 @@ import co.touchlab.sqliter.bindString
 internal class SqliterStatement(
     private val statement: Statement,
 ) : SqlPreparedStatement {
-    override fun bindBytes(index: Int, bytes: ByteArray?) {
+    override fun bindBytes(
+        index: Int,
+        bytes: ByteArray?,
+    ) {
         statement.bindBlob(index + 1, bytes)
     }
 
-    override fun bindLong(index: Int, long: Long?) {
+    override fun bindLong(
+        index: Int,
+        long: Long?,
+    ) {
         statement.bindLong(index + 1, long)
     }
 
-    override fun bindDouble(index: Int, double: Double?) {
+    override fun bindDouble(
+        index: Int,
+        double: Double?,
+    ) {
         statement.bindDouble(index + 1, double)
     }
 
-    override fun bindString(index: Int, string: String?) {
+    override fun bindString(
+        index: Int,
+        string: String?,
+    ) {
         statement.bindString(index + 1, string)
     }
 
-    override fun bindBoolean(index: Int, boolean: Boolean?) {
+    override fun bindBoolean(
+        index: Int,
+        boolean: Boolean?,
+    ) {
         statement.bindLong(
             index + 1,
             when (boolean) {

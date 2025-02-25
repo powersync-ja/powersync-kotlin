@@ -81,6 +81,7 @@ internal data class SyncStatusDataContainer(
         get() = downloadError ?: uploadError
 }
 
+@ConsistentCopyVisibility
 public data class SyncStatus internal constructor(
     private var data: SyncStatusDataContainer = SyncStatusDataContainer(),
 ) : SyncStatusData {
