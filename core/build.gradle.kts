@@ -235,6 +235,8 @@ kotlin {
             implementation(libs.test.coroutines)
             implementation(libs.test.turbine)
             implementation(libs.kermit.test)
+            implementation(libs.ktor.client.mock)
+            implementation(libs.test.turbine)
         }
 
         // We're putting the native libraries into our JAR, so integration tests for the JVM can run as part of the unit

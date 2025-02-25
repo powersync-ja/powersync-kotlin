@@ -15,7 +15,7 @@ kotlinx-datetime = "0.5.0"
 kotlinx-io = "0.5.4"
 ktor = "3.0.1"
 uuid = "0.8.2"
-powersync-core = "0.3.8"
+powersync-core = "0.3.11"
 sqlite-android = "3.45.0"
 sqlite-jdbc = "3.45.2.0"
 turbine = "1.2.0"
@@ -72,6 +72,7 @@ ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-ios = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 ktor-client-contentnegotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
+ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 ktor-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 

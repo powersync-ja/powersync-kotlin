@@ -11,6 +11,7 @@ import com.powersync.db.internal.PowerSyncTransaction
 import com.powersync.sync.SyncDataBatch
 import com.powersync.sync.SyncLocalDatabaseResult
 import com.powersync.utils.JsonUtil
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 
 internal class BucketStorageImpl(
@@ -193,8 +194,11 @@ internal class BucketStorageImpl(
         }
     }
 
-    override suspend fun syncLocalDatabase(targetCheckpoint: Checkpoint): SyncLocalDatabaseResult {
-        val result = validateChecksums(targetCheckpoint)
+    override suspend fun syncLocalDatabase(
+        targetCheckpoint: Checkpoint,
+        partialPriority: BucketPriority?,
+    ): SyncLocalDatabaseResult {
+        val result = validateChecksums(targetCheckpoint, partialPriority)
 
         if (!result.checkpointValid) {
             logger.w { "[SyncLocalDatabase] Checksums failed for ${result.checkpointFailures}" }
@@ -205,7 +209,15 @@ internal class BucketStorageImpl(
             return result
         }
 
-        val bucketNames = targetCheckpoint.checksums.map { it.bucket }
+        val bucketNames =
+            targetCheckpoint.checksums
+                .let {
+                    if (partialPriority == null) {
+                        it
+                    } else {
+                        it.filter { cs -> cs.priority >= partialPriority }
+                    }
+                }.map { it.bucket }
 
         db.writeTransaction { tx ->
             tx.execute(
@@ -213,7 +225,7 @@ internal class BucketStorageImpl(
                 listOf(targetCheckpoint.lastOpId, JsonUtil.json.encodeToString(bucketNames)),
             )
 
-            if (targetCheckpoint.writeCheckpoint != null) {
+            if (partialPriority == null && targetCheckpoint.writeCheckpoint != null) {
                 tx.execute(
                     "UPDATE ps_buckets SET last_op = ? WHERE name = '\$local'",
                     listOf(targetCheckpoint.writeCheckpoint),
@@ -221,7 +233,7 @@ internal class BucketStorageImpl(
             }
         }
 
-        val valid = updateObjectsFromBuckets()
+        val valid = updateObjectsFromBuckets(targetCheckpoint, partialPriority)
 
         if (!valid) {
             return SyncLocalDatabaseResult(
@@ -237,11 +249,23 @@ internal class BucketStorageImpl(
         )
     }
 
-    private suspend fun validateChecksums(checkpoint: Checkpoint): SyncLocalDatabaseResult {
+    private suspend fun validateChecksums(
+        checkpoint: Checkpoint,
+        priority: BucketPriority? = null,
+    ): SyncLocalDatabaseResult {
+        val serializedCheckpoint =
+            JsonUtil.json.encodeToString(
+                when (priority) {
+                    null -> checkpoint
+                    // Only validate buckets with a priority included in this partial sync.
+                    else -> checkpoint.copy(checksums = checkpoint.checksums.filter { it.priority >= priority })
+                },
+            )
+
         val res =
             db.getOptional(
                 "SELECT powersync_validate_checkpoint(?) AS result",
-                parameters = listOf(JsonUtil.json.encodeToString(checkpoint)),
+                parameters = listOf(serializedCheckpoint),
                 mapper = { cursor ->
                     cursor.getString(0)!!
                 },
@@ -260,12 +284,33 @@ internal class BucketStorageImpl(
      *
      * This includes creating new tables, dropping old tables, and copying data over from the oplog.
      */
-    private suspend fun updateObjectsFromBuckets(): Boolean {
+    private suspend fun updateObjectsFromBuckets(
+        checkpoint: Checkpoint,
+        priority: BucketPriority? = null,
+    ): Boolean {
+        @Serializable
+        data class SyncLocalArgs(
+            val priority: BucketPriority,
+            val buckets: List<String>,
+        )
+
+        val args =
+            if (priority != null) {
+                JsonUtil.json.encodeToString(
+                    SyncLocalArgs(
+                        priority = priority,
+                        buckets = checkpoint.checksums.filter { it.priority >= priority }.map { it.bucket },
+                    ),
+                )
+            } else {
+                ""
+            }
+
         return db.writeTransaction { tx ->
 
             tx.execute(
                 "INSERT INTO powersync_operations(op, data) VALUES(?, ?)",
-                listOf("sync_local", ""),
+                listOf("sync_local", args),
             )
 
             val res =

@@ -4,6 +4,7 @@ import co.touchlab.kermit.Logger
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
 import com.powersync.PsSqlDriver
+import com.powersync.bucket.BucketPriority
 import com.powersync.bucket.BucketStorage
 import com.powersync.bucket.BucketStorageImpl
 import com.powersync.connectors.PowerSyncBackendConnector
@@ -15,7 +16,9 @@ import com.powersync.db.internal.InternalDatabaseImpl
 import com.powersync.db.internal.InternalTable
 import com.powersync.db.internal.ThrowableTransactionCallback
 import com.powersync.db.schema.Schema
+import com.powersync.sync.PriorityStatusEntry
 import com.powersync.sync.SyncStatus
+import com.powersync.sync.SyncStatusData
 import com.powersync.sync.SyncStream
 import com.powersync.utils.JsonParam
 import com.powersync.utils.JsonUtil
@@ -30,6 +33,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.encodeToString
 
@@ -51,7 +56,7 @@ internal class PowerSyncDatabaseImpl(
     driver: PsSqlDriver = factory.createDriver(scope, dbFilename),
 ) : PowerSyncDatabase {
     private val internalDb = InternalDatabaseImpl(driver, scope)
-    private val bucketStorage: BucketStorage = BucketStorageImpl(internalDb, logger)
+    internal val bucketStorage: BucketStorage = BucketStorageImpl(internalDb, logger)
 
     /**
      * The current sync status.
@@ -84,7 +89,6 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 
-    @OptIn(FlowPreview::class)
     override suspend fun connect(
         connector: PowerSyncBackendConnector,
         crudThrottleMs: Long,
@@ -94,7 +98,7 @@ internal class PowerSyncDatabaseImpl(
         // close connection if one is open
         disconnect()
 
-        this.syncStream =
+        connect(
             SyncStream(
                 bucketStorage = bucketStorage,
                 connector = connector,
@@ -102,8 +106,17 @@ internal class PowerSyncDatabaseImpl(
                 retryDelayMs = retryDelayMs,
                 logger = logger,
                 params = params.toJsonObject(),
-            )
+            ),
+            crudThrottleMs,
+        )
+    }
 
+    @OptIn(FlowPreview::class)
+    internal fun connect(
+        stream: SyncStream,
+        crudThrottleMs: Long,
+    ) {
+        this.syncStream = stream
         syncJob =
             scope.launch {
                 syncStream!!.streamingSync()
@@ -121,6 +134,7 @@ internal class PowerSyncDatabaseImpl(
                     downloadError = it.downloadError,
                     clearDownloadError = it.downloadError == null,
                     clearUploadError = it.uploadError == null,
+                    priorityStatusEntries = it.priorityStatusEntries,
                 )
             }
         }
@@ -280,34 +294,62 @@ internal class PowerSyncDatabaseImpl(
 
     private suspend fun updateHasSynced() {
         data class SyncedAt(
-            val syncedAt: String?,
+            val priority: BucketPriority,
+            val syncedAt: Instant?,
         )
+
         // Query the database to see if any data has been synced
-        val timestamp =
-            internalDb
-                .getOptional("SELECT powersync_last_synced_at() as synced_at", null) { cursor ->
-                    SyncedAt(syncedAt = cursor.getStringOptional("synced_at"))
-                }?.syncedAt
-        if (timestamp != null) {
-            val hasSynced = true
-            if (currentStatus.hasSynced != null && hasSynced != currentStatus.hasSynced) {
-                val formattedDateTime = "${timestamp.replace(" ", "T").toLocalDateTime()}Z"
-                val lastSyncedAt = Instant.parse(formattedDateTime)
-                currentStatus.update(hasSynced = hasSynced, lastSyncedAt = lastSyncedAt)
+        val syncedAtRows =
+            internalDb.getAll("SELECT * FROM ps_sync_state ORDER BY priority") {
+                val rawTime = it.getString(1)!!
+
+                SyncedAt(
+                    priority = BucketPriority(it.getLong(0)!!.toInt()),
+                    syncedAt = rawTime.replace(" ", "T").toLocalDateTime().toInstant(TimeZone.UTC),
+                )
             }
-        } else {
-            currentStatus.update(hasSynced = false)
+
+        val priorityStatus = mutableListOf<PriorityStatusEntry>()
+        var lastSyncedAt: Instant? = null
+
+        for (row in syncedAtRows) {
+            if (row.priority == BucketPriority.FULL_SYNC_PRIORITY) {
+                lastSyncedAt = row.syncedAt
+            } else {
+                priorityStatus.add(
+                    PriorityStatusEntry(
+                        priority = row.priority,
+                        lastSyncedAt = row.syncedAt,
+                        hasSynced = true,
+                    ),
+                )
+            }
         }
+
+        currentStatus.update(
+            hasSynced = lastSyncedAt != null,
+            lastSyncedAt = lastSyncedAt,
+            priorityStatusEntries = priorityStatus,
+        )
     }
 
-    override suspend fun waitForFirstSync() {
-        if (currentStatus.hasSynced == true) {
+    override suspend fun waitForFirstSync() = waitForFirstSyncImpl(null)
+
+    override suspend fun waitForFirstSync(priority: BucketPriority) = waitForFirstSyncImpl(priority)
+
+    private suspend fun waitForFirstSyncImpl(priority: BucketPriority?) {
+        val predicate: (SyncStatusData) -> Boolean =
+            if (priority == null) {
+                { it.hasSynced == true }
+            } else {
+                { it.priorityStatusFor(priority).hasSynced == true }
+            }
+
+        if (predicate(currentStatus)) {
             return
         }
 
-        currentStatus.asFlow().first { status ->
-            status.hasSynced == true
-        }
+        currentStatus.asFlow().first(predicate)
     }
 
     override suspend fun close() {

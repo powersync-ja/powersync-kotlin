@@ -1,11 +1,8 @@
 package com.powersync
 
 import app.cash.turbine.turbineScope
-import com.powersync.db.SqlCursor
-import com.powersync.db.getString
-import com.powersync.db.schema.Column
 import com.powersync.db.schema.Schema
-import com.powersync.db.schema.Table
+import com.powersync.testutils.UserRow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
@@ -21,10 +18,7 @@ class DatabaseTest {
         database =
             PowerSyncDatabase(
                 factory = com.powersync.testutils.factory,
-                schema =
-                    Schema(
-                        Table(name = "users", columns = listOf(Column.text("name"), Column.text("email"))),
-                    ),
+                schema = Schema(UserRow.table),
                 dbFilename = "testdb",
             )
 
@@ -49,7 +43,7 @@ class DatabaseTest {
     fun testTableUpdates() =
         runTest {
             turbineScope {
-                val query = database.watch("SELECT * FROM users") { User.from(it) }.testIn(this)
+                val query = database.watch("SELECT * FROM users") { UserRow.from(it) }.testIn(this)
 
                 // Wait for initial query
                 assertEquals(0, query.awaitItem().size)
@@ -92,19 +86,4 @@ class DatabaseTest {
                 query.cancel()
             }
         }
-
-    private data class User(
-        val id: String,
-        val name: String,
-        val email: String,
-    ) {
-        companion object {
-            fun from(cursor: SqlCursor): User =
-                User(
-                    id = cursor.getString("id"),
-                    name = cursor.getString("name"),
-                    email = cursor.getString("email"),
-                )
-        }
-    }
 }

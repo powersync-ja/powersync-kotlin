@@ -28,7 +28,10 @@ internal interface BucketStorage {
 
     suspend fun hasCompletedSync(): Boolean
 
-    suspend fun syncLocalDatabase(targetCheckpoint: Checkpoint): SyncLocalDatabaseResult
+    suspend fun syncLocalDatabase(
+        targetCheckpoint: Checkpoint,
+        partialPriority: BucketPriority? = null,
+    ): SyncLocalDatabaseResult
 
     fun setTargetCheckpoint(checkpoint: Checkpoint)
 }
