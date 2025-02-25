@@ -31,6 +31,7 @@ import kotlinx.serialization.encodeToString
 internal class InternalDatabaseImpl(
     private val driver: PsSqlDriver,
     private val scope: CoroutineScope,
+    private val readDriver: PsSqlDriver,
 ) : InternalDatabase {
     override val transactor: PsDatabase = PsDatabase(driver)
     override val queries: PowersyncQueries = transactor.powersyncQueries
@@ -87,6 +88,8 @@ internal class InternalDatabaseImpl(
                     tableUpdatesMutex.withLock {
                         accumulatedUpdates.addAll(dataTables)
                     }
+
+                    readDriver.notifyListeners(queryKeys = accumulatedUpdates.toTypedArray())
                 }
                 // debounce ignores events inside the throttle. Debouncing needs to be done after accumulation
                 .debounce(DEFAULT_WATCH_THROTTLE_MS)
@@ -228,15 +231,15 @@ internal class InternalDatabaseImpl(
         object : Query<T>(wrapperMapper(mapper)) {
             override fun <R> execute(mapper: (app.cash.sqldelight.db.SqlCursor) -> QueryResult<R>): QueryResult<R> =
                 runWrapped {
-                    driver.executeQuery(null, query, mapper, parameters, binders)
+                    readDriver.executeQuery(null, query, mapper, parameters, binders)
                 }
 
             override fun addListener(listener: Listener) {
-                driver.addListener(queryKeys = tables.toTypedArray(), listener = listener)
+                readDriver.addListener(queryKeys = tables.toTypedArray(), listener = listener)
             }
 
             override fun removeListener(listener: Listener) {
-                driver.removeListener(queryKeys = tables.toTypedArray(), listener = listener)
+                readDriver.removeListener(queryKeys = tables.toTypedArray(), listener = listener)
             }
         }
 

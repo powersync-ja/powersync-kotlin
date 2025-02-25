@@ -8,6 +8,7 @@ import kotlin.io.path.absolutePathString
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING", "SqlNoDataSourceInspection")
 public actual class DatabaseDriverFactory {
     private var driver: PsSqlDriver? = null
+    private var readDriver: PsSqlDriver? = null
 
     private external fun setupSqliteBinding()
 
@@ -57,6 +58,7 @@ public actual class DatabaseDriverFactory {
 
         return this.driver!!
     }
+    internal actual fun getReadDriver(): PsSqlDriver = driver ?: throw IllegalStateException("Read driver not initialized")
 
     public companion object {
         private val jniExtension: Path
