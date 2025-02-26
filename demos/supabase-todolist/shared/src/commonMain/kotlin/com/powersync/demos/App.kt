@@ -13,6 +13,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
+import com.powersync.bucket.BucketPriority
 import com.powersync.connector.supabase.SupabaseConnector
 import com.powersync.demos.components.EditDialog
 import com.powersync.demos.powersync.ListContent
@@ -36,9 +37,15 @@ fun App(factory: DatabaseDriverFactory, modifier: Modifier = Modifier) {
         )
     }
     val db = remember { PowerSyncDatabase(factory, schema) }
-    val status = db.currentStatus.asFlow().collectAsState(initial = null)
-    val hasSynced by remember { derivedStateOf { status.value?.hasSynced } }
+    val status by db.currentStatus.asFlow().collectAsState(initial = db.currentStatus)
 
+    // This assumes that the buckets for lists has a priority of 1 (but it will work fine with sync
+    // rules not defining any priorities at all too). When giving lists a higher priority than
+    // items, we can have a consistent snapshot of lists without items. In the case where many items
+    // exist (that might take longer to sync initially), this allows us to display lists earlier.
+    val hasSyncedLists by remember {
+        derivedStateOf { status.statusForPriority(BucketPriority(1)).hasSynced }
+    }
 
     val navController = remember { NavController(Screen.Home) }
     val authViewModel = remember {
@@ -86,14 +93,14 @@ fun App(factory: DatabaseDriverFactory, modifier: Modifier = Modifier) {
             HomeScreen(
                 modifier = modifier.background(MaterialTheme.colors.background),
                 items = items,
-                isConnected = status.value?.connected,
+                isConnected = status.connected,
                 onSignOutSelected = { handleSignOut() },
                 inputText = listsInputText,
                 onItemClicked = handleOnItemClicked,
                 onItemDeleteClicked = lists.value::onItemDeleteClicked,
                 onAddItemClicked = lists.value::onAddItemClicked,
                 onInputTextChanged = lists.value::onInputTextChanged,
-                hasSynced = hasSynced
+                hasSynced = hasSyncedLists
             )
         }
 
@@ -106,7 +113,7 @@ fun App(factory: DatabaseDriverFactory, modifier: Modifier = Modifier) {
                 modifier = modifier.background(MaterialTheme.colors.background),
                 navController = navController,
                 items = todoItems,
-                isConnected = status.value?.connected,
+                isConnected = status.connected,
                 inputText = todosInputText,
                 onItemClicked = todos.value::onItemClicked,
                 onItemDoneChanged = todos.value::onItemDoneChanged,

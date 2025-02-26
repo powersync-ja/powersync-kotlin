@@ -18,6 +18,7 @@ junit = "4.13.2"
 
 compose = "1.6.11"
 compose-preview = "1.7.2"
+lifecycle = "2.8.2"
 
 # plugins
 android-gradle-plugin = "8.5.1"
@@ -49,6 +50,7 @@ ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "kto
 ktor-client-contentnegotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "coroutines" }
 
 androidx-core = { group = "androidx.core", name = "core-ktx", version.ref = "androidx-core" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidx-appcompat" }
@@ -56,6 +58,7 @@ androidx-activity-compose = { module = "androidx.activity:activity-compose", ver
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "androidx-espresso-core" }
 androidx-material = { group = "com.google.android.material", name = "material", version.ref = "androidx-material" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "compose-preview" }
+compose-lifecycle = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "android-gradle-plugin" }

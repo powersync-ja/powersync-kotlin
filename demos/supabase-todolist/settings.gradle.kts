@@ -43,7 +43,7 @@ rootProject.name = "supabase-todolist"
 
 include(":androidApp")
 include(":shared")
-//include(":desktopApp")
+include(":desktopApp")
 
 includeBuild("../..") {
     dependencySubstitution {
