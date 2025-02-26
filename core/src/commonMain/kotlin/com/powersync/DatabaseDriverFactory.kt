@@ -8,6 +8,4 @@ public expect class DatabaseDriverFactory {
         scope: CoroutineScope,
         dbFilename: String,
     ): PsSqlDriver
-
-    internal fun getReadDriver(): PsSqlDriver
 }

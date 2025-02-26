@@ -85,7 +85,4 @@ public actual class DatabaseDriverFactory(
             System.loadLibrary("powersync-sqlite")
         }
     }
-
-    // Do not have the same issues with Android so can be looked at later
-    internal actual fun getReadDriver(): PsSqlDriver = this.driver ?: throw IllegalStateException("Driver not initialized")
 }

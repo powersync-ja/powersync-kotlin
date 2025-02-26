@@ -6,6 +6,7 @@ import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlPreparedStatement
+import co.touchlab.kermit.Logger
 import com.persistence.PowersyncQueries
 import com.powersync.PowerSyncException
 import com.powersync.PsSqlDriver
@@ -20,6 +21,8 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -37,10 +40,16 @@ internal class InternalDatabaseImpl(
     override val queries: PowersyncQueries = transactor.powersyncQueries
 
     // Register callback for table updates
-    private fun tableUpdates(): Flow<List<String>> = driver.tableUpdates()
+    private fun crudTableUpdates(): Flow<List<String>> = driver.crudTableUpdates()
+
+    private fun uiTableUpdates(): Flow<List<String>> = driver.uiTableUpdates()
+
+    private fun otherTableUpdates(): Flow<List<String>> = driver.otherTableUpdates()
 
     // Debounced by transaction completion
     private val tableUpdatesMutex = Mutex()
+    private val tableUpdatesMutex2 = Mutex()
+    private val tableUpdatesMutex3 = Mutex()
 
     // Could be scope.coroutineContext, but the default is GlobalScope, which seems like a bad idea. To discuss.
     private val dbContext = Dispatchers.IO
@@ -76,25 +85,70 @@ internal class InternalDatabaseImpl(
     }
 
     init {
-        scope.launch {
+        scope.launch(Dispatchers.IO) {
             val accumulatedUpdates = mutableSetOf<String>()
             // Store table changes in an accumulated array which will be (debounced) emitted on transaction end
-            tableUpdates()
-                .onEach { tables ->
-                    val dataTables =
-                        tables
-                            .map { toFriendlyTableName(it) }
-                            .filter { it.isNotBlank() }
-                    tableUpdatesMutex.withLock {
+            uiTableUpdates()
+                .map { tables ->
+                    tables
+                        .map { toFriendlyTableName(it) }
+                        .filter { it.isNotBlank() }
+                }.filter { dataTables -> dataTables.isNotEmpty() }
+                .onEach { dataTables ->
+                    tableUpdatesMutex2.withLock {
                         accumulatedUpdates.addAll(dataTables)
                     }
+                }.debounce(DEFAULT_WATCH_THROTTLE_MS)
+                .collect { _ ->
+                    tableUpdatesMutex2.withLock {
+                        Logger.i("Notifying Listeners of UI Updates")
+                        driver.notifyListeners(queryKeys = accumulatedUpdates.toTypedArray())
+                        accumulatedUpdates.clear()
+                    }
+                }
+        }
 
-                    readDriver.notifyListeners(queryKeys = accumulatedUpdates.toTypedArray())
+        scope.launch(Dispatchers.IO) {
+            val accumulatedUpdates = mutableSetOf<String>()
+            // Store table changes in an accumulated array which will be (debounced) emitted on transaction end
+            otherTableUpdates()
+                .map { tables ->
+                    tables
+                        .map { toFriendlyTableName(it) }
+                        .filter { it.isNotBlank() }
+                }.filter { dataTables -> dataTables.isNotEmpty() }
+                .onEach { dataTables ->
+                    tableUpdatesMutex3.withLock {
+                        accumulatedUpdates.addAll(dataTables)
+                    }
+                }.debounce(DEFAULT_WATCH_THROTTLE_MS)
+                .collect { _ ->
+                    tableUpdatesMutex3.withLock {
+                        Logger.i("Notifying Listeners of Other Table Updates")
+                        driver.notifyListeners(queryKeys = accumulatedUpdates.toTypedArray())
+                        accumulatedUpdates.clear()
+                    }
+                }
+        }
+
+        scope.launch(Dispatchers.IO) {
+            val accumulatedUpdates = mutableSetOf<String>()
+            crudTableUpdates()
+                .map { tables ->
+                    tables
+                        .map { toFriendlyTableName(it) }
+                        .filter { it.isNotBlank() }
+                }.filter { dataTables -> dataTables.isNotEmpty() }
+                .onEach { tables ->
+                    tableUpdatesMutex.withLock {
+                        accumulatedUpdates.addAll(tables)
+                    }
                 }
                 // debounce ignores events inside the throttle. Debouncing needs to be done after accumulation
                 .debounce(DEFAULT_WATCH_THROTTLE_MS)
                 .collect { _ ->
                     tableUpdatesMutex.withLock {
+                        Logger.i("Notifying Listeners of Crud Updates")
                         driver.notifyListeners(queryKeys = accumulatedUpdates.toTypedArray())
                         accumulatedUpdates.clear()
                     }
@@ -199,6 +253,7 @@ internal class InternalDatabaseImpl(
                 .map { toFriendlyTableName(it) }
                 .filter { it.isNotBlank() }
                 .toSet()
+        // Explore how this works internally
         return watchQuery(
             query = sql,
             parameters = parameters?.size ?: 0,
@@ -231,15 +286,15 @@ internal class InternalDatabaseImpl(
         object : Query<T>(wrapperMapper(mapper)) {
             override fun <R> execute(mapper: (app.cash.sqldelight.db.SqlCursor) -> QueryResult<R>): QueryResult<R> =
                 runWrapped {
-                    readDriver.executeQuery(null, query, mapper, parameters, binders)
+                    driver.executeQuery(null, query, mapper, parameters, binders)
                 }
 
             override fun addListener(listener: Listener) {
-                readDriver.addListener(queryKeys = tables.toTypedArray(), listener = listener)
+                driver.addListener(queryKeys = tables.toTypedArray(), listener = listener)
             }
 
             override fun removeListener(listener: Listener) {
-                readDriver.removeListener(queryKeys = tables.toTypedArray(), listener = listener)
+                driver.removeListener(queryKeys = tables.toTypedArray(), listener = listener)
             }
         }
 
@@ -274,7 +329,7 @@ internal class InternalDatabaseImpl(
         }
 
     // Register callback for table updates on a specific table
-    override fun updatesOnTable(tableName: String): Flow<Unit> = driver.updatesOnTable(tableName)
+    override fun updatesOnTable(tableName: String): Flow<Unit> = driver.updatesOnCrudTable(tableName)
 
     private fun toFriendlyTableName(tableName: String): String {
         val regex = POWERSYNC_TABLE_MATCH.toRegex()

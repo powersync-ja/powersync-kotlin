@@ -58,7 +58,6 @@ public actual class DatabaseDriverFactory {
 
         return this.driver!!
     }
-    internal actual fun getReadDriver(): PsSqlDriver = driver ?: throw IllegalStateException("Read driver not initialized")
 
     public companion object {
         private val jniExtension: Path

@@ -99,29 +99,6 @@ public actual class DatabaseDriverFactory {
                     ),
             )
 
-        // Create a separate read-only driver
-        this.readDriver =
-            PsSqlDriver(
-                scope = scope,
-                driver =
-                    NativeSqliteDriver(
-                        configuration =
-                            DatabaseConfiguration(
-                                name = dbFilename,
-                                version = schema.version.toInt(),
-                                create = { }, // No need to create schema again
-                                loggingConfig = Logging(logger = sqlLogger),
-                                lifecycleConfig =
-                                    DatabaseConfiguration.Lifecycle(
-                                        onCreateConnection = { connection ->
-                                            // Set connection to read-only mode
-                                            connection.rawExecSql("PRAGMA query_only = 1;")
-                                        },
-                                    ),
-                            ),
-                    ),
-            )
-
         return this.driver as PsSqlDriver
     }
 
@@ -174,6 +151,4 @@ public actual class DatabaseDriverFactory {
             null,
         )
     }
-
-    internal actual fun getReadDriver(): PsSqlDriver = this.readDriver ?: throw IllegalStateException("Read driver not initialized")
 }
