@@ -34,7 +34,6 @@ import kotlinx.serialization.encodeToString
 internal class InternalDatabaseImpl(
     private val driver: PsSqlDriver,
     private val scope: CoroutineScope,
-    private val readDriver: PsSqlDriver,
 ) : InternalDatabase {
     override val transactor: PsDatabase = PsDatabase(driver)
     override val queries: PowersyncQueries = transactor.powersyncQueries

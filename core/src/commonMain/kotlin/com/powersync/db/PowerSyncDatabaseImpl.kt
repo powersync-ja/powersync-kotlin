@@ -50,8 +50,7 @@ internal class PowerSyncDatabaseImpl(
     val logger: Logger = Logger,
     driver: PsSqlDriver = factory.createDriver(scope, dbFilename),
 ) : PowerSyncDatabase {
-    private val readDriver = factory.getReadDriver()
-    private val internalDb = InternalDatabaseImpl(driver, scope, readDriver)
+    private val internalDb = InternalDatabaseImpl(driver, scope)
     private val bucketStorage: BucketStorage = BucketStorageImpl(internalDb, logger)
 
     /**
