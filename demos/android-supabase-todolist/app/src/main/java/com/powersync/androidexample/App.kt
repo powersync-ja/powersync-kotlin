@@ -39,7 +39,7 @@ fun App() {
     }
     val db = remember { PowerSyncDatabase(driverFactory, schema) }
     val syncStatus = db.currentStatus
-    val status = syncStatus.asFlow().collectAsState(initial = null)
+    val status by syncStatus.asFlow().collectAsState(syncStatus)
 
     val navController = remember { NavController(Screen.Home) }
     val authViewModel = remember {
@@ -87,7 +87,7 @@ fun App() {
             HomeScreen(
                 modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
                 items = items,
-                isConnected = status.value?.connected,
+                status = status,
                 onSignOutSelected = { handleSignOut() },
                 inputText = listsInputText,
                 onItemClicked = handleOnItemClicked,
@@ -106,7 +106,7 @@ fun App() {
                 modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
                 navController = navController,
                 items = todoItems,
-                isConnected = status.value?.connected,
+                isConnected = status.connected,
                 inputText = todosInputText,
                 onItemClicked = todos.value::onItemClicked,
                 onItemDoneChanged = todos.value::onItemDoneChanged,

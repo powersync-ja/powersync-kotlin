@@ -15,7 +15,7 @@ version = "1.0-SNAPSHOT"
 kotlin {
     androidTarget()
 
-//    jvm()
+    jvm()
     iosX64()
     iosArm64()
     iosSimulatorArm64()
@@ -48,6 +48,7 @@ kotlin {
             implementation(compose.material)
             implementation(compose.components.resources)
             implementation(compose.materialIconsExtended)
+            implementation(libs.compose.lifecycle)
         }
         androidMain.dependencies {
             api(libs.androidx.activity.compose)
@@ -55,9 +56,10 @@ kotlin {
             api(libs.androidx.core)
         }
 
-//        jvmMain.dependencies {
-//            implementation(compose.desktop.common)
-//        }
+        jvmMain.dependencies {
+            implementation(compose.desktop.common)
+            implementation(libs.kotlinx.coroutines.swing)
+        }
     }
 }
 

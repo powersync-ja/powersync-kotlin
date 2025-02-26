@@ -286,7 +286,7 @@ class SyncStreamTest {
                         ),
                     )
 
-                    turbine.waitFor { it.priorityStatusFor(priority).hasSynced == true }
+                    turbine.waitFor { it.statusForPriority(priority).hasSynced == true }
 
                     verifySuspend(order) {
                         if (priorityNo == 0) {

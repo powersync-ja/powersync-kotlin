@@ -177,7 +177,7 @@ class SyncIntegrationTest {
                         ),
                     )
 
-                    turbine.waitFor { it.priorityStatusFor(priority).hasSynced == true }
+                    turbine.waitFor { it.statusForPriority(priority).hasSynced == true }
                     expectUserCount(priorityNo + 1)
                 }
 
@@ -224,7 +224,7 @@ class SyncIntegrationTest {
             // Connect to the same database again
             database = openDb()
             assertFalse { database.currentStatus.hasSynced == true }
-            assertTrue { database.currentStatus.priorityStatusFor(BucketPriority(1)).hasSynced == true }
+            assertTrue { database.currentStatus.statusForPriority(BucketPriority(1)).hasSynced == true }
             database.close()
             syncLines.close()
         }

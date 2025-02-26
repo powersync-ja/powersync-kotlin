@@ -28,7 +28,7 @@ internal fun HomeScreen(
     modifier: Modifier = Modifier,
     items: List<ListItem>,
     inputText: String,
-    isConnected: Boolean?,
+    isConnected: Boolean,
     hasSynced: Boolean?,
     onSignOutSelected: () -> Unit,
     onItemClicked: (item: ListItem) -> Unit,
@@ -49,7 +49,7 @@ internal fun HomeScreen(
                 onSignOutSelected
             ) },
             actions = {
-                WifiIcon(isConnected ?: false)
+                WifiIcon(isConnected)
                 Spacer(modifier = Modifier.width(16.dp))
             }
         )

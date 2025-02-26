@@ -85,7 +85,7 @@ public interface SyncStatusData {
     /**
      * Status information for whether buckets in [priority] have been synchronized.
      */
-    public fun priorityStatusFor(priority: BucketPriority): PriorityStatusEntry {
+    public fun statusForPriority(priority: BucketPriority): PriorityStatusEntry {
         val byDescendingPriorities = priorityStatusEntries.sortedByDescending { it.priority }
 
         for (entry in byDescendingPriorities) {

@@ -3,7 +3,7 @@
 It is a simple to-do list application demonstrating use of the PowerSync Kotlin Mutiplatform SDK together
 with [Supabase](https://supabase.com/) in a basic Kotlin Multiplatform Compose App.
 
-Supported KMP targets: Android and iOS.
+Supported KMP targets: Android, iOS and Desktop (JVM).
 
 ## Setting up your development environment
 

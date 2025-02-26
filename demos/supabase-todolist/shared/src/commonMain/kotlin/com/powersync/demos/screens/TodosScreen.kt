@@ -32,7 +32,7 @@ internal fun TodosScreen(
     navController: NavController,
     items: List<TodoItem>,
     inputText: String,
-    isConnected: Boolean?,
+    isConnected: Boolean,
     onItemClicked: (item: TodoItem) -> Unit,
     onItemDoneChanged: (item: TodoItem, isDone: Boolean) -> Unit,
     onItemDeleteClicked: (item: TodoItem) -> Unit,
@@ -53,7 +53,7 @@ internal fun TodosScreen(
                 }
             },
             actions = {
-                WifiIcon(isConnected ?: false)
+                WifiIcon(isConnected)
                 Spacer(modifier = Modifier.width(16.dp))
             }
         )
