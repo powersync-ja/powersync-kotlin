@@ -66,7 +66,7 @@ internal fun HomeScreen(
             // When giving lists a higher priority than items, we can have a consistent snapshot of
             // lists without items. In the case where many items exist (that might take longer to
             // sync initially), this allows us to display lists earlier.
-            if (status.priorityStatusFor(BucketPriority(1)).hasSynced == true) {
+            if (status.statusForPriority(BucketPriority(1)).hasSynced == true) {
                 ListContent(
                     items = items,
                     onItemClicked = onItemClicked,

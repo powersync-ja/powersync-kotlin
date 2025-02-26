@@ -342,7 +342,7 @@ internal class PowerSyncDatabaseImpl(
             if (priority == null) {
                 { it.hasSynced == true }
             } else {
-                { it.priorityStatusFor(priority).hasSynced == true }
+                { it.statusForPriority(priority).hasSynced == true }
             }
 
         if (predicate(currentStatus)) {
