@@ -34,7 +34,7 @@ public abstract class SonatypeCentralExtension(
         log.info("Setting up the `:${PUBLISH_LOCAL_TASK_NAME}` task")
         project.gradlePublishing.repositories.maven { repo ->
             repo.name = REPO_DIR
-            repo.url = project.uri(project.rootProject.layout.buildDirectory.dir(REPO_DIR))
+            repo.url = project.uri(project.layout.buildDirectory.dir(REPO_DIR))
         }
 
         log.info("Setting up the `:${COMPONENT_BUNDLE_TASK_NAME}` task")
