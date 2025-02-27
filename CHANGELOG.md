@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.0-BETA26
+
+* Support bucket priorities and partial syncs.
+* Android: Add ProGuard rules to prevent methods called through JNI from being minified or removed.
+
 ## 1.0.0-BETA25
 
 * JVM: Lower minimum supported version from 17 to 8.
