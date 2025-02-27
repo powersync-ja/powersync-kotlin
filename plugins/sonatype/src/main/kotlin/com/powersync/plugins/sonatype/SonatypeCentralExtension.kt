@@ -18,6 +18,7 @@ public abstract class SonatypeCentralExtension(
         public const val NAME: String = "sonatypePublishing"
         public const val GROUP: String = "publishing"
         public const val REPO_DIR: String = "sonatypeLocal"
+        public const val UNIFIED_REPO_DIR: String = "testingLocal"
         public const val BUNDLE_DIR: String = "sonatypeBundles"
 
         public const val PUBLISH_TASK_NAME: String = "publishAllPublicationsToSonatypeRepository"
@@ -34,7 +35,11 @@ public abstract class SonatypeCentralExtension(
         log.info("Setting up the `:${PUBLISH_LOCAL_TASK_NAME}` task")
         project.gradlePublishing.repositories.maven { repo ->
             repo.name = REPO_DIR
-            repo.url = project.uri(project.rootProject.layout.buildDirectory.dir(REPO_DIR))
+            repo.url = project.uri(project.layout.buildDirectory.dir(REPO_DIR))
+        }
+        project.gradlePublishing.repositories.maven { repo ->
+            repo.name = UNIFIED_REPO_DIR
+            repo.url = project.uri(project.rootProject.layout.buildDirectory.dir(UNIFIED_REPO_DIR))
         }
 
         log.info("Setting up the `:${COMPONENT_BUNDLE_TASK_NAME}` task")
