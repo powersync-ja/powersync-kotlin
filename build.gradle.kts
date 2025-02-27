@@ -8,11 +8,13 @@ plugins {
     alias(libs.plugins.kmmbridge) apply false
     alias(libs.plugins.skie) apply false
     alias(libs.plugins.kotlin.jvm) apply false
+    alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.sqldelight) apply false
     alias(libs.plugins.grammarKitComposer) apply false
     alias(libs.plugins.mavenPublishPlugin) apply false
     alias(libs.plugins.downloadPlugin) apply false
     alias(libs.plugins.kotlinter) apply false
+    alias(libs.plugins.keeper) apply false
 }
 
 // Having different versions of this lead to the issue mentioned here

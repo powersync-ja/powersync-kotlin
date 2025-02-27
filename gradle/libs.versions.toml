@@ -38,6 +38,7 @@ download-plugin = "5.5.0"
 grammerKit = "0.1.12"
 mokkery = "2.4.0"
 kotlinter = "4.4.1"
+keeper = "0.16.1"
 
 # Sample - Android
 androidx-core = "1.13.1"
@@ -46,7 +47,9 @@ androidx-activity-compose = "1.9.2"
 androidx-appcompat = "1.7.0"
 androidx-espresso-core = "3.6.1"
 androidx-material = "1.12.0"
-androidx-test-junit = "1.2.1"
+androidx-test-runner = "1.6.2"
+androidx-test-rules = "1.6.1"
+junitVersion = "1.2.1"
 
 [libraries]
 configuration-annotations = { module = "co.touchlab.skie:configuration-annotations", version.ref = "configurationAnnotations" }
@@ -56,7 +59,8 @@ powersync-sqlite-core-android = { module = "co.powersync:powersync-sqlite-core",
 mavenPublishPlugin = { module = "com.vanniktech:gradle-maven-publish-plugin", version.ref = "maven-publish" }
 
 test-junit = { group = "junit", name = "junit", version.ref = "junit" }
-test-junitKtx = { module = "androidx.test.ext:junit-ktx", version.ref = "androidx-test-junit" }
+test-android-runner = { module = "androidx.test:runner", version.ref = "androidx-test-runner" }
+test-android-rules = { module = "androidx.test:rules", version.ref = "androidx-test-rules" }
 test-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 test-turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -101,6 +105,7 @@ androidx-activity-compose = { module = "androidx.activity:activity-compose", ver
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "androidx-espresso-core" }
 androidx-material = { group = "com.google.android.material", name = "material", version.ref = "androidx-material" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "compose-preview" }
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "android-gradle-plugin" }
@@ -119,6 +124,8 @@ mavenPublishPlugin = { id = "com.vanniktech.maven.publish", version.ref = "maven
 downloadPlugin = { id = "de.undercouch.download", version.ref = "download-plugin" }
 mokkery = { id = "dev.mokkery", version.ref = "mokkery" }
 kotlinter = { id = "org.jmailen.kotlinter", version.ref = "kotlinter" }
+keeper = { id = "com.slack.keeper", version.ref = "keeper" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 
 [bundles]
 sqldelight = [
