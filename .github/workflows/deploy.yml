@@ -8,41 +8,8 @@ permissions:
 jobs:
   test:
     uses: ./.github/workflows/test.yml
-  build-native:
-    name: Build native lib
-    strategy:
-      matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Validate Gradle Wrapper
-        uses: gradle/actions/wrapper-validation@v4
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-      - name: Install cross-compiler
-        if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: sudo apt install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-      - name: Build native lib
-        run: |
-          ./gradlew \
-            -PGITHUB_PUBLISH_TOKEN=${{ secrets.GITHUB_TOKEN }} \
-            -Ppowersync.binaries.cross-arch=true \
-            :core:cmakeJvmBuild
-        shell: bash
-      - name: Upload build
-        uses: actions/upload-artifact@v4
-        with:
-          name: binaries-${{ matrix.os }}
-          path: core/build/binaries/desktop/sqlite/
   deploy:
-    needs: [test, build-native]
+    needs: [test]
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -58,14 +25,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v3
-      - name: Download native binaries
-        uses: actions/download-artifact@v4
-        with:
-          path: core/binaries/desktop
-          merge-multiple: true
-      - name: Display downloaded files
-        run: ls -lR core/binaries/desktop
+        uses: gradle/actions/setup-gradle@v4
       - name: Gradle publish
         run: |
           ./gradlew \
@@ -75,7 +35,7 @@ jobs:
             -PsigningInMemoryKeyPassword="${{ secrets.SIGNING_PASSWORD }}" \
             -PcentralPortal.username="${{secrets.SONATYPE_USERNAME}}" \
             -PcentralPortal.password="${{secrets.SONATYPE_PASSWORD}}" \
-            -Ppowersync.binaries.provided="true" \
+            -Ppowersync.binaries.allPlatforms="true" \
             publishAllPublicationsToSonatypeRepository
         shell: bash
   # This will change Package.swift in Github packages to direct to new maven central KMMBridge zip file

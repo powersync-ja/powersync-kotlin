@@ -79,6 +79,8 @@ val buildCInteropDef by tasks.registering {
 
 val binariesFolder = project.layout.buildDirectory.dir("binaries/desktop")
 val downloadPowersyncDesktopBinaries by tasks.registering(Download::class) {
+    description = "Download PowerSync core extensions for JVM builds and releases"
+
     val coreVersion = libs.versions.powersync.core.get()
     val linux_aarch64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_aarch64.so"
     val linux_x64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_x64.so"
@@ -86,7 +88,14 @@ val downloadPowersyncDesktopBinaries by tasks.registering(Download::class) {
     val macos_x64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_x64.dylib"
     val windows_x64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/powersync_x64.dll"
 
-    if (binariesAreProvided) {
+    val includeAllPlatformsForJvmBuild = project.findProperty("powersync.binaries.allPlatforms") == "true"
+    val os = OperatingSystem.current()
+
+    // The jar we're releasing for JVM clients needs to include the core extension. For local tests, it's enough to only
+    // download the extension for the OS running the build. For releases, we want to include them all.
+    // We're not compiling native code for JVM builds here (we're doing that for Android only), so we just have to
+    // fetch prebuilt binaries from the powersync-sqlite-core repository.
+    if (includeAllPlatformsForJvmBuild) {
         src(listOf(linux_aarch64, linux_x64, macos_aarch64, macos_x64, windows_x64))
     } else {
         val (aarch64, x64) = when {
@@ -96,10 +105,9 @@ val downloadPowersyncDesktopBinaries by tasks.registering(Download::class) {
             else -> error("Unknown operating system: $os")
         }
         val arch = System.getProperty("os.arch")
-        src(when {
-            crossArch -> listOfNotNull(aarch64, x64)
-            arch == "aarch64" -> listOfNotNull(aarch64)
-            arch == "amd64" || arch == "x86_64" -> listOfNotNull(x64)
+        src(when (arch) {
+            "aarch64" -> listOfNotNull(aarch64)
+            "amd64", "x86_64" -> listOfNotNull(x64)
             else -> error("Unsupported architecture: $arch")
         })
     }
@@ -295,14 +303,6 @@ android {
             path = project.file("src/androidMain/cpp/CMakeLists.txt")
         }
     }
-}
-
-val os = OperatingSystem.current()
-val binariesAreProvided = project.findProperty("powersync.binaries.provided") == "true"
-val crossArch = project.findProperty("powersync.binaries.cross-arch") == "true"
-
-if (binariesAreProvided && crossArch) {
-    error("powersync.binaries.provided and powersync.binaries.cross-arch must not be both defined.")
 }
 
 tasks.named<ProcessResources>(kotlin.jvm().compilations["main"].processResourcesTaskName) {
