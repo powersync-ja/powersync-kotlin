@@ -9,7 +9,7 @@ jobs:
   test:
     uses: ./.github/workflows/test.yml
   deploy:
-    needs: [test, build-native]
+    needs: [test]
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
