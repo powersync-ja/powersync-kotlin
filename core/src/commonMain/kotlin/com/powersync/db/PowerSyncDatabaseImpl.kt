@@ -141,7 +141,7 @@ internal class PowerSyncDatabaseImpl(
 
         uploadJob =
             scope.launch {
-                internalDb.updatesOnTable(InternalTable.CRUD.toString()).debounce(crudThrottleMs).collect {
+                internalDb.updatesOnTables(setOf(InternalTable.CRUD.toString())).debounce(crudThrottleMs).collect {
                     syncStream!!.triggerCrudUpload()
                 }
             }

@@ -22,3 +22,4 @@ captures
 Pods/
 dialect/bin
 .build
+.vscode

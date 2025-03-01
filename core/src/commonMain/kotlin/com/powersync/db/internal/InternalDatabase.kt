@@ -14,5 +14,5 @@ internal interface InternalDatabase :
 
     fun getExistingTableNames(tableGlob: String): List<String>
 
-    fun updatesOnTable(tableName: String): Flow<Unit>
+    fun updatesOnTables(tableNames: Set<String>): Flow<Unit>
 }
