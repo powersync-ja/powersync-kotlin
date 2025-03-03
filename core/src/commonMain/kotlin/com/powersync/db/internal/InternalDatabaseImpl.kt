@@ -17,6 +17,8 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.withContext
@@ -70,9 +72,7 @@ internal class InternalDatabaseImpl(
         withContext(dbContext) {
             executeSync(sql, parameters)
         }.also {
-            withContext(dbContext) {
-                driver.fireTableUpdates()
-            }
+            driver.fireTableUpdates()
         }
 
     private fun executeSync(
@@ -156,18 +156,26 @@ internal class InternalDatabaseImpl(
         sql: String,
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType,
-    ): Flow<List<RowType>> {
-        val tables =
-            getSourceTables(sql, parameters)
-                .filter { it.isNotBlank() }
-                .toSet()
+    ): Flow<List<RowType>> =
+        flow {
+            println("Getting tables for $sql")
+            // Fetch the tables asynchronously with getAll
+            val tables =
+                getSourceTables(sql, parameters)
+                    .filter { it.isNotBlank() }
+                    .toSet()
 
-        return updatesOnTables(tables)
-            .debounce(DEFAULT_WATCH_THROTTLE_MS)
-            .map {
-                getAll(sql, parameters = parameters, mapper = mapper)
-            }.onStart { emit(getAll(sql, parameters = parameters, mapper = mapper)) }
-    }
+            emitAll(
+                updatesOnTables(tables)
+                    .debounce(DEFAULT_WATCH_THROTTLE_MS)
+                    .map {
+                        getAll(sql, parameters = parameters, mapper = mapper)
+                    }.onStart {
+                        // Emit the initial query result
+                        emit(getAll(sql, parameters = parameters, mapper = mapper))
+                    },
+            )
+        }
 
     private fun <T : Any> createQuery(
         query: String,
@@ -210,9 +218,7 @@ internal class InternalDatabaseImpl(
             // Trigger watched queries
             r
         }.also {
-            withContext(dbContext) {
-                driver.fireTableUpdates()
-            }
+            driver.fireTableUpdates()
         }
 
     // Register callback for table updates on a specific table
@@ -226,15 +232,14 @@ internal class InternalDatabaseImpl(
         return tableName
     }
 
-    private fun getSourceTables(
+    private suspend fun getSourceTables(
         sql: String,
         parameters: List<Any?>?,
     ): Set<String> {
         val rows =
-            createQuery(
-                query = "EXPLAIN $sql",
-                parameters = parameters?.size ?: 0,
-                binders = getBindersFromParams(parameters),
+            getAll(
+                "EXPLAIN $sql",
+                parameters = parameters,
                 mapper = {
                     ExplainQueryResult(
                         addr = it.getString(0)!!,
@@ -244,7 +249,7 @@ internal class InternalDatabaseImpl(
                         p3 = it.getLong(4)!!,
                     )
                 },
-            ).executeAsList()
+            )
 
         val rootPages = mutableListOf<Long>()
         for (row in rows) {

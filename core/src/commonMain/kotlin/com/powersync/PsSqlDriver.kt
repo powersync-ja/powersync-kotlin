@@ -33,9 +33,21 @@ internal class PsSqlDriver(
     }
 
     // Flows on table updates containing tables
-    // The table names here are raw SQLite tables
-    fun updatesOnTables(tableNames: Set<String>): Flow<Unit> =
-        tableUpdatesFlow.asSharedFlow().filter { it.intersect(tableNames).isNotEmpty() }.map { }
+    fun updatesOnTables(tableNames: Set<String>): Flow<Unit> {
+        // Spread the input table names in order to account for internal views
+        val resolvedTableNames =
+            tableNames
+                .flatMap { t -> setOf("ps_data__$t", "ps_data_local__$t", t) }
+                .toSet()
+        return tableUpdatesFlow
+            .asSharedFlow()
+            .filter {
+                it
+                    .intersect(
+                        resolvedTableNames,
+                    ).isNotEmpty()
+            }.map { }
+    }
 
     fun fireTableUpdates() {
         scope.launch {
