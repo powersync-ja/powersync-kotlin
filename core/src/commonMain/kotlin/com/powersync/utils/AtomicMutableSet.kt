@@ -28,7 +28,7 @@ public class AtomicMutableSet<T> {
 
     public suspend fun toSet(clear: Boolean = false): Set<T> =
         mutex.withLock {
-            val copied = set.toSet()
+            val copied = set.toList().toSet()
             if (clear) {
                 set.clear()
             }

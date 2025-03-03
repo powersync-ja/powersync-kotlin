@@ -12,7 +12,5 @@ internal interface InternalDatabase :
     val transactor: PsDatabase
     val queries: PowersyncQueries
 
-    fun getExistingTableNames(tableGlob: String): List<String>
-
     fun updatesOnTables(tableNames: Set<String>): Flow<Unit>
 }

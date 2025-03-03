@@ -18,7 +18,6 @@ internal class BucketStorageImpl(
     private val db: InternalDatabase,
     private val logger: Logger,
 ) : BucketStorage {
-    private val tableNames: MutableSet<String> = mutableSetOf()
     private var hasCompletedSync = AtomicBoolean(false)
     private var pendingBucketDeletes = AtomicBoolean(false)
 
@@ -30,18 +29,6 @@ internal class BucketStorageImpl(
     companion object {
         const val MAX_OP_ID = "9223372036854775807"
         const val COMPACT_OPERATION_INTERVAL = 1_000
-    }
-
-    init {
-        readTableNames()
-    }
-
-    private fun readTableNames() {
-        tableNames.clear()
-        // Query to get existing table names
-        val names = db.getExistingTableNames("ps_data_*")
-
-        tableNames.addAll(names)
     }
 
     override fun getMaxOpId(): String = MAX_OP_ID

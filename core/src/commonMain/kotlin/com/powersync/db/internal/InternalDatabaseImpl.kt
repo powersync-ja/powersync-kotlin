@@ -61,7 +61,6 @@ internal class InternalDatabaseImpl(
         }
 
     companion object {
-        const val POWERSYNC_TABLE_MATCH = "(^ps_data__|^ps_data_local__)"
         const val DEFAULT_WATCH_THROTTLE_MS = 30L
     }
 
@@ -223,14 +222,6 @@ internal class InternalDatabaseImpl(
     // Register callback for table updates on a specific table
     override fun updatesOnTables(tableNames: Set<String>): Flow<Unit> = driver.updatesOnTables(tableNames)
 
-    private fun toFriendlyTableName(tableName: String): String {
-        val regex = POWERSYNC_TABLE_MATCH.toRegex()
-        if (regex.containsMatchIn(tableName)) {
-            return tableName.replace(regex, "")
-        }
-        return tableName
-    }
-
     private suspend fun getSourceTables(
         sql: String,
         parameters: List<Any?>?,
@@ -258,31 +249,13 @@ internal class InternalDatabaseImpl(
         }
         val params = listOf(JsonUtil.json.encodeToString(rootPages))
         val tableRows =
-            createQuery(
+            getAll(
                 "SELECT tbl_name FROM sqlite_master WHERE rootpage IN (SELECT json_each.value FROM json_each(?))",
-                parameters = params.size,
-                binders = {
-                    bindString(0, params[0])
-                },
+                parameters = params,
                 mapper = { it.getString(0)!! },
-            ).executeAsList()
+            )
 
         return tableRows.toSet()
-    }
-
-    override fun getExistingTableNames(tableGlob: String): List<String> {
-        val existingTableNames =
-            createQuery(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB ?",
-                parameters = 1,
-                binders = {
-                    bindString(0, tableGlob)
-                },
-                mapper = { cursor ->
-                    cursor.getString(0)!!
-                },
-            ).executeAsList()
-        return existingTableNames
     }
 
     override fun close() {
