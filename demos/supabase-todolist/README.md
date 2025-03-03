@@ -13,6 +13,29 @@ To setup your environment, please consult [these instructions](https://www.jetbr
 
 A step-by-step guide on Supabase<>PowerSync integration is available [here](https://docs.powersync.com/integration-guides/supabase).
 
+### Opting in to priorities
+
+If you want to use the example with [bucket priorities](https://docs.powersync.com/usage/use-case-examples/prioritized-sync),
+you can adopt the following sync rules instead of the ones suggested by the simpler integration guide:
+
+```YAML
+bucket_definitions:
+  all_lists:
+    priority: 1
+    parameters: select request.user_id() as "user"
+    data:
+      - select * from lists where owner_id = bucket."user"
+
+  list_items:
+    # Separate bucket per list
+    parameters: select id as list_id from lists where owner_id = request.user_id()
+    data:
+      - select * from todos where list_id = bucket.list_id
+```
+
+The project will work with both sync rules, but giving lists a higher priority allows updates to be synchronized before
+all items have been received.
+
 ## Configure project in Android Studio
 
 1. Clone this repo: ```git clone https://github.com/powersync-ja/powersync-kotlin.git```
