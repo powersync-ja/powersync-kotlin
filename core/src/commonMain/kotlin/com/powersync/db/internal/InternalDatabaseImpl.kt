@@ -1,9 +1,6 @@
 package com.powersync.db.internal
 
 import app.cash.sqldelight.ExecutableQuery
-import app.cash.sqldelight.Query
-import app.cash.sqldelight.coroutines.asFlow
-import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlPreparedStatement
 import com.persistence.PowersyncQueries
@@ -21,10 +18,7 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 
@@ -74,9 +68,11 @@ internal class InternalDatabaseImpl(
         parameters: List<Any?>?,
     ): Long =
         withContext(dbContext) {
-            val r = executeSync(sql, parameters)
-            driver.fireTableUpdates()
-            r
+            executeSync(sql, parameters)
+        }.also {
+            withContext(dbContext) {
+                driver.fireTableUpdates()
+            }
         }
 
     private fun executeSync(
@@ -163,13 +159,14 @@ internal class InternalDatabaseImpl(
     ): Flow<List<RowType>> {
         val tables =
             getSourceTables(sql, parameters)
-                .map { toFriendlyTableName(it) }
                 .filter { it.isNotBlank() }
                 .toSet()
 
-        return updatesOnTables(tables).debounce(DEFAULT_WATCH_THROTTLE_MS).map {
-            getAll(sql, parameters = parameters, mapper = mapper)
-        }
+        return updatesOnTables(tables)
+            .debounce(DEFAULT_WATCH_THROTTLE_MS)
+            .map {
+                getAll(sql, parameters = parameters, mapper = mapper)
+            }.onStart { emit(getAll(sql, parameters = parameters, mapper = mapper)) }
     }
 
     private fun <T : Any> createQuery(
@@ -211,8 +208,11 @@ internal class InternalDatabaseImpl(
                     }
                 }
             // Trigger watched queries
-            driver.fireTableUpdates()
             r
+        }.also {
+            withContext(dbContext) {
+                driver.fireTableUpdates()
+            }
         }
 
     // Register callback for table updates on a specific table

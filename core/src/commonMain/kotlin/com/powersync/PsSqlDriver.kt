@@ -18,7 +18,7 @@ internal class PsSqlDriver(
     private val tableUpdatesFlow = MutableSharedFlow<Set<String>>(replay = 0)
 
     // In-memory buffer to store table names before flushing
-    private val pendingUpdates =  AtomicMutableSet<String>()
+    private val pendingUpdates = AtomicMutableSet<String>()
 
     fun updateTable(tableName: String) {
         scope.launch {
@@ -33,16 +33,13 @@ internal class PsSqlDriver(
     }
 
     // Flows on table updates containing tables
-    fun updatesOnTables(tableNames: Set<String>): Flow<Unit> = tableUpdatesFlow.asSharedFlow().filter { it.intersect(tableNames).isNotEmpty() }.map { }
+    // The table names here are raw SQLite tables
+    fun updatesOnTables(tableNames: Set<String>): Flow<Unit> =
+        tableUpdatesFlow.asSharedFlow().filter { it.intersect(tableNames).isNotEmpty() }.map { }
 
-    suspend fun fireTableUpdates() {
-        val updates = pendingUpdates.toSet()
-        pendingUpdates.clear()
-
-        if (updates.isEmpty()) {
-            return
+    fun fireTableUpdates() {
+        scope.launch {
+            tableUpdatesFlow.emit(pendingUpdates.toSet(true))
         }
-
-        tableUpdatesFlow.emit(updates)
     }
 }
