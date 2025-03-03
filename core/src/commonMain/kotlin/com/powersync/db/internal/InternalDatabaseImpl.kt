@@ -51,15 +51,13 @@ internal class InternalDatabaseImpl(
                 sql: String,
                 parameters: List<Any?>?,
                 mapper: (SqlCursor) -> RowType,
-            ): List<RowType> =
-                this@InternalDatabaseImpl.getAllSync(sql, parameters ?: emptyList(), mapper)
+            ): List<RowType> = this@InternalDatabaseImpl.getAllSync(sql, parameters ?: emptyList(), mapper)
 
             override fun <RowType : Any> getOptional(
                 sql: String,
                 parameters: List<Any?>?,
                 mapper: (SqlCursor) -> RowType,
-            ): RowType? =
-                this@InternalDatabaseImpl.getOptionalSync(sql, parameters ?: emptyList(), mapper)
+            ): RowType? = this@InternalDatabaseImpl.getOptionalSync(sql, parameters ?: emptyList(), mapper)
         }
 
     companion object {
@@ -223,8 +221,7 @@ internal class InternalDatabaseImpl(
         }
 
     // Register callback for table updates on a specific table
-    override fun updatesOnTables(tableNames: Set<String>): Flow<Unit> =
-        driver.updatesOnTables(tableNames)
+    override fun updatesOnTables(tableNames: Set<String>): Flow<Unit> = driver.updatesOnTables(tableNames)
 
     private suspend fun getSourceTables(
         sql: String,
