@@ -158,7 +158,6 @@ internal class InternalDatabaseImpl(
         mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>> =
         flow {
-            println("Getting tables for $sql")
             // Fetch the tables asynchronously with getAll
             val tables =
                 getSourceTables(sql, parameters)
