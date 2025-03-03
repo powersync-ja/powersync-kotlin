@@ -54,6 +54,10 @@ public interface Queries {
     public fun <RowType : Any> watch(
         sql: String,
         parameters: List<Any?>? = listOf(),
+        /**
+         * Specify the minimum interval, in milliseconds, between queries.
+         */
+        throttleMs: Long? = null,
         mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>>
 

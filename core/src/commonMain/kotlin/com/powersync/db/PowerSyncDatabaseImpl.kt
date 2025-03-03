@@ -139,11 +139,12 @@ internal class PowerSyncDatabaseImpl(
             }
         }
 
-        uploadJob =
+        uploadJob = 
             scope.launch {
-                internalDb.updatesOnTables(setOf(InternalTable.CRUD.toString())).debounce(crudThrottleMs).collect {
-                    syncStream!!.triggerCrudUpload()
-                }
+                internalDb.updatesOnTables(setOf(InternalTable.CRUD.toString()))
+                    .debounce(crudThrottleMs).collect {
+                        syncStream!!.triggerCrudUpload()
+                    }
             }
     }
 
@@ -210,7 +211,8 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 
-    override suspend fun getPowerSyncVersion(): String = internalDb.queries.powerSyncVersion().executeAsOne()
+    override suspend fun getPowerSyncVersion(): String =
+        internalDb.queries.powerSyncVersion().executeAsOne()
 
     override suspend fun <RowType : Any> get(
         sql: String,
@@ -233,12 +235,15 @@ internal class PowerSyncDatabaseImpl(
     override fun <RowType : Any> watch(
         sql: String,
         parameters: List<Any?>?,
+        throttleMs: Long?,
         mapper: (SqlCursor) -> RowType,
-    ): Flow<List<RowType>> = internalDb.watch(sql, parameters, mapper)
+    ): Flow<List<RowType>> = internalDb.watch(sql, parameters, throttleMs, mapper)
 
-    override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R = internalDb.writeTransaction(callback)
+    override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R =
+        internalDb.writeTransaction(callback)
 
-    override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R = internalDb.writeTransaction(callback)
+    override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R =
+        internalDb.writeTransaction(callback)
 
     override suspend fun execute(
         sql: String,
@@ -280,7 +285,11 @@ internal class PowerSyncDatabaseImpl(
             syncStream = null
         }
 
-        currentStatus.update(connected = false, connecting = false, lastSyncedAt = currentStatus.lastSyncedAt)
+        currentStatus.update(
+            connected = false,
+            connecting = false,
+            lastSyncedAt = currentStatus.lastSyncedAt
+        )
     }
 
     override suspend fun disconnectAndClear(clearLocal: Boolean) {

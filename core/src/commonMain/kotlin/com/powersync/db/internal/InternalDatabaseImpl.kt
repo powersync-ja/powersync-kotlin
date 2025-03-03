@@ -51,13 +51,15 @@ internal class InternalDatabaseImpl(
                 sql: String,
                 parameters: List<Any?>?,
                 mapper: (SqlCursor) -> RowType,
-            ): List<RowType> = this@InternalDatabaseImpl.getAllSync(sql, parameters ?: emptyList(), mapper)
+            ): List<RowType> =
+                this@InternalDatabaseImpl.getAllSync(sql, parameters ?: emptyList(), mapper)
 
             override fun <RowType : Any> getOptional(
                 sql: String,
                 parameters: List<Any?>?,
                 mapper: (SqlCursor) -> RowType,
-            ): RowType? = this@InternalDatabaseImpl.getOptionalSync(sql, parameters ?: emptyList(), mapper)
+            ): RowType? =
+                this@InternalDatabaseImpl.getOptionalSync(sql, parameters ?: emptyList(), mapper)
         }
 
     companion object {
@@ -154,6 +156,7 @@ internal class InternalDatabaseImpl(
     override fun <RowType : Any> watch(
         sql: String,
         parameters: List<Any?>?,
+        throttleMs: Long?,
         mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>> =
         flow {
@@ -165,7 +168,7 @@ internal class InternalDatabaseImpl(
 
             emitAll(
                 updatesOnTables(tables)
-                    .debounce(DEFAULT_WATCH_THROTTLE_MS)
+                    .debounce(throttleMs ?: DEFAULT_WATCH_THROTTLE_MS)
                     .map {
                         getAll(sql, parameters = parameters, mapper = mapper)
                     }.onStart {
@@ -220,7 +223,8 @@ internal class InternalDatabaseImpl(
         }
 
     // Register callback for table updates on a specific table
-    override fun updatesOnTables(tableNames: Set<String>): Flow<Unit> = driver.updatesOnTables(tableNames)
+    override fun updatesOnTables(tableNames: Set<String>): Flow<Unit> =
+        driver.updatesOnTables(tableNames)
 
     private suspend fun getSourceTables(
         sql: String,
