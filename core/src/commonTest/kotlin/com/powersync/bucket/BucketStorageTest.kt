@@ -5,7 +5,6 @@ import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.UpdateType
 import com.powersync.db.internal.InternalDatabase
 import dev.mokkery.answering.returns
-import dev.mokkery.every
 import dev.mokkery.everySuspend
 import dev.mokkery.matcher.any
 import dev.mokkery.mock
