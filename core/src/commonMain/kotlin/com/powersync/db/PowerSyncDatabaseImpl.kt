@@ -28,7 +28,6 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -144,9 +143,8 @@ internal class PowerSyncDatabaseImpl(
                 internalDb
                     .updatesOnTables(
                         setOf(InternalTable.CRUD.toString()),
-                        throttleMs = crudThrottleMs
-                    )
-                    .collect {
+                        throttleMs = crudThrottleMs,
+                    ).collect {
                         syncStream!!.triggerCrudUpload()
                     }
             }
@@ -215,8 +213,7 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 
-    override suspend fun getPowerSyncVersion(): String =
-        internalDb.queries.powerSyncVersion().executeAsOne()
+    override suspend fun getPowerSyncVersion(): String = internalDb.queries.powerSyncVersion().executeAsOne()
 
     override suspend fun <RowType : Any> get(
         sql: String,
@@ -243,11 +240,9 @@ internal class PowerSyncDatabaseImpl(
         mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>> = internalDb.watch(sql, parameters, throttleMs, mapper)
 
-    override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R =
-        internalDb.writeTransaction(callback)
+    override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R = internalDb.writeTransaction(callback)
 
-    override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R =
-        internalDb.writeTransaction(callback)
+    override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R = internalDb.writeTransaction(callback)
 
     override suspend fun execute(
         sql: String,

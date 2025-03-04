@@ -34,20 +34,24 @@ internal class PsSqlDriver(
     }
 
     // Flows on table updates containing tables
-    fun updatesOnTables(tableNames: Set<String>, throttleMs: Long?): Flow<Unit> {
+    fun updatesOnTables(
+        tableNames: Set<String>,
+        throttleMs: Long?,
+    ): Flow<Unit> {
         // Spread the input table names in order to account for internal views
         val resolvedTableNames =
             tableNames
                 .flatMap { t -> setOf("ps_data__$t", "ps_data_local__$t", t) }
                 .toSet()
-        var flow = tableUpdatesFlow
-            .asSharedFlow()
-            .filter {
-                it
-                    .intersect(
-                        resolvedTableNames,
-                    ).isNotEmpty()
-            }
+        var flow =
+            tableUpdatesFlow
+                .asSharedFlow()
+                .filter {
+                    it
+                        .intersect(
+                            resolvedTableNames,
+                        ).isNotEmpty()
+                }
 
         if (throttleMs != null) {
             flow = flow.throttle(throttleMs)

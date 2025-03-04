@@ -11,18 +11,19 @@ import kotlinx.coroutines.flow.*
  * This throttle method acts as a slow consumer, but backpressure is not a concern
  * due to the conflated buffer dropping events during the throttle window.
  */
-internal fun <T> Flow<T>.throttle(windowMs: Long): Flow<T> = flow {
-    // Use a buffer before throttle (ensure only the latest event is kept)
-    val bufferedFlow = this@throttle.buffer(Channel.CONFLATED)
+internal fun <T> Flow<T>.throttle(windowMs: Long): Flow<T> =
+    flow {
+        // Use a buffer before throttle (ensure only the latest event is kept)
+        val bufferedFlow = this@throttle.buffer(Channel.CONFLATED)
 
-    bufferedFlow.collect { value ->
-        // Emit the event immediately (leading edge)
-        emit(value)
+        bufferedFlow.collect { value ->
+            // Emit the event immediately (leading edge)
+            emit(value)
 
-        // Delay for the throttle window to avoid emitting too frequently
-        delay(windowMs)
+            // Delay for the throttle window to avoid emitting too frequently
+            delay(windowMs)
 
-        // The next incoming event will be provided from the buffer.
-        // The next collect will emit the trailing edge
+            // The next incoming event will be provided from the buffer.
+            // The next collect will emit the trailing edge
+        }
     }
-}
