@@ -2,14 +2,11 @@ package com.powersync
 
 import app.cash.sqldelight.db.SqlDriver
 import com.powersync.utils.AtomicMutableSet
-import com.powersync.utils.throttle
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 internal class PsSqlDriver(
     private val driver: SqlDriver,
@@ -22,47 +19,31 @@ internal class PsSqlDriver(
     private val pendingUpdates = AtomicMutableSet<String>()
 
     fun updateTable(tableName: String) {
-        scope.launch {
+        // This should only ever be executed by an execute operation which should
+        // always be executed with the IO Dispatcher
+        runBlocking {
             pendingUpdates.add(tableName)
         }
     }
 
     fun clearTableUpdates() {
-        scope.launch {
+        // This should only ever be executed on rollback which should be executed via the
+        // IO Dispatcher.
+        runBlocking {
             pendingUpdates.clear()
         }
     }
 
-    // Flows on table updates containing tables
-    fun updatesOnTables(
-        tableNames: Set<String>,
-        throttleMs: Long?,
-    ): Flow<Unit> {
+    // Flows on any table change
+    // This specifically returns a SharedFlow for timing considerations
+    fun updatesOnTables(): SharedFlow<Set<String>> {
         // Spread the input table names in order to account for internal views
-        val resolvedTableNames =
-            tableNames
-                .flatMap { t -> setOf("ps_data__$t", "ps_data_local__$t", t) }
-                .toSet()
-        var flow =
-            tableUpdatesFlow
-                .asSharedFlow()
-                .filter {
-                    it
-                        .intersect(
-                            resolvedTableNames,
-                        ).isNotEmpty()
-                }
-
-        if (throttleMs != null) {
-            flow = flow.throttle(throttleMs)
-        }
-
-        return flow.map { }
+        return tableUpdatesFlow
+            .asSharedFlow()
     }
 
-    fun fireTableUpdates() {
-        scope.launch {
-            tableUpdatesFlow.emit(pendingUpdates.toSet(true))
-        }
+    suspend fun fireTableUpdates() {
+        val updates = pendingUpdates.toSet(true)
+        tableUpdatesFlow.emit(updates)
     }
 }

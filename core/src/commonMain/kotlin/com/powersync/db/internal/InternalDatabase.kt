@@ -5,6 +5,7 @@ import com.persistence.PowersyncQueries
 import com.powersync.db.Queries
 import com.powersync.persistence.PsDatabase
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharedFlow
 
 internal interface InternalDatabase :
     Queries,
@@ -12,8 +13,5 @@ internal interface InternalDatabase :
     val transactor: PsDatabase
     val queries: PowersyncQueries
 
-    fun updatesOnTables(
-        tableNames: Set<String>,
-        throttleMs: Long?,
-    ): Flow<Unit>
+    fun updatesOnTables(): SharedFlow<Set<String>>
 }

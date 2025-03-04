@@ -10,16 +10,17 @@ import com.powersync.db.SqlCursor
 import com.powersync.db.runWrapped
 import com.powersync.persistence.PsDatabase
 import com.powersync.utils.JsonUtil
+import com.powersync.utils.throttle
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 
@@ -156,22 +157,36 @@ internal class InternalDatabaseImpl(
         throttleMs: Long?,
         mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>> =
-        flow {
+        // Use a channel flow here since we throttle (buffer used under the hood)
+        // This causes some emissions to be from different scopes.
+        channelFlow {
             // Fetch the tables asynchronously with getAll
             val tables =
                 getSourceTables(sql, parameters)
                     .filter { it.isNotBlank() }
                     .toSet()
 
-            emitAll(
-                updatesOnTables(tables, throttleMs = throttleMs ?: DEFAULT_WATCH_THROTTLE_MS)
-                    .map {
-                        getAll(sql, parameters = parameters, mapper = mapper)
-                    }.onStart {
-                        // Emit the initial query result
-                        emit(getAll(sql, parameters = parameters, mapper = mapper))
-                    },
-            )
+            // Register a listener before fetching the initial result
+            val updateFlow =
+                updatesOnTables()
+
+            val initialResult = getAll(sql, parameters = parameters, mapper = mapper)
+            // Listen for updates before emitting the initial result
+
+            updateFlow
+                // onSubscription here is very important.
+                // This ensures that the initial result and all updates are emitted.
+                .onSubscription {
+                    println("emitting initial result")
+                    send(initialResult)
+                }.filter {
+                    // Only trigger updates on relevant tables
+                    it.intersect(tables).isNotEmpty()
+                }.throttle(throttleMs ?: DEFAULT_WATCH_THROTTLE_MS)
+                .collect {
+                    println("mapping update to result")
+                    send(getAll(sql, parameters = parameters, mapper = mapper))
+                }
         }
 
     private fun <T : Any> createQuery(
@@ -219,10 +234,7 @@ internal class InternalDatabaseImpl(
         }
 
     // Register callback for table updates on a specific table
-    override fun updatesOnTables(
-        tableNames: Set<String>,
-        throttleMs: Long?,
-    ): Flow<Unit> = driver.updatesOnTables(tableNames, throttleMs)
+    override fun updatesOnTables(): SharedFlow<Set<String>> = driver.updatesOnTables()
 
     private suspend fun getSourceTables(
         sql: String,

@@ -22,12 +22,14 @@ import com.powersync.sync.SyncStatusData
 import com.powersync.sync.SyncStream
 import com.powersync.utils.JsonParam
 import com.powersync.utils.JsonUtil
+import com.powersync.utils.throttle
 import com.powersync.utils.toJsonObject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -141,10 +143,10 @@ internal class PowerSyncDatabaseImpl(
         uploadJob =
             scope.launch {
                 internalDb
-                    .updatesOnTables(
-                        setOf(InternalTable.CRUD.toString()),
-                        throttleMs = crudThrottleMs,
-                    ).collect {
+                    .updatesOnTables()
+                    .filter { it.contains(InternalTable.CRUD.toString()) }
+                    .throttle(crudThrottleMs)
+                    .collect {
                         syncStream!!.triggerCrudUpload()
                     }
             }
