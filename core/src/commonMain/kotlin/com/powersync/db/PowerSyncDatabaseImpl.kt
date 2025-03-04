@@ -142,8 +142,10 @@ internal class PowerSyncDatabaseImpl(
         uploadJob =
             scope.launch {
                 internalDb
-                    .updatesOnTables(setOf(InternalTable.CRUD.toString()))
-                    .debounce(crudThrottleMs)
+                    .updatesOnTables(
+                        setOf(InternalTable.CRUD.toString()),
+                        throttleMs = crudThrottleMs
+                    )
                     .collect {
                         syncStream!!.triggerCrudUpload()
                     }
@@ -213,7 +215,8 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 
-    override suspend fun getPowerSyncVersion(): String = internalDb.queries.powerSyncVersion().executeAsOne()
+    override suspend fun getPowerSyncVersion(): String =
+        internalDb.queries.powerSyncVersion().executeAsOne()
 
     override suspend fun <RowType : Any> get(
         sql: String,
@@ -240,9 +243,11 @@ internal class PowerSyncDatabaseImpl(
         mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>> = internalDb.watch(sql, parameters, throttleMs, mapper)
 
-    override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R = internalDb.writeTransaction(callback)
+    override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R =
+        internalDb.writeTransaction(callback)
 
-    override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R = internalDb.writeTransaction(callback)
+    override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R =
+        internalDb.writeTransaction(callback)
 
     override suspend fun execute(
         sql: String,

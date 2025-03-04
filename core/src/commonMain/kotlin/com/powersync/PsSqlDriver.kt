@@ -2,6 +2,7 @@ package com.powersync
 
 import app.cash.sqldelight.db.SqlDriver
 import com.powersync.utils.AtomicMutableSet
+import com.powersync.utils.throttle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -33,20 +34,26 @@ internal class PsSqlDriver(
     }
 
     // Flows on table updates containing tables
-    fun updatesOnTables(tableNames: Set<String>): Flow<Unit> {
+    fun updatesOnTables(tableNames: Set<String>, throttleMs: Long?): Flow<Unit> {
         // Spread the input table names in order to account for internal views
         val resolvedTableNames =
             tableNames
                 .flatMap { t -> setOf("ps_data__$t", "ps_data_local__$t", t) }
                 .toSet()
-        return tableUpdatesFlow
+        var flow = tableUpdatesFlow
             .asSharedFlow()
             .filter {
                 it
                     .intersect(
                         resolvedTableNames,
                     ).isNotEmpty()
-            }.map { }
+            }
+
+        if (throttleMs != null) {
+            flow = flow.throttle(throttleMs)
+        }
+
+        return flow.map { }
     }
 
     fun fireTableUpdates() {

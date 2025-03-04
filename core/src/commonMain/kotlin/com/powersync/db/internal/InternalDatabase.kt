@@ -12,5 +12,5 @@ internal interface InternalDatabase :
     val transactor: PsDatabase
     val queries: PowersyncQueries
 
-    fun updatesOnTables(tableNames: Set<String>): Flow<Unit>
+    fun updatesOnTables(tableNames: Set<String>, throttleMs: Long?): Flow<Unit>
 }

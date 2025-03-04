@@ -16,7 +16,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -51,13 +50,15 @@ internal class InternalDatabaseImpl(
                 sql: String,
                 parameters: List<Any?>?,
                 mapper: (SqlCursor) -> RowType,
-            ): List<RowType> = this@InternalDatabaseImpl.getAllSync(sql, parameters ?: emptyList(), mapper)
+            ): List<RowType> =
+                this@InternalDatabaseImpl.getAllSync(sql, parameters ?: emptyList(), mapper)
 
             override fun <RowType : Any> getOptional(
                 sql: String,
                 parameters: List<Any?>?,
                 mapper: (SqlCursor) -> RowType,
-            ): RowType? = this@InternalDatabaseImpl.getOptionalSync(sql, parameters ?: emptyList(), mapper)
+            ): RowType? =
+                this@InternalDatabaseImpl.getOptionalSync(sql, parameters ?: emptyList(), mapper)
         }
 
     companion object {
@@ -165,11 +166,11 @@ internal class InternalDatabaseImpl(
                     .toSet()
 
             emitAll(
-                updatesOnTables(tables)
-                    .debounce(throttleMs ?: DEFAULT_WATCH_THROTTLE_MS)
+                updatesOnTables(tables, throttleMs = throttleMs ?: DEFAULT_WATCH_THROTTLE_MS)
                     .map {
                         getAll(sql, parameters = parameters, mapper = mapper)
-                    }.onStart {
+                    }
+                    .onStart {
                         // Emit the initial query result
                         emit(getAll(sql, parameters = parameters, mapper = mapper))
                     },
@@ -221,7 +222,8 @@ internal class InternalDatabaseImpl(
         }
 
     // Register callback for table updates on a specific table
-    override fun updatesOnTables(tableNames: Set<String>): Flow<Unit> = driver.updatesOnTables(tableNames)
+    override fun updatesOnTables(tableNames: Set<String>, throttleMs: Long?): Flow<Unit> =
+        driver.updatesOnTables(tableNames, throttleMs)
 
     private suspend fun getSourceTables(
         sql: String,
