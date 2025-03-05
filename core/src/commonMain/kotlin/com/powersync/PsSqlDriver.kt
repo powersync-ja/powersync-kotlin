@@ -3,11 +3,9 @@ package com.powersync
 import app.cash.sqldelight.db.SqlDriver
 import com.powersync.utils.AtomicMutableSet
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.launch
 
 internal class PsSqlDriver(
     private val driver: SqlDriver,
@@ -20,15 +18,11 @@ internal class PsSqlDriver(
     private val pendingUpdates = AtomicMutableSet<String>()
 
     fun updateTable(tableName: String) {
-        scope.launch {
-            pendingUpdates.add(tableName)
-        }
+        pendingUpdates.add(tableName)
     }
 
     fun clearTableUpdates() {
-        scope.launch {
-            pendingUpdates.clear()
-        }
+        pendingUpdates.clear()
     }
 
     // Flows on any table change
@@ -38,12 +32,6 @@ internal class PsSqlDriver(
             .asSharedFlow()
 
     suspend fun fireTableUpdates() {
-        // Use the same scope as the async table updates, this should help with queuing
-        val job =
-            scope.async {
-                val updates = pendingUpdates.toSet(true)
-                tableUpdatesFlow.emit(updates)
-            }
-        job.await()
+        tableUpdatesFlow.emit(pendingUpdates.toSetAndClear())
     }
 }

@@ -1,37 +1,26 @@
 package com.powersync.utils
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
-public class AtomicMutableSet<T> {
-    private val mutex = Mutex()
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+
+public class AtomicMutableSet<T> : SynchronizedObject() {
     private val set = mutableSetOf<T>()
 
-    public suspend fun add(element: T): Boolean =
-        mutex.withLock {
-            set.add(element)
+    public fun add(element: T): Boolean =
+        synchronized(this) {
+            return set.add(element)
         }
 
-    public suspend fun remove(element: T): Boolean =
-        mutex.withLock {
-            set.remove(element)
-        }
-
-    public suspend fun clear(): Unit =
-        mutex.withLock {
+    // Synchronized clear method
+    public fun clear(): Unit =
+        synchronized(this) {
             set.clear()
         }
 
-    public suspend fun contains(element: T): Boolean =
-        mutex.withLock {
-            set.contains(element)
-        }
-
-    public suspend fun toSet(clear: Boolean = false): Set<T> =
-        mutex.withLock {
+    public fun toSetAndClear(): Set<T> =
+        synchronized(this) {
             val copied = set.toList().toSet()
-            if (clear) {
-                set.clear()
-            }
+            set.clear()
             copied
         }
 }
