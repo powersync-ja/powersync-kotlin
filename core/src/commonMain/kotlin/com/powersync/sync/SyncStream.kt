@@ -290,6 +290,8 @@ internal class SyncStream(
     ): SyncStreamState {
         val (checkpoint) = line
         state.targetCheckpoint = checkpoint
+        status.update(downloading = true)
+
         val bucketsToDelete = state.bucketSet!!.toMutableList()
         val newBuckets = mutableSetOf<String>()
 
@@ -307,7 +309,7 @@ internal class SyncStream(
         state.bucketSet = newBuckets
         bucketStorage.removeBuckets(bucketsToDelete)
         bucketStorage.setTargetCheckpoint(checkpoint)
-        status.update(downloading = true)
+
         return state
     }
 
@@ -386,6 +388,8 @@ internal class SyncStream(
             throw Exception("Checkpoint diff without previous checkpoint")
         }
 
+        status.update(downloading = true)
+
         val newBuckets = mutableMapOf<String, BucketChecksum>()
 
         state.targetCheckpoint!!.checksums.forEach { checksum ->
@@ -415,7 +419,6 @@ internal class SyncStream(
         bucketStorage.removeBuckets(bucketsToDelete)
         bucketStorage.setTargetCheckpoint(state.targetCheckpoint!!)
 
-        status.update(downloading = true)
         return state
     }
 
