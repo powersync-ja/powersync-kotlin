@@ -21,6 +21,8 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.onSubscription
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 
@@ -34,6 +36,8 @@ internal class InternalDatabaseImpl(
 
     // Could be scope.coroutineContext, but the default is GlobalScope, which seems like a bad idea. To discuss.
     private val dbContext = Dispatchers.IO
+    private val writeLock = Mutex()
+
     private val transaction =
         object : PowerSyncTransaction {
             override fun execute(
@@ -68,10 +72,12 @@ internal class InternalDatabaseImpl(
         sql: String,
         parameters: List<Any?>?,
     ): Long =
-        withContext(dbContext) {
-            executeSync(sql, parameters)
-        }.also {
-            driver.fireTableUpdates()
+        writeLock.withLock {
+            withContext(dbContext) {
+                executeSync(sql, parameters)
+            }.also {
+                driver.fireTableUpdates()
+            }
         }
 
     private fun executeSync(
@@ -207,8 +213,8 @@ internal class InternalDatabaseImpl(
         }
 
     override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R =
-        withContext(dbContext) {
-            val r =
+        writeLock.withLock {
+            withContext(dbContext) {
                 transactor.transactionWithResult(noEnclosing = true) {
                     runWrapped {
                         val result = callback.execute(transaction)
@@ -218,10 +224,11 @@ internal class InternalDatabaseImpl(
                         result
                     }
                 }
-            // Trigger watched queries
-            r
-        }.also {
-            driver.fireTableUpdates()
+            }.also {
+                // Trigger watched queries
+                // Fire updates inside the write lock
+                driver.fireTableUpdates()
+            }
         }
 
     // Register callback for table updates on a specific table
