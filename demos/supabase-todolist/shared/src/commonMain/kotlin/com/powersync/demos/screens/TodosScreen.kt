@@ -12,19 +12,17 @@ import androidx.compose.material.Text
 import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.powersync.demos.NavController
 import com.powersync.demos.Screen
 import com.powersync.demos.components.Input
-import com.powersync.demos.components.Menu
 import com.powersync.demos.components.TodoList
 import com.powersync.demos.components.WifiIcon
 import com.powersync.demos.powersync.TodoItem
+import com.powersync.sync.SyncStatusData
 
 @Composable
 internal fun TodosScreen(
@@ -32,7 +30,7 @@ internal fun TodosScreen(
     navController: NavController,
     items: List<TodoItem>,
     inputText: String,
-    isConnected: Boolean,
+    syncStatus: SyncStatusData,
     onItemClicked: (item: TodoItem) -> Unit,
     onItemDoneChanged: (item: TodoItem, isDone: Boolean) -> Unit,
     onItemDeleteClicked: (item: TodoItem) -> Unit,
@@ -45,24 +43,25 @@ internal fun TodosScreen(
                 Text(
                     "Todo List",
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth().padding(end = 36.dp)
-                ) },
+                    modifier = Modifier.fillMaxWidth().padding(end = 36.dp),
+                )
+            },
             navigationIcon = {
                 IconButton(onClick = { navController.navigate(Screen.Home) }) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Go back")
                 }
             },
             actions = {
-                WifiIcon(isConnected)
+                WifiIcon(syncStatus)
                 Spacer(modifier = Modifier.width(16.dp))
-            }
+            },
         )
 
         Input(
             text = inputText,
             onAddClicked = onAddItemClicked,
             onTextChanged = onInputTextChanged,
-            screen = Screen.Todos
+            screen = Screen.Todos,
         )
 
         Box(Modifier.weight(1F)) {
@@ -70,7 +69,7 @@ internal fun TodosScreen(
                 items = items,
                 onItemClicked = onItemClicked,
                 onItemDoneChanged = onItemDoneChanged,
-                onItemDeleteClicked = onItemDeleteClicked
+                onItemDeleteClicked = onItemDeleteClicked,
             )
         }
     }

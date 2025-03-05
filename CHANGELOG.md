@@ -3,6 +3,7 @@
 ## 1.0.0-BETA27
 
 * Improved watch query internals. Added the ability to throttle watched queries.
+* Fixed `uploading` and `downloading` sync status indicators.
 
 ## 1.0.0-BETA26
 

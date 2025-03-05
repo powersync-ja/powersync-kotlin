@@ -129,7 +129,6 @@ internal class SyncStream(
         var checkedCrudItem: CrudEntry? = null
 
         while (true) {
-            status.update(uploading = true)
             /**
              * This is the first item in the FIFO CRUD queue.
              */
@@ -146,6 +145,7 @@ internal class SyncStream(
                     }
 
                     checkedCrudItem = nextCrudItem
+                    status.update(uploading = true)
                     uploadCrud()
                 } else {
                     // Uploading is completed
@@ -256,6 +256,8 @@ internal class SyncStream(
             state = handleInstruction(line, value, state)
         }
 
+        status.update(downloading = false)
+
         return state
     }
 
@@ -268,7 +270,12 @@ internal class SyncStream(
             is SyncLine.FullCheckpoint -> handleStreamingSyncCheckpoint(line, state)
             is SyncLine.CheckpointDiff -> handleStreamingSyncCheckpointDiff(line, state)
             is SyncLine.CheckpointComplete -> handleStreamingSyncCheckpointComplete(state)
-            is SyncLine.CheckpointPartiallyComplete -> handleStreamingSyncCheckpointPartiallyComplete(line, state)
+            is SyncLine.CheckpointPartiallyComplete ->
+                handleStreamingSyncCheckpointPartiallyComplete(
+                    line,
+                    state,
+                )
+
             is SyncLine.KeepAlive -> handleStreamingKeepAlive(line, state)
             is SyncLine.SyncDataBucket -> handleStreamingSyncData(line, state)
             SyncLine.UnknownSyncLine -> {
@@ -300,7 +307,7 @@ internal class SyncStream(
         state.bucketSet = newBuckets
         bucketStorage.removeBuckets(bucketsToDelete)
         bucketStorage.setTargetCheckpoint(checkpoint)
-
+        status.update(downloading = true)
         return state
     }
 
@@ -323,7 +330,12 @@ internal class SyncStream(
         }
 
         state.validatedCheckpoint = state.targetCheckpoint
-        status.update(lastSyncedAt = Clock.System.now(), hasSynced = true, clearDownloadError = true)
+        status.update(
+            lastSyncedAt = Clock.System.now(),
+            downloading = false,
+            hasSynced = true,
+            clearDownloadError = true,
+        )
 
         return state
     }
@@ -403,6 +415,7 @@ internal class SyncStream(
         bucketStorage.removeBuckets(bucketsToDelete)
         bucketStorage.setTargetCheckpoint(state.targetCheckpoint!!)
 
+        status.update(downloading = true)
         return state
     }
 
@@ -410,6 +423,7 @@ internal class SyncStream(
         data: SyncLine.SyncDataBucket,
         state: SyncStreamState,
     ): SyncStreamState {
+        status.update(downloading = true)
         bucketStorage.saveSyncData(SyncDataBatch(listOf(data)))
         return state
     }
