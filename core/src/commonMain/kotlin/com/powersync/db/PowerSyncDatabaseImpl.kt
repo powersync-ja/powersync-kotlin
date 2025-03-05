@@ -22,13 +22,14 @@ import com.powersync.sync.SyncStatusData
 import com.powersync.sync.SyncStream
 import com.powersync.utils.JsonParam
 import com.powersync.utils.JsonUtil
+import com.powersync.utils.throttle
 import com.powersync.utils.toJsonObject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -141,9 +142,13 @@ internal class PowerSyncDatabaseImpl(
 
         uploadJob =
             scope.launch {
-                internalDb.updatesOnTable(InternalTable.CRUD.toString()).debounce(crudThrottleMs).collect {
-                    syncStream!!.triggerCrudUpload()
-                }
+                internalDb
+                    .updatesOnTables()
+                    .filter { it.contains(InternalTable.CRUD.toString()) }
+                    .throttle(crudThrottleMs)
+                    .collect {
+                        syncStream!!.triggerCrudUpload()
+                    }
             }
     }
 
@@ -233,8 +238,9 @@ internal class PowerSyncDatabaseImpl(
     override fun <RowType : Any> watch(
         sql: String,
         parameters: List<Any?>?,
+        throttleMs: Long?,
         mapper: (SqlCursor) -> RowType,
-    ): Flow<List<RowType>> = internalDb.watch(sql, parameters, mapper)
+    ): Flow<List<RowType>> = internalDb.watch(sql, parameters, throttleMs, mapper)
 
     override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R = internalDb.writeTransaction(callback)
 
@@ -280,7 +286,11 @@ internal class PowerSyncDatabaseImpl(
             syncStream = null
         }
 
-        currentStatus.update(connected = false, connecting = false, lastSyncedAt = currentStatus.lastSyncedAt)
+        currentStatus.update(
+            connected = false,
+            connecting = false,
+            lastSyncedAt = currentStatus.lastSyncedAt,
+        )
     }
 
     override suspend fun disconnectAndClear(clearLocal: Boolean) {

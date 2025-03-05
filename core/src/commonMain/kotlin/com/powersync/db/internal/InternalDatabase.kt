@@ -4,7 +4,7 @@ import app.cash.sqldelight.db.Closeable
 import com.persistence.PowersyncQueries
 import com.powersync.db.Queries
 import com.powersync.persistence.PsDatabase
-import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharedFlow
 
 internal interface InternalDatabase :
     Queries,
@@ -12,7 +12,5 @@ internal interface InternalDatabase :
     val transactor: PsDatabase
     val queries: PowersyncQueries
 
-    fun getExistingTableNames(tableGlob: String): List<String>
-
-    fun updatesOnTable(tableName: String): Flow<Unit>
+    fun updatesOnTables(): SharedFlow<Set<String>>
 }

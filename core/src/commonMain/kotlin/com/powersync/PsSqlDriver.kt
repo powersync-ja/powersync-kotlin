@@ -1,23 +1,21 @@
 package com.powersync
 
 import app.cash.sqldelight.db.SqlDriver
+import com.powersync.utils.AtomicMutableSet
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 
 internal class PsSqlDriver(
     private val driver: SqlDriver,
     private val scope: CoroutineScope,
 ) : SqlDriver by driver {
     // MutableSharedFlow to emit batched table updates
-    private val tableUpdatesFlow = MutableSharedFlow<List<String>>(replay = 0)
+    private val tableUpdatesFlow = MutableSharedFlow<Set<String>>(replay = 0)
 
     // In-memory buffer to store table names before flushing
-    private val pendingUpdates = mutableSetOf<String>()
+    private val pendingUpdates = AtomicMutableSet<String>()
 
     fun updateTable(tableName: String) {
         pendingUpdates.add(tableName)
@@ -27,20 +25,13 @@ internal class PsSqlDriver(
         pendingUpdates.clear()
     }
 
-    // Flows on table updates
-    fun tableUpdates(): Flow<List<String>> = tableUpdatesFlow.asSharedFlow()
+    // Flows on any table change
+    // This specifically returns a SharedFlow for downstream timing considerations
+    fun updatesOnTables(): SharedFlow<Set<String>> =
+        tableUpdatesFlow
+            .asSharedFlow()
 
-    // Flows on table updates containing a specific table
-    fun updatesOnTable(tableName: String): Flow<Unit> = tableUpdates().filter { it.contains(tableName) }.map { }
-
-    fun fireTableUpdates() {
-        val updates = pendingUpdates.toList()
-        if (updates.isEmpty()) {
-            return
-        }
-        scope.launch {
-            tableUpdatesFlow.emit(updates)
-        }
-        pendingUpdates.clear()
+    suspend fun fireTableUpdates() {
+        tableUpdatesFlow.emit(pendingUpdates.toSetAndClear())
     }
 }

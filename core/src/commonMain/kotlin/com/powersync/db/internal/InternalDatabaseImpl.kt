@@ -1,9 +1,6 @@
 package com.powersync.db.internal
 
 import app.cash.sqldelight.ExecutableQuery
-import app.cash.sqldelight.Query
-import app.cash.sqldelight.coroutines.asFlow
-import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlPreparedStatement
 import com.persistence.PowersyncQueries
@@ -13,15 +10,17 @@ import com.powersync.db.SqlCursor
 import com.powersync.db.runWrapped
 import com.powersync.persistence.PsDatabase
 import com.powersync.utils.JsonUtil
+import com.powersync.utils.throttle
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -35,14 +34,10 @@ internal class InternalDatabaseImpl(
     override val transactor: PsDatabase = PsDatabase(driver)
     override val queries: PowersyncQueries = transactor.powersyncQueries
 
-    // Register callback for table updates
-    private fun tableUpdates(): Flow<List<String>> = driver.tableUpdates()
-
-    // Debounced by transaction completion
-    private val tableUpdatesMutex = Mutex()
-
     // Could be scope.coroutineContext, but the default is GlobalScope, which seems like a bad idea. To discuss.
     private val dbContext = Dispatchers.IO
+    private val writeLock = Mutex()
+
     private val transaction =
         object : PowerSyncTransaction {
             override fun execute(
@@ -70,43 +65,19 @@ internal class InternalDatabaseImpl(
         }
 
     companion object {
-        const val POWERSYNC_TABLE_MATCH = "(^ps_data__|^ps_data_local__)"
         const val DEFAULT_WATCH_THROTTLE_MS = 30L
-    }
-
-    init {
-        scope.launch {
-            val accumulatedUpdates = mutableSetOf<String>()
-            // Store table changes in an accumulated array which will be (debounced) emitted on transaction end
-            tableUpdates()
-                .onEach { tables ->
-                    val dataTables =
-                        tables
-                            .map { toFriendlyTableName(it) }
-                            .filter { it.isNotBlank() }
-                    tableUpdatesMutex.withLock {
-                        accumulatedUpdates.addAll(dataTables)
-                    }
-                }
-                // debounce ignores events inside the throttle. Debouncing needs to be done after accumulation
-                .debounce(DEFAULT_WATCH_THROTTLE_MS)
-                .collect { _ ->
-                    tableUpdatesMutex.withLock {
-                        driver.notifyListeners(queryKeys = accumulatedUpdates.toTypedArray())
-                        accumulatedUpdates.clear()
-                    }
-                }
-        }
     }
 
     override suspend fun execute(
         sql: String,
         parameters: List<Any?>?,
     ): Long =
-        withContext(dbContext) {
-            val r = executeSync(sql, parameters)
-            driver.fireTableUpdates()
-            r
+        writeLock.withLock {
+            withContext(dbContext) {
+                executeSync(sql, parameters)
+            }.also {
+                driver.fireTableUpdates()
+            }
         }
 
     private fun executeSync(
@@ -189,21 +160,37 @@ internal class InternalDatabaseImpl(
     override fun <RowType : Any> watch(
         sql: String,
         parameters: List<Any?>?,
+        throttleMs: Long?,
         mapper: (SqlCursor) -> RowType,
-    ): Flow<List<RowType>> {
-        val tables =
-            getSourceTables(sql, parameters)
-                .map { toFriendlyTableName(it) }
-                .filter { it.isNotBlank() }
-                .toSet()
-        return watchQuery(
-            query = sql,
-            parameters = parameters?.size ?: 0,
-            binders = getBindersFromParams(parameters),
-            mapper = mapper,
-            tables = tables,
-        ).asFlow().mapToList(scope.coroutineContext)
-    }
+    ): Flow<List<RowType>> =
+        // Use a channel flow here since we throttle (buffer used under the hood)
+        // This causes some emissions to be from different scopes.
+        channelFlow {
+            // Fetch the tables asynchronously with getAll
+            val tables =
+                getSourceTables(sql, parameters)
+                    .filter { it.isNotBlank() }
+                    .toSet()
+
+            updatesOnTables()
+                // onSubscription here is very important.
+                // This ensures that the initial result and all updates are emitted.
+                .onSubscription {
+                    send(getAll(sql, parameters = parameters, mapper = mapper))
+                }.filter {
+                    // Only trigger updates on relevant tables
+                    it.intersect(tables).isNotEmpty()
+                }
+                // Throttling here is a feature which prevents watch queries from spamming updates.
+                // Throttling by design discards and delays events within the throttle window. Discarded events
+                // still trigger a trailing edge update.
+                // Backpressure is avoided on the throttling and consumer level by buffering the last upstream value.
+                // Note that the buffered upstream "value" only serves to trigger the getAll query. We don't buffer watch results.
+                .throttle(throttleMs ?: DEFAULT_WATCH_THROTTLE_MS)
+                .collect {
+                    send(getAll(sql, parameters = parameters, mapper = mapper))
+                }
+        }
 
     private fun <T : Any> createQuery(
         query: String,
@@ -216,28 +203,6 @@ internal class InternalDatabaseImpl(
                 runWrapped {
                     driver.executeQuery(null, query, mapper, parameters, binders)
                 }
-        }
-
-    private fun <T : Any> watchQuery(
-        query: String,
-        mapper: (SqlCursor) -> T,
-        parameters: Int = 0,
-        binders: (SqlPreparedStatement.() -> Unit)? = null,
-        tables: Set<String> = setOf(),
-    ): Query<T> =
-        object : Query<T>(wrapperMapper(mapper)) {
-            override fun <R> execute(mapper: (app.cash.sqldelight.db.SqlCursor) -> QueryResult<R>): QueryResult<R> =
-                runWrapped {
-                    driver.executeQuery(null, query, mapper, parameters, binders)
-                }
-
-            override fun addListener(listener: Listener) {
-                driver.addListener(queryKeys = tables.toTypedArray(), listener = listener)
-            }
-
-            override fun removeListener(listener: Listener) {
-                driver.removeListener(queryKeys = tables.toTypedArray(), listener = listener)
-            }
         }
 
     override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R =
@@ -254,8 +219,8 @@ internal class InternalDatabaseImpl(
         }
 
     override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R =
-        withContext(dbContext) {
-            val r =
+        writeLock.withLock {
+            withContext(dbContext) {
                 transactor.transactionWithResult(noEnclosing = true) {
                     runWrapped {
                         val result = callback.execute(transaction)
@@ -265,31 +230,24 @@ internal class InternalDatabaseImpl(
                         result
                     }
                 }
-            // Trigger watched queries
-            driver.fireTableUpdates()
-            r
+            }.also {
+                // Trigger watched queries
+                // Fire updates inside the write lock
+                driver.fireTableUpdates()
+            }
         }
 
     // Register callback for table updates on a specific table
-    override fun updatesOnTable(tableName: String): Flow<Unit> = driver.updatesOnTable(tableName)
+    override fun updatesOnTables(): SharedFlow<Set<String>> = driver.updatesOnTables()
 
-    private fun toFriendlyTableName(tableName: String): String {
-        val regex = POWERSYNC_TABLE_MATCH.toRegex()
-        if (regex.containsMatchIn(tableName)) {
-            return tableName.replace(regex, "")
-        }
-        return tableName
-    }
-
-    private fun getSourceTables(
+    private suspend fun getSourceTables(
         sql: String,
         parameters: List<Any?>?,
     ): Set<String> {
         val rows =
-            createQuery(
-                query = "EXPLAIN $sql",
-                parameters = parameters?.size ?: 0,
-                binders = getBindersFromParams(parameters),
+            getAll(
+                "EXPLAIN $sql",
+                parameters = parameters,
                 mapper = {
                     ExplainQueryResult(
                         addr = it.getString(0)!!,
@@ -299,7 +257,7 @@ internal class InternalDatabaseImpl(
                         p3 = it.getLong(4)!!,
                     )
                 },
-            ).executeAsList()
+            )
 
         val rootPages = mutableListOf<Long>()
         for (row in rows) {
@@ -309,31 +267,13 @@ internal class InternalDatabaseImpl(
         }
         val params = listOf(JsonUtil.json.encodeToString(rootPages))
         val tableRows =
-            createQuery(
+            getAll(
                 "SELECT tbl_name FROM sqlite_master WHERE rootpage IN (SELECT json_each.value FROM json_each(?))",
-                parameters = params.size,
-                binders = {
-                    bindString(0, params[0])
-                },
+                parameters = params,
                 mapper = { it.getString(0)!! },
-            ).executeAsList()
+            )
 
         return tableRows.toSet()
-    }
-
-    override fun getExistingTableNames(tableGlob: String): List<String> {
-        val existingTableNames =
-            createQuery(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB ?",
-                parameters = 1,
-                binders = {
-                    bindString(0, tableGlob)
-                },
-                mapper = { cursor ->
-                    cursor.getString(0)!!
-                },
-            ).executeAsList()
-        return existingTableNames
     }
 
     override fun close() {

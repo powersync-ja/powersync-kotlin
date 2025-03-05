@@ -5,7 +5,6 @@ import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.UpdateType
 import com.powersync.db.internal.InternalDatabase
 import dev.mokkery.answering.returns
-import dev.mokkery.every
 import dev.mokkery.everySuspend
 import dev.mokkery.matcher.any
 import dev.mokkery.mock
@@ -24,9 +23,7 @@ class BucketStorageTest {
     @Test
     fun testGetMaxOpId() {
         mockDb =
-            mock<InternalDatabase> {
-                every { getExistingTableNames("ps_data_*") } returns listOf("list_1", "list_2")
-            }
+            mock<InternalDatabase> {}
         bucketStorage = BucketStorageImpl(mockDb, Logger)
         assertEquals("9223372036854775807", bucketStorage.getMaxOpId())
     }
@@ -36,7 +33,6 @@ class BucketStorageTest {
         runTest {
             mockDb =
                 mock<InternalDatabase> {
-                    every { getExistingTableNames("ps_data_*") } returns listOf("list_1", "list_2")
                     everySuspend {
                         getOptional<String>(
                             any(),
@@ -55,7 +51,6 @@ class BucketStorageTest {
         runTest {
             mockDb =
                 mock<InternalDatabase> {
-                    every { getExistingTableNames("ps_data_*") } returns listOf("list_1", "list_2")
                     everySuspend {
                         getOptional<String>(
                             any(),
@@ -88,7 +83,6 @@ class BucketStorageTest {
                 )
             mockDb =
                 mock<InternalDatabase> {
-                    every { getExistingTableNames("ps_data_*") } returns listOf("list_1", "list_2")
                     everySuspend { getOptional<CrudEntry>(any(), any(), any()) } returns mockCrudEntry
                 }
             bucketStorage = BucketStorageImpl(mockDb, Logger)
@@ -102,7 +96,6 @@ class BucketStorageTest {
         runTest {
             mockDb =
                 mock<InternalDatabase> {
-                    every { getExistingTableNames("ps_data_*") } returns listOf("list_1", "list_2")
                     everySuspend { getOptional<CrudEntry>(any(), any(), any()) } returns null
                 }
             bucketStorage = BucketStorageImpl(mockDb, Logger)
@@ -116,7 +109,6 @@ class BucketStorageTest {
         runTest {
             mockDb =
                 mock<InternalDatabase> {
-                    every { getExistingTableNames("ps_data_*") } returns listOf("list_1", "list_2")
                     everySuspend { getOptional<Long>(any(), any(), any()) } returns 1L
                 }
             bucketStorage = BucketStorageImpl(mockDb, Logger)
@@ -129,7 +121,6 @@ class BucketStorageTest {
         runTest {
             mockDb =
                 mock<InternalDatabase> {
-                    every { getExistingTableNames("ps_data_*") } returns listOf("list_1", "list_2")
                     everySuspend { getOptional<CrudEntry>(any(), any(), any()) } returns null
                 }
             bucketStorage = BucketStorageImpl(mockDb, Logger)
@@ -142,7 +133,6 @@ class BucketStorageTest {
         runBlocking {
             mockDb =
                 mock<InternalDatabase> {
-                    every { getExistingTableNames("ps_data_*") } returns listOf("list_1", "list_2")
                     everySuspend {
                         getOptional<Long>(
                             any(),
@@ -164,7 +154,6 @@ class BucketStorageTest {
             val mockBucketStates = listOf(BucketState("bucket1", "op1"), BucketState("bucket2", "op2"))
             mockDb =
                 mock<InternalDatabase> {
-                    every { getExistingTableNames("ps_data_*") } returns listOf("list_1", "list_2")
                     everySuspend {
                         getOptional<Long>(
                             any(),
