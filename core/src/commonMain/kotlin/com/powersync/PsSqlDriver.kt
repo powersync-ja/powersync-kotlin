@@ -27,20 +27,18 @@ internal class PsSqlDriver(
     }
 
     fun clearTableUpdates() {
-        // This should only ever be executed on rollback which should be executed via the
-        // IO Dispatcher.
+        // This should only ever be executed by an execute operation which should
+        // always be executed with the IO Dispatcher
         runBlocking {
             pendingUpdates.clear()
         }
     }
 
     // Flows on any table change
-    // This specifically returns a SharedFlow for timing considerations
-    fun updatesOnTables(): SharedFlow<Set<String>> {
-        // Spread the input table names in order to account for internal views
-        return tableUpdatesFlow
+    // This specifically returns a SharedFlow for downstream timing considerations
+    fun updatesOnTables(): SharedFlow<Set<String>> =
+        tableUpdatesFlow
             .asSharedFlow()
-    }
 
     suspend fun fireTableUpdates() {
         val updates = pendingUpdates.toSet(true)

@@ -1,5 +1,10 @@
 package com.powersync.utils
 
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -34,6 +39,28 @@ class JsonTest {
         val jsonElement = string.toJsonElement()
         assertTrue(jsonElement is JsonPrimitive)
         assertEquals("test", jsonElement.content)
+    }
+
+    @Test
+    fun testThrottle() {
+        runTest {
+            val t =
+                flow {
+                    emit(1)
+                    delay(10)
+                    emit(2)
+                    delay(20)
+                    emit(3)
+                    delay(100)
+                    emit(4)
+                }.throttle(100)
+                    .map {
+                        // Adding a delay here to simulate a slow consumer
+                        delay(1000)
+                        it
+                    }.toList()
+            assertEquals(t, listOf(1, 4))
+        }
     }
 
     @Test

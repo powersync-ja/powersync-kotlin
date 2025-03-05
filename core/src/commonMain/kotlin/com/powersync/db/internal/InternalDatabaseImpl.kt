@@ -166,25 +166,16 @@ internal class InternalDatabaseImpl(
                     .filter { it.isNotBlank() }
                     .toSet()
 
-            // Register a listener before fetching the initial result
-            val updateFlow =
-                updatesOnTables()
-
-            val initialResult = getAll(sql, parameters = parameters, mapper = mapper)
-            // Listen for updates before emitting the initial result
-
-            updateFlow
+            updatesOnTables()
                 // onSubscription here is very important.
                 // This ensures that the initial result and all updates are emitted.
                 .onSubscription {
-                    println("emitting initial result")
-                    send(initialResult)
+                    send(getAll(sql, parameters = parameters, mapper = mapper))
                 }.filter {
                     // Only trigger updates on relevant tables
                     it.intersect(tables).isNotEmpty()
                 }.throttle(throttleMs ?: DEFAULT_WATCH_THROTTLE_MS)
                 .collect {
-                    println("mapping update to result")
                     send(getAll(sql, parameters = parameters, mapper = mapper))
                 }
         }
