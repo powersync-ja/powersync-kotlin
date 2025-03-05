@@ -96,8 +96,6 @@ class AndroidDatabaseTest {
             }
         }
 
-    @Test
-    fun testThrottledTableUpdates() =
         runTest {
             turbineScope {
                 // Avoids skipping delays

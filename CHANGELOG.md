@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0-BETA27
+
+* Improved watch query internals. Added the ability to throttle watched queries.
+
 ## 1.0.0-BETA26
 
 * Support bucket priorities and partial syncs.
