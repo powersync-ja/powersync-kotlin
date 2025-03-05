@@ -180,7 +180,13 @@ internal class InternalDatabaseImpl(
                 }.filter {
                     // Only trigger updates on relevant tables
                     it.intersect(tables).isNotEmpty()
-                }.throttle(throttleMs ?: DEFAULT_WATCH_THROTTLE_MS)
+                }
+                // Throttling here is a feature which prevents watch queries from spamming updates.
+                // Throttling by design discards and delays events within the throttle window. Discarded events
+                // still trigger a trailing edge update.
+                // Backpressure is avoided on the throttling and consumer level by buffering the last upstream value.
+                // Note that the buffered upstream "value" only serves to trigger the getAll query. We don't buffer watch results.
+                .throttle(throttleMs ?: DEFAULT_WATCH_THROTTLE_MS)
                 .collect {
                     send(getAll(sql, parameters = parameters, mapper = mapper))
                 }
