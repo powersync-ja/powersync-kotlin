@@ -24,6 +24,7 @@ import com.powersync.demos.screens.HomeScreen
 import com.powersync.demos.screens.SignInScreen
 import com.powersync.demos.screens.SignUpScreen
 import com.powersync.demos.screens.TodosScreen
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.runBlocking
 
 @Composable
@@ -40,7 +41,11 @@ fun App(
             )
         }
     val db = remember { PowerSyncDatabase(factory, schema) }
-    val status by db.currentStatus.asFlow().collectAsState(initial = db.currentStatus)
+    // Debouncing the status flow prevents flicker
+    val status by db.currentStatus
+        .asFlow()
+        .debounce(200)
+        .collectAsState(initial = db.currentStatus)
 
     // This assumes that the buckets for lists has a priority of 1 (but it will work fine with sync
     // rules not defining any priorities at all too). When giving lists a higher priority than
