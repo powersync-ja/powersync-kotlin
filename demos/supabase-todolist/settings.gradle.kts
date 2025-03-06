@@ -1,5 +1,7 @@
 import java.util.Properties
 
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+
 pluginManagement {
     repositories {
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
@@ -25,13 +27,6 @@ dependencyResolutionManagement {
         maven("https://jitpack.io") {
             content { includeGroup("com.github.requery") }
         }
-        maven {
-            url = uri("https://maven.pkg.github.com/powersync-ja/powersync-kotlin")
-            credentials {
-                username = localProperties.getProperty("GITHUB_USERNAME", "")
-                password = localProperties.getProperty("GITHUB_TOKEN", "")
-            }
-        }
     }
 }
 
@@ -45,12 +40,18 @@ include(":androidApp")
 include(":shared")
 include(":desktopApp")
 
-includeBuild("../..") {
-    dependencySubstitution {
-        substitute(module("com.powersync:core"))
-            .using(project(":core")).because("we want to auto-wire up sample dependency")
-        substitute(module("com.powersync:connector-supabase"))
-            .using(project(":connectors:supabase"))
-            .because("we want to auto-wire up sample dependency")
+val useReleasedVersions = localProperties.getProperty("USE_RELEASED_POWERSYNC_VERSIONS") == "true"
+
+if (!useReleasedVersions) {
+    includeBuild("../..") {
+        dependencySubstitution {
+            substitute(module("com.powersync:core"))
+                .using(project(":core")).because("we want to auto-wire up sample dependency")
+            substitute(module("com.powersync:persistence"))
+                .using(project(":persistence")).because("we want to auto-wire up sample dependency")
+            substitute(module("com.powersync:connector-supabase"))
+                .using(project(":connectors:supabase"))
+                .because("we want to auto-wire up sample dependency")
+        }
     }
 }
