@@ -22,14 +22,14 @@ import com.powersync.demos.components.ListContent
 import com.powersync.demos.components.Menu
 import com.powersync.demos.components.WifiIcon
 import com.powersync.demos.powersync.ListItem
+import com.powersync.sync.SyncStatusData
 
 @Composable
 internal fun HomeScreen(
     modifier: Modifier = Modifier,
     items: List<ListItem>,
     inputText: String,
-    isConnected: Boolean,
-    hasSynced: Boolean?,
+    syncStatus: SyncStatusData,
     onSignOutSelected: () -> Unit,
     onItemClicked: (item: ListItem) -> Unit,
     onItemDeleteClicked: (item: ListItem) -> Unit,
@@ -40,46 +40,49 @@ internal fun HomeScreen(
         TopAppBar(
             title = {
                 Text(
-                "Todo Lists",
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(end = 36.dp)
-            ) },
-            navigationIcon = { Menu(
-                true,
-                onSignOutSelected
-            ) },
+                    "Todo Lists",
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(end = 36.dp),
+                )
+            },
+            navigationIcon = {
+                Menu(
+                    true,
+                    onSignOutSelected,
+                )
+            },
             actions = {
-                WifiIcon(isConnected)
+                WifiIcon(syncStatus)
                 Spacer(modifier = Modifier.width(16.dp))
-            }
+            },
         )
 
         when {
-                hasSynced == null || hasSynced == false -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize().background(MaterialTheme.colors.background),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Busy with initial sync...",
-                            style = MaterialTheme.typography.h6
-                        )
-                    }
+            syncStatus.hasSynced == null || syncStatus.hasSynced == false -> {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colors.background),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "Busy with initial sync...",
+                        style = MaterialTheme.typography.h6,
+                    )
                 }
-            else -> {
+            }
 
+            else -> {
                 Input(
                     text = inputText,
                     onAddClicked = onAddItemClicked,
                     onTextChanged = onInputTextChanged,
-                    screen = Screen.Home
+                    screen = Screen.Home,
                 )
 
                 Box(Modifier.weight(1F)) {
                     ListContent(
                         items = items,
                         onItemClicked = onItemClicked,
-                        onItemDeleteClicked = onItemDeleteClicked
+                        onItemDeleteClicked = onItemDeleteClicked,
                     )
                 }
             }

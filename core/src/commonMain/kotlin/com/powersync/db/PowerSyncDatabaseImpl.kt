@@ -128,6 +128,7 @@ internal class PowerSyncDatabaseImpl(
                 currentStatus.update(
                     connected = it.connected,
                     connecting = it.connecting,
+                    uploading = it.uploading,
                     downloading = it.downloading,
                     lastSyncedAt = it.lastSyncedAt,
                     hasSynced = it.hasSynced,

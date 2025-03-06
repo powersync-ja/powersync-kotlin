@@ -24,20 +24,28 @@ import com.powersync.demos.screens.HomeScreen
 import com.powersync.demos.screens.SignInScreen
 import com.powersync.demos.screens.SignUpScreen
 import com.powersync.demos.screens.TodosScreen
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.runBlocking
 
-
 @Composable
-fun App(factory: DatabaseDriverFactory, modifier: Modifier = Modifier) {
-    val supabase = remember {
-        SupabaseConnector(
-            powerSyncEndpoint = Config.POWERSYNC_URL,
-            supabaseUrl = Config.SUPABASE_URL,
-            supabaseKey = Config.SUPABASE_ANON_KEY
-        )
-    }
+fun App(
+    factory: DatabaseDriverFactory,
+    modifier: Modifier = Modifier,
+) {
+    val supabase =
+        remember {
+            SupabaseConnector(
+                powerSyncEndpoint = Config.POWERSYNC_URL,
+                supabaseUrl = Config.SUPABASE_URL,
+                supabaseKey = Config.SUPABASE_ANON_KEY,
+            )
+        }
     val db = remember { PowerSyncDatabase(factory, schema) }
-    val status by db.currentStatus.asFlow().collectAsState(initial = db.currentStatus)
+    // Debouncing the status flow prevents flicker
+    val status by db.currentStatus
+        .asFlow()
+        .debounce(200)
+        .collectAsState(initial = db.currentStatus)
 
     // This assumes that the buckets for lists has a priority of 1 (but it will work fine with sync
     // rules not defining any priorities at all too). When giving lists a higher priority than
@@ -48,9 +56,10 @@ fun App(factory: DatabaseDriverFactory, modifier: Modifier = Modifier) {
     }
 
     val navController = remember { NavController(Screen.Home) }
-    val authViewModel = remember {
-        AuthViewModel(supabase, db, navController)
-    }
+    val authViewModel =
+        remember {
+            AuthViewModel(supabase, db, navController)
+        }
 
     val authState by authViewModel.authState.collectAsState()
     val currentScreen by navController.currentScreen.collectAsState()
@@ -81,7 +90,7 @@ fun App(factory: DatabaseDriverFactory, modifier: Modifier = Modifier) {
 
     when (currentScreen) {
         is Screen.Home -> {
-            if(authState == AuthState.SignedOut) {
+            if (authState == AuthState.SignedOut) {
                 navController.navigate(Screen.SignIn)
             }
 
@@ -93,14 +102,13 @@ fun App(factory: DatabaseDriverFactory, modifier: Modifier = Modifier) {
             HomeScreen(
                 modifier = modifier.background(MaterialTheme.colors.background),
                 items = items,
-                isConnected = status.connected,
                 onSignOutSelected = { handleSignOut() },
                 inputText = listsInputText,
                 onItemClicked = handleOnItemClicked,
                 onItemDeleteClicked = lists.value::onItemDeleteClicked,
                 onAddItemClicked = lists.value::onAddItemClicked,
                 onInputTextChanged = lists.value::onInputTextChanged,
-                hasSynced = hasSyncedLists
+                syncStatus = status,
             )
         }
 
@@ -113,7 +121,7 @@ fun App(factory: DatabaseDriverFactory, modifier: Modifier = Modifier) {
                 modifier = modifier.background(MaterialTheme.colors.background),
                 navController = navController,
                 items = todoItems,
-                isConnected = status.connected,
+                syncStatus = status,
                 inputText = todosInputText,
                 onItemClicked = todos.value::onItemClicked,
                 onItemDoneChanged = todos.value::onItemDoneChanged,
@@ -133,24 +141,24 @@ fun App(factory: DatabaseDriverFactory, modifier: Modifier = Modifier) {
         }
 
         is Screen.SignIn -> {
-            if(authState == AuthState.SignedIn) {
+            if (authState == AuthState.SignedIn) {
                 navController.navigate(Screen.Home)
             }
 
             SignInScreen(
                 navController,
-                authViewModel
+                authViewModel,
             )
         }
 
         is Screen.SignUp -> {
-            if(authState == AuthState.SignedIn) {
+            if (authState == AuthState.SignedIn) {
                 navController.navigate(Screen.Home)
             }
 
             SignUpScreen(
                 navController,
-                authViewModel
+                authViewModel,
             )
         }
     }
