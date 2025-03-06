@@ -207,7 +207,14 @@ class SyncIntegrationTest {
                 SyncLine.FullCheckpoint(
                     Checkpoint(
                         lastOpId = "4",
-                        checksums = listOf(BucketChecksum(bucket = "bkt", priority = BucketPriority(1), checksum = 0)),
+                        checksums =
+                            listOf(
+                                BucketChecksum(
+                                    bucket = "bkt",
+                                    priority = BucketPriority(1),
+                                    checksum = 0,
+                                ),
+                            ),
                     ),
                 ),
             )
@@ -225,6 +232,41 @@ class SyncIntegrationTest {
             database = openDb()
             assertFalse { database.currentStatus.hasSynced == true }
             assertTrue { database.currentStatus.statusForPriority(BucketPriority(1)).hasSynced == true }
+            database.close()
+            syncLines.close()
+        }
+
+    @Test
+    fun setsDownloadingState() =
+        runTest {
+            val syncStream = syncStream()
+            database.connect(syncStream, 1000L)
+
+            turbineScope(timeout = 10.0.seconds) {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                turbine.waitFor { it.connected && !it.downloading }
+
+                syncLines.send(
+                    SyncLine.FullCheckpoint(
+                        Checkpoint(
+                            lastOpId = "1",
+                            checksums =
+                                listOf(
+                                    BucketChecksum(
+                                        bucket = "bkt",
+                                        checksum = 0,
+                                    ),
+                                ),
+                        ),
+                    ),
+                )
+                turbine.waitFor { it.downloading }
+
+                syncLines.send(SyncLine.CheckpointComplete(lastOpId = "1"))
+                turbine.waitFor { !it.downloading }
+                turbine.cancel()
+            }
+
             database.close()
             syncLines.close()
         }
