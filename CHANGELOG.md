@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0-BETA28
+
+* Update PowerSync SQLite core extension to 0.3.12.
+
 ## 1.0.0-BETA27
 
 * Improved watch query internals. Added the ability to throttle watched queries.
