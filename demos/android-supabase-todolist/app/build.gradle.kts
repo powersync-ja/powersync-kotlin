@@ -87,9 +87,11 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-    implementation("com.powersync:core")
-    implementation("com.powersync:connector-supabase")
-    implementation("com.powersync:compose")
+    // To use a fixed version, replace "latest.release" with the latest version available at
+    // https://central.sonatype.com/artifact/com.powersync/core
+    implementation("com.powersync:core:latest.release")
+    implementation("com.powersync:connector-supabase:latest.release")
+    implementation("com.powersync:compose:latest.release")
     implementation(libs.uuid)
     implementation(libs.kermit)
     implementation(libs.androidx.material.icons.extended)
