@@ -40,8 +40,10 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             // Need to use api here otherwise Database driver can't be accessed
-            api("com.powersync:core")
-            implementation("com.powersync:connector-supabase")
+            // When copying this example, replace "latest.release" with the current version available
+            // at: https://central.sonatype.com/artifact/com.powersync/core
+            api("com.powersync:core:latest.release")
+            implementation("com.powersync:connector-supabase:latest.release")
             implementation(libs.uuid)
             implementation(compose.runtime)
             implementation(compose.foundation)
