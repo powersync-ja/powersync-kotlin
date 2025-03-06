@@ -272,45 +272,47 @@ class SyncIntegrationTest {
         }
 
     @Test
-    fun testMultipleSyncsDoNotCreateMultipleStatusEntries() = runTest {
-        val syncStream = syncStream()
-        database.connect(syncStream, 1000L)
+    fun testMultipleSyncsDoNotCreateMultipleStatusEntries() =
+        runTest {
+            val syncStream = syncStream()
+            database.connect(syncStream, 1000L)
 
-        turbineScope(timeout = 10.0.seconds) {
-            val turbine = database.currentStatus.asFlow().testIn(this)
-            turbine.waitFor { it.connected && !it.downloading }
+            turbineScope(timeout = 10.0.seconds) {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                turbine.waitFor { it.connected && !it.downloading }
 
-            repeat(5) {
-                syncLines.send(
-                    SyncLine.FullCheckpoint(
-                        Checkpoint(
-                            lastOpId = "1",
-                            checksums =
-                            listOf(
-                                BucketChecksum(
-                                    bucket = "bkt",
-                                    checksum = 0,
-                                ),
+                repeat(5) {
+                    syncLines.send(
+                        SyncLine.FullCheckpoint(
+                            Checkpoint(
+                                lastOpId = "1",
+                                checksums =
+                                    listOf(
+                                        BucketChecksum(
+                                            bucket = "bkt",
+                                            checksum = 0,
+                                        ),
+                                    ),
                             ),
                         ),
-                    ),
-                )
-                turbine.waitFor { it.downloading }
+                    )
+                    turbine.waitFor { it.downloading }
 
-                syncLines.send(SyncLine.CheckpointComplete(lastOpId = "1"))
-                turbine.waitFor { !it.downloading }
+                    syncLines.send(SyncLine.CheckpointComplete(lastOpId = "1"))
+                    turbine.waitFor { !it.downloading }
 
-                val rows = database.getAll("SELECT * FROM ps_sync_state;") {
-                    it.getString(1)!!
+                    val rows =
+                        database.getAll("SELECT * FROM ps_sync_state;") {
+                            it.getString(1)!!
+                        }
+
+                    assertEquals(1, rows.size)
                 }
 
-                assertEquals(1, rows.size)
+                turbine.cancel()
             }
 
-            turbine.cancel()
+            database.close()
+            syncLines.close()
         }
-
-        database.close()
-        syncLines.close()
-    }
 }
