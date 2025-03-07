@@ -156,6 +156,8 @@ kotlin {
     iosX64()
     iosArm64()
     iosSimulatorArm64()
+    macosX64()
+    macosArm64()
 
     targets.withType<KotlinNativeTarget> {
         compilations.named("main") {
@@ -184,16 +186,6 @@ kotlin {
                 linkerOpts("-rpath", frameworkRoot)
             }
         }
-        /*
-        If we ever need macOS support:
-        {
-            binaries.withType<TestExecutable>().configureEach {
-                linkTaskProvider.dependsOn(downloadPowersyncDesktopBinaries)
-                linkerOpts("-lpowersync")
-                linkerOpts("-L", binariesFolder.map { it.dir("powersync") }.get().asFile.path)
-            }
-        }
-         */
     }
 
     explicitApi()
@@ -234,7 +226,7 @@ kotlin {
             implementation(libs.sqlite.jdbc)
         }
 
-        iosMain.dependencies {
+        appleMain.dependencies {
             implementation(libs.ktor.client.ios)
         }
 
@@ -248,11 +240,12 @@ kotlin {
         }
 
         // We're putting the native libraries into our JAR, so integration tests for the JVM can run as part of the unit
-        // tests.
-        jvmTest.get().dependsOn(commonIntegrationTest)
-
-        // We're linking the xcframework for the simulator tests, so they can use integration tests too
-        iosSimulatorArm64Test.orNull?.dependsOn(commonIntegrationTest)
+        // tests. For iOS and macOS targets, we're linking the xcframework into the test executable, so they can use
+        // integration tests too.
+        val canRunIntegrationTestsAsUnitTest = listOf(jvmTest, appleTest)
+        canRunIntegrationTestsAsUnitTest.forEach {
+            it.orNull?.dependsOn(commonIntegrationTest)
+        }
     }
 }
 

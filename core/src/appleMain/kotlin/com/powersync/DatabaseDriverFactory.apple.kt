@@ -25,7 +25,11 @@ public actual class DatabaseDriverFactory {
     private var driver: PsSqlDriver? = null
 
     init {
-        init_powersync_sqlite_extension()
+        val result = init_powersync_sqlite_extension()
+        println("load result $result")
+        if (result != 0) {
+            throw IllegalStateException("Could not load PowerSync extension, status code $result")
+        }
     }
 
     @Suppress("unused", "UNUSED_PARAMETER")

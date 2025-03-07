@@ -15,13 +15,19 @@ class DatabaseTest {
 
     @BeforeTest
     fun setupDatabase() {
-        database =
-            PowerSyncDatabase(
-                factory = com.powersync.testutils.factory,
-                schema = Schema(UserRow.table),
-                dbFilename = "testdb",
-            )
+        println("Setup")
+        try {
+            database =
+                PowerSyncDatabase(
+                    factory = com.powersync.testutils.factory,
+                    schema = Schema(UserRow.table),
+                    dbFilename = "testdb",
+                )
+        } catch (e: Throwable) {
+            println("Initialization failed: $e")
+        }
 
+        println("Setup done")
         runBlocking {
             database.disconnectAndClear(true)
         }
