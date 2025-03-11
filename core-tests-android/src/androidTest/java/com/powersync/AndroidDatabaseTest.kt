@@ -90,4 +90,86 @@ class AndroidDatabaseTest {
                 query.cancel()
             }
         }
+
+    @Test
+    fun testConcurrentReads() =
+        runTest {
+            database.execute(
+                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                listOf(
+                    "steven",
+                    "s@journeyapps.com",
+                ),
+            )
+
+            val pausedTransaction = CompletableDeferred<Unit>()
+            val transactionItemCreated = CompletableDeferred<Unit>()
+            // Start a long running writeTransaction
+            val transactionJob =
+                async {
+                    database.writeTransaction { tx ->
+                        // Create another user
+                        // External readers should not see this user while the transaction is open
+                        tx.execute(
+                            "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                            listOf(
+                                "steven",
+                                "s@journeyapps.com",
+                            ),
+                        )
+
+                        transactionItemCreated.complete(Unit)
+
+                        // Block this transaction until we free it
+                        runBlocking {
+                            pausedTransaction.await()
+                        }
+                    }
+                }
+
+            // Make sure to wait for the item to have been created in the transaction
+            transactionItemCreated.await()
+            // Try and read while the write transaction is busy
+            val result = database.getAll("SELECT * FROM users") { UserRow.from(it) }
+            // The transaction is not commited yet, we should only read 1 user
+            assertEquals(result.size, 1)
+
+            // Let the transaction complete
+            pausedTransaction.complete(Unit)
+            transactionJob.await()
+
+            val afterTx = database.getAll("SELECT * FROM users") { UserRow.from(it) }
+            assertEquals(afterTx.size, 2)
+        }
+
+    @Test
+    fun transactionReads() =
+        runTest {
+            database.execute(
+                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                listOf(
+                    "steven",
+                    "s@journeyapps.com",
+                ),
+            )
+
+            database.writeTransaction { tx ->
+                val userCount =
+                    tx.getAll("SELECT COUNT(*) as count FROM users") { cursor -> cursor.getLong(0)!! }
+                assertEquals(userCount[0], 1)
+
+                tx.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf(
+                        "steven",
+                        "s@journeyapps.com",
+                    ),
+                )
+
+                // Getters inside the transaction should be able to see the latest update
+                val userCount2 =
+                    tx.getAll("SELECT COUNT(*) as count FROM users") { cursor -> cursor.getLong(0)!! }
+                assertEquals(userCount2[0], 2)
+            }
+        }
 }

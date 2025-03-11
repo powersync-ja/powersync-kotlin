@@ -53,7 +53,8 @@ internal class PSJdbcSqliteDriver(
         listenersToNotify.forEach(Query.Listener::queryResultsChanged)
     }
 
-    val connection: SQLiteConnection = DriverManager.getConnection(url, properties) as SQLiteConnection
+    val connection: SQLiteConnection =
+        DriverManager.getConnection(url, properties) as SQLiteConnection
 
     private var transaction: Transaction? = null
 
@@ -69,7 +70,9 @@ internal class PSJdbcSqliteDriver(
                 if (successful) {
                     connection.prepareStatement("END TRANSACTION").use(PreparedStatement::execute)
                 } else {
-                    connection.prepareStatement("ROLLBACK TRANSACTION").use(PreparedStatement::execute)
+                    connection
+                        .prepareStatement("ROLLBACK TRANSACTION")
+                        .use(PreparedStatement::execute)
                 }
             }
             transaction = enclosingTransaction
@@ -130,11 +133,6 @@ internal class PSJdbcSqliteDriver(
             check(executed) { "load_extension(\"${path.absolutePathString()}\", \"${entryPoint}\") failed" }
         }
         connection.database.enable_load_extension(false)
-    }
-
-    internal fun enableWriteAheadLogging() {
-        val executed = connection.prepareStatement("PRAGMA journal_mode=WAL;").execute()
-        check(executed) { "journal_mode=WAL failed" }
     }
 }
 

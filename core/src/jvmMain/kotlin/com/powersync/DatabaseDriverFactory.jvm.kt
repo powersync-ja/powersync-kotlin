@@ -4,6 +4,7 @@ import com.powersync.db.internal.InternalSchema
 import kotlinx.coroutines.CoroutineScope
 import org.sqlite.SQLiteCommitListener
 import java.nio.file.Path
+import java.util.Properties
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING", "SqlNoDataSourceInspection")
 public actual class DatabaseDriverFactory {
@@ -13,13 +14,19 @@ public actual class DatabaseDriverFactory {
     ): PsSqlDriver {
         val schema = InternalSchema
 
+        // WAL Mode properties
+        val properties = Properties()
+        properties.setProperty("journal_mode", "WAL")
+        properties.setProperty("journal_size_limit", "${6 * 1024 * 1024}")
+        properties.setProperty("busy_timeout", "30000")
+        properties.setProperty("cache_size", "${50 * 1024}")
+
         val driver =
             PSJdbcSqliteDriver(
                 url = "jdbc:sqlite:$dbFilename",
                 schema = schema,
+                properties = properties,
             )
-        // Generates SQLITE_BUSY errors
-//        driver.enableWriteAheadLogging()
         driver.loadExtensions(
             powersyncExtension to "sqlite3_powersync_init",
         )
