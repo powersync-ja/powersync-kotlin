@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.datetime.Instant
 
+@ConsistentCopyVisibility
 public data class PriorityStatusEntry internal constructor(
     val priority: BucketPriority,
     val lastSyncedAt: Instant?,

@@ -3,15 +3,15 @@
 android-minSdk = "24"
 android-targetSdk = "34"
 android-compileSdk = "34"
-configurationAnnotations = "0.9.3"
+configurationAnnotations = "0.9.5"
 java = "17"
-idea = "222.4459.24" # Flamingo | 2022.2.1 (see https://plugins.jetbrains.com/docs/intellij/android-studio-releases-list.html)
+idea = "243.22562.218" # Meerkat | 2024.3.1 (see https://plugins.jetbrains.com/docs/intellij/android-studio-releases-list.html)
 
 # Dependencies
 kermit = "2.0.5"
-kotlin = "2.0.20"
+kotlin = "2.1.10"
 coroutines = "1.8.1"
-kotlinx-datetime = "0.5.0"
+kotlinx-datetime = "0.6.2"
 kotlinx-io = "0.5.4"
 ktor = "3.0.1"
 uuid = "0.8.2"
@@ -26,23 +26,24 @@ supabase = "3.0.1"
 junit = "4.13.2"
 
 compose = "1.6.11"
-compose-preview = "1.7.2"
+compose-preview = "1.7.8"
 androidxSqlite = "2.4.0"
 
 # plugins
-android-gradle-plugin = "8.5.1"
+android-gradle-plugin = "8.9.0"
 kmmBridge = "0.5.7"
-skie = "0.9.5"
+skie = "0.10.1"
 maven-publish = "0.27.0"
 download-plugin = "5.5.0"
-grammerKit = "0.1.12"
-mokkery = "2.4.0"
-kotlinter = "4.4.1"
+grammarkit-composer = "0.1.12"
+mokkery = "2.7.1"
+kotlinter = "5.0.1"
 keeper = "0.16.1"
+atomicfu = "0.27.0"
 
 # Sample - Android
-androidx-core = "1.13.1"
-androidx-activity-compose = "1.9.2"
+androidx-core = "1.15.0"
+androidx-activity-compose = "1.10.1"
 
 androidx-appcompat = "1.7.0"
 androidx-espresso-core = "3.6.1"
@@ -119,13 +120,14 @@ kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", versio
 skie = { id = "co.touchlab.skie", version.ref = "skie" }
 kmmbridge = { id = "co.touchlab.kmmbridge", version.ref = "kmmBridge" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqlDelight" }
-grammarKitComposer = { id = "com.alecstrong.grammar.kit.composer", version.ref = "grammerKit" }
+grammarKitComposer = { id = "com.alecstrong.grammar.kit.composer", version.ref = "grammarkit-composer" }
 mavenPublishPlugin = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }
 downloadPlugin = { id = "de.undercouch.download", version.ref = "download-plugin" }
 mokkery = { id = "dev.mokkery", version.ref = "mokkery" }
 kotlinter = { id = "org.jmailen.kotlinter", version.ref = "kotlinter" }
 keeper = { id = "com.slack.keeper", version.ref = "keeper" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version.ref = "atomicfu" }
 
 [bundles]
 sqldelight = [
