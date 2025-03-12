@@ -32,12 +32,13 @@ import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.KoinApplication
 import org.koin.core.module.dsl.bind
-import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.core.module.dsl.withOptions
 import org.koin.dsl.module
 
 val sharedAppModule = module {
+    // This is overridden by the androidBackgroundSync example
+    single { AuthOptions(connectFromViewModel = true) }
     single { PowerSyncDatabase(get(), schema) }
     single {
         SupabaseConnector(
@@ -47,7 +48,7 @@ val sharedAppModule = module {
         )
     } withOptions { bind<PowerSyncBackendConnector>() }
 
-    viewModel { NavController(Screen.Home) }
+    single { NavController(Screen.Home) }
     viewModelOf(::AuthViewModel)
 }
 
@@ -66,7 +67,7 @@ fun App(
 }
 
 @Composable
-internal fun AppContent(
+fun AppContent(
     db: PowerSyncDatabase = koinInject(),
     modifier: Modifier = Modifier,
 ) {
@@ -85,7 +86,7 @@ internal fun AppContent(
     }
 
     val authViewModel = koinViewModel<AuthViewModel>()
-    val navController = koinViewModel<NavController>()
+    val navController = koinInject<NavController>()
     val authState by authViewModel.authState.collectAsState()
     val currentScreen by navController.currentScreen.collectAsState()
 

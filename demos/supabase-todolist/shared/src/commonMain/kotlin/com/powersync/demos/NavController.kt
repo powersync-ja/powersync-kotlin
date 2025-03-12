@@ -1,6 +1,5 @@
 package com.powersync.demos
 
-import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,7 +11,7 @@ sealed class Screen {
     data object Todos : Screen()
 }
 
-internal class NavController(initialScreen: Screen): ViewModel() {
+internal class NavController(initialScreen: Screen) {
     private val _currentScreen = MutableStateFlow<Screen>(initialScreen)
     val currentScreen: StateFlow<Screen> = _currentScreen.asStateFlow()
 

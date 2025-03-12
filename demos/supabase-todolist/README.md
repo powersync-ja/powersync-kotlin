@@ -58,3 +58,10 @@ SUPABASE_ANON_KEY=foo
 ## Run the app
 
 Choose a run configuration for the Android or iOS target in Android Studio and run it.
+
+For Android, this demo contains two Android apps:
+
+- [`androidApp/`](androidApp/): This is a regular compose UI app using PowerSync.
+- [`androidBackgroundSync/`](androidBackgroundSync/): This example differs from the regular app in
+  that it uses a foreground service managing the synchronization process. The service is started
+  in the main activity and keeps running even after the app is closed.
