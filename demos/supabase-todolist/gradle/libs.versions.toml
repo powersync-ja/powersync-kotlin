@@ -13,6 +13,7 @@ kotlinx-io = "0.5.4"
 ktor = "3.0.1"
 uuid = "0.8.2"
 buildKonfig = "0.15.1"
+koin-bom = "4.0.2"
 
 junit = "4.13.2"
 
@@ -59,6 +60,8 @@ androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-co
 androidx-material = { group = "com.google.android.material", name = "material", version.ref = "androidx-material" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "compose-preview" }
 compose-lifecycle = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin-bom" }
+koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", version.ref = "koin-bom" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "android-gradle-plugin" }
