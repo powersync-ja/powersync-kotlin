@@ -73,7 +73,6 @@ public actual class DatabaseDriverFactory {
 
         this.driver =
             PsSqlDriver(
-                scope = scope,
                 driver =
                     NativeSqliteDriver(
                         configuration =

@@ -43,7 +43,12 @@ public class AndroidSqliteDriver private constructor(
 
     public constructor(
         openHelper: SupportSQLiteOpenHelper,
-    ) : this(openHelper = openHelper, database = null, cacheSize = DEFAULT_CACHE_SIZE, windowSizeBytes = null)
+    ) : this(
+        openHelper = openHelper,
+        database = null,
+        cacheSize = DEFAULT_CACHE_SIZE,
+        windowSizeBytes = null,
+    )
 
     /**
      * @param [cacheSize] The number of compiled sqlite statements to keep in memory per connection.
@@ -81,7 +86,12 @@ public class AndroidSqliteDriver private constructor(
         database: SupportSQLiteDatabase,
         cacheSize: Int = DEFAULT_CACHE_SIZE,
         windowSizeBytes: Long? = null,
-    ) : this(openHelper = null, database = database, cacheSize = cacheSize, windowSizeBytes = windowSizeBytes)
+    ) : this(
+        openHelper = null,
+        database = database,
+        cacheSize = cacheSize,
+        windowSizeBytes = windowSizeBytes,
+    )
 
     private val statements =
         object : LruCache<Int, AndroidStatement>(cacheSize) {
@@ -190,7 +200,13 @@ public class AndroidSqliteDriver private constructor(
         sql: String,
         parameters: Int,
         binders: (SqlPreparedStatement.() -> Unit)?,
-    ): QueryResult<Long> = execute(identifier, { AndroidPreparedStatement(database.compileStatement(sql)) }, binders, { execute() })
+    ): QueryResult<Long> =
+        execute(
+            identifier,
+            { AndroidPreparedStatement(database.compileStatement(sql)) },
+            binders,
+            { execute() },
+        )
 
     override fun <R> executeQuery(
         identifier: Int?,
@@ -270,14 +286,28 @@ private class AndroidPreparedStatement(
         index: Int,
         double: Double?,
     ) {
-        if (double == null) statement.bindNull(index + 1) else statement.bindDouble(index + 1, double)
+        if (double == null) {
+            statement.bindNull(index + 1)
+        } else {
+            statement.bindDouble(
+                index + 1,
+                double,
+            )
+        }
     }
 
     override fun bindString(
         index: Int,
         string: String?,
     ) {
-        if (string == null) statement.bindNull(index + 1) else statement.bindString(index + 1, string)
+        if (string == null) {
+            statement.bindNull(index + 1)
+        } else {
+            statement.bindString(
+                index + 1,
+                string,
+            )
+        }
     }
 
     override fun bindBoolean(
@@ -313,28 +343,32 @@ private class AndroidQuery(
         index: Int,
         bytes: ByteArray?,
     ) {
-        binds[index] = { if (bytes == null) it.bindNull(index + 1) else it.bindBlob(index + 1, bytes) }
+        binds[index] =
+            { if (bytes == null) it.bindNull(index + 1) else it.bindBlob(index + 1, bytes) }
     }
 
     override fun bindLong(
         index: Int,
         long: Long?,
     ) {
-        binds[index] = { if (long == null) it.bindNull(index + 1) else it.bindLong(index + 1, long) }
+        binds[index] =
+            { if (long == null) it.bindNull(index + 1) else it.bindLong(index + 1, long) }
     }
 
     override fun bindDouble(
         index: Int,
         double: Double?,
     ) {
-        binds[index] = { if (double == null) it.bindNull(index + 1) else it.bindDouble(index + 1, double) }
+        binds[index] =
+            { if (double == null) it.bindNull(index + 1) else it.bindDouble(index + 1, double) }
     }
 
     override fun bindString(
         index: Int,
         string: String?,
     ) {
-        binds[index] = { if (string == null) it.bindNull(index + 1) else it.bindString(index + 1, string) }
+        binds[index] =
+            { if (string == null) it.bindNull(index + 1) else it.bindString(index + 1, string) }
     }
 
     override fun bindBoolean(

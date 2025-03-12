@@ -31,7 +31,7 @@ public actual class DatabaseDriverFactory {
             powersyncExtension to "sqlite3_powersync_init",
         )
 
-        val mappedDriver = PsSqlDriver(scope = scope, driver = driver)
+        val mappedDriver = PsSqlDriver(driver = driver)
 
         driver.connection.database.addUpdateListener { _, _, table, _ ->
             mappedDriver.updateTable(table)
