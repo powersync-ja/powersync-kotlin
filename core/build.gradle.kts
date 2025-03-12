@@ -81,14 +81,22 @@ val binariesFolder = project.layout.buildDirectory.dir("binaries/desktop")
 val downloadPowersyncDesktopBinaries by tasks.registering(Download::class) {
     description = "Download PowerSync core extensions for JVM builds and releases"
 
-    val coreVersion = libs.versions.powersync.core.get()
-    val linux_aarch64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_aarch64.so"
-    val linux_x64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_x64.so"
-    val macos_aarch64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_aarch64.dylib"
-    val macos_x64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_x64.dylib"
-    val windows_x64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/powersync_x64.dll"
+    val coreVersion =
+        libs.versions.powersync.core
+            .get()
+    val linux_aarch64 =
+        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_aarch64.so"
+    val linux_x64 =
+        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_x64.so"
+    val macos_aarch64 =
+        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_aarch64.dylib"
+    val macos_x64 =
+        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_x64.dylib"
+    val windows_x64 =
+        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/powersync_x64.dll"
 
-    val includeAllPlatformsForJvmBuild = project.findProperty("powersync.binaries.allPlatforms") == "true"
+    val includeAllPlatformsForJvmBuild =
+        project.findProperty("powersync.binaries.allPlatforms") == "true"
     val os = OperatingSystem.current()
 
     // The jar we're releasing for JVM clients needs to include the core extension. For local tests, it's enough to only
@@ -98,26 +106,32 @@ val downloadPowersyncDesktopBinaries by tasks.registering(Download::class) {
     if (includeAllPlatformsForJvmBuild) {
         src(listOf(linux_aarch64, linux_x64, macos_aarch64, macos_x64, windows_x64))
     } else {
-        val (aarch64, x64) = when {
-            os.isLinux -> linux_aarch64 to linux_x64
-            os.isMacOsX -> macos_aarch64 to macos_x64
-            os.isWindows -> null to windows_x64
-            else -> error("Unknown operating system: $os")
-        }
+        val (aarch64, x64) =
+            when {
+                os.isLinux -> linux_aarch64 to linux_x64
+                os.isMacOsX -> macos_aarch64 to macos_x64
+                os.isWindows -> null to windows_x64
+                else -> error("Unknown operating system: $os")
+            }
         val arch = System.getProperty("os.arch")
-        src(when (arch) {
-            "aarch64" -> listOfNotNull(aarch64)
-            "amd64", "x86_64" -> listOfNotNull(x64)
-            else -> error("Unsupported architecture: $arch")
-        })
+        src(
+            when (arch) {
+                "aarch64" -> listOfNotNull(aarch64)
+                "amd64", "x86_64" -> listOfNotNull(x64)
+                else -> error("Unsupported architecture: $arch")
+            },
+        )
     }
     dest(binariesFolder.map { it.dir("powersync") })
     onlyIfModified(true)
 }
 
 val downloadPowersyncFramework by tasks.registering(Download::class) {
-    val coreVersion = libs.versions.powersync.core.get()
-    val framework = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/powersync-sqlite-core.xcframework.zip"
+    val coreVersion =
+        libs.versions.powersync.core
+            .get()
+    val framework =
+        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/powersync-sqlite-core.xcframework.zip"
 
     src(framework)
     dest(binariesFolder.map { it.file("framework/powersync-sqlite-core.xcframework.zip") })
@@ -178,7 +192,11 @@ kotlin {
             binaries.withType<TestExecutable>().configureEach {
                 linkTaskProvider.dependsOn(unzipPowersyncFramework)
                 linkerOpts("-framework", "powersync-sqlite-core")
-                val frameworkRoot = binariesFolder.map { it.dir("framework/powersync-sqlite-core.xcframework/ios-arm64_x86_64-simulator") }.get().asFile.path
+                val frameworkRoot =
+                    binariesFolder
+                        .map { it.dir("framework/powersync-sqlite-core.xcframework/ios-arm64_x86_64-simulator") }
+                        .get()
+                        .asFile.path
 
                 linkerOpts("-F", frameworkRoot)
                 linkerOpts("-rpath", frameworkRoot)
@@ -227,6 +245,7 @@ kotlin {
 
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
+            implementation(libs.sqlite.jdbc)
         }
 
         jvmMain.dependencies {
@@ -303,6 +322,12 @@ android {
             path = project.file("src/androidMain/cpp/CMakeLists.txt")
         }
     }
+
+    sourceSets {
+        getByName("main") {
+            jniLibs.srcDirs("src/androidMain/jni", "src/main/jni", "src/jniLibs")
+        }
+    }
 }
 
 tasks.named<ProcessResources>(kotlin.jvm().compilations["main"].processResourcesTaskName) {
@@ -311,9 +336,10 @@ tasks.named<ProcessResources>(kotlin.jvm().compilations["main"].processResources
 
 // We want to build with recent JDKs, but need to make sure we support Java 8. https://jakewharton.com/build-on-latest-java-test-through-lowest-java/
 val testWithJava8 by tasks.registering(KotlinJvmTest::class) {
-    javaLauncher = javaToolchains.launcherFor {
-        languageVersion = JavaLanguageVersion.of(8)
-    }
+    javaLauncher =
+        javaToolchains.launcherFor {
+            languageVersion = JavaLanguageVersion.of(8)
+        }
 
     description = "Run tests with Java 8"
     group = LifecycleBasePlugin.VERIFICATION_GROUP
@@ -332,7 +358,12 @@ afterEvaluate {
             if (taskName.contains("Clean")) {
                 return@matching false
             }
-            if (taskName.contains("externalNative") || taskName.contains("CMake") || taskName.contains("generateJsonModel")) {
+            if (taskName.contains("externalNative") ||
+                taskName.contains("CMake") ||
+                taskName.contains(
+                    "generateJsonModel",
+                )
+            ) {
                 return@matching true
             }
             return@matching false
