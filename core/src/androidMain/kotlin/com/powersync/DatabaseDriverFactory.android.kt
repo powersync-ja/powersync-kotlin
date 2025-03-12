@@ -7,6 +7,7 @@ import com.powersync.persistence.driver.AndroidSqliteDriver
 import io.requery.android.database.sqlite.RequerySQLiteOpenHelperFactory
 import io.requery.android.database.sqlite.SQLiteCustomExtension
 import kotlinx.coroutines.CoroutineScope
+import okhttp3.internal.toHexString
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 public actual class DatabaseDriverFactory(
@@ -14,7 +15,7 @@ public actual class DatabaseDriverFactory(
 ) {
     private var driver: PsSqlDriver? = null
 
-    private external fun setupSqliteBinding()
+    private external fun setupSqliteBinding(dbPointer: Long)
 
     @Suppress("unused")
     private fun onTableUpdate(tableName: String) {
@@ -40,7 +41,6 @@ public actual class DatabaseDriverFactory(
 
         this.driver =
             PsSqlDriver(
-                scope = scope,
                 driver =
                     AndroidSqliteDriver(
                         context = context,
@@ -68,6 +68,22 @@ public actual class DatabaseDriverFactory(
                             ),
                         callback =
                             object : AndroidSqliteDriver.Callback(schema) {
+                                override fun onOpen(db: SupportSQLiteDatabase) {
+                                    super.onCreate(db)
+
+                                    val cursor = db.query("SELECT get_db_pointer()")
+                                    val pointer: Long
+                                    cursor.use {
+                                        if (cursor.moveToFirst()) { // Move to the first row
+                                            pointer = cursor.getLong(0)
+                                            println("xxx SQLite Pointer: ${pointer.toHexString()}")
+                                        } else {
+                                            throw IllegalStateException("No result from get_db_pointer()")
+                                        }
+                                    }
+                                    setupSqliteBinding(pointer)
+                                }
+
                                 override fun onConfigure(db: SupportSQLiteDatabase) {
                                     db.enableWriteAheadLogging()
                                     super.onConfigure(db)
@@ -75,7 +91,6 @@ public actual class DatabaseDriverFactory(
                             },
                     ),
             )
-        setupSqliteBinding()
         return this.driver as PsSqlDriver
     }
 

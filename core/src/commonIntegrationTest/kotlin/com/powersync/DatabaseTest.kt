@@ -43,6 +43,35 @@ class DatabaseTest {
         }
 
     @Test
+    fun testReadTransactions() =
+        runTest {
+            val transactionStarted = CompletableDeferred<Unit>()
+            val itemCreated = CompletableDeferred<Unit>()
+            val readUserCountDeferred =
+                async {
+                    database.readTransaction({ tx ->
+                        transactionStarted.complete(Unit)
+                        runBlocking {
+                            itemCreated.await()
+                        }
+                        tx.get("SELECT COUNT(*) from users") { it.getLong(0)!! }
+                    })
+                }
+
+            database.execute(
+                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                listOf(
+                    "steven",
+                    "s@journeyapps.com",
+                ),
+            )
+            itemCreated.complete(Unit)
+
+            // The read transaction started before the item was created
+            assertEquals(0, readUserCountDeferred.await())
+        }
+
+    @Test
     fun testWAL() =
         runTest {
             val mode =
@@ -105,7 +134,7 @@ class DatabaseTest {
         }
 
     @Test
-    fun testtransactionReads() =
+    fun testTransactionReads() =
         runTest {
             database.execute(
                 "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
@@ -166,7 +195,7 @@ class DatabaseTest {
                 try {
                     database.writeTransaction {
                         it.execute("DELETE FROM users;")
-                        it.execute("syntax error, revert please")
+                        it.execute("syntax error, revert please (this is intentional from the unit test)")
                     }
                 } catch (e: Exception) {
                     // Ignore

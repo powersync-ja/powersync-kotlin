@@ -3,7 +3,6 @@ package com.powersync.db
 import co.touchlab.kermit.Logger
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
-import com.powersync.PsSqlDriver
 import com.powersync.bucket.BucketPriority
 import com.powersync.bucket.BucketStorage
 import com.powersync.bucket.BucketStorageImpl
@@ -14,7 +13,6 @@ import com.powersync.db.crud.CrudRow
 import com.powersync.db.crud.CrudTransaction
 import com.powersync.db.internal.InternalDatabaseImpl
 import com.powersync.db.internal.InternalTable
-import com.powersync.db.internal.ThrowableTransactionCallback
 import com.powersync.db.schema.Schema
 import com.powersync.sync.PriorityStatusEntry
 import com.powersync.sync.SyncStatus
@@ -54,9 +52,8 @@ internal class PowerSyncDatabaseImpl(
     val factory: DatabaseDriverFactory,
     private val dbFilename: String,
     val logger: Logger = Logger,
-    driver: PsSqlDriver = factory.createDriver(scope, dbFilename),
 ) : PowerSyncDatabase {
-    private val internalDb = InternalDatabaseImpl(driver, scope)
+    private val internalDb = InternalDatabaseImpl(factory = factory, scope = scope)
     internal val bucketStorage: BucketStorage = BucketStorageImpl(internalDb, logger)
 
     /**
@@ -70,13 +67,16 @@ internal class PowerSyncDatabaseImpl(
 
     private var uploadJob: Job? = null
 
+    // This is set in the init
+    private var powerSyncVersion: String? = null
+
     init {
         runBlocking {
-            val sqliteVersion = internalDb.queries.sqliteVersion().executeAsOne()
-            logger.d { "SQLiteVersion: $sqliteVersion" }
+            powerSyncVersion =
+                internalDb.get("SELECT powersync_rs_version() as version") { it.getString("version") }
+            logger.d { "SQLiteVersion: $powerSyncVersion" }
             checkVersion()
             logger.d { "PowerSyncVersion: ${getPowerSyncVersion()}" }
-            internalDb.queries.powersyncInit()
             applySchema()
             updateHasSynced()
         }
@@ -85,8 +85,8 @@ internal class PowerSyncDatabaseImpl(
     private suspend fun applySchema() {
         val schemaJson = JsonUtil.json.encodeToString(schema)
 
-        internalDb.writeTransaction {
-            internalDb.queries.replaceSchema(schemaJson).executeAsOne()
+        internalDb.writeTransaction { tx ->
+            tx.getOptional("SELECT powersync_replace_schema(?)", listOf(schemaJson)) {}
         }
     }
 
@@ -159,12 +159,15 @@ internal class PowerSyncDatabaseImpl(
         }
 
         val entries =
-            internalDb.queries.getCrudEntries((limit + 1).toLong()).executeAsList().map {
+            internalDb.getAll(
+                "SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC LIMIT ?",
+                listOf(limit.toLong()),
+            ) {
                 CrudEntry.fromRow(
                     CrudRow(
-                        id = it.id.toString(),
-                        data = it.data_!!,
-                        txId = it.tx_id?.toInt(),
+                        id = it.getString("id"),
+                        data = it.getString("data"),
+                        txId = it.getLongOptional("tx_id")?.toInt(),
                     ),
                 )
             }
@@ -194,12 +197,12 @@ internal class PowerSyncDatabaseImpl(
                 if (txId == null) {
                     listOf(entry)
                 } else {
-                    internalDb.queries.getCrudEntryByTxId(txId.toLong()).executeAsList().map {
+                    transaction.getAll("SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC LIMIT 1") {
                         CrudEntry.fromRow(
                             CrudRow(
-                                id = it.id.toString(),
-                                data = it.data_!!,
-                                txId = it.tx_id?.toInt(),
+                                id = it.getString("id"),
+                                data = it.getString("data"),
+                                txId = it.getLongOptional("tx_id")?.toInt(),
                             ),
                         )
                     }
@@ -216,7 +219,7 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 
-    override suspend fun getPowerSyncVersion(): String = internalDb.queries.powerSyncVersion().executeAsOne()
+    override suspend fun getPowerSyncVersion(): String = powerSyncVersion!!
 
     override suspend fun <RowType : Any> get(
         sql: String,
@@ -243,7 +246,11 @@ internal class PowerSyncDatabaseImpl(
         mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>> = internalDb.watch(sql, parameters, throttleMs, mapper)
 
+    override suspend fun <R> readLock(callback: ThrowableLockCallback<R>): R = internalDb.readLock(callback)
+
     override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R = internalDb.writeTransaction(callback)
+
+    override suspend fun <R> writeLock(callback: ThrowableLockCallback<R>): R = internalDb.writeLock(callback)
 
     override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R = internalDb.writeTransaction(callback)
 
@@ -257,7 +264,7 @@ internal class PowerSyncDatabaseImpl(
         writeCheckpoint: String?,
     ) {
         internalDb.writeTransaction { transaction ->
-            internalDb.queries.deleteEntriesWithIdLessThan(lastTransactionId.toLong())
+            transaction.execute("DELETE FROM ps_crud WHERE id <= ?", listOf(lastTransactionId.toLong()))
 
             if (writeCheckpoint != null && !bucketStorage.hasCrud(transaction)) {
                 transaction.execute(
@@ -297,8 +304,8 @@ internal class PowerSyncDatabaseImpl(
     override suspend fun disconnectAndClear(clearLocal: Boolean) {
         disconnect()
 
-        internalDb.writeTransaction {
-            internalDb.queries.powersyncClear(if (clearLocal) "1" else "0").executeAsOne()
+        internalDb.writeTransaction { tx ->
+            tx.getOptional("SELECT powersync_clear(?)", listOf(if (clearLocal) "1" else "0")) {}
         }
         currentStatus.update(lastSyncedAt = null, hasSynced = false)
     }
