@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
     alias(libs.plugins.sqldelight)
+    alias(libs.plugins.compose.compiler)
 }
 
 val localProperties = Properties()
@@ -18,7 +19,7 @@ fun getLocalProperty(key: String, defaultValue: String): String {
 
 android {
     namespace = "com.powersync.androidexample"
-    compileSdk = 34
+    compileSdk = 35
 
     buildFeatures {
         buildConfig = true
@@ -27,7 +28,7 @@ android {
     defaultConfig {
         applicationId = "com.powersync.androidexample"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
