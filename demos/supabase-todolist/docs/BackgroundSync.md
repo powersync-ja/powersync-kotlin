@@ -6,8 +6,8 @@ To use background synchronization, make sure that:
 
 1. You only use a single instance of your `PowerSyncDatabase`. Using multiple instances means that
    multiple write connections are active, which can lead to "database is locked" issues, wasted
-   resource due to multiple sync clients, and `watch()`ed queries not updating due to missing update
-   notifications.
+   resources due to multiple sync clients, and `watch()`ed queries not updating due to missing 
+   update notifications.
 2. You don't use separate processes for the UI and the background service.
 
 These limitations are not inherent architectural issues, but sharing databases across processes is
