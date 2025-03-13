@@ -4,6 +4,7 @@ android-minSdk = "24"
 android-targetSdk = "35"
 android-compileSdk = "35"
 java = "17"
+atomicfu = "0.27.0"
 
 # Dependencies
 kotlin = "2.1.10"
@@ -74,5 +75,6 @@ kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref =
 kotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 buildKonfig = { id = "com.codingfeline.buildkonfig", version.ref = "buildKonfig" }
+kotlin-atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version.ref = "atomicfu" }
 
 [bundles]

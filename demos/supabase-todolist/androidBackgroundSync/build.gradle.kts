@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.compose.compiler)
     id("org.jetbrains.compose")
+    alias(libs.plugins.kotlin.atomicfu)
 }
 
 android {

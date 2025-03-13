@@ -14,6 +14,7 @@ import com.powersync.PowerSyncDatabase
 import com.powersync.connector.supabase.SupabaseConnector
 import com.powersync.sync.SyncStatusData
 import io.github.jan.supabase.auth.status.SessionStatus
+import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
@@ -22,14 +23,20 @@ class SyncService: LifecycleService() {
 
     private val connector: SupabaseConnector by inject()
     private val database: PowerSyncDatabase by inject()
+    private var holdsServiceLock = false
 
     private val notificationManager get()= NotificationManagerCompat.from(this)
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
 
-        createNotificationChannel()
+        holdsServiceLock = SERVICE_RUNNING.compareAndSet(false, true)
+        if (!holdsServiceLock) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
 
+        createNotificationChannel()
         ServiceCompat.startForeground(
             this,
             startId,
@@ -44,6 +51,7 @@ class SyncService: LifecycleService() {
         lifecycleScope.launch {
             database.currentStatus.asFlow().collect {
                 try {
+                    Logger.i("Sync service received status $it")
                     notificationManager.notify(startId, buildNotification(it))
                 } catch (e: SecurityException) {
                     Logger.d("Ignoring security exception when updating notification", e)
@@ -82,6 +90,14 @@ class SyncService: LifecycleService() {
         stopSelf(startId)
     }
 
+    override fun onDestroy() {
+        if (holdsServiceLock) {
+            SERVICE_RUNNING.value = false
+        }
+
+        super.onDestroy()
+    }
+
     private fun createNotificationChannel() {
         val channel = NotificationChannelCompat.Builder(CHANNEL_ID, NotificationManagerCompat.IMPORTANCE_LOW)
             .setName(getString(R.string.background_channel_name))
@@ -101,6 +117,7 @@ class SyncService: LifecycleService() {
     }.build()
 
     private companion object {
-        private val CHANNEL_ID = "background_sync"
+        val CHANNEL_ID = "background_sync"
+        val SERVICE_RUNNING = atomic(false)
     }
 }
