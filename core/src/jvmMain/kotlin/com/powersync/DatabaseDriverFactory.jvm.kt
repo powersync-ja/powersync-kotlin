@@ -3,7 +3,6 @@ package com.powersync
 import com.powersync.db.internal.InternalSchema
 import kotlinx.coroutines.CoroutineScope
 import org.sqlite.SQLiteCommitListener
-import java.nio.file.Path
 import java.util.Properties
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING", "SqlNoDataSourceInspection")
@@ -22,11 +21,14 @@ public actual class DatabaseDriverFactory {
         properties.setProperty("cache_size", "${50 * 1024}")
 
         val driver =
-            PSJdbcSqliteDriver(
+            JdbcSqliteDriver(
                 url = "jdbc:sqlite:$dbFilename",
-                schema = schema,
+
                 properties = properties,
             )
+
+        migrateDriver(driver, schema)
+
         driver.loadExtensions(
             powersyncExtension to "sqlite3_powersync_init",
         )
@@ -52,6 +54,6 @@ public actual class DatabaseDriverFactory {
     }
 
     public companion object {
-        private val powersyncExtension: Path = extractLib("powersync")
+        private val powersyncExtension: String = extractLib("powersync").toString()
     }
 }

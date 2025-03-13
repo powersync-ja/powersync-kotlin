@@ -27,12 +27,13 @@ public actual class DatabaseDriverFactory(
         properties.setProperty("cache_size", "${50 * 1024}")
 
         val driver =
-            PSAndroidJdbcSqliteDriver(
+            JdbcSqliteDriver(
                 // TODO verify compatibility with previous implementation
                 url = "jdbc:sqlite:${context.getDatabasePath(dbFilename)}",
-                schema = schema,
                 properties = properties,
             )
+
+        migrateDriver(driver, schema)
 
         driver.loadExtensions(
             "libpowersync.so" to "sqlite3_powersync_init",

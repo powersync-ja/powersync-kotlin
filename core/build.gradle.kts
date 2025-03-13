@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable
 import org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest
 import org.jetbrains.kotlin.konan.target.Family
 
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.kotlinSerialization)
@@ -228,6 +229,13 @@ kotlin {
             dependsOn(commonTest.get())
         }
 
+        val commonJava by creating {
+            kotlin.srcDir("commonJava")
+            dependencies {
+                implementation(libs.sqlite.jdbc)
+            }
+        }
+
         commonMain.dependencies {
             implementation(libs.uuid)
             implementation(libs.kotlin.stdlib)
@@ -269,6 +277,9 @@ kotlin {
         // We're putting the native libraries into our JAR, so integration tests for the JVM can run as part of the unit
         // tests.
         jvmTest.get().dependsOn(commonIntegrationTest)
+
+        androidMain.get().dependsOn(commonJava)
+        jvmMain.get().dependsOn(commonJava)
 
         // We're linking the xcframework for the simulator tests, so they can use integration tests too
         iosSimulatorArm64Test.orNull?.dependsOn(commonIntegrationTest)

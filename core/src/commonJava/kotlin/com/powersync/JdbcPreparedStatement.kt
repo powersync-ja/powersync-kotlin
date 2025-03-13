@@ -1,8 +1,9 @@
-package com.powersync.persistence.driver
+package com.powersync
 
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlPreparedStatement
+import com.powersync.persistence.driver.ColNamesSqlCursor
 import java.math.BigDecimal
 import java.sql.PreparedStatement
 import java.sql.ResultSet
