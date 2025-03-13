@@ -229,8 +229,9 @@ kotlin {
             dependsOn(commonTest.get())
         }
 
-        val commonJava by creating {
-            kotlin.srcDir("commonJava")
+        val commonJDBC by creating {
+            kotlin.srcDir("commonJDBC")
+            dependsOn(commonMain.get())
             dependencies {
                 implementation(libs.sqlite.jdbc)
             }
@@ -278,8 +279,8 @@ kotlin {
         // tests.
         jvmTest.get().dependsOn(commonIntegrationTest)
 
-        androidMain.get().dependsOn(commonJava)
-        jvmMain.get().dependsOn(commonJava)
+        androidMain.get().dependsOn(commonJDBC)
+        jvmMain.get().dependsOn(commonJDBC)
 
         // We're linking the xcframework for the simulator tests, so they can use integration tests too
         iosSimulatorArm64Test.orNull?.dependsOn(commonIntegrationTest)

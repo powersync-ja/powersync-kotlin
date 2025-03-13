@@ -23,7 +23,6 @@ public actual class DatabaseDriverFactory {
         val driver =
             JdbcSqliteDriver(
                 url = "jdbc:sqlite:$dbFilename",
-
                 properties = properties,
             )
 

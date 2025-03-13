@@ -208,8 +208,6 @@ internal class JdbcCursor(
 
     fun getBigDecimal(index: Int): BigDecimal? = resultSet.getBigDecimal(index + 1)
 
-//    inline fun <reified T : Any> getObject(index: Int): T? = resultSet.getObject(index + 1, T::class.java)
-
     fun getDate(index: Int): java.sql.Date? = resultSet.getDate(index)
 
     fun getTime(index: Int): java.sql.Time? = resultSet.getTime(index)
