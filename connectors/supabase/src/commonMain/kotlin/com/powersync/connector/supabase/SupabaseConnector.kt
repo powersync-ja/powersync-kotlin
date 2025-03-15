@@ -176,9 +176,11 @@ public class SupabaseConnector(
                         }
 
                         UpdateType.PATCH -> {
-                            table.update(entry.opData!!) {
-                                filter {
-                                    eq("id", entry.id)
+                            if (!entry.opData.isNullOrEmpty()) {
+                                table.update(entry.opData) {
+                                    filter {
+                                        eq("id", entry.id)
+                                    }
                                 }
                             }
                         }
