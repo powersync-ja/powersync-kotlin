@@ -172,11 +172,20 @@ kotlin {
     iosArm64()
     iosSimulatorArm64()
 
+    // targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget>().configureEach {
+    //     compilations.all {
+    //         cinterops.all {
+    //             compilerOpts("-DSQLITE_ENABLE_LOAD_EXTENSION=1")
+    //         }
+    //     }
+    // }
+
     targets.withType<KotlinNativeTarget> {
         compilations.named("main") {
             compileTaskProvider {
                 compilerOptions.freeCompilerArgs.add("-Xexport-kdoc")
             }
+
             cinterops.create("sqlite") {
                 val cInteropTask = tasks[interopProcessingTaskName]
                 cInteropTask.dependsOn(buildCInteropDef)
@@ -184,7 +193,7 @@ kotlin {
                     buildCInteropDef
                         .get()
                         .outputs.files.singleFile
-                compilerOpts.addAll(listOf("-DHAVE_GETHOSTUUID=0"))
+                compilerOpts.addAll(listOf("-DHAVE_GETHOSTUUID=0", "-DSQLITE_ENABLE_LOAD_EXTENSION=1"))
             }
             cinterops.create("powersync-sqlite-core")
         }
@@ -326,12 +335,6 @@ android {
                     ),
                 )
             }
-        }
-    }
-
-    externalNativeBuild {
-        cmake {
-            path = project.file("src/androidMain/cpp/CMakeLists.txt")
         }
     }
 
