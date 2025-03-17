@@ -1,8 +1,8 @@
 package com.powersync.db.internal
 
+import co.touchlab.stately.concurrency.AtomicBoolean
 import com.powersync.PowerSyncException
 import com.powersync.PsSqlDriver
-import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.joinAll
@@ -26,7 +26,7 @@ internal class ConnectionPool(
     size: Int = 5,
     private val scope: CoroutineScope,
 ) {
-    val closed = atomic(false)
+    val closed = AtomicBoolean(false)
 
     private val mutex = Mutex()
     private val connections = List(size) { WrappedConnection(TransactorDriver(factory())) }
