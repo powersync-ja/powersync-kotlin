@@ -7,5 +7,6 @@ public expect class DatabaseDriverFactory {
     internal fun createDriver(
         scope: CoroutineScope,
         dbFilename: String,
+        dbDirectory: String?,
     ): PsSqlDriver
 }
