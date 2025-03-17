@@ -1,8 +1,6 @@
 import co.touchlab.faktory.artifactmanager.ArtifactManager
 import co.touchlab.faktory.capitalized
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
-import org.jetbrains.kotlin.ir.backend.js.compile
-import java.net.URL
 import java.security.MessageDigest
 
 plugins {
@@ -170,7 +168,7 @@ abstract class UpdatePackageSwiftChecksumTask : DefaultTask() {
 
         // Download the zip file
         zipFile.parentFile.mkdirs()
-        URL(zipUrl.get()).openStream().use { input ->
+        project.uri(zipUrl.get()).toURL().openStream().use { input ->
             zipFile.outputStream().use { output ->
                 input.copyTo(output)
             }

@@ -41,7 +41,7 @@ public abstract class SonatypeCentralExtension(
         val sonatypeCentralUploadDir =
             project.file(project.layout.buildDirectory.dir(REPO_DIR))
 
-        project.tasks.create(COMPONENT_BUNDLE_TASK_NAME, Zip::class.java) {
+        val bundle = project.tasks.register(COMPONENT_BUNDLE_TASK_NAME, Zip::class.java) {
             it.group = GROUP
             it.description = "Creates a bundle for Sonatype Central Portal publishing."
             it.archiveClassifier.set("bundle")
@@ -55,10 +55,10 @@ public abstract class SonatypeCentralExtension(
         }
 
         log.info("Setting up the `:${PUBLISH_TASK_NAME}` task")
-        project.tasks.create(PUBLISH_TASK_NAME, PublishToCentralPortalTask::class.java) {
+        project.tasks.register(PUBLISH_TASK_NAME, PublishToCentralPortalTask::class.java) {
             it.group = GROUP
             it.description = "Publishes the bundle to Sonatype Central Portal"
-            it.dependsOn(project.tasks.named(COMPONENT_BUNDLE_TASK_NAME))
+            it.dependsOn(bundle)
         }
     }
 }

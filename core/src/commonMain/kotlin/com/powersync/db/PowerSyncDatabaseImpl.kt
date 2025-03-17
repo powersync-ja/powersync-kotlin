@@ -32,9 +32,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
-import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.encodeToString
 
 /**
@@ -336,7 +336,7 @@ internal class PowerSyncDatabaseImpl(
 
                 SyncedAt(
                     priority = BucketPriority(it.getLong(0)!!.toInt()),
-                    syncedAt = rawTime.replace(" ", "T").toLocalDateTime().toInstant(TimeZone.UTC),
+                    syncedAt = LocalDateTime.parse(rawTime.replace(" ", "T")).toInstant(TimeZone.UTC),
                 )
             }
 

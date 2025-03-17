@@ -19,6 +19,7 @@ plugins {
     alias(libs.plugins.kotlinter)
     id("com.powersync.plugins.sonatype")
     alias(libs.plugins.mokkery)
+    alias(libs.plugins.kotlin.atomicfu)
 }
 
 val sqliteVersion = "3450200"
