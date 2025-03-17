@@ -8,6 +8,7 @@ import com.powersync.db.ThrowableLockCallback
 import com.powersync.db.ThrowableTransactionCallback
 import com.powersync.db.runWrapped
 import com.powersync.db.runWrappedSuspending
+import com.powersync.persistence.PsDatabase
 import com.powersync.utils.JsonUtil
 import com.powersync.utils.throttle
 import kotlinx.coroutines.CoroutineScope
@@ -32,6 +33,7 @@ internal class InternalDatabaseImpl(
     private val scope: CoroutineScope,
 ) : InternalDatabase {
     private val writeConnection = factory.createDriver(scope = scope, dbFilename = dbOpenOptions)
+    private val writeTransactor = PsDatabase(writeConnection)
 
     private val readPool =
         ConnectionPool(factory = {
@@ -95,7 +97,7 @@ internal class InternalDatabaseImpl(
         throttleMs: Long?,
         mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>> =
-        // Use a channel flow here since we throttle (buffer used under the hood)
+    // Use a channel flow here since we throttle (buffer used under the hood)
         // This causes some emissions to be from different scopes.
         channelFlow {
             // Fetch the tables asynchronously with getAll
@@ -157,7 +159,9 @@ internal class InternalDatabaseImpl(
 
     override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R =
         writeLock { connection ->
-            internalTransaction(connection, readOnly = false) {
+            // Some drivers (mainly iOS) require starting a transaction with the driver in order to
+            // access the internal write connection
+            writeTransactor.transactionWithResult(noEnclosing = true) {
                 callback.execute(
                     PowerSyncTransactionImpl(
                         connection,

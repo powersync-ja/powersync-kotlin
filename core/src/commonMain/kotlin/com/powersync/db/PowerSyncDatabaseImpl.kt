@@ -86,7 +86,10 @@ internal class PowerSyncDatabaseImpl(
         val schemaJson = JsonUtil.json.encodeToString(schema)
 
         internalDb.writeTransaction { tx ->
-            tx.getOptional("SELECT powersync_replace_schema(?)", listOf(schemaJson)) {}
+            tx.getOptional(
+                "SELECT powersync_replace_schema(?);",
+                listOf(schemaJson),
+            ) {}
         }
     }
 
@@ -264,7 +267,10 @@ internal class PowerSyncDatabaseImpl(
         writeCheckpoint: String?,
     ) {
         internalDb.writeTransaction { transaction ->
-            transaction.execute("DELETE FROM ps_crud WHERE id <= ?", listOf(lastTransactionId.toLong()))
+            transaction.execute(
+                "DELETE FROM ps_crud WHERE id <= ?",
+                listOf(lastTransactionId.toLong()),
+            )
 
             if (writeCheckpoint != null && !bucketStorage.hasCrud(transaction)) {
                 transaction.execute(

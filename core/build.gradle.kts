@@ -343,6 +343,7 @@ android {
             jniLibs.srcDirs("src/androidMain/jni", "src/main/jni", "src/jniLibs")
         }
     }
+    ndkVersion = "27.1.12297006"
 }
 
 tasks.named<ProcessResources>(kotlin.jvm().compilations["main"].processResourcesTaskName) {
