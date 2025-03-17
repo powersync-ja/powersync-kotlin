@@ -8,7 +8,6 @@ import com.powersync.db.ThrowableLockCallback
 import com.powersync.db.ThrowableTransactionCallback
 import com.powersync.db.runWrapped
 import com.powersync.db.runWrappedSuspending
-import com.powersync.persistence.PsDatabase
 import com.powersync.utils.JsonUtil
 import com.powersync.utils.throttle
 import kotlinx.coroutines.CoroutineScope
@@ -34,8 +33,13 @@ internal class InternalDatabaseImpl(
     private val dbDirectory: String?,
 ) : InternalDatabase {
     private val writeConnection =
-        factory.createDriver(scope = scope, dbFilename = dbFilename, dbDirectory = dbDirectory)
-    private val writeTransactor = PsDatabase(writeConnection)
+        TransactorDriver(
+            factory.createDriver(
+                scope = scope,
+                dbFilename = dbFilename,
+                dbDirectory = dbDirectory,
+            ),
+        )
 
     private val dbIdentifier = dbFilename + dbDirectory
 
@@ -131,80 +135,66 @@ internal class InternalDatabaseImpl(
                 }
         }
 
-    override suspend fun <R> readLock(callback: ThrowableLockCallback<R>): R =
+    /**
+     * Creates a read lock while providing an internal transactor for transactions
+     */
+    private suspend fun <R> internalReadLock(callback: (TransactorDriver) -> R): R =
         withContext(dbContext) {
             runWrappedSuspending {
-                readPool.withConnection { callback.execute(it) }
+                readPool.withConnection {
+                    catchSwiftExceptions {
+                        callback(it)
+                    }
+                }
             }
         }
 
+    override suspend fun <R> readLock(callback: ThrowableLockCallback<R>): R = internalReadLock { callback.execute(it.driver) }
+
     override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R =
-        readLock { connection ->
-            internalTransaction(connection, readOnly = true) {
+        internalReadLock {
+            it.transactor.transactionWithResult(noEnclosing = true) {
                 callback.execute(
                     PowerSyncTransactionImpl(
-                        connection,
+                        it.driver,
                     ),
                 )
             }
         }
 
-    override suspend fun <R> writeLock(callback: ThrowableLockCallback<R>): R =
+    /**
+     * Creates a read lock while providing an internal transactor for transactions
+     */
+    private suspend fun <R> internalWriteLock(callback: (TransactorDriver) -> R): R =
         withContext(dbContext) {
             withSharedMutex(dbIdentifier) {
                 runWrapped {
-                    callback.execute(writeConnection)
+                    catchSwiftExceptions {
+                        callback(writeConnection)
+                    }
                 }.also {
                     // Trigger watched queries
                     // Fire updates inside the write lock
-                    writeConnection.fireTableUpdates()
+                    writeConnection.driver.fireTableUpdates()
                 }
             }
         }
 
+    override suspend fun <R> writeLock(callback: ThrowableLockCallback<R>): R = internalWriteLock { callback.execute(it.driver) }
+
     override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R =
-        writeLock { connection ->
-            // Some drivers (mainly iOS) require starting a transaction with the driver in order to
-            // access the internal write connection
-            writeTransactor.transactionWithResult(noEnclosing = true) {
+        internalWriteLock {
+            it.transactor.transactionWithResult(noEnclosing = true) {
                 callback.execute(
                     PowerSyncTransactionImpl(
-                        connection,
+                        it.driver,
                     ),
                 )
             }
         }
 
     // Register callback for table updates on a specific table
-    override fun updatesOnTables(): SharedFlow<Set<String>> = writeConnection.updatesOnTables()
-
-    private fun <R> internalTransaction(
-        context: ConnectionContext,
-        readOnly: Boolean,
-        action: () -> R,
-    ): R {
-        try {
-            context.execute(
-                "BEGIN ${
-                    if (readOnly) {
-                        ""
-                    } else {
-                        "IMMEDIATE"
-                    }
-                }",
-            )
-            val result = catchSwiftExceptions { action() }
-            context.execute("COMMIT")
-            return result
-        } catch (error: Exception) {
-            try {
-                context.execute("ROLLBACK")
-            } catch (_: Exception) {
-                // This can fail safely under some circumstances
-            }
-            throw error
-        }
-    }
+    override fun updatesOnTables(): SharedFlow<Set<String>> = writeConnection.driver.updatesOnTables()
 
     // Unfortunately Errors can't be thrown from Swift SDK callbacks.
     // These are currently returned and should be thrown here.
@@ -255,7 +245,7 @@ internal class InternalDatabaseImpl(
 
     override fun close() {
         runWrapped {
-            writeConnection.close()
+            writeConnection.driver.close()
             runBlocking {
                 readPool.close()
             }

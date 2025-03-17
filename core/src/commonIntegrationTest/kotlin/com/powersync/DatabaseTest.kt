@@ -39,7 +39,7 @@ class DatabaseTest {
     @Test
     fun testLinksPowerSync() =
         runTest {
-            database.get("SELECT powersync_rs_version() AS r;") { it.getString(0)!! }
+            database.get("SELECT powersync_rs_version();") { it.getString(0)!! }
         }
 
     @Test
@@ -51,6 +51,17 @@ class DatabaseTest {
                     mapper = { it.getString(0)!! },
                 )
             assertEquals(mode, "wal")
+        }
+
+    @Test
+    fun testFTS() =
+        runTest {
+            val mode =
+                database.get(
+                    "SELECT sqlite_compileoption_used('ENABLE_FTS5');",
+                    mapper = { it.getLong(0)!! },
+                )
+            assertEquals(mode, 1)
         }
 
     @Test

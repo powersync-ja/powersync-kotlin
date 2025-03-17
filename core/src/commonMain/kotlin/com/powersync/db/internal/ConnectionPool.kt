@@ -11,14 +11,14 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 internal class WrappedConnection(
-    val connection: PsSqlDriver,
+    val transactorDriver: TransactorDriver,
 ) {
     var busy: Boolean = false
 }
 
 internal data class DeferredAction<R>(
     val deferred: CompletableDeferred<R>,
-    val action: suspend (connection: ConnectionContext) -> R,
+    val action: suspend (connection: TransactorDriver) -> R,
 )
 
 internal class ConnectionPool(
@@ -29,11 +29,11 @@ internal class ConnectionPool(
     val closed = atomic(false)
 
     private val mutex = Mutex()
-    private val connections = List(size) { WrappedConnection(factory()) }
+    private val connections = List(size) { WrappedConnection(TransactorDriver(factory())) }
     private val queue = mutableListOf<DeferredAction<Any?>>()
     private val activeOperations = mutableListOf<CompletableDeferred<Any?>>()
 
-    suspend fun <R> withConnection(action: suspend (connection: ConnectionContext) -> R): R {
+    suspend fun <R> withConnection(action: suspend (connection: TransactorDriver) -> R): R {
         if (closed.value) {
             throw PowerSyncException(
                 message = "Cannot process connection pool request",
@@ -71,7 +71,7 @@ internal class ConnectionPool(
         wrappedConnection: WrappedConnection,
     ) {
         try {
-            val result = request.action(wrappedConnection.connection)
+            val result = request.action(wrappedConnection.transactorDriver)
             request.deferred.complete(result)
         } catch (exception: Exception) {
             request.deferred.completeExceptionally(exception)
@@ -135,7 +135,7 @@ internal class ConnectionPool(
 
         // Close all connections
         for (connection in connections) {
-            connection.connection.close()
+            connection.transactorDriver.driver.close()
         }
     }
 }
