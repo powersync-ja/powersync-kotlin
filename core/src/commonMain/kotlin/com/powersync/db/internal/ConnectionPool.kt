@@ -11,9 +11,9 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 internal class WrappedConnection(
-    public val connection: PsSqlDriver,
+    val connection: PsSqlDriver,
 ) {
-    public var busy: Boolean = false
+    var busy: Boolean = false
 }
 
 internal data class DeferredAction<R>(

@@ -29,17 +29,22 @@ import kotlinx.serialization.encodeToString
 @OptIn(FlowPreview::class)
 internal class InternalDatabaseImpl(
     private val factory: DatabaseDriverFactory,
-    private val dbOpenOptions: String = "todo",
     private val scope: CoroutineScope,
+    private val dbFilename: String,
+    private val dbDirectory: String?,
 ) : InternalDatabase {
-    private val writeConnection = factory.createDriver(scope = scope, dbFilename = dbOpenOptions)
+    private val writeConnection =
+        factory.createDriver(scope = scope, dbFilename = dbFilename, dbDirectory = dbDirectory)
     private val writeTransactor = PsDatabase(writeConnection)
+
+    private val dbIdentifier = dbFilename + dbDirectory
 
     private val readPool =
         ConnectionPool(factory = {
             factory.createDriver(
                 scope = scope,
-                dbFilename = dbOpenOptions,
+                dbFilename = dbFilename,
+                dbDirectory = dbDirectory,
             )
         }, scope = scope)
 
@@ -97,7 +102,7 @@ internal class InternalDatabaseImpl(
         throttleMs: Long?,
         mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>> =
-    // Use a channel flow here since we throttle (buffer used under the hood)
+        // Use a channel flow here since we throttle (buffer used under the hood)
         // This causes some emissions to be from different scopes.
         channelFlow {
             // Fetch the tables asynchronously with getAll
@@ -146,7 +151,7 @@ internal class InternalDatabaseImpl(
 
     override suspend fun <R> writeLock(callback: ThrowableLockCallback<R>): R =
         withContext(dbContext) {
-            withSharedMutex(dbOpenOptions) {
+            withSharedMutex(dbIdentifier) {
                 runWrapped {
                     callback.execute(writeConnection)
                 }.also {

@@ -33,31 +33,10 @@ import platform.Foundation.NSBundle
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 @OptIn(ExperimentalForeignApi::class)
 public actual class DatabaseDriverFactory {
-    private var driver: PsSqlDriver? = null
-
-    @Suppress("unused", "UNUSED_PARAMETER")
-    private fun updateTableHook(
-        opType: Int,
-        databaseName: String,
-        tableName: String,
-        rowId: Long,
-    ) {
-        driver?.updateTable(tableName)
-    }
-
-    private fun onTransactionCommit(success: Boolean) {
-        driver?.also { driver ->
-            // Only clear updates on rollback
-            // We manually fire updates when a transaction ended
-            if (!success) {
-                driver.clearTableUpdates()
-            }
-        }
-    }
-
     internal actual fun createDriver(
         scope: CoroutineScope,
         dbFilename: String,
+        dbDirectory: String?,
     ): PsSqlDriver {
         val schema = InternalSchema
         val sqlLogger =
@@ -78,7 +57,12 @@ public actual class DatabaseDriverFactory {
                 override fun vWrite(message: String) {}
             }
 
-        this.driver =
+        // Create a deferred driver reference for hook registrations
+        // This must exist before we create the driver since we require
+        // a pointer for C hooks
+        val deferredDriver = DeferredDriver()
+
+        val driver =
             PsSqlDriver(
                 driver =
                     NativeSqliteDriver(
@@ -97,7 +81,7 @@ public actual class DatabaseDriverFactory {
                                 lifecycleConfig =
                                     DatabaseConfiguration.Lifecycle(
                                         onCreateConnection = { connection ->
-                                            setupSqliteBinding(connection)
+                                            setupSqliteBinding(connection, deferredDriver)
                                             wrapConnection(connection) { driver ->
                                                 schema.create(driver)
                                             }
@@ -109,11 +93,17 @@ public actual class DatabaseDriverFactory {
                             ),
                     ),
             )
-        return this.driver as PsSqlDriver
+
+        deferredDriver.setDriver(driver)
+
+        return driver
     }
 
-    private fun setupSqliteBinding(connection: DatabaseConnection) {
-        val baseptr = connection.getDbPointer().getPointer(MemScope())
+    private fun setupSqliteBinding(
+        connection: DatabaseConnection,
+        driver: DeferredDriver,
+    ) {
+        val basePointer = connection.getDbPointer().getPointer(MemScope())
         // Try and find the bundle path for the SQLite core extension.
         val bundlePath =
             NSBundle.bundleWithIdentifier("co.powersync.sqlitecore")?.bundlePath
@@ -129,7 +119,7 @@ public actual class DatabaseDriverFactory {
         // We have a mix of SQLite operations. The SQliteR lib links to the system SQLite with `-lsqlite3`
         // However we also include our own build of SQLite which is statically linked.
         // Loading of extensions is only available using our version of SQLite's API
-        val ptr = baseptr.reinterpret<sqlite3>()
+        val ptr = basePointer.reinterpret<sqlite3>()
         // Enable extension loading
         // We don't disable this after the fact, this should allow users to load their own extensions
         // in future.
@@ -159,46 +149,45 @@ public actual class DatabaseDriverFactory {
             )
         }
 
+        val driverRef = StableRef.create(driver)
+
         sqlite3_update_hook(
             ptr,
             staticCFunction { usrPtr, updateType, dbName, tableName, rowId ->
-                val callback =
-                    usrPtr!!
-                        .asStableRef<(Int, String, String, Long) -> Unit>()
-                        .get()
-                callback(
-                    updateType,
-                    dbName!!.toKString(),
-                    tableName!!.toKString(),
-                    rowId,
-                )
+                usrPtr!!
+                    .asStableRef<DeferredDriver>()
+                    .get()
+                    .updateTableHook(tableName!!.toKString())
             },
-            StableRef.create(::updateTableHook).asCPointer(),
+            driverRef.asCPointer(),
         )
 
-        // Register transaction hooks
         sqlite3_commit_hook(
             ptr,
             staticCFunction { usrPtr ->
-                val callback = usrPtr!!.asStableRef<(Boolean) -> Unit>().get()
-                callback(true)
+                usrPtr!!.asStableRef<DeferredDriver>().get().onTransactionCommit(true)
                 0
             },
-            StableRef.create(::onTransactionCommit).asCPointer(),
+            driverRef.asCPointer(),
         )
+
         sqlite3_rollback_hook(
             ptr,
             staticCFunction { usrPtr ->
-                val callback = usrPtr!!.asStableRef<(Boolean) -> Unit>().get()
-                callback(false)
+                usrPtr!!.asStableRef<DeferredDriver>().get().onTransactionCommit(false)
             },
-            StableRef.create(::onTransactionCommit).asCPointer(),
+            driverRef.asCPointer(),
         )
     }
 
     private fun deregisterSqliteBinding(connection: DatabaseConnection) {
-        val baseptr = connection.getDbPointer().getPointer(MemScope())
-        val ptr = baseptr.reinterpret<sqlite3>()
+        val basePtr = connection.getDbPointer().getPointer(MemScope())
+
+        // We have a mix of SQLite operations. The SQliteR lib links to the system SQLite with `-lsqlite3`
+        // However we also include our own build of SQLite which is statically linked.
+        // Loading of extensions is only available using our version of SQLite's API
+        val ptr = basePtr.reinterpret<sqlite3>()
+
         sqlite3_update_hook(
             ptr,
             null,

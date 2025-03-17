@@ -51,9 +51,16 @@ internal class PowerSyncDatabaseImpl(
     val scope: CoroutineScope,
     val factory: DatabaseDriverFactory,
     private val dbFilename: String,
+    private val dbDirectory: String? = null,
     val logger: Logger = Logger,
 ) : PowerSyncDatabase {
-    private val internalDb = InternalDatabaseImpl(factory = factory, scope = scope)
+    private val internalDb =
+        InternalDatabaseImpl(
+            factory = factory,
+            scope = scope,
+            dbFilename = dbFilename,
+            dbDirectory = dbDirectory,
+        )
     internal val bucketStorage: BucketStorage = BucketStorageImpl(internalDb, logger)
 
     /**
