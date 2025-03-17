@@ -16,7 +16,7 @@ public actual class DatabaseDriverFactory(
     internal actual fun createDriver(
         scope: CoroutineScope,
         dbFilename: String,
-        dbDirectory: String?
+        dbDirectory: String?,
     ): PsSqlDriver {
         val schema = InternalSchema
 
@@ -27,13 +27,16 @@ public actual class DatabaseDriverFactory(
         properties.setProperty("busy_timeout", "30000")
         properties.setProperty("cache_size", "${50 * 1024}")
 
-        val dbPath = if (dbDirectory != null) "$dbDirectory/$dbFilename"
-        // TODO verify compatibility with previous implementation
-        else context.getDatabasePath(dbFilename)
+        val dbPath =
+            if (dbDirectory != null) {
+                "$dbDirectory/$dbFilename"
+            } else {
+                // TODO verify compatibility with previous implementation
+                context.getDatabasePath(dbFilename)
+            }
 
         val driver =
             JdbcSqliteDriver(
-
                 url = "jdbc:sqlite:$dbPath",
                 properties = properties,
             )
