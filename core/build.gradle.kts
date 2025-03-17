@@ -151,6 +151,61 @@ val unzipPowersyncFramework by tasks.registering(Copy::class) {
     into(binariesFolder.map { it.dir("framework") })
 }
 
+val sqliteJDBCFolder =
+    project.layout.buildDirectory
+        .dir("jdbc")
+        .get()
+
+val jniLibsFolder = layout.projectDirectory.dir("src/androidMain/jni")
+
+val downloadJDBCJar by tasks.registering(Download::class) {
+    val version =
+        libs.versions.sqlite.jdbc
+            .get()
+    val jar =
+        "https://github.com/xerial/sqlite-jdbc/releases/download/$version/sqlite-jdbc-$version.jar"
+
+    src(jar)
+    dest(sqliteJDBCFolder.file("jdbc.jar"))
+    onlyIfModified(true)
+}
+
+val extractJDBCJNI by tasks.registering(Copy::class) {
+    dependsOn(downloadJDBCJar)
+
+    from(
+        zipTree(downloadJDBCJar.get().dest).matching {
+            include("org/sqlite/native/Linux-Android/**")
+        },
+    )
+
+    into(sqliteJDBCFolder.dir("jni"))
+}
+
+val moveJDBCJNIFiles by tasks.registering(Copy::class) {
+    dependsOn(extractJDBCJNI)
+
+    val abiMapping =
+        mapOf(
+            "aarch64" to "arm64-v8a",
+            "arm" to "armeabi-v7a",
+            "x86_64" to "x86_64",
+            "x86" to "x86",
+        )
+
+    abiMapping.forEach { (sourceABI, androidABI) ->
+        from(sqliteJDBCFolder.dir("jni/org/sqlite/native/Linux-Android/$sourceABI")) {
+            include("*.so")
+            eachFile {
+                // Rename to avoid conflicts if necessary
+                path = "$androidABI/$name"
+            }
+        }
+    }
+
+    into(jniLibsFolder) // Move everything into the base jniLibs folder
+}
+
 kotlin {
     androidTarget {
         publishLibraryVariants("release", "debug")
@@ -342,6 +397,14 @@ android {
         }
     }
     ndkVersion = "27.1.12297006"
+}
+
+androidComponents.onVariants { variant ->
+    if (variant.buildType == "debug" || variant.buildType == "release") {
+        tasks.named("preBuild") {
+            dependsOn(moveJDBCJNIFiles)
+        }
+    }
 }
 
 tasks.named<ProcessResources>(kotlin.jvm().compilations["main"].processResourcesTaskName) {

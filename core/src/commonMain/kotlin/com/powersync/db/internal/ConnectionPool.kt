@@ -33,6 +33,7 @@ internal class ConnectionPool(
     private val queue = mutableListOf<DeferredAction<Any?>>()
     private val activeOperations = mutableListOf<CompletableDeferred<Any?>>()
 
+    @Suppress("UNCHECKED_CAST")
     suspend fun <R> withConnection(action: suspend (connection: TransactorDriver) -> R): R {
         if (closed.value) {
             throw PowerSyncException(
@@ -63,7 +64,17 @@ internal class ConnectionPool(
             }
         }
 
-        return wrappedDeferred.deferred.await() as R
+        val result = wrappedDeferred.deferred.await()
+        if (result != null) {
+            val casted =
+                result as? R
+                    ?: throw PowerSyncException(
+                        "Could not cast deferred result",
+                        Exception("Casting error"),
+                    )
+            return casted
+        }
+        return null as R
     }
 
     private suspend fun processRequest(

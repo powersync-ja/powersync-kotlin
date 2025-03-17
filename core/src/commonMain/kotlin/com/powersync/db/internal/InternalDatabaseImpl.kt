@@ -149,16 +149,21 @@ internal class InternalDatabaseImpl(
             }
         }
 
-    override suspend fun <R> readLock(callback: ThrowableLockCallback<R>): R = internalReadLock { callback.execute(it.driver) }
+    override suspend fun <R> readLock(callback: ThrowableLockCallback<R>): R =
+        internalReadLock {
+            callback.execute(it.driver)
+        }
 
     override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R =
         internalReadLock {
             it.transactor.transactionWithResult(noEnclosing = true) {
-                callback.execute(
-                    PowerSyncTransactionImpl(
-                        it.driver,
-                    ),
-                )
+                catchSwiftExceptions {
+                    callback.execute(
+                        PowerSyncTransactionImpl(
+                            it.driver,
+                        ),
+                    )
+                }
             }
         }
 
@@ -180,16 +185,22 @@ internal class InternalDatabaseImpl(
             }
         }
 
-    override suspend fun <R> writeLock(callback: ThrowableLockCallback<R>): R = internalWriteLock { callback.execute(it.driver) }
+    override suspend fun <R> writeLock(callback: ThrowableLockCallback<R>): R =
+        internalWriteLock {
+            callback.execute(it.driver)
+        }
 
     override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R =
         internalWriteLock {
             it.transactor.transactionWithResult(noEnclosing = true) {
-                callback.execute(
-                    PowerSyncTransactionImpl(
-                        it.driver,
-                    ),
-                )
+                // Need to catch Swift exceptions here for Rollback
+                catchSwiftExceptions {
+                    callback.execute(
+                        PowerSyncTransactionImpl(
+                            it.driver,
+                        ),
+                    )
+                }
             }
         }
 
