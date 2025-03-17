@@ -54,7 +54,7 @@ internal class InternalDatabaseImpl(
     companion object {
         const val DEFAULT_WATCH_THROTTLE_MS = 30L
 
-        // A meta mutex for protecting mutex operations
+        // A meta mutex for protecting mutex map operations
         private val globalLock = Mutex()
 
         // Static mutex max which globally shares write locks

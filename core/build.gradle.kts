@@ -172,14 +172,6 @@ kotlin {
     iosArm64()
     iosSimulatorArm64()
 
-    // targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget>().configureEach {
-    //     compilations.all {
-    //         cinterops.all {
-    //             compilerOpts("-DSQLITE_ENABLE_LOAD_EXTENSION=1")
-    //         }
-    //     }
-    // }
-
     targets.withType<KotlinNativeTarget> {
         compilations.named("main") {
             compileTaskProvider {
@@ -193,9 +185,14 @@ kotlin {
                     buildCInteropDef
                         .get()
                         .outputs.files.singleFile
-                compilerOpts.addAll(listOf("-DHAVE_GETHOSTUUID=0", "-DSQLITE_ENABLE_LOAD_EXTENSION=1"))
+                compilerOpts.addAll(
+                    listOf(
+                        "-DHAVE_GETHOSTUUID=0",
+                        "-DSQLITE_ENABLE_LOAD_EXTENSION=1",
+                        "-DSQLITE_ENABLE_FTS5",
+                    ),
+                )
             }
-            cinterops.create("powersync-sqlite-core")
         }
 
         if (konanTarget.family == Family.IOS && konanTarget.name.contains("simulator")) {

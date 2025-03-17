@@ -12,7 +12,6 @@ internal class DeferredDriver {
     }
 
     fun updateTableHook(tableName: String) {
-        println("table updated $tableName")
         driver?.updateTable(tableName)
     }
 

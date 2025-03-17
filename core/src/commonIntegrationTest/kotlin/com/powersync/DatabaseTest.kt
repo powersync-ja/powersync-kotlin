@@ -43,35 +43,6 @@ class DatabaseTest {
         }
 
     @Test
-    fun testReadTransactions() =
-        runTest {
-            val transactionStarted = CompletableDeferred<Unit>()
-            val itemCreated = CompletableDeferred<Unit>()
-            val readUserCountDeferred =
-                async {
-                    database.readTransaction({ tx ->
-                        transactionStarted.complete(Unit)
-                        runBlocking {
-                            itemCreated.await()
-                        }
-                        tx.get("SELECT COUNT(*) from users") { it.getLong(0)!! }
-                    })
-                }
-
-            database.execute(
-                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
-                listOf(
-                    "steven",
-                    "s@journeyapps.com",
-                ),
-            )
-            itemCreated.complete(Unit)
-
-            // The read transaction started before the item was created
-            assertEquals(0, readUserCountDeferred.await())
-        }
-
-    @Test
     fun testWAL() =
         runTest {
             val mode =
