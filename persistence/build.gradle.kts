@@ -90,6 +90,8 @@ android {
 }
 
 sqldelight {
+    linkSqlite = false
+
     databases {
         create("PsDatabase") {
             packageName.set("com.powersync.persistence")
