@@ -27,9 +27,6 @@ allprojects {
         maven("https://cache-redirector.jetbrains.com/intellij-dependencies")
         // Repo for the backported Android IntelliJ Plugin by Jetbrains used in Ultimate
         maven("https://maven.pkg.jetbrains.space/kotlin/p/kotlin/kotlin-ide-plugin-dependencies/")
-        maven("https://jitpack.io") {
-            content { includeGroup("com.github.requery") }
-        }
     }
 
     configurations.configureEach {

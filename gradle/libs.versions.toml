@@ -86,7 +86,6 @@ sqldelight-driver-native = { module = "app.cash.sqldelight:native-driver", versi
 sqliter = { module = "co.touchlab:sqliter-driver", version.ref = "sqliter" }
 sqldelight-driver-android = { module = "app.cash.sqldelight:android-driver", version.ref = "sqlDelight" }
 sqldelight-driver-jdbc = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqlDelight" }
-requery-sqlite-android = { module = "com.github.requery:sqlite-android", version.ref = "sqlite-android" }
 sqldelight-coroutines = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqlDelight" }
 sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqlDelight" }
 sqldelight-dialect-sqlite338 = { module = "app.cash.sqldelight:sqlite-3-38-dialect", version.ref = "sqlDelight" }

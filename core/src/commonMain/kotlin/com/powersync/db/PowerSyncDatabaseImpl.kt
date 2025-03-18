@@ -80,7 +80,7 @@ internal class PowerSyncDatabaseImpl(
     init {
         runBlocking {
             powerSyncVersion =
-                internalDb.get("SELECT powersync_rs_version() as version") { it.getString("version") }
+                internalDb.get("SELECT powersync_rs_version()") { it.getString(0)!! }
             logger.d { "SQLiteVersion: $powerSyncVersion" }
             checkVersion()
             logger.d { "PowerSyncVersion: ${getPowerSyncVersion()}" }
@@ -336,7 +336,10 @@ internal class PowerSyncDatabaseImpl(
 
                 SyncedAt(
                     priority = BucketPriority(it.getLong(0)!!.toInt()),
-                    syncedAt = LocalDateTime.parse(rawTime.replace(" ", "T")).toInstant(TimeZone.UTC),
+                    syncedAt =
+                        LocalDateTime
+                            .parse(rawTime.replace(" ", "T"))
+                            .toInstant(TimeZone.UTC),
                 )
             }
 

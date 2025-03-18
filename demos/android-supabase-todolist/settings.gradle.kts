@@ -17,9 +17,6 @@ dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
-        maven("https://jitpack.io") {
-            content { includeGroup("com.github.requery") }
-        }
         mavenCentral()
     }
 }
@@ -27,20 +24,22 @@ dependencyResolutionManagement {
 rootProject.name = "PowersyncAndroidExample"
 include(":app")
 
-val localProperties = Properties().apply {
-    try {
-        load(file("local.properties").reader())
-    } catch (ignored: java.io.IOException) {
-        // ignore
+val localProperties =
+    Properties().apply {
+        try {
+            load(file("local.properties").reader())
+        } catch (ignored: java.io.IOException) {
+            // ignore
+        }
     }
-}
 val useReleasedVersions = localProperties.getProperty("USE_RELEASED_POWERSYNC_VERSIONS") == "true"
 
 if (!useReleasedVersions) {
     includeBuild("../..") {
         dependencySubstitution {
             substitute(module("com.powersync:core"))
-                .using(project(":core")).because("we want to auto-wire up sample dependency")
+                .using(project(":core"))
+                .because("we want to auto-wire up sample dependency")
             substitute(module("com.powersync:connector-supabase"))
                 .using(project(":connectors:supabase"))
                 .because("we want to auto-wire up sample dependency")
