@@ -1,6 +1,7 @@
 package com.powersync.db
 
 import co.touchlab.kermit.Logger
+import co.touchlab.stately.concurrency.AtomicBoolean
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
 import com.powersync.PsSqlDriver
@@ -33,6 +34,8 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
@@ -56,8 +59,34 @@ internal class PowerSyncDatabaseImpl(
     val logger: Logger = Logger,
     driver: PsSqlDriver = factory.createDriver(scope, dbFilename),
 ) : PowerSyncDatabase {
+    companion object {
+        /**
+         * We store a map of connection streaming mutexes, but we need to access that safely.
+         */
+        internal val streamingMapMutex = Mutex()
+
+        /**
+         * Manages streaming operations for the same database between clients
+         */
+        internal val streamMutexes = mutableMapOf<String, Mutex>()
+
+        internal val streamConflictMessage =
+            """
+            Another PowerSync client is already connected to this database.
+            Multiple connections to the same database should be avoided. 
+            Please check your PowerSync client instantiation logic.
+            This connection attempt will be queued and will only be executed after
+            currently connecting clients are disconnected.
+            """.trimIndent()
+    }
+
+    /**
+     * Manages multiple connection attempts within the same client
+     */
+    private val connectingMutex = Mutex()
     private val internalDb = InternalDatabaseImpl(driver, scope)
     internal val bucketStorage: BucketStorage = BucketStorageImpl(internalDb, logger)
+    val closed = AtomicBoolean(false)
 
     /**
      * The current sync status.
@@ -95,8 +124,7 @@ internal class PowerSyncDatabaseImpl(
         crudThrottleMs: Long,
         retryDelayMs: Long,
         params: Map<String, JsonParam?>,
-    ) {
-        // close connection if one is open
+    ) = connectingMutex.withLock {
         disconnect()
 
         connect(
@@ -118,9 +146,48 @@ internal class PowerSyncDatabaseImpl(
         crudThrottleMs: Long,
     ) {
         this.syncStream = stream
+
+        val db = this
+
         syncJob =
             scope.launch {
-                syncStream!!.streamingSync()
+                // Get a global lock for checking mutex maps
+                val streamMutex =
+                    streamingMapMutex.withLock {
+                        val streamMutex = streamMutexes.getOrPut(dbFilename) { Mutex() }
+
+                        // Poke the streaming mutex to see if another client is using it
+                        // We check the mutex status in the global lock to prevent race conditions
+                        // between multiple clients.
+                        var obtainedLock = false
+                        try {
+                            // This call will throw if the lock is already held by this db client.
+                            // We should never reach that point since we disconnect before connecting.
+                            obtainedLock = streamMutex.tryLock(db)
+                            if (!obtainedLock) {
+                                // The mutex is held already by another PowerSync instance (owner).
+                                // (The tryLock should throw if this client already holds the lock).
+                                logger.w(streamConflictMessage)
+                            }
+                        } catch (ex: IllegalStateException) {
+                            logger.e { "The streaming sync client did not disconnect before connecting" }
+                        } finally {
+                            if (obtainedLock) {
+                                streamMutex.unlock(db)
+                            }
+                        }
+
+                        // It should be safe to use this mutex instance externally
+                        return@withLock streamMutex
+                    }
+
+                // Start the Mutex request in this job.
+                // Disconnecting will cancel the job and request.
+                // This holds the lock while streaming is in progress.
+                streamMutex.withLock(db) {
+                    // Check if another client is already holding the mutex
+                    syncStream!!.streamingSync()
+                }
             }
 
         scope.launch {
@@ -216,7 +283,8 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 
-    override suspend fun getPowerSyncVersion(): String = internalDb.queries.powerSyncVersion().executeAsOne()
+    override suspend fun getPowerSyncVersion(): String =
+        internalDb.queries.powerSyncVersion().executeAsOne()
 
     override suspend fun <RowType : Any> get(
         sql: String,
@@ -243,9 +311,11 @@ internal class PowerSyncDatabaseImpl(
         mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>> = internalDb.watch(sql, parameters, throttleMs, mapper)
 
-    override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R = internalDb.writeTransaction(callback)
+    override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R =
+        internalDb.writeTransaction(callback)
 
-    override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R = internalDb.writeTransaction(callback)
+    override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R =
+        internalDb.writeTransaction(callback)
 
     override suspend fun execute(
         sql: String,
@@ -316,7 +386,10 @@ internal class PowerSyncDatabaseImpl(
 
                 SyncedAt(
                     priority = BucketPriority(it.getLong(0)!!.toInt()),
-                    syncedAt = LocalDateTime.parse(rawTime.replace(" ", "T")).toInstant(TimeZone.UTC),
+                    syncedAt =
+                        LocalDateTime
+                            .parse(rawTime.replace(" ", "T"))
+                            .toInstant(TimeZone.UTC),
                 )
             }
 
@@ -364,6 +437,10 @@ internal class PowerSyncDatabaseImpl(
     }
 
     override suspend fun close() {
+        if (closed.value) {
+            return
+        }
+        closed.value = true
         disconnect()
         internalDb.close()
     }

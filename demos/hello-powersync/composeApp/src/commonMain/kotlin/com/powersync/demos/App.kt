@@ -27,12 +27,14 @@ fun App() {
     var version by remember { mutableStateOf("Loading") }
     val scope = rememberCoroutineScope()
     val customers by powerSync.watchUsers().collectAsState(emptyList())
-    val syncStatus by powerSync.db.currentStatus.asFlow().collectAsState(powerSync.db.currentStatus)
+    val syncStatus by powerSync.db.currentStatus
+        .asFlow()
+        .collectAsState(powerSync.db.currentStatus)
 
     MaterialTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colors.background
+            color = MaterialTheme.colors.background,
         ) {
             LaunchedEffect(powerSync) {
                 scope.launch {
@@ -55,7 +57,7 @@ fun App() {
                         powerSync.deleteUser()
                     }
                 },
-                syncStatus = syncStatus
+                syncStatus = syncStatus,
             )
         }
     }
@@ -67,7 +69,7 @@ fun ViewContent(
     users: List<User>,
     onCreate: () -> Unit,
     onDelete: () -> Unit,
-    syncStatus: SyncStatusData
+    syncStatus: SyncStatusData,
 ) {
     val layoutDirection = LocalLayoutDirection.current
     Scaffold(
@@ -83,20 +85,20 @@ fun ViewContent(
             Box(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(
                     contentPadding =
-                    PaddingValues(
-                        start = padding.calculateStartPadding(layoutDirection),
-                        top = padding.calculateTopPadding() + 8.dp,
-                        end = padding.calculateEndPadding(layoutDirection),
-                        bottom = padding.calculateBottomPadding() + 80.dp
-                    ),
+                        PaddingValues(
+                            start = padding.calculateStartPadding(layoutDirection),
+                            top = padding.calculateTopPadding() + 8.dp,
+                            end = padding.calculateEndPadding(layoutDirection),
+                            bottom = padding.calculateBottomPadding() + 80.dp,
+                        ),
                 ) {
                     item {
-
                         ListItem(
                             "Name",
                             "Email",
                             style = TextStyle(fontWeight = FontWeight.Bold),
-                            modifier = Modifier.padding(bottom = 8.dp), divider = false
+                            modifier = Modifier.padding(bottom = 8.dp),
+                            divider = false,
                         )
                     }
                     items(users) {
@@ -108,7 +110,7 @@ fun ViewContent(
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceAround
+                            horizontalArrangement = Arrangement.SpaceAround,
                         ) {
                             Column {
                                 MyButton(label = "Create") {
@@ -121,7 +123,6 @@ fun ViewContent(
                                 }
                             }
                         }
-
                     }
                 }
                 // This box should be at the bottom of the screen
@@ -129,11 +130,10 @@ fun ViewContent(
                     Column {
                         Text(version)
                         Text("""Connected: ${syncStatus.connected}""")
+                        Text("""Connecting: ${syncStatus.connecting}""")
                     }
-
                 }
             }
-
         },
         contentColor = Color.Unspecified,
     )
@@ -154,7 +154,7 @@ fun ListItem(
                         Text(
                             it,
                             modifier = Modifier.weight(1f),
-                            style = style ?: LocalTextStyle.current
+                            style = style ?: LocalTextStyle.current,
                         )
                     }
                 }
@@ -163,14 +163,12 @@ fun ListItem(
             if (divider) {
                 Divider(
                     color = Color.Black,
-                    modifier = Modifier.align(Alignment.BottomStart)
+                    modifier = Modifier.align(Alignment.BottomStart),
                 )
             }
         }
-
     }
 }
-
 
 @Composable
 fun MyButton(
@@ -180,14 +178,14 @@ fun MyButton(
 ) {
     Column(
         modifier =
-        modifier
-            .clip(MaterialTheme.shapes.large)
-            .clickable(onClick = onClick).border(
-                width = 1.dp,
-                color = MaterialTheme.colors.primarySurface
-            )
-            .padding(horizontal = 16.dp, vertical = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            modifier
+                .clip(MaterialTheme.shapes.large)
+                .clickable(onClick = onClick)
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colors.primarySurface,
+                ).padding(horizontal = 16.dp, vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             label,
