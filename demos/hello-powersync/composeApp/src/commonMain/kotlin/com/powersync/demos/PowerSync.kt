@@ -10,12 +10,12 @@ import kotlinx.coroutines.runBlocking
 class PowerSync(
     driverFactory: DatabaseDriverFactory,
 ) {
-
-    private val connector = SupabaseConnector(
-        supabaseUrl = Config.SUPABASE_URL,
-        supabaseKey = Config.SUPABASE_ANON_KEY,
-        powerSyncEndpoint = Config.POWERSYNC_URL
-    )
+    private val connector =
+        SupabaseConnector(
+            supabaseUrl = Config.SUPABASE_URL,
+            supabaseKey = Config.SUPABASE_ANON_KEY,
+            powerSyncEndpoint = Config.POWERSYNC_URL,
+        )
     private val database = PowerSyncDatabase(driverFactory, AppSchema)
 
     val db: PowerSyncDatabase
@@ -26,31 +26,33 @@ class PowerSync(
             try {
                 connector.login(Config.SUPABASE_USER_EMAIL, Config.SUPABASE_USER_PASSWORD)
             } catch (e: Exception) {
-                println("Could not connect to Supabase, have you configured an auth user and set `SUPABASE_USER_EMAIL` and `SUPABASE_USER_PASSWORD`?\n Error: $e")
+                println(
+                    "Could not connect to Supabase, have you configured an auth user and set `SUPABASE_USER_EMAIL` and `SUPABASE_USER_PASSWORD`?\n Error: $e",
+                )
             }
             database.connect(connector)
         }
     }
 
-    suspend fun getPowersyncVersion(): String {
-        return database.getPowerSyncVersion()
-    }
+    suspend fun getPowersyncVersion(): String = database.getPowerSyncVersion()
 
-    fun watchUsers(): Flow<List<User>> {
-        return database.watch("SELECT * FROM customers", mapper = { cursor ->
+    fun watchUsers(): Flow<List<User>> =
+        database.watch("SELECT * FROM customers", mapper = { cursor ->
             User(
                 id = cursor.getString("id"),
                 name = cursor.getString("name"),
-                email = cursor.getString("email")
+                email = cursor.getString("email"),
             )
         })
-    }
 
-    suspend fun createUser(name: String, email: String) {
+    suspend fun createUser(
+        name: String,
+        email: String,
+    ) {
         database.writeTransaction { tx ->
             tx.execute(
                 "INSERT INTO customers (id, name, email) VALUES (uuid(), ?, ?)",
-                listOf(name, email)
+                listOf(name, email),
             )
         }
     }
@@ -60,10 +62,18 @@ class PowerSync(
             id ?: database.getOptional("SELECT id FROM customers LIMIT 1", mapper = { cursor ->
                 cursor.getString(0)!!
             })
-            ?: return
+                ?: return
 
         database.writeTransaction { tx ->
             tx.execute("DELETE FROM customers WHERE id = ?", listOf(targetId))
         }
+    }
+
+    suspend fun connect() {
+        database.connect(connector)
+    }
+
+    suspend fun disconnect() {
+        database.disconnect()
     }
 }

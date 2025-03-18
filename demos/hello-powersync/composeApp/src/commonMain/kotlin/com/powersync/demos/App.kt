@@ -58,6 +58,16 @@ fun App() {
                     }
                 },
                 syncStatus = syncStatus,
+                onConnect = {
+                    scope.launch {
+                        powerSync.connect()
+                    }
+                },
+                onDisconnect = {
+                    scope.launch {
+                        powerSync.disconnect()
+                    }
+                },
             )
         }
     }
@@ -70,6 +80,8 @@ fun ViewContent(
     onCreate: () -> Unit,
     onDelete: () -> Unit,
     syncStatus: SyncStatusData,
+    onConnect: () -> Unit,
+    onDisconnect: () -> Unit,
 ) {
     val layoutDirection = LocalLayoutDirection.current
     Scaffold(
@@ -120,6 +132,24 @@ fun ViewContent(
                             Column {
                                 MyButton(label = "Delete") {
                                     onDelete()
+                                }
+                            }
+                        }
+
+                        Spacer(Modifier.height(24.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceAround,
+                        ) {
+                            Column {
+                                MyButton(label = "Connect") {
+                                    onConnect()
+                                }
+                            }
+                            Column {
+                                MyButton(label = "Disconnect") {
+                                    onDisconnect()
                                 }
                             }
                         }
