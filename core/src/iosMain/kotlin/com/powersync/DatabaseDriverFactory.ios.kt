@@ -5,15 +5,14 @@ import co.touchlab.sqliter.DatabaseConfiguration.Logging
 import co.touchlab.sqliter.DatabaseConnection
 import co.touchlab.sqliter.interop.Logger
 import co.touchlab.sqliter.interop.SqliteErrorType
+import co.touchlab.sqliter.sqlite3.sqlite3_commit_hook
+import co.touchlab.sqliter.sqlite3.sqlite3_enable_load_extension
+import co.touchlab.sqliter.sqlite3.sqlite3_load_extension
+import co.touchlab.sqliter.sqlite3.sqlite3_rollback_hook
+import co.touchlab.sqliter.sqlite3.sqlite3_update_hook
 import com.powersync.db.internal.InternalSchema
 import com.powersync.persistence.driver.NativeSqliteDriver
 import com.powersync.persistence.driver.wrapConnection
-import com.powersync.sqlite3.sqlite3
-import com.powersync.sqlite3.sqlite3_commit_hook
-import com.powersync.sqlite3.sqlite3_enable_load_extension
-import com.powersync.sqlite3.sqlite3_load_extension
-import com.powersync.sqlite3.sqlite3_rollback_hook
-import com.powersync.sqlite3.sqlite3_update_hook
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.CPointerVar
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -103,7 +102,7 @@ public actual class DatabaseDriverFactory {
         connection: DatabaseConnection,
         driver: DeferredDriver,
     ) {
-        val basePointer = connection.getDbPointer().getPointer(MemScope())
+        val ptr = connection.getDbPointer().getPointer(MemScope())
         // Try and find the bundle path for the SQLite core extension.
         val bundlePath =
             NSBundle.bundleWithIdentifier("co.powersync.sqlitecore")?.bundlePath
@@ -116,10 +115,6 @@ public actual class DatabaseDriverFactory {
         // Construct full path to the shared library inside the bundle
         val extensionPath = bundlePath.let { "$it/powersync-sqlite-core" }
 
-        // We have a mix of SQLite operations. The SQliteR lib links to the system SQLite with `-lsqlite3`
-        // However we also include our own build of SQLite which is statically linked.
-        // Loading of extensions is only available using our version of SQLite's API
-        val ptr = basePointer.reinterpret<sqlite3>()
         // Enable extension loading
         // We don't disable this after the fact, this should allow users to load their own extensions
         // in future.
@@ -183,13 +178,8 @@ public actual class DatabaseDriverFactory {
     private fun deregisterSqliteBinding(connection: DatabaseConnection) {
         val basePtr = connection.getDbPointer().getPointer(MemScope())
 
-        // We have a mix of SQLite operations. The SQliteR lib links to the system SQLite with `-lsqlite3`
-        // However we also include our own build of SQLite which is statically linked.
-        // Loading of extensions is only available using our version of SQLite's API
-        val ptr = basePtr.reinterpret<sqlite3>()
-
         sqlite3_update_hook(
-            ptr,
+            basePtr.reinterpret(),
             null,
             null,
         )
