@@ -64,11 +64,11 @@ class SyncIntegrationTest {
         connector =
             mock<PowerSyncBackendConnector> {
                 everySuspend { getCredentialsCached() } returns
-                        PowerSyncCredentials(
-                            token = "test-token",
-                            userId = "test-user",
-                            endpoint = "https://test.com",
-                        )
+                    PowerSyncCredentials(
+                        token = "test-token",
+                        userId = "test-user",
+                        endpoint = "https://test.com",
+                    )
 
                 everySuspend { invalidateCredentials() } returns Unit
             }
