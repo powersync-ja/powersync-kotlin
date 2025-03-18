@@ -4,6 +4,7 @@ android-minSdk = "24"
 android-targetSdk = "35"
 android-compileSdk = "35"
 java = "17"
+atomicfu = "0.27.0"
 
 # Dependencies
 kotlin = "2.1.10"
@@ -13,6 +14,7 @@ kotlinx-io = "0.5.4"
 ktor = "3.0.1"
 uuid = "0.8.2"
 buildKonfig = "0.15.1"
+koin-bom = "4.0.2"
 
 junit = "4.13.2"
 
@@ -57,8 +59,12 @@ androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity-compose" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "androidx-espresso-core" }
 androidx-material = { group = "com.google.android.material", name = "material", version.ref = "androidx-material" }
+androidx-lifecycle-service = { module = "androidx.lifecycle:lifecycle-service", version.ref = "lifecycle" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "compose-preview" }
 compose-lifecycle = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin-bom" }
+koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", version.ref = "koin-bom" }
+koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin-bom" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "android-gradle-plugin" }
@@ -66,7 +72,9 @@ androidLibrary = { id = "com.android.library", version.ref = "android-gradle-plu
 jetbrainsCompose = { id = "org.jetbrains.compose", version.ref = "compose" }
 cocoapods = { id = "org.jetbrains.kotlin.native.cocoapods", version.ref = "kotlin" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 buildKonfig = { id = "com.codingfeline.buildkonfig", version.ref = "buildKonfig" }
+kotlin-atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version.ref = "atomicfu" }
 
 [bundles]

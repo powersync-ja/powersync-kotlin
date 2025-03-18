@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">PowerSync Background Sync</string>
+    <string name="background_channel_name">Active background sync</string>
+    <string name="sync_notification_title">Background sync in progress</string>
+</resources>
