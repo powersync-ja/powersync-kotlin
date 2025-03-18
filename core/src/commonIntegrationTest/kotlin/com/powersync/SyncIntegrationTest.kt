@@ -465,7 +465,6 @@ class SyncIntegrationTest {
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
 
-                // Connect the first database
                 database.connect(connector, 1000L, retryDelayMs = 5000)
                 turbine.waitFor { it.connecting }
 
