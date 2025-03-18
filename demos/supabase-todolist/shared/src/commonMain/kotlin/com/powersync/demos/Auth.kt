@@ -11,6 +11,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
+data class AuthOptions(
+    /**
+     * Whether the auth view mode is responsible for connecting to PowerSync.
+     * This is a simplification we use in the default example. When starting the
+     * androidBackgroundSync app, this is false because we're connecting from a
+     * foreground service.
+     */
+    val connectFromViewModel: Boolean
+)
+
 sealed class AuthState {
     data object SignedOut : AuthState()
 
@@ -21,6 +31,7 @@ internal class AuthViewModel(
     private val supabase: SupabaseConnector,
     private val db: PowerSyncDatabase,
     private val navController: NavController,
+    authOptions: AuthOptions,
 ) : ViewModel() {
     private val _authState = MutableStateFlow<AuthState>(AuthState.SignedOut)
     val authState: StateFlow<AuthState> = _authState
@@ -28,13 +39,30 @@ internal class AuthViewModel(
     val userId: StateFlow<String?> = _userId
 
     init {
+        if (authOptions.connectFromViewModel) {
+            viewModelScope.launch {
+                supabase.sessionStatus.collect {
+                    when (it) {
+                        is SessionStatus.Authenticated -> {
+                            db.connect(supabase)
+                        }
+                        is SessionStatus.NotAuthenticated -> {
+                            db.disconnectAndClear()
+                        }
+                        else -> {
+                            // Ignore
+                        }
+                    }
+                }
+            }
+        }
+
         viewModelScope.launch {
             supabase.sessionStatus.collect {
                 when (it) {
                     is SessionStatus.Authenticated -> {
                         _authState.value = AuthState.SignedIn
                         _userId.value = it.session.user?.id
-                        db.connect(supabase)
                         navController.navigate(Screen.Home)
                     }
 
@@ -46,7 +74,6 @@ internal class AuthViewModel(
                         }
                     }
                     is SessionStatus.NotAuthenticated -> {
-                        db.disconnectAndClear()
                         _authState.value = AuthState.SignedOut
                         navController.navigate(Screen.SignIn)
                     }
