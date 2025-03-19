@@ -22,7 +22,6 @@ import kotlinx.cinterop.alloc
 import kotlinx.cinterop.asStableRef
 import kotlinx.cinterop.nativeHeap
 import kotlinx.cinterop.ptr
-import kotlinx.cinterop.reinterpret
 import kotlinx.cinterop.staticCFunction
 import kotlinx.cinterop.toKString
 import kotlinx.cinterop.value
@@ -179,7 +178,7 @@ public actual class DatabaseDriverFactory {
         val basePtr = connection.getDbPointer().getPointer(MemScope())
 
         sqlite3_update_hook(
-            basePtr.reinterpret(),
+            basePtr,
             null,
             null,
         )

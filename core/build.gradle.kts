@@ -179,8 +179,7 @@ kotlin {
 
         if (konanTarget.family == Family.IOS && konanTarget.name.contains("simulator")) {
             binaries.withType<TestExecutable>().configureEach {
-                /*
-                linkTaskProvider.dependsOn(unzipPowersyncFramework)
+                linkTaskProvider.configure { dependsOn(unzipPowersyncFramework) }
                 linkerOpts("-framework", "powersync-sqlite-core")
                 val frameworkRoot =
                     binariesFolder
@@ -189,7 +188,7 @@ kotlin {
                         .asFile.path
 
                 linkerOpts("-F", frameworkRoot)
-                linkerOpts("-rpath", frameworkRoot)*/
+                linkerOpts("-rpath", frameworkRoot)
             }
         }
         /*
