@@ -52,6 +52,7 @@ kotlin {
         }
 
         iosMain.dependencies {
+            api(libs.sqldelight.driver.native)
             api(projects.staticSqliteDriver)
         }
     }
