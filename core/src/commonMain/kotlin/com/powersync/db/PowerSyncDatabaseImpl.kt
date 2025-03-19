@@ -185,7 +185,6 @@ internal class PowerSyncDatabaseImpl(
                 // Disconnecting will cancel the job and request.
                 // This holds the lock while streaming is in progress.
                 streamMutex.withLock(db) {
-                    // Check if another client is already holding the mutex
                     syncStream!!.streamingSync()
                 }
             }
