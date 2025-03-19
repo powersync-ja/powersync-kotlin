@@ -1,4 +1,3 @@
-import com.android.build.gradle.internal.tasks.factory.dependsOn
 import com.powersync.plugins.sonatype.setupGithubRepository
 import de.undercouch.gradle.tasks.download.Download
 import org.gradle.internal.os.OperatingSystem
@@ -20,53 +19,6 @@ plugins {
     id("com.powersync.plugins.sonatype")
     alias(libs.plugins.mokkery)
     alias(libs.plugins.kotlin.atomicfu)
-}
-
-val sqliteVersion = "3450200"
-val sqliteReleaseYear = "2024"
-
-val sqliteSrcFolder =
-    project.layout.buildDirectory
-        .dir("native/sqlite")
-        .get()
-
-val downloadSQLiteSources by tasks.registering(Download::class) {
-    val zipFileName = "sqlite-amalgamation-$sqliteVersion.zip"
-    val destination = sqliteSrcFolder.file(zipFileName).asFile
-    src("https://www.sqlite.org/$sqliteReleaseYear/$zipFileName")
-    dest(destination)
-    onlyIfNewer(true)
-    overwrite(false)
-}
-
-val unzipSQLiteSources by tasks.registering(Copy::class) {
-    dependsOn(downloadSQLiteSources)
-
-    from(
-        zipTree(downloadSQLiteSources.get().dest).matching {
-            include("*/sqlite3.*")
-            exclude {
-                it.isDirectory
-            }
-            eachFile {
-                this.path = this.name
-            }
-        },
-    )
-    into(sqliteSrcFolder)
-}
-
-val compileSqliteForTesting by tasks.registering(Exec::class) {
-    dependsOn(unzipSQLiteSources)
-
-    val input = sqliteSrcFolder.file("sqlite3.c")
-    inputs.file(input)
-    inputs.file(sqliteSrcFolder.file("sqlite3.h"))
-
-    val output = sqliteSrcFolder.file("libsqlite3.dylib")
-    outputs.file(output)
-
-    commandLine("clang", "-shared", "-o", output.asFile.path, input.asFile.path)
 }
 
 val binariesFolder = project.layout.buildDirectory.dir("binaries/desktop")
@@ -227,6 +179,7 @@ kotlin {
 
         if (konanTarget.family == Family.IOS && konanTarget.name.contains("simulator")) {
             binaries.withType<TestExecutable>().configureEach {
+                /*
                 linkTaskProvider.dependsOn(unzipPowersyncFramework)
                 linkerOpts("-framework", "powersync-sqlite-core")
                 val frameworkRoot =
@@ -236,7 +189,7 @@ kotlin {
                         .asFile.path
 
                 linkerOpts("-F", frameworkRoot)
-                linkerOpts("-rpath", frameworkRoot)
+                linkerOpts("-rpath", frameworkRoot)*/
             }
         }
         /*
@@ -284,7 +237,7 @@ kotlin {
             implementation(libs.kotlinx.datetime)
             implementation(libs.stately.concurrency)
             implementation(libs.configuration.annotations)
-            api(project(":persistence"))
+            api(projects.persistence)
             api(libs.kermit)
         }
 
@@ -352,17 +305,6 @@ android {
                 .get()
                 .toInt()
         consumerProguardFiles("proguard-rules.pro")
-
-        @Suppress("UnstableApiUsage")
-        externalNativeBuild {
-            cmake {
-                arguments.addAll(
-                    listOf(
-                        "-DSQLITE3_SRC_DIR=${sqliteSrcFolder.asFile.absolutePath}",
-                    ),
-                )
-            }
-        }
     }
 
     sourceSets {

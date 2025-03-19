@@ -36,7 +36,6 @@ kotlin {
     explicitApi()
 
     sourceSets {
-
         commonMain.dependencies {
             api(libs.bundles.sqldelight)
         }
@@ -53,7 +52,7 @@ kotlin {
         }
 
         iosMain.dependencies {
-            api(libs.sqldelight.driver.ios)
+            api(projects.staticSqliteDriver)
         }
     }
 }
