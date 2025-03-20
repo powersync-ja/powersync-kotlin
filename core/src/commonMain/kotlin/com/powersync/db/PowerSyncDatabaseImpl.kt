@@ -1,7 +1,6 @@
 package com.powersync.db
 
 import co.touchlab.kermit.Logger
-import co.touchlab.stately.concurrency.AtomicBoolean
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
 import com.powersync.PsSqlDriver
@@ -21,6 +20,7 @@ import com.powersync.sync.PriorityStatusEntry
 import com.powersync.sync.SyncStatus
 import com.powersync.sync.SyncStatusData
 import com.powersync.sync.SyncStream
+import com.powersync.utils.ExclusiveMethodProvider
 import com.powersync.utils.JsonParam
 import com.powersync.utils.JsonUtil
 import com.powersync.utils.throttle
@@ -29,13 +29,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
@@ -58,18 +57,9 @@ internal class PowerSyncDatabaseImpl(
     private val dbFilename: String,
     val logger: Logger = Logger,
     driver: PsSqlDriver = factory.createDriver(scope, dbFilename),
-) : PowerSyncDatabase {
+) : ExclusiveMethodProvider(),
+    PowerSyncDatabase {
     companion object {
-        /**
-         * We store a map of connection streaming mutexes, but we need to access that safely.
-         */
-        internal val streamingMapMutex = Mutex()
-
-        /**
-         * Manages streaming operations for the same database between clients
-         */
-        internal val streamMutexes = mutableMapOf<String, Mutex>()
-
         internal val streamConflictMessage =
             """
             Another PowerSync client is already connected to this database.
@@ -80,13 +70,9 @@ internal class PowerSyncDatabaseImpl(
             """.trimIndent()
     }
 
-    /**
-     * Manages multiple connection attempts within the same client
-     */
-    private val connectingMutex = Mutex()
     private val internalDb = InternalDatabaseImpl(driver, scope)
     internal val bucketStorage: BucketStorage = BucketStorageImpl(internalDb, logger)
-    val closed = AtomicBoolean(false)
+    var closed = false
 
     /**
      * The current sync status.
@@ -124,7 +110,7 @@ internal class PowerSyncDatabaseImpl(
         crudThrottleMs: Long,
         retryDelayMs: Long,
         params: Map<String, JsonParam?>,
-    ) = connectingMutex.withLock {
+    ) = exclusiveMethod("connect") {
         disconnect()
 
         connect(
@@ -153,39 +139,37 @@ internal class PowerSyncDatabaseImpl(
             scope.launch {
                 // Get a global lock for checking mutex maps
                 val streamMutex =
-                    streamingMapMutex.withLock {
-                        val streamMutex = streamMutexes.getOrPut(dbFilename) { Mutex() }
+                    globalMutexFor("streaming-$dbFilename")
 
-                        // Poke the streaming mutex to see if another client is using it
-                        // We check the mutex status in the global lock to prevent race conditions
-                        // between multiple clients.
-                        var obtainedLock = false
-                        try {
-                            // This call will throw if the lock is already held by this db client.
-                            // We should never reach that point since we disconnect before connecting.
-                            obtainedLock = streamMutex.tryLock(db)
-                            if (!obtainedLock) {
-                                // The mutex is held already by another PowerSync instance (owner).
-                                // (The tryLock should throw if this client already holds the lock).
-                                logger.w(streamConflictMessage)
-                            }
-                        } catch (ex: IllegalStateException) {
-                            logger.e { "The streaming sync client did not disconnect before connecting" }
-                        } finally {
-                            if (obtainedLock) {
-                                streamMutex.unlock(db)
-                            }
-                        }
-
-                        // It should be safe to use this mutex instance externally
-                        return@withLock streamMutex
+                // Poke the streaming mutex to see if another client is using it
+                // We check the mutex status in the global lock to prevent race conditions
+                // between multiple clients.
+                var obtainedLock = false
+                try {
+                    // This call will throw if the lock is already held by this db client.
+                    // We should never reach that point since we disconnect before connecting.
+                    obtainedLock = streamMutex.tryLock(db)
+                    if (!obtainedLock) {
+                        // The mutex is held already by another PowerSync instance (owner).
+                        // (The tryLock should throw if this client already holds the lock).
+                        logger.w(streamConflictMessage)
                     }
+                } catch (ex: IllegalStateException) {
+                    logger.e { "The streaming sync client did not disconnect before connecting" }
+                }
 
-                // Start the Mutex request in this job.
-                // Disconnecting will cancel the job and request.
-                // This holds the lock while streaming is in progress.
-                streamMutex.withLock(db) {
+                // This effectively queues operations
+                if (!obtainedLock) {
+                    // This will throw a CancellationException if the job was cancelled while waiting.
+                    streamMutex.lock(db)
+                }
+
+                // We have a lock if we reached here
+                try {
+                    ensureActive()
                     syncStream!!.streamingSync()
+                } finally {
+                    streamMutex.unlock(db)
                 }
             }
 
@@ -432,14 +416,15 @@ internal class PowerSyncDatabaseImpl(
         currentStatus.asFlow().first(predicate)
     }
 
-    override suspend fun close() {
-        if (closed.value) {
-            return
+    override suspend fun close() =
+        exclusiveMethod("close") {
+            if (closed) {
+                return@exclusiveMethod
+            }
+            disconnect()
+            internalDb.close()
+            closed = true
         }
-        closed.value = true
-        disconnect()
-        internalDb.close()
-    }
 
     /**
      * Check that a supported version of the powersync extension is loaded.
