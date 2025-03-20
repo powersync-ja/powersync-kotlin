@@ -6,6 +6,7 @@ import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable
 import org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest
 import org.jetbrains.kotlin.konan.target.Family
+import org.jetbrains.kotlin.konan.target.KonanTarget
 
 
 plugins {
@@ -171,16 +172,21 @@ kotlin {
                 linkerOpts("-rpath", frameworkRoot)
             }
         }
-        /*
-        If we ever need macOS support:
-        {
+
+        if (konanTarget.family == Family.OSX) {
             binaries.withType<TestExecutable>().configureEach {
-                linkTaskProvider.dependsOn(downloadPowersyncDesktopBinaries)
-                linkerOpts("-lpowersync")
-                linkerOpts("-L", binariesFolder.map { it.dir("powersync") }.get().asFile.path)
+                linkTaskProvider.configure { dependsOn(unzipPowersyncFramework) }
+                linkerOpts("-framework", "powersync-sqlite-core")
+                val frameworkRoot =
+                    binariesFolder
+                        .map { it.dir("framework/powersync-sqlite-core.xcframework/macos-arm64_x86_64") }
+                        .get()
+                        .asFile.path
+
+                linkerOpts("-F", frameworkRoot)
+                linkerOpts("-rpath", frameworkRoot)
             }
         }
-         */
     }
 
     explicitApi()
@@ -230,8 +236,9 @@ kotlin {
             implementation(libs.sqlite.jdbc)
         }
 
-        iosMain.dependencies {
-            implementation(libs.ktor.client.ios)
+        appleMain.dependencies {
+            implementation(libs.ktor.client.apple)
+            implementation(libs.kotlinx.io)
         }
 
         commonTest.dependencies {
@@ -251,7 +258,7 @@ kotlin {
         jvmMain.get().dependsOn(commonJDBC)
 
         // We're linking the xcframework for the simulator tests, so they can use integration tests too
-        iosSimulatorArm64Test.orNull?.dependsOn(commonIntegrationTest)
+        appleTest.orNull?.dependsOn(commonIntegrationTest)
     }
 }
 

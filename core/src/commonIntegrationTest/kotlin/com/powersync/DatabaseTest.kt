@@ -1,7 +1,6 @@
 package com.powersync
 
 import app.cash.turbine.turbineScope
-import com.powersync.db.getString
 import com.powersync.db.schema.Schema
 import com.powersync.testutils.UserRow
 import kotlinx.coroutines.CompletableDeferred
