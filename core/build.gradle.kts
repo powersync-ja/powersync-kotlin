@@ -1,4 +1,3 @@
-import com.android.build.gradle.internal.tasks.factory.dependsOn
 import com.powersync.plugins.sonatype.setupGithubRepository
 import de.undercouch.gradle.tasks.download.Download
 import org.gradle.internal.os.OperatingSystem
@@ -20,63 +19,6 @@ plugins {
     id("com.powersync.plugins.sonatype")
     alias(libs.plugins.mokkery)
     alias(libs.plugins.kotlin.atomicfu)
-}
-
-val sqliteVersion = "3450200"
-val sqliteReleaseYear = "2024"
-
-val sqliteSrcFolder =
-    project.layout.buildDirectory
-        .dir("native/sqlite")
-        .get()
-
-val downloadSQLiteSources by tasks.registering(Download::class) {
-    val zipFileName = "sqlite-amalgamation-$sqliteVersion.zip"
-    val destination = sqliteSrcFolder.file(zipFileName).asFile
-    src("https://www.sqlite.org/$sqliteReleaseYear/$zipFileName")
-    dest(destination)
-    onlyIfNewer(true)
-    overwrite(false)
-}
-
-val unzipSQLiteSources by tasks.registering(Copy::class) {
-    dependsOn(downloadSQLiteSources)
-
-    from(
-        zipTree(downloadSQLiteSources.get().dest).matching {
-            include("*/sqlite3.*")
-            exclude {
-                it.isDirectory
-            }
-            eachFile {
-                this.path = this.name
-            }
-        },
-    )
-    into(sqliteSrcFolder)
-}
-
-val buildCInteropDef by tasks.registering {
-    dependsOn(unzipSQLiteSources)
-
-    val interopFolder =
-        project.layout.buildDirectory
-            .dir("interop/sqlite")
-            .get()
-
-    val cFile = sqliteSrcFolder.file("sqlite3.c").asFile
-    val defFile = interopFolder.file("sqlite3.def").asFile
-
-    doFirst {
-        defFile.writeText(
-            """
-            package = com.powersync.sqlite3
-            ---
-
-            """.trimIndent() + cFile.readText(),
-        )
-    }
-    outputs.files(defFile)
 }
 
 val binariesFolder = project.layout.buildDirectory.dir("binaries/desktop")
@@ -233,27 +175,11 @@ kotlin {
             compileTaskProvider {
                 compilerOptions.freeCompilerArgs.add("-Xexport-kdoc")
             }
-
-            cinterops.create("sqlite") {
-                val cInteropTask = tasks[interopProcessingTaskName]
-                cInteropTask.dependsOn(buildCInteropDef)
-                definitionFile =
-                    buildCInteropDef
-                        .get()
-                        .outputs.files.singleFile
-                compilerOpts.addAll(
-                    listOf(
-                        "-DHAVE_GETHOSTUUID=0",
-                        "-DSQLITE_ENABLE_LOAD_EXTENSION=1",
-                        "-DSQLITE_ENABLE_FTS5",
-                    ),
-                )
-            }
         }
 
         if (konanTarget.family == Family.IOS && konanTarget.name.contains("simulator")) {
             binaries.withType<TestExecutable>().configureEach {
-                linkTaskProvider.dependsOn(unzipPowersyncFramework)
+                linkTaskProvider.configure { dependsOn(unzipPowersyncFramework) }
                 linkerOpts("-framework", "powersync-sqlite-core")
                 val frameworkRoot =
                     binariesFolder
@@ -310,7 +236,7 @@ kotlin {
             implementation(libs.kotlinx.datetime)
             implementation(libs.stately.concurrency)
             implementation(libs.configuration.annotations)
-            api(project(":persistence"))
+            api(projects.persistence)
             api(libs.kermit)
         }
 
@@ -378,17 +304,6 @@ android {
                 .get()
                 .toInt()
         consumerProguardFiles("proguard-rules.pro")
-
-        @Suppress("UnstableApiUsage")
-        externalNativeBuild {
-            cmake {
-                arguments.addAll(
-                    listOf(
-                        "-DSQLITE3_SRC_DIR=${sqliteSrcFolder.asFile.absolutePath}",
-                    ),
-                )
-            }
-        }
     }
 
     sourceSets {
@@ -427,28 +342,5 @@ val testWithJava8 by tasks.registering(KotlinJvmTest::class) {
     testClassesDirs = testTask.testClassesDirs
 }
 tasks.named("check").configure { dependsOn(testWithJava8) }
-
-afterEvaluate {
-    val buildTasks =
-        tasks.matching {
-            val taskName = it.name
-            if (taskName.contains("Clean")) {
-                return@matching false
-            }
-            if (taskName.contains("externalNative") ||
-                taskName.contains("CMake") ||
-                taskName.contains(
-                    "generateJsonModel",
-                )
-            ) {
-                return@matching true
-            }
-            return@matching false
-        }
-
-    buildTasks.forEach {
-        it.dependsOn(buildCInteropDef)
-    }
-}
 
 setupGithubRepository()

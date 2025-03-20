@@ -36,7 +36,6 @@ kotlin {
     explicitApi()
 
     sourceSets {
-
         commonMain.dependencies {
             api(libs.bundles.sqldelight)
         }
@@ -53,7 +52,8 @@ kotlin {
         }
 
         iosMain.dependencies {
-            api(libs.sqldelight.driver.ios)
+            api(libs.sqldelight.driver.native)
+            api(projects.staticSqliteDriver)
         }
     }
 }
@@ -90,6 +90,8 @@ android {
 }
 
 sqldelight {
+    linkSqlite = false
+
     databases {
         create("PsDatabase") {
             packageName.set("com.powersync.persistence")
