@@ -1,8 +1,7 @@
 import com.powersync.plugins.sonatype.setupGithubRepository
+import com.powersync.plugins.utils.powersyncTargets
 import de.undercouch.gradle.tasks.download.Download
 import org.gradle.internal.os.OperatingSystem
-import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable
 import org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest
@@ -149,26 +148,7 @@ val moveJDBCJNIFiles by tasks.registering(Copy::class) {
 }
 
 kotlin {
-    androidTarget {
-        publishLibraryVariants("release", "debug")
-
-        @OptIn(ExperimentalKotlinGradlePluginApi::class)
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_17)
-        }
-    }
-    jvm {
-        @OptIn(ExperimentalKotlinGradlePluginApi::class)
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_1_8)
-            // https://jakewharton.com/kotlins-jdk-release-compatibility-flag/
-            freeCompilerArgs.add("-Xjdk-release=8")
-        }
-    }
-
-    iosX64()
-    iosArm64()
-    iosSimulatorArm64()
+    powersyncTargets()
 
     targets.withType<KotlinNativeTarget> {
         compilations.named("main") {

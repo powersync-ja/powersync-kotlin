@@ -7,7 +7,7 @@ class SmokeTest {
     @Test
     fun canUseSqlite() {
         val manager = createDatabaseManager(DatabaseConfiguration(
-            name = "test",
+            name = null,
             version = 1,
             create = {},
             inMemory = true,

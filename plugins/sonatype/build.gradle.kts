@@ -36,4 +36,5 @@ kotlin {
 
 dependencies {
     implementation(libs.mavenPublishPlugin)
+    implementation(libs.kotlin.gradle.plugin)
 }

@@ -1,5 +1,6 @@
 import java.io.File
 import com.powersync.plugins.sonatype.setupGithubRepository
+import com.powersync.plugins.utils.powersyncNativeTargets
 import de.undercouch.gradle.tasks.download.Download
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.utils.NativeCompilerDownloader
@@ -144,9 +145,7 @@ fun compileSqlite(target: KotlinNativeTarget): TaskProvider<Task> {
 }
 
 kotlin {
-    iosX64()
-    iosArm64()
-    iosSimulatorArm64()
+    powersyncNativeTargets()
 
     applyDefaultHierarchyTemplate()
 
