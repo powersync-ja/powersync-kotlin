@@ -32,9 +32,13 @@ kotlin {
             api(libs.sqldelight.driver.jdbc)
         }
 
-        iosMain.dependencies {
+        appleMain.dependencies {
             api(libs.sqldelight.driver.native)
             api(projects.staticSqliteDriver)
+        }
+
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
         }
     }
 }
