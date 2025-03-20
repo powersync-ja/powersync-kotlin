@@ -20,6 +20,12 @@ import kotlin.coroutines.cancellation.CancellationException
  */
 public interface PowerSyncDatabase : Queries {
     /**
+     * Identifies the database client.
+     * This is typically the database name.
+     */
+    public val identifier: String
+
+    /**
      * The current sync status.
      */
     public val currentStatus: SyncStatus

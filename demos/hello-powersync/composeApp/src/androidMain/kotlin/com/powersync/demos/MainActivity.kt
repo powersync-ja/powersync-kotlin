@@ -5,7 +5,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
-import com.powersync.DatabaseDriverFactory
 import com.powersync.sync.SyncStatus
 
 class MainActivity : ComponentActivity() {
@@ -18,11 +17,18 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-
 @Preview
 @Composable
 fun ViewContentPreview() {
-    ViewContent("Preview", listOf(User("1", "John Doe", "john@example.com")), {}, {}, SyncStatus.empty())
+    ViewContent(
+        "Preview",
+        listOf(User("1", "John Doe", "john@example.com")),
+        {},
+        {},
+        SyncStatus.empty(),
+        {},
+        {},
+    )
 }
 
 @Preview
@@ -36,4 +42,3 @@ fun ViewContentPreview_ListItem() {
 fun ViewContentPreview_MyButton() {
     MyButton(label = "Preview Button", onClick = {})
 }
-

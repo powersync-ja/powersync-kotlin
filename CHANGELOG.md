@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0-BETA29
+
+* Added queing protection and warnings when connecting multiple PowerSync clients to the same database file.
+
 ## 1.0.0-BETA28
 
 * Update PowerSync SQLite core extension to 0.3.12.

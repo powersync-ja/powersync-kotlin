@@ -20,6 +20,7 @@ import com.powersync.sync.PriorityStatusEntry
 import com.powersync.sync.SyncStatus
 import com.powersync.sync.SyncStatusData
 import com.powersync.sync.SyncStream
+import com.powersync.utils.ExclusiveMethodProvider
 import com.powersync.utils.JsonParam
 import com.powersync.utils.JsonUtil
 import com.powersync.utils.throttle
@@ -28,6 +29,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
@@ -55,9 +57,33 @@ internal class PowerSyncDatabaseImpl(
     private val dbFilename: String,
     val logger: Logger = Logger,
     driver: PsSqlDriver = factory.createDriver(scope, dbFilename),
-) : PowerSyncDatabase {
+) : ExclusiveMethodProvider(),
+    PowerSyncDatabase {
+    companion object {
+        internal val streamConflictMessage =
+            """
+            Another PowerSync client is already connected to this database.
+            Multiple connections to the same database should be avoided. 
+            Please check your PowerSync client instantiation logic.
+            This connection attempt will be queued and will only be executed after
+            currently connecting clients are disconnected.
+            """.trimIndent()
+
+        internal val multipleInstancesMessage =
+            """
+            Multiple PowerSync instances for the same database have been detected.
+            This can cause unexpected results.
+            Please check your PowerSync client instantiation logic if this is not intentional.
+            """.trimIndent()
+
+        internal val instanceStore = ActiveInstanceStore()
+    }
+
+    override val identifier = dbFilename
+
     private val internalDb = InternalDatabaseImpl(driver, scope)
     internal val bucketStorage: BucketStorage = BucketStorageImpl(internalDb, logger)
+    var closed = false
 
     /**
      * The current sync status.
@@ -71,7 +97,12 @@ internal class PowerSyncDatabaseImpl(
     private var uploadJob: Job? = null
 
     init {
+        val db = this
         runBlocking {
+            val isMultiple = instanceStore.registerAndCheckInstance(db)
+            if (isMultiple) {
+                logger.w { multipleInstancesMessage }
+            }
             val sqliteVersion = internalDb.queries.sqliteVersion().executeAsOne()
             logger.d { "SQLiteVersion: $sqliteVersion" }
             checkVersion()
@@ -95,8 +126,7 @@ internal class PowerSyncDatabaseImpl(
         crudThrottleMs: Long,
         retryDelayMs: Long,
         params: Map<String, JsonParam?>,
-    ) {
-        // close connection if one is open
+    ) = exclusiveMethod("connect") {
         disconnect()
 
         connect(
@@ -118,9 +148,43 @@ internal class PowerSyncDatabaseImpl(
         crudThrottleMs: Long,
     ) {
         this.syncStream = stream
+
+        val db = this
+
         syncJob =
             scope.launch {
-                syncStream!!.streamingSync()
+                // Get a global lock for checking mutex maps
+                val streamMutex =
+                    globalMutexFor("streaming-$identifier")
+
+                // Poke the streaming mutex to see if another client is using it
+                var obtainedLock = false
+                try {
+                    // This call will throw if the lock is already held by this db client.
+                    // We should never reach that point since we disconnect before connecting.
+                    obtainedLock = streamMutex.tryLock(db)
+                    if (!obtainedLock) {
+                        // The mutex is held already by another PowerSync instance (owner).
+                        // (The tryLock should throw if this client already holds the lock).
+                        logger.w(streamConflictMessage)
+                    }
+                } catch (ex: IllegalStateException) {
+                    logger.e { "The streaming sync client did not disconnect before connecting" }
+                }
+
+                // This effectively queues operations
+                if (!obtainedLock) {
+                    // This will throw a CancellationException if the job was cancelled while waiting.
+                    streamMutex.lock(db)
+                }
+
+                // We have a lock if we reached here
+                try {
+                    ensureActive()
+                    syncStream!!.streamingSync()
+                } finally {
+                    streamMutex.unlock(db)
+                }
             }
 
         scope.launch {
@@ -316,7 +380,10 @@ internal class PowerSyncDatabaseImpl(
 
                 SyncedAt(
                     priority = BucketPriority(it.getLong(0)!!.toInt()),
-                    syncedAt = LocalDateTime.parse(rawTime.replace(" ", "T")).toInstant(TimeZone.UTC),
+                    syncedAt =
+                        LocalDateTime
+                            .parse(rawTime.replace(" ", "T"))
+                            .toInstant(TimeZone.UTC),
                 )
             }
 
@@ -363,10 +430,16 @@ internal class PowerSyncDatabaseImpl(
         currentStatus.asFlow().first(predicate)
     }
 
-    override suspend fun close() {
-        disconnect()
-        internalDb.close()
-    }
+    override suspend fun close() =
+        exclusiveMethod("close") {
+            if (closed) {
+                return@exclusiveMethod
+            }
+            disconnect()
+            internalDb.close()
+            instanceStore.removeInstance(this)
+            closed = true
+        }
 
     /**
      * Check that a supported version of the powersync extension is loaded.
