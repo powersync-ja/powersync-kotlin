@@ -2,10 +2,10 @@ package com.powersync
 
 import app.cash.turbine.turbineScope
 import co.touchlab.kermit.ExperimentalKermitApi
-import co.touchlab.kermit.LogWriter
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import co.touchlab.kermit.TestConfig
+import co.touchlab.kermit.TestLogWriter
 import com.powersync.bucket.BucketChecksum
 import com.powersync.bucket.BucketPriority
 import com.powersync.bucket.Checkpoint
@@ -22,15 +22,12 @@ import com.powersync.testutils.UserRow
 import com.powersync.testutils.cleanup
 import com.powersync.testutils.factory
 import com.powersync.testutils.waitFor
-import com.powersync.testutils.waitForString
 import com.powersync.utils.JsonUtil
 import dev.mokkery.answering.returns
 import dev.mokkery.everySuspend
 import dev.mokkery.mock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
@@ -41,16 +38,22 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalKermitApi::class)
 class SyncIntegrationTest {
+    private val logWriter =
+        TestLogWriter(
+            loggable = Severity.Debug,
+        )
+
     private val logger =
         Logger(
             TestConfig(
                 minSeverity = Severity.Debug,
-                logWriterList = listOf(),
+                logWriterList = listOf(logWriter),
             ),
         )
     private lateinit var database: PowerSyncDatabaseImpl
@@ -60,6 +63,7 @@ class SyncIntegrationTest {
     @BeforeTest
     fun setup() {
         cleanup("testdb")
+        logWriter.reset()
         database = openDb()
         connector =
             mock<PowerSyncBackendConnector> {
@@ -348,45 +352,29 @@ class SyncIntegrationTest {
     @Test
     fun warnsMultipleConnectionAttempts() =
         runTest {
-            val logMessages = MutableSharedFlow<String>(extraBufferCapacity = 10)
-
-            Logger.setLogWriters(
-                object : LogWriter() {
-                    override fun log(
-                        severity: Severity,
-                        message: String,
-                        tag: String,
-                        throwable: Throwable?,
-                    ) {
-                        logMessages.tryEmit(message)
-                    }
-                },
-            )
-
-            Logger.setMinSeverity(Severity.Verbose)
-
             val db2 =
                 PowerSyncDatabase(
                     factory = factory,
                     schema = Schema(UserRow.table),
                     dbFilename = "testdb",
-                    logger = Logger,
+                    logger = logger,
                 ) as PowerSyncDatabaseImpl
 
             turbineScope(timeout = 10.0.seconds) {
-                val logTurbine = logMessages.asSharedFlow().testIn(this)
-
                 // Connect the first database
                 database.connect(connector, 1000L)
                 db2.connect(connector)
 
-                logTurbine.waitForString { it == PowerSyncDatabaseImpl.streamConflictMessage }
+                waitFor {
+                    assertNotNull(
+                        logWriter.logs.find {
+                            it.message == PowerSyncDatabaseImpl.streamConflictMessage
+                        },
+                    )
+                }
 
                 db2.disconnect()
-
                 database.disconnect()
-
-                logTurbine.cancel()
             }
 
             db2.close()

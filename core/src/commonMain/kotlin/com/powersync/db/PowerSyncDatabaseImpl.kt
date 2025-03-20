@@ -68,7 +68,18 @@ internal class PowerSyncDatabaseImpl(
             This connection attempt will be queued and will only be executed after
             currently connecting clients are disconnected.
             """.trimIndent()
+
+        internal val multipleInstancesMessage =
+            """
+            Multiple PowerSync instances for the same database have been detected.
+            This can cause unexpected results.
+            Please check your PowerSync client instantiation logic if this is not intentional.
+            """.trimIndent()
+
+        internal val instanceStore = ActiveInstanceStore()
     }
+
+    override val identifier = dbFilename
 
     private val internalDb = InternalDatabaseImpl(driver, scope)
     internal val bucketStorage: BucketStorage = BucketStorageImpl(internalDb, logger)
@@ -86,7 +97,12 @@ internal class PowerSyncDatabaseImpl(
     private var uploadJob: Job? = null
 
     init {
+        val db = this
         runBlocking {
+            val isMultiple = instanceStore.registerAndCheckInstance(db)
+            if (isMultiple) {
+                logger.w { multipleInstancesMessage }
+            }
             val sqliteVersion = internalDb.queries.sqliteVersion().executeAsOne()
             logger.d { "SQLiteVersion: $sqliteVersion" }
             checkVersion()
@@ -139,7 +155,7 @@ internal class PowerSyncDatabaseImpl(
             scope.launch {
                 // Get a global lock for checking mutex maps
                 val streamMutex =
-                    globalMutexFor("streaming-$dbFilename")
+                    globalMutexFor("streaming-$identifier")
 
                 // Poke the streaming mutex to see if another client is using it
                 // We check the mutex status in the global lock to prevent race conditions
@@ -423,6 +439,7 @@ internal class PowerSyncDatabaseImpl(
             }
             disconnect()
             internalDb.close()
+            instanceStore.removeInstance(this)
             closed = true
         }
 

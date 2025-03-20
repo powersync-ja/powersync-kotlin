@@ -65,13 +65,3 @@ suspend inline fun ReceiveTurbine<SyncStatusData>.waitFor(matcher: (SyncStatusDa
         }
     }
 }
-
-// JVM build fails if this is also called waitFor
-suspend inline fun ReceiveTurbine<String>.waitForString(matcher: (String) -> Boolean) {
-    while (true) {
-        val item = awaitItem()
-        if (matcher(item)) {
-            break
-        }
-    }
-}
