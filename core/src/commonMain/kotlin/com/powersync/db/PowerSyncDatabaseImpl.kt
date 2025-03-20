@@ -158,8 +158,6 @@ internal class PowerSyncDatabaseImpl(
                     globalMutexFor("streaming-$identifier")
 
                 // Poke the streaming mutex to see if another client is using it
-                // We check the mutex status in the global lock to prevent race conditions
-                // between multiple clients.
                 var obtainedLock = false
                 try {
                     // This call will throw if the lock is already held by this db client.
