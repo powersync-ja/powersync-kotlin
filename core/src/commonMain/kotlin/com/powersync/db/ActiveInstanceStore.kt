@@ -1,9 +1,9 @@
 package com.powersync.db
 
 import co.touchlab.kermit.Logger
-import kotlinx.atomicfu.atomic
-import kotlinx.atomicfu.locks.SynchronizedObject
-import kotlinx.atomicfu.locks.synchronized
+import co.touchlab.stately.concurrency.AtomicBoolean
+import co.touchlab.stately.concurrency.Synchronizable
+import co.touchlab.stately.concurrency.synchronize
 import kotlinx.coroutines.sync.Mutex
 
 /**
@@ -27,14 +27,14 @@ internal class ActiveDatabaseGroup(
     internal val syncMutex = Mutex()
 
     fun removeUsage() {
-        synchronized(ActiveDatabaseGroup) {
+        ActiveDatabaseGroup.synchronize {
             if (--refCount == 0) {
                 allGroups.remove(this)
             }
         }
     }
 
-    companion object : SynchronizedObject() {
+    companion object : Synchronizable() {
         internal val multipleInstancesMessage =
             """
             Multiple PowerSync instances for the same database have been detected.
@@ -47,8 +47,7 @@ internal class ActiveDatabaseGroup(
         private fun findGroup(
             warnOnDuplicate: Logger,
             identifier: String,
-        ): ActiveDatabaseGroup =
-            synchronized(this) {
+        ): ActiveDatabaseGroup = synchronize {
                 val existing = allGroups.asSequence().firstOrNull { it.identifier == identifier }
                 val resolvedGroup =
                     if (existing == null) {
@@ -81,10 +80,10 @@ internal class ActiveDatabaseGroup(
 internal class ActiveDatabaseResource(
     val group: ActiveDatabaseGroup,
 ) {
-    val disposed = atomic(false)
+    val disposed = AtomicBoolean(false)
 
     fun dispose() {
-        if (!disposed.getAndSet(true)) {
+        if (disposed.compareAndSet(false, true)) {
             group.removeUsage()
         }
     }
