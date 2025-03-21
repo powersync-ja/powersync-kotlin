@@ -34,7 +34,10 @@ class AndroidDatabaseTest {
 
     @After
     fun tearDown() {
-        runBlocking { database.disconnectAndClear(true) }
+        runBlocking {
+            database.disconnectAndClear(true)
+            database.close()
+        }
     }
 
     @Test
