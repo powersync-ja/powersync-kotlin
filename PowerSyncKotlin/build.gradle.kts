@@ -33,6 +33,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(project(":core"))
+            implementation(libs.sqliter) // Ensure we have the latest version for macOS support
         }
     }
 }
