@@ -20,7 +20,9 @@ internal expect fun disposeWhenDeallocated(resource: ActiveDatabaseResource): An
  * duplicate resources being used. For this reason, each active database group has a coroutine mutex guarding the
  * sync job.
  */
-internal class ActiveDatabaseGroup(val identifier: String) {
+internal class ActiveDatabaseGroup(
+    val identifier: String,
+) {
     internal var refCount = 0 // Guarded by companion object
     internal val syncMutex = Mutex()
 
@@ -32,7 +34,7 @@ internal class ActiveDatabaseGroup(val identifier: String) {
         }
     }
 
-    companion object: SynchronizedObject() {
+    companion object : SynchronizedObject() {
         internal val multipleInstancesMessage =
             """
             Multiple PowerSync instances for the same database have been detected.
@@ -42,16 +44,20 @@ internal class ActiveDatabaseGroup(val identifier: String) {
 
         private val allGroups = mutableListOf<ActiveDatabaseGroup>()
 
-        private fun findGroup(warnOnDuplicate: Logger, identifier: String): ActiveDatabaseGroup {
-            return synchronized(this) {
+        private fun findGroup(
+            warnOnDuplicate: Logger,
+            identifier: String,
+        ): ActiveDatabaseGroup =
+            synchronized(this) {
                 val existing = allGroups.asSequence().firstOrNull { it.identifier == identifier }
-                val resolvedGroup = if (existing == null) {
-                    val added = ActiveDatabaseGroup(identifier)
-                    allGroups.add(added)
-                    added
-                } else {
-                    existing
-                }
+                val resolvedGroup =
+                    if (existing == null) {
+                        val added = ActiveDatabaseGroup(identifier)
+                        allGroups.add(added)
+                        added
+                    } else {
+                        existing
+                    }
 
                 if (resolvedGroup.refCount++ != 0) {
                     warnOnDuplicate.w { multipleInstancesMessage }
@@ -59,9 +65,11 @@ internal class ActiveDatabaseGroup(val identifier: String) {
 
                 resolvedGroup
             }
-        }
 
-        internal fun referenceDatabase(warnOnDuplicate: Logger, identifier: String): Pair<ActiveDatabaseResource, Any> {
+        internal fun referenceDatabase(
+            warnOnDuplicate: Logger,
+            identifier: String,
+        ): Pair<ActiveDatabaseResource, Any> {
             val group = findGroup(warnOnDuplicate, identifier)
             val resource = ActiveDatabaseResource(group)
 
@@ -70,7 +78,9 @@ internal class ActiveDatabaseGroup(val identifier: String) {
     }
 }
 
-internal class ActiveDatabaseResource(val group: ActiveDatabaseGroup) {
+internal class ActiveDatabaseResource(
+    val group: ActiveDatabaseGroup,
+) {
     val disposed = atomic(false)
 
     fun dispose() {

@@ -6,6 +6,7 @@ internal actual fun disposeWhenDeallocated(resource: ActiveDatabaseResource): An
 }
 
 // This would require Java 9+
+
 /*
 import java.lang.ref.Cleaner
 

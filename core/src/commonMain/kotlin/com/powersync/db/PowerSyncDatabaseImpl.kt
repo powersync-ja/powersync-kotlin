@@ -58,7 +58,7 @@ internal class PowerSyncDatabaseImpl(
     private val dbFilename: String,
     val logger: Logger = Logger,
     driver: PsSqlDriver = factory.createDriver(scope, dbFilename),
-): PowerSyncDatabase {
+) : PowerSyncDatabase {
     companion object {
         internal val streamConflictMessage =
             """
