@@ -211,6 +211,11 @@ kotlin {
             dependsOn(commonTest.get())
         }
 
+        val commonJava by creating {
+            kotlin.srcDir("commonJava")
+            dependsOn(commonMain.get())
+        }
+
         commonMain.dependencies {
             implementation(libs.uuid)
             implementation(libs.kotlin.stdlib)
@@ -226,13 +231,18 @@ kotlin {
             api(libs.kermit)
         }
 
-        androidMain.dependencies {
-            implementation(libs.ktor.client.okhttp)
+        androidMain {
+            dependsOn(commonJava)
+            dependencies.implementation(libs.ktor.client.okhttp)
         }
 
-        jvmMain.dependencies {
-            implementation(libs.ktor.client.okhttp)
-            implementation(libs.sqlite.jdbc)
+        jvmMain {
+            dependsOn(commonJava)
+
+            dependencies {
+                implementation(libs.ktor.client.okhttp)
+                implementation(libs.sqlite.jdbc)
+            }
         }
 
         iosMain.dependencies {

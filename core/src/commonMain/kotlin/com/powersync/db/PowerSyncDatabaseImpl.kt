@@ -20,7 +20,6 @@ import com.powersync.sync.PriorityStatusEntry
 import com.powersync.sync.SyncStatus
 import com.powersync.sync.SyncStatusData
 import com.powersync.sync.SyncStream
-import com.powersync.utils.ExclusiveMethodProvider
 import com.powersync.utils.JsonParam
 import com.powersync.utils.JsonUtil
 import com.powersync.utils.throttle
@@ -57,8 +56,7 @@ internal class PowerSyncDatabaseImpl(
     private val dbFilename: String,
     val logger: Logger = Logger,
     driver: PsSqlDriver = factory.createDriver(scope, dbFilename),
-) : ExclusiveMethodProvider(),
-    PowerSyncDatabase {
+): PowerSyncDatabase {
     companion object {
         internal val streamConflictMessage =
             """
@@ -68,21 +66,15 @@ internal class PowerSyncDatabaseImpl(
             This connection attempt will be queued and will only be executed after
             currently connecting clients are disconnected.
             """.trimIndent()
-
-        internal val multipleInstancesMessage =
-            """
-            Multiple PowerSync instances for the same database have been detected.
-            This can cause unexpected results.
-            Please check your PowerSync client instantiation logic if this is not intentional.
-            """.trimIndent()
-
-        internal val instanceStore = ActiveInstanceStore()
     }
 
     override val identifier = dbFilename
 
     private val internalDb = InternalDatabaseImpl(driver, scope)
     internal val bucketStorage: BucketStorage = BucketStorageImpl(internalDb, logger)
+    private val resource: ActiveDatabaseResource
+    private val clearResourceWhenDisposed: Any
+
     var closed = false
 
     /**
@@ -97,12 +89,11 @@ internal class PowerSyncDatabaseImpl(
     private var uploadJob: Job? = null
 
     init {
-        val db = this
+        val res = ActiveDatabaseGroup.referenceDatabase(logger, identifier)
+        resource = res.first
+        clearResourceWhenDisposed = res.second
+
         runBlocking {
-            val isMultiple = instanceStore.registerAndCheckInstance(db)
-            if (isMultiple) {
-                logger.w { multipleInstancesMessage }
-            }
             val sqliteVersion = internalDb.queries.sqliteVersion().executeAsOne()
             logger.d { "SQLiteVersion: $sqliteVersion" }
             checkVersion()
@@ -154,8 +145,7 @@ internal class PowerSyncDatabaseImpl(
         syncJob =
             scope.launch {
                 // Get a global lock for checking mutex maps
-                val streamMutex =
-                    globalMutexFor("streaming-$identifier")
+                val streamMutex = resource.group.syncMutex
 
                 // Poke the streaming mutex to see if another client is using it
                 var obtainedLock = false
@@ -437,7 +427,7 @@ internal class PowerSyncDatabaseImpl(
             }
             disconnect()
             internalDb.close()
-            instanceStore.removeInstance(this)
+            resource.dispose()
             closed = true
         }
 
