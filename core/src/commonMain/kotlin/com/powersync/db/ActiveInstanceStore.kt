@@ -22,48 +22,42 @@ internal expect fun disposeWhenDeallocated(resource: ActiveDatabaseResource): An
  */
 internal class ActiveDatabaseGroup(
     val identifier: String,
+    private val collection: GroupsCollection,
 ) {
     internal var refCount = 0 // Guarded by companion object
     internal val syncMutex = Mutex()
 
     fun removeUsage() {
-        ActiveDatabaseGroup.synchronize {
+        collection.synchronize {
             if (--refCount == 0) {
-                allGroups.remove(this)
+                collection.allGroups.remove(this)
             }
         }
     }
 
-    companion object : Synchronizable() {
-        internal val multipleInstancesMessage =
-            """
-            Multiple PowerSync instances for the same database have been detected.
-            This can cause unexpected results.
-            Please check your PowerSync client instantiation logic if this is not intentional.
-            """.trimIndent()
-
+    internal open class GroupsCollection: Synchronizable() {
         internal val allGroups = mutableListOf<ActiveDatabaseGroup>()
 
         private fun findGroup(
             warnOnDuplicate: Logger,
             identifier: String,
         ): ActiveDatabaseGroup = synchronize {
-                val existing = allGroups.asSequence().firstOrNull { it.identifier == identifier }
-                val resolvedGroup =
-                    if (existing == null) {
-                        val added = ActiveDatabaseGroup(identifier)
-                        allGroups.add(added)
-                        added
-                    } else {
-                        existing
-                    }
-
-                if (resolvedGroup.refCount++ != 0) {
-                    warnOnDuplicate.w { multipleInstancesMessage }
+            val existing = allGroups.asSequence().firstOrNull { it.identifier == identifier }
+            val resolvedGroup =
+                if (existing == null) {
+                    val added = ActiveDatabaseGroup(identifier, this)
+                    allGroups.add(added)
+                    added
+                } else {
+                    existing
                 }
 
-                resolvedGroup
+            if (resolvedGroup.refCount++ != 0) {
+                warnOnDuplicate.w { multipleInstancesMessage }
             }
+
+            resolvedGroup
+        }
 
         internal fun referenceDatabase(
             warnOnDuplicate: Logger,
@@ -74,6 +68,15 @@ internal class ActiveDatabaseGroup(
 
             return resource to disposeWhenDeallocated(resource)
         }
+    }
+
+    companion object : GroupsCollection() {
+        internal val multipleInstancesMessage =
+            """
+            Multiple PowerSync instances for the same database have been detected.
+            This can cause unexpected results.
+            Please check your PowerSync client instantiation logic if this is not intentional.
+            """.trimIndent()
     }
 }
 

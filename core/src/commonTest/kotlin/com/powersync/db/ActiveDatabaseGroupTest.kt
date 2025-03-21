@@ -26,28 +26,31 @@ class ActiveDatabaseGroupTest {
             ),
         )
 
+    private lateinit var collection: ActiveDatabaseGroup.GroupsCollection
+
     @BeforeTest
-    fun setupDatabase() {
+    fun setup() {
+        collection = ActiveDatabaseGroup.GroupsCollection()
         logWriter.reset()
     }
 
     @Test
     fun testTrackDatabase() {
-        val usage = ActiveDatabaseGroup.referenceDatabase(logger, "test")
-        assertEquals(1, ActiveDatabaseGroup.allGroups.size)
+        val usage = collection.referenceDatabase(logger, "test")
+        assertEquals(1, collection.allGroups.size)
 
         usage.first.dispose()
-        assertEquals(0, ActiveDatabaseGroup.allGroups.size)
+        assertEquals(0, collection.allGroups.size)
     }
 
     @Test
     fun testWarnsOnDuplicate() {
-        val usage = ActiveDatabaseGroup.referenceDatabase(logger, "test")
-        assertEquals(1, ActiveDatabaseGroup.allGroups.size)
+        val usage = collection.referenceDatabase(logger, "test")
+        assertEquals(1, collection.allGroups.size)
 
         assertEquals(0, logWriter.logs.size)
 
-        val another = ActiveDatabaseGroup.referenceDatabase(logger, "test")
+        val another = collection.referenceDatabase(logger, "test")
         assertNotNull(
             logWriter.logs.find {
                 it.message == ActiveDatabaseGroup.multipleInstancesMessage
@@ -57,23 +60,23 @@ class ActiveDatabaseGroupTest {
         assertEquals(usage.first.group, another.first.group)
 
         usage.first.dispose()
-        assertEquals(1, ActiveDatabaseGroup.allGroups.size)
+        assertEquals(1, collection.allGroups.size)
         another.first.dispose()
-        assertEquals(0, ActiveDatabaseGroup.allGroups.size)
+        assertEquals(0, collection.allGroups.size)
     }
 
     @Test
     fun testDoesNotWarnForDifferentIdentifiers() {
-        val usage = ActiveDatabaseGroup.referenceDatabase(logger, "test")
-        assertEquals(1, ActiveDatabaseGroup.allGroups.size)
-        val another = ActiveDatabaseGroup.referenceDatabase(logger, "test2")
-        assertEquals(2, ActiveDatabaseGroup.allGroups.size)
+        val usage = collection.referenceDatabase(logger, "test")
+        assertEquals(1, collection.allGroups.size)
+        val another = collection.referenceDatabase(logger, "test2")
+        assertEquals(2, collection.allGroups.size)
 
         assertEquals(0, logWriter.logs.size)
 
         usage.first.dispose()
-        assertEquals(1, ActiveDatabaseGroup.allGroups.size)
+        assertEquals(1, collection.allGroups.size)
         another.first.dispose()
-        assertEquals(0, ActiveDatabaseGroup.allGroups.size)
+        assertEquals(0, collection.allGroups.size)
     }
 }
