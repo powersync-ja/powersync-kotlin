@@ -42,7 +42,7 @@ internal class ActiveDatabaseGroup(
             Please check your PowerSync client instantiation logic if this is not intentional.
             """.trimIndent()
 
-        private val allGroups = mutableListOf<ActiveDatabaseGroup>()
+        internal val allGroups = mutableListOf<ActiveDatabaseGroup>()
 
         private fun findGroup(
             warnOnDuplicate: Logger,
