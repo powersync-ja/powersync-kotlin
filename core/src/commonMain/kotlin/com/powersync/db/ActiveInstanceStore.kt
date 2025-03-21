@@ -35,29 +35,30 @@ internal class ActiveDatabaseGroup(
         }
     }
 
-    internal open class GroupsCollection: Synchronizable() {
+    internal open class GroupsCollection : Synchronizable() {
         internal val allGroups = mutableListOf<ActiveDatabaseGroup>()
 
         private fun findGroup(
             warnOnDuplicate: Logger,
             identifier: String,
-        ): ActiveDatabaseGroup = synchronize {
-            val existing = allGroups.asSequence().firstOrNull { it.identifier == identifier }
-            val resolvedGroup =
-                if (existing == null) {
-                    val added = ActiveDatabaseGroup(identifier, this)
-                    allGroups.add(added)
-                    added
-                } else {
-                    existing
+        ): ActiveDatabaseGroup =
+            synchronize {
+                val existing = allGroups.asSequence().firstOrNull { it.identifier == identifier }
+                val resolvedGroup =
+                    if (existing == null) {
+                        val added = ActiveDatabaseGroup(identifier, this)
+                        allGroups.add(added)
+                        added
+                    } else {
+                        existing
+                    }
+
+                if (resolvedGroup.refCount++ != 0) {
+                    warnOnDuplicate.w { multipleInstancesMessage }
                 }
 
-            if (resolvedGroup.refCount++ != 0) {
-                warnOnDuplicate.w { multipleInstancesMessage }
+                resolvedGroup
             }
-
-            resolvedGroup
-        }
 
         internal fun referenceDatabase(
             warnOnDuplicate: Logger,

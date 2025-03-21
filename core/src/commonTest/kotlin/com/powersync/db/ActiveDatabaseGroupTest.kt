@@ -12,7 +12,6 @@ import kotlin.test.assertNotNull
 
 @OptIn(ExperimentalKermitApi::class)
 class ActiveDatabaseGroupTest {
-
     private val logWriter =
         TestLogWriter(
             loggable = Severity.Debug,
