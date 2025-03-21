@@ -6,7 +6,6 @@ import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable
 import org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest
 import org.jetbrains.kotlin.konan.target.Family
-import org.jetbrains.kotlin.konan.target.KonanTarget
 
 
 plugins {
@@ -82,15 +81,22 @@ val downloadPowersyncFramework by tasks.registering(Download::class) {
     onlyIfModified(true)
 }
 
-val unzipPowersyncFramework by tasks.registering(Copy::class) {
+val unzipPowersyncFramework by tasks.registering(Exec::class) {
     dependsOn(downloadPowersyncFramework)
 
-    from(
-        zipTree(downloadPowersyncFramework.get().dest).matching {
-            include("powersync-sqlite-core.xcframework/**")
-        },
-    )
-    into(binariesFolder.map { it.dir("framework") })
+    val zipfile = downloadPowersyncFramework.get().dest
+    inputs.file(zipfile)
+    val destination = File(zipfile.parentFile, "extracted")
+    doFirst {
+        destination.deleteRecursively()
+        destination.mkdir()
+    }
+
+    // We're using unzip here because the Gradle copy task doesn't support symlinks.
+    executable = "unzip"
+    args(zipfile.absolutePath)
+    workingDir(destination)
+    outputs.dir(destination)
 }
 
 val sqliteJDBCFolder =
@@ -164,7 +170,7 @@ kotlin {
                 linkerOpts("-framework", "powersync-sqlite-core")
                 val frameworkRoot =
                     binariesFolder
-                        .map { it.dir("framework/powersync-sqlite-core.xcframework/ios-arm64_x86_64-simulator") }
+                        .map { it.dir("framework/extracted/powersync-sqlite-core.xcframework/ios-arm64_x86_64-simulator") }
                         .get()
                         .asFile.path
 
@@ -177,9 +183,9 @@ kotlin {
             binaries.withType<TestExecutable>().configureEach {
                 linkTaskProvider.configure { dependsOn(unzipPowersyncFramework) }
                 linkerOpts("-framework", "powersync-sqlite-core")
-                val frameworkRoot =
+                var frameworkRoot =
                     binariesFolder
-                        .map { it.dir("framework/powersync-sqlite-core.xcframework/macos-arm64_x86_64") }
+                        .map { it.dir("framework/extracted/powersync-sqlite-core.xcframework/macos-arm64_x86_64") }
                         .get()
                         .asFile.path
 
