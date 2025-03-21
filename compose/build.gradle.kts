@@ -11,7 +11,9 @@ plugins {
 }
 
 kotlin {
-    powersyncTargets()
+    // Compose multiplatform doesn't have stable support for macOS, so don't build this compose library with macOS
+    // support either.
+    powersyncTargets(macos = false)
 
     explicitApi()
 

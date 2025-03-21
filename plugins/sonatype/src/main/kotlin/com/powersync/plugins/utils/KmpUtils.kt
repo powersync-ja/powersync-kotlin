@@ -4,7 +4,7 @@ import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinTargetContainerWithPresetFunctions
 
-public fun KotlinTargetContainerWithPresetFunctions.powersyncTargets() {
+public fun KotlinTargetContainerWithPresetFunctions.powersyncTargets(macos: Boolean = true) {
     androidTarget {
         publishLibraryVariants("release", "debug")
 
@@ -23,14 +23,16 @@ public fun KotlinTargetContainerWithPresetFunctions.powersyncTargets() {
         }
     }
 
-    powersyncNativeTargets()
+    powersyncNativeTargets(macos=macos)
 }
 
-public fun KotlinTargetContainerWithPresetFunctions.powersyncNativeTargets() {
+public fun KotlinTargetContainerWithPresetFunctions.powersyncNativeTargets(macos: Boolean = true) {
     iosX64()
     iosArm64()
     iosSimulatorArm64()
 
-    macosX64()
-    macosArm64()
+    if (macos) {
+        macosX64()
+        macosArm64()
+    }
 }
