@@ -63,23 +63,13 @@ public actual class DatabaseDriverFactory {
         // a pointer for C hooks
         val deferredDriver = DeferredDriver()
 
-        val resultingPath = when(dbDirectory) {
-            null -> dbFilename
-            else -> {
-                val path = Path(dbDirectory)
-                SystemFileSystem.createDirectories(path)
-
-                dbDirectory + SystemPathSeparator + dbFilename
-            }
-        }
-
         val driver =
             PsSqlDriver(
                 driver =
                     NativeSqliteDriver(
                         configuration =
                             DatabaseConfiguration(
-                                name = resultingPath,
+                                name = dbFilename,
                                 version = schema.version.toInt(),
                                 create = { connection ->
                                     wrapConnection(connection) {
