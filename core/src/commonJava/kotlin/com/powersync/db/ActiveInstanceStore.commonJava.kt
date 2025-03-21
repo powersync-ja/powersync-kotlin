@@ -1,5 +1,12 @@
 package com.powersync.db
 
+internal actual fun disposeWhenDeallocated(resource: ActiveDatabaseResource): Any {
+    // We can't do this on Java 8 :(
+    return object {}
+}
+
+// This would require Java 9+
+/*
 import java.lang.ref.Cleaner
 
 internal actual fun disposeWhenDeallocated(resource: ActiveDatabaseResource): Any {
@@ -16,3 +23,4 @@ private class CleanableWrapper {
         val cleaner: Cleaner = Cleaner.create()
     }
 }
+*/

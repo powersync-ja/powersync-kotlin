@@ -71,7 +71,7 @@ internal class ActiveDatabaseGroup(val identifier: String) {
 }
 
 internal class ActiveDatabaseResource(val group: ActiveDatabaseGroup) {
-    var disposed = atomic(false)
+    val disposed = atomic(false)
 
     fun dispose() {
         if (!disposed.getAndSet(true)) {

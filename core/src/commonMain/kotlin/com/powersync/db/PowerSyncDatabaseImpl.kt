@@ -34,6 +34,8 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
@@ -82,10 +84,9 @@ internal class PowerSyncDatabaseImpl(
      */
     override val currentStatus: SyncStatus = SyncStatus()
 
+    private val mutex = Mutex()
     private var syncStream: SyncStream? = null
-
     private var syncJob: Job? = null
-
     private var uploadJob: Job? = null
 
     init {
@@ -117,10 +118,10 @@ internal class PowerSyncDatabaseImpl(
         crudThrottleMs: Long,
         retryDelayMs: Long,
         params: Map<String, JsonParam?>,
-    ) = exclusiveMethod("connect") {
-        disconnect()
+    ) = mutex.withLock {
+        disconnectInternal()
 
-        connect(
+        connectInternal(
             SyncStream(
                 bucketStorage = bucketStorage,
                 connector = connector,
@@ -134,7 +135,7 @@ internal class PowerSyncDatabaseImpl(
     }
 
     @OptIn(FlowPreview::class)
-    internal fun connect(
+    internal fun connectInternal(
         stream: SyncStream,
         crudThrottleMs: Long,
     ) {
@@ -327,7 +328,9 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 
-    override suspend fun disconnect() {
+    override suspend fun disconnect() = mutex.withLock { disconnectInternal() }
+
+    private suspend fun disconnectInternal() {
         if (syncJob != null && syncJob!!.isActive) {
             syncJob?.cancelAndJoin()
         }
@@ -421,11 +424,11 @@ internal class PowerSyncDatabaseImpl(
     }
 
     override suspend fun close() =
-        exclusiveMethod("close") {
+        mutex.withLock {
             if (closed) {
-                return@exclusiveMethod
+                return@withLock
             }
-            disconnect()
+            disconnectInternal()
             internalDb.close()
             resource.dispose()
             closed = true
