@@ -1,4 +1,5 @@
 import com.powersync.plugins.sonatype.setupGithubRepository
+import com.powersync.plugins.utils.powersyncTargets
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -10,15 +11,9 @@ plugins {
 }
 
 kotlin {
-    androidTarget {
-        publishLibraryVariants("release", "debug")
-    }
-
-    jvm()
-
-    iosX64()
-    iosArm64()
-    iosSimulatorArm64()
+    // Compose multiplatform doesn't have stable support for macOS, so don't build this compose library with macOS
+    // support either.
+    powersyncTargets(macos = false)
 
     explicitApi()
 

@@ -1,5 +1,6 @@
 import co.touchlab.faktory.artifactmanager.ArtifactManager
 import co.touchlab.faktory.capitalized
+import com.powersync.plugins.utils.powersyncNativeTargets
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import java.security.MessageDigest
 
@@ -13,20 +14,15 @@ plugins {
 }
 
 kotlin {
-    listOf(
-        iosX64(),
-        iosArm64(),
-        iosSimulatorArm64(),
-    ).forEach {
-        it.binaries.framework {
-            export(project(":core"))
-            isStatic = true
-        }
-    }
-
+    powersyncNativeTargets()
     explicitApi()
 
     targets.withType<KotlinNativeTarget> {
+        binaries.framework {
+            export(project(":core"))
+            isStatic = true
+        }
+
         compilations.named("main") {
             compileTaskProvider {
                 compilerOptions.freeCompilerArgs.add("-Xexport-kdoc")
@@ -37,6 +33,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(project(":core"))
+            implementation(libs.sqliter) // Ensure we have the latest version for macOS support
         }
     }
 }
