@@ -1,9 +1,11 @@
 package com.powersync
 
 import app.cash.turbine.turbineScope
+import co.touchlab.kermit.ExperimentalKermitApi
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import co.touchlab.kermit.TestConfig
+import co.touchlab.kermit.TestLogWriter
 import com.powersync.bucket.BucketChecksum
 import com.powersync.bucket.BucketPriority
 import com.powersync.bucket.Checkpoint
@@ -18,6 +20,7 @@ import com.powersync.sync.SyncStream
 import com.powersync.testutils.MockSyncService
 import com.powersync.testutils.UserRow
 import com.powersync.testutils.cleanup
+import com.powersync.testutils.factory
 import com.powersync.testutils.waitFor
 import com.powersync.utils.JsonUtil
 import dev.mokkery.answering.returns
@@ -35,16 +38,22 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 
-@OptIn(co.touchlab.kermit.ExperimentalKermitApi::class)
+@OptIn(ExperimentalKermitApi::class)
 class SyncIntegrationTest {
+    private val logWriter =
+        TestLogWriter(
+            loggable = Severity.Debug,
+        )
+
     private val logger =
         Logger(
             TestConfig(
                 minSeverity = Severity.Debug,
-                logWriterList = listOf(),
+                logWriterList = listOf(logWriter),
             ),
         )
     private lateinit var database: PowerSyncDatabaseImpl
@@ -54,6 +63,7 @@ class SyncIntegrationTest {
     @BeforeTest
     fun setup() {
         cleanup("testdb")
+        logWriter.reset()
         database = openDb()
         connector =
             mock<PowerSyncBackendConnector> {
@@ -75,12 +85,15 @@ class SyncIntegrationTest {
 
     @AfterTest
     fun teardown() {
+        runBlocking {
+            database.close()
+        }
         cleanup("testdb")
     }
 
     private fun openDb() =
         PowerSyncDatabase(
-            factory = com.powersync.testutils.factory,
+            factory = factory,
             schema = Schema(UserRow.table),
             dbFilename = "testdb",
         ) as PowerSyncDatabaseImpl
@@ -272,6 +285,26 @@ class SyncIntegrationTest {
         }
 
     @Test
+    fun setsConnectingState() =
+        runTest {
+            turbineScope(timeout = 10.0.seconds) {
+                val syncStream = syncStream()
+                val turbine = database.currentStatus.asFlow().testIn(this)
+
+                database.connect(syncStream, 1000L)
+                turbine.waitFor { it.connecting }
+
+                database.disconnect()
+
+                turbine.waitFor { !it.connecting && !it.connected }
+                turbine.cancel()
+            }
+
+            database.close()
+            syncLines.close()
+        }
+
+    @Test
     fun testMultipleSyncsDoNotCreateMultipleStatusEntries() =
         runTest {
             val syncStream = syncStream()
@@ -308,6 +341,123 @@ class SyncIntegrationTest {
 
                     assertEquals(1, rows.size)
                 }
+
+                turbine.cancel()
+            }
+
+            database.close()
+            syncLines.close()
+        }
+
+    @Test
+    fun warnsMultipleConnectionAttempts() =
+        runTest {
+            val db2 =
+                PowerSyncDatabase(
+                    factory = factory,
+                    schema = Schema(UserRow.table),
+                    dbFilename = "testdb",
+                    logger = logger,
+                ) as PowerSyncDatabaseImpl
+
+            turbineScope(timeout = 10.0.seconds) {
+                // Connect the first database
+                database.connect(connector, 1000L)
+                db2.connect(connector)
+
+                waitFor {
+                    assertNotNull(
+                        logWriter.logs.find {
+                            it.message == PowerSyncDatabaseImpl.streamConflictMessage
+                        },
+                    )
+                }
+
+                db2.disconnect()
+                database.disconnect()
+            }
+
+            db2.close()
+            database.close()
+            syncLines.close()
+        }
+
+    @Test
+    fun queuesMultipleConnectionAttempts() =
+        runTest {
+            val db2 =
+                PowerSyncDatabase(
+                    factory = factory,
+                    schema = Schema(UserRow.table),
+                    dbFilename = "testdb",
+                    logger = Logger,
+                ) as PowerSyncDatabaseImpl
+
+            turbineScope(timeout = 10.0.seconds) {
+                val turbine1 = database.currentStatus.asFlow().testIn(this)
+                val turbine2 = db2.currentStatus.asFlow().testIn(this)
+
+                // Connect the first database
+                database.connect(connector, 1000L)
+
+                turbine1.waitFor { it.connecting }
+                db2.connect(connector)
+
+                // Should not be connecting yet
+                assertEquals(false, db2.currentStatus.connecting)
+
+                database.disconnect()
+                turbine1.waitFor { !it.connecting }
+
+                // Should start connecting after the other database disconnected
+                turbine2.waitFor { it.connecting }
+                db2.disconnect()
+                turbine2.waitFor { !it.connecting }
+
+                turbine1.cancel()
+                turbine2.cancel()
+            }
+
+            db2.close()
+            database.close()
+            syncLines.close()
+        }
+
+    @Test
+    fun reconnectsAfterDisconnecting() =
+        runTest {
+            turbineScope(timeout = 10.0.seconds) {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+
+                database.connect(connector, 1000L)
+                turbine.waitFor { it.connecting }
+
+                database.disconnect()
+                turbine.waitFor { !it.connecting }
+
+                database.connect(connector, 1000L)
+                turbine.waitFor { it.connecting }
+                database.disconnect()
+                turbine.waitFor { !it.connecting }
+
+                turbine.cancel()
+            }
+
+            database.close()
+            syncLines.close()
+        }
+
+    @Test
+    fun reconnects() =
+        runTest {
+            turbineScope(timeout = 10.0.seconds) {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+
+                database.connect(connector, 1000L, retryDelayMs = 5000)
+                turbine.waitFor { it.connecting }
+
+                database.connect(connector, 1000L, retryDelayMs = 5000)
+                turbine.waitFor { it.connecting }
 
                 turbine.cancel()
             }

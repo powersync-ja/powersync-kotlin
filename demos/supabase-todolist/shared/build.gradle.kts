@@ -51,6 +51,8 @@ kotlin {
             implementation(compose.components.resources)
             implementation(compose.materialIconsExtended)
             implementation(libs.compose.lifecycle)
+            api(libs.koin.core)
+            implementation(libs.koin.compose.viewmodel)
         }
         androidMain.dependencies {
             api(libs.androidx.activity.compose)

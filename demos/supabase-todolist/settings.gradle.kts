@@ -35,6 +35,7 @@ plugins {
 rootProject.name = "supabase-todolist"
 
 include(":androidApp")
+include(":androidBackgroundSync")
 include(":shared")
 include(":desktopApp")
 
