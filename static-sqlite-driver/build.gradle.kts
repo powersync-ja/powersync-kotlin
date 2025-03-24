@@ -1,8 +1,10 @@
 import java.io.File
+import java.io.FileInputStream
 import com.powersync.plugins.sonatype.setupGithubRepository
 import de.undercouch.gradle.tasks.download.Download
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.utils.NativeCompilerDownloader
+import org.jetbrains.kotlin.konan.properties.Properties
 import org.jetbrains.kotlin.konan.target.HostManager
 import org.jetbrains.kotlin.konan.target.PlatformManager
 
@@ -49,11 +51,18 @@ val unzipSQLiteSources by tasks.registering(Copy::class) {
 // internal, but it's very convenient to have them because they expose the necessary toolchains we
 // use to compile SQLite for the platforms we need.
 val hostManager = HostManager()
-val platformManager: PlatformManager get() {
+val platformManager: PlatformManager by lazy {
     val distribution = org.jetbrains.kotlin.konan.target.Distribution(
-        konanHome = NativeCompilerDownloader(project).compilerDirectory.absolutePath
+        konanHome = NativeCompilerDownloader(project).compilerDirectory.absolutePath,
+        propertyOverrides = buildMap {
+            val properties = Properties()
+            properties.load(FileInputStream(file("clang.properties")))
+
+            properties.forEach { k, v -> put(k as String, v as String) }
+        },
     )
-    return PlatformManager(distribution = distribution)
+
+    PlatformManager(distribution = distribution)
 }
 
 fun compileSqlite(target: KotlinNativeTarget): TaskProvider<Task> {
