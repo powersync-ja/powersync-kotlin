@@ -301,6 +301,7 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 
+    // The initialization sets powerSyncVersion. We currently run the init as a blocking operation
     override suspend fun getPowerSyncVersion(): String = powerSyncVersion!!
 
     override suspend fun <RowType : Any> get(
