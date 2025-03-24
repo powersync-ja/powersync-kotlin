@@ -175,4 +175,28 @@ class AndroidDatabaseTest {
                 assertEquals(userCount2[0], 2)
             }
         }
+
+    @Test
+    fun openDBWithDirectory() =
+        runTest {
+            val tempDir =
+                InstrumentationRegistry
+                    .getInstrumentation()
+                    .targetContext.cacheDir.canonicalPath
+            val dbFilename = "testdb"
+
+            val db =
+                PowerSyncDatabase(
+                    factory = DatabaseDriverFactory(InstrumentationRegistry.getInstrumentation().targetContext),
+                    schema = Schema(UserRow.table),
+                    dbDirectory = tempDir,
+                    dbFilename = dbFilename,
+                )
+
+            val path = db.get("SELECT file FROM pragma_database_list;") { it.getString(0)!! }
+
+            assertEquals(path.contains(tempDir), true)
+
+            db.close()
+        }
 }

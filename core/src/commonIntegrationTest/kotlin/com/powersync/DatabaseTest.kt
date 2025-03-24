@@ -7,8 +7,10 @@ import co.touchlab.kermit.Severity
 import co.touchlab.kermit.TestConfig
 import co.touchlab.kermit.TestLogWriter
 import com.powersync.db.ActiveDatabaseGroup
+import com.powersync.db.getString
 import com.powersync.db.schema.Schema
 import com.powersync.testutils.UserRow
+import com.powersync.testutils.getTempDir
 import com.powersync.testutils.waitFor
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +24,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalKermitApi::class)
 class DatabaseTest {
@@ -266,6 +269,30 @@ class DatabaseTest {
             closeJob.await()
 
             assertEquals(actual = database.closed, expected = true)
+        }
+
+    @Test
+    fun openDBWithDirectory() =
+        runTest {
+            val tempDir =
+                getTempDir()
+                    ?: // SQLiteR, which is used on iOS, does not support opening dbs from directories
+                    return@runTest
+
+            val dbFilename = "testdb"
+
+            val db =
+                PowerSyncDatabase(
+                    factory = com.powersync.testutils.factory,
+                    schema = Schema(UserRow.table),
+                    dbFilename = dbFilename,
+                    dbDirectory = getTempDir(),
+                    logger = logger,
+                )
+
+            val path = db.get("SELECT file FROM pragma_database_list;") { it.getString(0)!! }
+            assertTrue { path.contains(tempDir) }
+            db.close()
         }
 
     @Test

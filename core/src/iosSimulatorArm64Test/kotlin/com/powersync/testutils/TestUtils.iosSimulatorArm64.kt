@@ -13,3 +13,5 @@ actual fun cleanup(path: String) {
         SystemFileSystem.delete(resolved)
     }
 }
+
+actual fun getTempDir(): String? = null

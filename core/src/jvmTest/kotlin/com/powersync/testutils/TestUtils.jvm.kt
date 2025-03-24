@@ -9,3 +9,5 @@ actual val factory: DatabaseDriverFactory
 actual fun cleanup(path: String) {
     File(path).delete()
 }
+
+actual fun getTempDir(): String = System.getProperty("java.io.tmpdir")
