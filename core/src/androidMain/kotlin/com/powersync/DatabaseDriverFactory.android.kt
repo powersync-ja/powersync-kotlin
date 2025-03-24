@@ -8,7 +8,7 @@ import com.powersync.db.migrateDriver
 import kotlinx.coroutines.CoroutineScope
 import org.sqlite.SQLiteCommitListener
 
-@Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING", "SqlNoDataSourceInspection")
+@Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 public actual class DatabaseDriverFactory(
     private val context: Context,
 ) {
