@@ -2,7 +2,7 @@ package com.powersync.db.internal
 
 public interface PowerSyncTransaction : ConnectionContext
 
-public class PowerSyncTransactionImpl(
+internal class PowerSyncTransactionImpl(
     context: ConnectionContext,
 ) : PowerSyncTransaction,
     ConnectionContext by context
