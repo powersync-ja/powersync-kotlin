@@ -20,7 +20,6 @@ import com.powersync.sync.PriorityStatusEntry
 import com.powersync.sync.SyncStatus
 import com.powersync.sync.SyncStatusData
 import com.powersync.sync.SyncStream
-import com.powersync.utils.ExclusiveMethodProvider
 import com.powersync.utils.JsonParam
 import com.powersync.utils.JsonUtil
 import com.powersync.utils.throttle
@@ -35,6 +34,8 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
@@ -57,8 +58,7 @@ internal class PowerSyncDatabaseImpl(
     private val dbFilename: String,
     val logger: Logger = Logger,
     driver: PsSqlDriver = factory.createDriver(scope, dbFilename),
-) : ExclusiveMethodProvider(),
-    PowerSyncDatabase {
+) : PowerSyncDatabase {
     companion object {
         internal val streamConflictMessage =
             """
@@ -68,21 +68,15 @@ internal class PowerSyncDatabaseImpl(
             This connection attempt will be queued and will only be executed after
             currently connecting clients are disconnected.
             """.trimIndent()
-
-        internal val multipleInstancesMessage =
-            """
-            Multiple PowerSync instances for the same database have been detected.
-            This can cause unexpected results.
-            Please check your PowerSync client instantiation logic if this is not intentional.
-            """.trimIndent()
-
-        internal val instanceStore = ActiveInstanceStore()
     }
 
     override val identifier = dbFilename
 
     private val internalDb = InternalDatabaseImpl(driver, scope)
     internal val bucketStorage: BucketStorage = BucketStorageImpl(internalDb, logger)
+    private val resource: ActiveDatabaseResource
+    private val clearResourceWhenDisposed: Any
+
     var closed = false
 
     /**
@@ -90,19 +84,17 @@ internal class PowerSyncDatabaseImpl(
      */
     override val currentStatus: SyncStatus = SyncStatus()
 
+    private val mutex = Mutex()
     private var syncStream: SyncStream? = null
-
     private var syncJob: Job? = null
-
     private var uploadJob: Job? = null
 
     init {
-        val db = this
+        val res = ActiveDatabaseGroup.referenceDatabase(logger, identifier)
+        resource = res.first
+        clearResourceWhenDisposed = res.second
+
         runBlocking {
-            val isMultiple = instanceStore.registerAndCheckInstance(db)
-            if (isMultiple) {
-                logger.w { multipleInstancesMessage }
-            }
             val sqliteVersion = internalDb.queries.sqliteVersion().executeAsOne()
             logger.d { "SQLiteVersion: $sqliteVersion" }
             checkVersion()
@@ -126,10 +118,10 @@ internal class PowerSyncDatabaseImpl(
         crudThrottleMs: Long,
         retryDelayMs: Long,
         params: Map<String, JsonParam?>,
-    ) = exclusiveMethod("connect") {
-        disconnect()
+    ) = mutex.withLock {
+        disconnectInternal()
 
-        connect(
+        connectInternal(
             SyncStream(
                 bucketStorage = bucketStorage,
                 connector = connector,
@@ -143,7 +135,7 @@ internal class PowerSyncDatabaseImpl(
     }
 
     @OptIn(FlowPreview::class)
-    internal fun connect(
+    internal fun connectInternal(
         stream: SyncStream,
         crudThrottleMs: Long,
     ) {
@@ -154,8 +146,7 @@ internal class PowerSyncDatabaseImpl(
         syncJob =
             scope.launch {
                 // Get a global lock for checking mutex maps
-                val streamMutex =
-                    globalMutexFor("streaming-$identifier")
+                val streamMutex = resource.group.syncMutex
 
                 // Poke the streaming mutex to see if another client is using it
                 var obtainedLock = false
@@ -337,7 +328,9 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 
-    override suspend fun disconnect() {
+    override suspend fun disconnect() = mutex.withLock { disconnectInternal() }
+
+    private suspend fun disconnectInternal() {
         if (syncJob != null && syncJob!!.isActive) {
             syncJob?.cancelAndJoin()
         }
@@ -431,13 +424,13 @@ internal class PowerSyncDatabaseImpl(
     }
 
     override suspend fun close() =
-        exclusiveMethod("close") {
+        mutex.withLock {
             if (closed) {
-                return@exclusiveMethod
+                return@withLock
             }
-            disconnect()
+            disconnectInternal()
             internalDb.close()
-            instanceStore.removeInstance(this)
+            resource.dispose()
             closed = true
         }
 
