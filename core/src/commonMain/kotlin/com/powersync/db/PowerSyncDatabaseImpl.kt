@@ -55,7 +55,6 @@ internal class PowerSyncDatabaseImpl(
     private val dbFilename: String,
     private val dbDirectory: String? = null,
     val logger: Logger = Logger,
-    driver: PsSqlDriver = factory.createDriver(scope, dbFilename),
 ) : ExclusiveMethodProvider(),
     PowerSyncDatabase {
     companion object {
@@ -81,12 +80,12 @@ internal class PowerSyncDatabaseImpl(
     override val identifier = dbDirectory + dbFilename
 
     private val internalDb =
-    InternalDatabaseImpl(
-        factory = factory,
-        scope = scope,
-        dbFilename = dbFilename,
-        dbDirectory = dbDirectory,
-    )
+        InternalDatabaseImpl(
+            factory = factory,
+            scope = scope,
+            dbFilename = dbFilename,
+            dbDirectory = dbDirectory,
+        )
 
     internal val bucketStorage: BucketStorage = BucketStorageImpl(internalDb, logger)
     var closed = false
@@ -112,13 +111,18 @@ internal class PowerSyncDatabaseImpl(
             if (isMultiple) {
                 logger.w { multipleInstancesMessage }
             }
-            
+
             powerSyncVersion =
                 internalDb.get("SELECT powersync_rs_version()") { it.getString(0)!! }
             logger.d { "SQLiteVersion: $powerSyncVersion" }
-    
+
             checkVersion()
             logger.d { "PowerSyncVersion: ${getPowerSyncVersion()}" }
+
+            internalDb.writeTransaction { tx ->
+                tx.getOptional("SELECT powersync_init()") {}
+            }
+
             applySchema()
             updateHasSynced()
         }
