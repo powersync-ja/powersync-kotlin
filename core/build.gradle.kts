@@ -139,7 +139,6 @@ val moveJDBCJNIFiles by tasks.registering(Copy::class) {
         from(sqliteJDBCFolder.dir("jni/org/sqlite/native/Linux-Android/$sourceABI")) {
             include("*.so")
             eachFile {
-                // Rename to avoid conflicts if necessary
                 path = "$androidABI/$name"
             }
         }
@@ -250,7 +249,6 @@ kotlin {
 
             dependencies {
                 implementation(libs.ktor.client.okhttp)
-                implementation(libs.sqlite.jdbc)
             }
         }
 
