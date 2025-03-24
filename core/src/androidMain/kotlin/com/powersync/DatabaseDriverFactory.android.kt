@@ -23,7 +23,6 @@ public actual class DatabaseDriverFactory(
             if (dbDirectory != null) {
                 "$dbDirectory/$dbFilename"
             } else {
-                // TODO verify compatibility with previous implementation
                 context.getDatabasePath(dbFilename)
             }
 
