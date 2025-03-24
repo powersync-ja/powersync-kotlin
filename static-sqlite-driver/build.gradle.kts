@@ -1,9 +1,12 @@
 import java.io.File
+import java.io.FileInputStream
 import com.powersync.plugins.sonatype.setupGithubRepository
 import de.undercouch.gradle.tasks.download.Download
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.utils.NativeCompilerDownloader
+import org.jetbrains.kotlin.konan.properties.Properties
 import org.jetbrains.kotlin.konan.target.HostManager
+import org.jetbrains.kotlin.konan.target.KonanTarget
 import org.jetbrains.kotlin.konan.target.PlatformManager
 
 plugins {
@@ -49,12 +52,6 @@ val unzipSQLiteSources by tasks.registering(Copy::class) {
 // internal, but it's very convenient to have them because they expose the necessary toolchains we
 // use to compile SQLite for the platforms we need.
 val hostManager = HostManager()
-val platformManager: PlatformManager get() {
-    val distribution = org.jetbrains.kotlin.konan.target.Distribution(
-        konanHome = NativeCompilerDownloader(project).compilerDirectory.absolutePath
-    )
-    return PlatformManager(distribution = distribution)
-}
 
 fun compileSqlite(target: KotlinNativeTarget): TaskProvider<Task> {
     val name = target.targetName
@@ -75,10 +72,23 @@ fun compileSqlite(target: KotlinNativeTarget): TaskProvider<Task> {
         }
 
         doLast {
-            val platform = platformManager.platform(target.konanTarget)
+            val (llvmTarget, sysRoot) = when (target.konanTarget) {
+                KonanTarget.IOS_X64 -> "x86_64-apple-ios12.0-simulator" to "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk"
+                KonanTarget.IOS_ARM64 -> "arm64-apple-ios12.0" to "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk"
+                KonanTarget.IOS_SIMULATOR_ARM64 -> "arm64-apple-ios14.0-simulator" to "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk"
+                else -> error("Unexpected target $target")
+            }
 
             providers.exec {
-                commandLine = platform.clang.clangC(
+                executable = "clang"
+                args(
+                    "-B/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+                    "-fno-stack-protector",
+                    "-target",
+                    llvmTarget,
+                    "-isysroot",
+                    sysRoot,
+                    "-fPIC",
                     "--compile",
                     "-I${sqliteSrcFolder.get().asFile.absolutePath}",
                     sqliteSource.asFile.absolutePath,
@@ -103,13 +113,9 @@ fun compileSqlite(target: KotlinNativeTarget): TaskProvider<Task> {
         outputs.file(targetDirectory.file("libsqlite3.a"))
 
         doLast {
-            val platform = platformManager.platform(target.konanTarget)
             providers.exec {
-                commandLine = platform.clang.llvmAr(
-                    "rc",
-                    "libsqlite3.a",
-                    "sqlite3.o",
-                )
+                executable = "ar"
+                args("rc", "libsqlite3.a", "sqlite3.o")
 
                 workingDir = targetDirectory.asFile
             }.result.get()
