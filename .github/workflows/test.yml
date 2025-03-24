@@ -43,6 +43,5 @@ jobs:
       run: |
         ./gradlew \
           -PGITHUB_PUBLISH_TOKEN=${{ secrets.GITHUB_TOKEN }} \
-          ${{ matrix.targets }} \
-          --stacktrace
+          ${{ matrix.targets }}
       shell: bash
