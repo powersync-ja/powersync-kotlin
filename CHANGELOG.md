@@ -1,12 +1,12 @@
 # Changelog
 
-## 1.0.0-BETA29
-
-* Added queing protection and warnings when connecting multiple PowerSync clients to the same database file.
-
 ## 1.0.0-BETA28
 
 * Update PowerSync SQLite core extension to 0.3.12.
+* Added queing protection and warnings when connecting multiple PowerSync clients to the same database file.
+* Improved concurrent SQLite connection support accross various platforms. All platforms now use a single write connection and multiple read connections for concurrent read queries.
+* Added the ability to open a SQLite database given a custom `dbDirectory` path. This is currently not supported on iOS due to internal driver restrictions.
+* Internaly improved the linking of SQLite for iOS.
 
 ## 1.0.0-BETA27
 
