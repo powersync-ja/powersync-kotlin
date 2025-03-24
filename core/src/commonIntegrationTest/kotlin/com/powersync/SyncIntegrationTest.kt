@@ -120,7 +120,7 @@ class SyncIntegrationTest {
     fun testPartialSync() =
         runTest {
             val syncStream = syncStream()
-            database.connect(syncStream, 1000L)
+            database.connectInternal(syncStream, 1000L)
 
             val checksums =
                 buildList {
@@ -214,7 +214,7 @@ class SyncIntegrationTest {
     fun testRemembersLastPartialSync() =
         runTest {
             val syncStream = syncStream()
-            database.connect(syncStream, 1000L)
+            database.connectInternal(syncStream, 1000L)
 
             syncLines.send(
                 SyncLine.FullCheckpoint(
@@ -253,7 +253,7 @@ class SyncIntegrationTest {
     fun setsDownloadingState() =
         runTest {
             val syncStream = syncStream()
-            database.connect(syncStream, 1000L)
+            database.connectInternal(syncStream, 1000L)
 
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -291,7 +291,7 @@ class SyncIntegrationTest {
                 val syncStream = syncStream()
                 val turbine = database.currentStatus.asFlow().testIn(this)
 
-                database.connect(syncStream, 1000L)
+                database.connectInternal(syncStream, 1000L)
                 turbine.waitFor { it.connecting }
 
                 database.disconnect()
@@ -308,7 +308,7 @@ class SyncIntegrationTest {
     fun testMultipleSyncsDoNotCreateMultipleStatusEntries() =
         runTest {
             val syncStream = syncStream()
-            database.connect(syncStream, 1000L)
+            database.connectInternal(syncStream, 1000L)
 
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)

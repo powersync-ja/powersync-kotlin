@@ -217,8 +217,8 @@ kotlin {
             dependsOn(commonTest.get())
         }
 
-        val commonJDBC by creating {
-            kotlin.srcDir("commonJDBC")
+        val commonJava by creating {
+            kotlin.srcDir("commonJava")
             dependsOn(commonMain.get())
             dependencies {
                 implementation(libs.sqlite.jdbc)
@@ -240,14 +240,18 @@ kotlin {
             api(libs.kermit)
         }
 
-        androidMain.dependencies {
-            implementation(libs.ktor.client.okhttp)
-            implementation(libs.sqlite.jdbc)
+        androidMain {
+            dependsOn(commonJava)
+            dependencies.implementation(libs.ktor.client.okhttp)
         }
 
-        jvmMain.dependencies {
-            implementation(libs.ktor.client.okhttp)
-            implementation(libs.sqlite.jdbc)
+        jvmMain {
+            dependsOn(commonJava)
+
+            dependencies {
+                implementation(libs.ktor.client.okhttp)
+                implementation(libs.sqlite.jdbc)
+            }
         }
 
         iosMain.dependencies {

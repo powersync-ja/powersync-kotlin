@@ -6,7 +6,7 @@ import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import co.touchlab.kermit.TestConfig
 import co.touchlab.kermit.TestLogWriter
-import com.powersync.db.PowerSyncDatabaseImpl
+import com.powersync.db.ActiveDatabaseGroup
 import com.powersync.db.schema.Schema
 import com.powersync.testutils.UserRow
 import com.powersync.testutils.waitFor
@@ -228,7 +228,7 @@ class DatabaseTest {
             waitFor {
                 assertNotNull(
                     logWriter.logs.find {
-                        it.message == PowerSyncDatabaseImpl.multipleInstancesMessage
+                        it.message == ActiveDatabaseGroup.multipleInstancesMessage
                     },
                 )
             }
