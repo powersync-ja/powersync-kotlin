@@ -56,7 +56,6 @@ internal class PowerSyncDatabaseImpl(
     private val dbFilename: String,
     private val dbDirectory: String? = null,
     val logger: Logger = Logger,
-    driver: PsSqlDriver = factory.createDriver(scope, dbFilename),
 ) : PowerSyncDatabase {
     companion object {
         internal val streamConflictMessage =
@@ -104,9 +103,11 @@ internal class PowerSyncDatabaseImpl(
         clearResourceWhenDisposed = res.second
 
         runBlocking {
-            val sqliteVersion = internalDb.queries.sqliteVersion().executeAsOne()
+            val sqliteVersion = internalDb.get("SELECT sqlite_version()") { it.getString(0)!! }
             logger.d { "SQLiteVersion: $sqliteVersion" }
-            checkVersion()
+            powerSyncVersion =
+                internalDb.get("SELECT powersync_rs_version()") { it.getString(0)!! }
+            checkVersion(powerSyncVersion!!)
             logger.d { "PowerSyncVersion: ${getPowerSyncVersion()}" }
 
             internalDb.writeTransaction { tx ->
@@ -322,14 +323,23 @@ internal class PowerSyncDatabaseImpl(
 
     override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R = internalDb.writeTransaction(callback)
 
-    override suspend fun <R> writeLock(callback: ThrowableLockCallback<R>): R = internalDb.writeLock(callback)
+    override suspend fun <R> writeLock(callback: ThrowableLockCallback<R>): R =
+        resource.group.writeLockMutex.withLock {
+            internalDb.writeLock(callback)
+        }
 
-    override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R = internalDb.writeTransaction(callback)
+    override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R =
+        resource.group.writeLockMutex.withLock {
+            internalDb.writeTransaction(callback)
+        }
 
     override suspend fun execute(
         sql: String,
         parameters: List<Any?>?,
-    ): Long = internalDb.execute(sql, parameters)
+    ): Long =
+        resource.group.writeLockMutex.withLock {
+            internalDb.execute(sql, parameters)
+        }
 
     private suspend fun handleWriteCheckpoint(
         lastTransactionId: Int,
@@ -464,28 +474,21 @@ internal class PowerSyncDatabaseImpl(
     /**
      * Check that a supported version of the powersync extension is loaded.
      */
-    private suspend fun checkVersion() {
-        val version: String =
-            try {
-                getPowerSyncVersion()
-            } catch (e: Exception) {
-                throw Exception("The powersync extension is not loaded correctly. Details: $e")
-            }
-
+    private suspend fun checkVersion(powerSyncVersion: String) {
         // Parse version
         val versionInts: List<Int> =
             try {
-                version
+                powerSyncVersion
                     .split(Regex("[./]"))
                     .take(3)
                     .map { it.toInt() }
             } catch (e: Exception) {
-                throw Exception("Unsupported powersync extension version. Need ^0.2.0, got: $version. Details: $e")
+                throw Exception("Unsupported powersync extension version. Need ^0.2.0, got: $powerSyncVersion. Details: $e")
             }
 
         // Validate ^0.2.0
         if (versionInts[0] != 0 || versionInts[1] < 2 || versionInts[2] < 0) {
-            throw Exception("Unsupported powersync extension version. Need ^0.2.0, got: $version")
+            throw Exception("Unsupported powersync extension version. Need ^0.2.0, got: $powerSyncVersion")
         }
     }
 }

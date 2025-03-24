@@ -20,8 +20,6 @@ import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 
@@ -57,21 +55,6 @@ internal class InternalDatabaseImpl(
 
     companion object {
         const val DEFAULT_WATCH_THROTTLE_MS = 30L
-
-        // A meta mutex for protecting mutex map operations
-        private val globalLock = Mutex()
-
-        // Static mutex max which globally shares write locks
-        private val mutexMap = mutableMapOf<String, Mutex>()
-
-        // Run an action inside a global shared mutex
-        private suspend fun <T> withSharedMutex(
-            key: String,
-            action: suspend () -> T,
-        ): T {
-            val mutex = globalLock.withLock { mutexMap.getOrPut(key) { Mutex() } }
-            return mutex.withLock { action() }
-        }
     }
 
     override suspend fun execute(
@@ -167,21 +150,16 @@ internal class InternalDatabaseImpl(
             }
         }
 
-    /**
-     * Creates a read lock while providing an internal transactor for transactions
-     */
     private suspend fun <R> internalWriteLock(callback: (TransactorDriver) -> R): R =
         withContext(dbContext) {
-            withSharedMutex(dbIdentifier) {
-                runWrapped {
-                    catchSwiftExceptions {
-                        callback(writeConnection)
-                    }
-                }.also {
-                    // Trigger watched queries
-                    // Fire updates inside the write lock
-                    writeConnection.driver.fireTableUpdates()
+            runWrapped {
+                catchSwiftExceptions {
+                    callback(writeConnection)
                 }
+            }.also {
+                // Trigger watched queries
+                // Fire updates inside the write lock
+                writeConnection.driver.fireTableUpdates()
             }
         }
 
