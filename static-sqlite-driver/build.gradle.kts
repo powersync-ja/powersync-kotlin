@@ -73,9 +73,9 @@ fun compileSqlite(target: KotlinNativeTarget): TaskProvider<Task> {
 
         doLast {
             val (llvmTarget, sysRoot) = when (target.konanTarget) {
-                KonanTarget.IOS_X64 -> "x86_64-apple-ios12.0-simulator" to "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.2.sdk"
-                KonanTarget.IOS_ARM64 -> "arm64-apple-ios12.0" to "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.2.sdk"
-                KonanTarget.IOS_SIMULATOR_ARM64 -> "arm64-apple-ios14.0-simulator" to "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.2.sdk"
+                KonanTarget.IOS_X64 -> "x86_64-apple-ios12.0-simulator" to "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk"
+                KonanTarget.IOS_ARM64 -> "arm64-apple-ios12.0" to "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk"
+                KonanTarget.IOS_SIMULATOR_ARM64 -> "arm64-apple-ios14.0-simulator" to "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk"
                 else -> error("Unexpected target $target")
             }
 
