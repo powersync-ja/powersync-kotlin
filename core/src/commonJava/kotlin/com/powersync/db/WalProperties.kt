@@ -1,4 +1,4 @@
-package com.powersync
+package com.powersync.db
 
 import java.util.Properties
 

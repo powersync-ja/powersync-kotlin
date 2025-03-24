@@ -19,7 +19,8 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.onSubscription
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 
@@ -29,6 +30,7 @@ internal class InternalDatabaseImpl(
     private val scope: CoroutineScope,
     private val dbFilename: String,
     private val dbDirectory: String?,
+    private val writeLockMutex: Mutex,
 ) : InternalDatabase {
     private val writeConnection =
         TransactorDriver(
@@ -38,8 +40,6 @@ internal class InternalDatabaseImpl(
                 dbDirectory = dbDirectory,
             ),
         )
-
-    private val dbIdentifier = dbFilename + dbDirectory
 
     private val readPool =
         ConnectionPool(factory = {
@@ -152,14 +152,16 @@ internal class InternalDatabaseImpl(
 
     private suspend fun <R> internalWriteLock(callback: (TransactorDriver) -> R): R =
         withContext(dbContext) {
-            runWrapped {
-                catchSwiftExceptions {
-                    callback(writeConnection)
+            writeLockMutex.withLock {
+                runWrapped {
+                    catchSwiftExceptions {
+                        callback(writeConnection)
+                    }
+                }.also {
+                    // Trigger watched queries
+                    // Fire updates inside the write lock
+                    writeConnection.driver.fireTableUpdates()
                 }
-            }.also {
-                // Trigger watched queries
-                // Fire updates inside the write lock
-                writeConnection.driver.fireTableUpdates()
             }
         }
 
@@ -232,12 +234,10 @@ internal class InternalDatabaseImpl(
         return tableRows.toSet()
     }
 
-    override fun close() {
-        runWrapped {
+    override suspend fun close() {
+        runWrappedSuspending {
             writeConnection.driver.close()
-            runBlocking {
-                readPool.close()
-            }
+            readPool.close()
         }
     }
 

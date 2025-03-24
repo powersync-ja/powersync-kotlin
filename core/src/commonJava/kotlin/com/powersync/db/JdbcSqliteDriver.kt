@@ -1,4 +1,4 @@
-package com.powersync
+package com.powersync.db
 
 import app.cash.sqldelight.Query
 import app.cash.sqldelight.Transacter

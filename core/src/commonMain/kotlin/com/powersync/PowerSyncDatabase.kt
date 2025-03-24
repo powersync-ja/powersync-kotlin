@@ -20,6 +20,12 @@ import kotlin.coroutines.cancellation.CancellationException
  */
 public interface PowerSyncDatabase : Queries {
     /**
+     * Indicates if the PowerSync client has been closed.
+     * A new client is required after a client has been closed.
+     */
+    public val closed: Boolean
+
+    /**
      * Identifies the database client.
      * This is typically the database name.
      */

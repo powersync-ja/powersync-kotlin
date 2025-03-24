@@ -11,9 +11,12 @@ import com.powersync.db.schema.Schema
 import com.powersync.testutils.UserRow
 import com.powersync.testutils.waitFor
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -58,7 +61,11 @@ class DatabaseTest {
 
     @AfterTest
     fun tearDown() {
-        runBlocking { database.disconnectAndClear(true) }
+        runBlocking {
+            if (!database.closed) {
+                database.disconnectAndClear(true)
+            }
+        }
         com.powersync.testutils.cleanup("testdb")
     }
 
@@ -218,6 +225,47 @@ class DatabaseTest {
                 query.expectNoEvents()
                 query.cancel()
             }
+        }
+
+    @Test
+    fun testClosingReadPool() =
+        runTest {
+            val pausedLock = CompletableDeferred<Unit>()
+            val inLock = CompletableDeferred<Unit>()
+            // Request a lock
+            val lockJob =
+                async {
+                    database.readLock {
+                        inLock.complete(Unit)
+                        runBlocking {
+                            pausedLock.await()
+                        }
+                    }
+                }
+
+            // Wait for the lock to be active
+            inLock.await()
+
+            // Close the database. This should close the read pool
+            // The pool should wait for jobs to complete before closing
+            val closeJob =
+                async {
+                    database.close()
+                }
+
+            // Wait a little for testing
+            // Spawns in a different context for the delay to actually take affect
+            async { withContext(Dispatchers.Default) { delay(500) } }.await()
+
+            // The database should not close yet
+            assertEquals(actual = database.closed, expected = false)
+
+            // Release the lock
+            pausedLock.complete(Unit)
+            lockJob.await()
+            closeJob.await()
+
+            assertEquals(actual = database.closed, expected = true)
         }
 
     @Test

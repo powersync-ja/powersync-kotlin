@@ -70,19 +70,22 @@ internal class PowerSyncDatabaseImpl(
 
     override val identifier = dbDirectory + dbFilename
 
+    private val activeDatabaseGroup = ActiveDatabaseGroup.referenceDatabase(logger, identifier)
+    private val resource = activeDatabaseGroup.first
+    private val clearResourceWhenDisposed = activeDatabaseGroup.second
+
     private val internalDb =
         InternalDatabaseImpl(
             factory = factory,
             scope = scope,
             dbFilename = dbFilename,
             dbDirectory = dbDirectory,
+            writeLockMutex = resource.group.writeLockMutex,
         )
 
     internal val bucketStorage: BucketStorage = BucketStorageImpl(internalDb, logger)
-    private val resource: ActiveDatabaseResource
-    private val clearResourceWhenDisposed: Any
 
-    var closed = false
+    override var closed = false
 
     /**
      * The current sync status.
@@ -98,10 +101,6 @@ internal class PowerSyncDatabaseImpl(
     private var powerSyncVersion: String? = null
 
     init {
-        val res = ActiveDatabaseGroup.referenceDatabase(logger, identifier)
-        resource = res.first
-        clearResourceWhenDisposed = res.second
-
         runBlocking {
             val sqliteVersion = internalDb.get("SELECT sqlite_version()") { it.getString(0)!! }
             logger.d { "SQLiteVersion: $sqliteVersion" }
@@ -323,23 +322,14 @@ internal class PowerSyncDatabaseImpl(
 
     override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R = internalDb.writeTransaction(callback)
 
-    override suspend fun <R> writeLock(callback: ThrowableLockCallback<R>): R =
-        resource.group.writeLockMutex.withLock {
-            internalDb.writeLock(callback)
-        }
+    override suspend fun <R> writeLock(callback: ThrowableLockCallback<R>): R = internalDb.writeLock(callback)
 
-    override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R =
-        resource.group.writeLockMutex.withLock {
-            internalDb.writeTransaction(callback)
-        }
+    override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R = internalDb.writeTransaction(callback)
 
     override suspend fun execute(
         sql: String,
         parameters: List<Any?>?,
-    ): Long =
-        resource.group.writeLockMutex.withLock {
-            internalDb.execute(sql, parameters)
-        }
+    ): Long = internalDb.execute(sql, parameters)
 
     private suspend fun handleWriteCheckpoint(
         lastTransactionId: Int,

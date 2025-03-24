@@ -1,6 +1,9 @@
 package com.powersync
 
+import com.powersync.db.JdbcSqliteDriver
+import com.powersync.db.buildDefaultWalProperties
 import com.powersync.db.internal.InternalSchema
+import com.powersync.db.migrateDriver
 import kotlinx.coroutines.CoroutineScope
 import org.sqlite.SQLiteCommitListener
 

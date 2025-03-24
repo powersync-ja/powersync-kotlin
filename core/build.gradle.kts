@@ -271,9 +271,6 @@ kotlin {
         // tests.
         jvmTest.get().dependsOn(commonIntegrationTest)
 
-        androidMain.get().dependsOn(commonJDBC)
-        jvmMain.get().dependsOn(commonJDBC)
-
         // We're linking the xcframework for the simulator tests, so they can use integration tests too
         iosSimulatorArm64Test.orNull?.dependsOn(commonIntegrationTest)
     }

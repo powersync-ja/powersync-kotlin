@@ -1,4 +1,4 @@
-package com.powersync
+package com.powersync.db
 
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlCursor

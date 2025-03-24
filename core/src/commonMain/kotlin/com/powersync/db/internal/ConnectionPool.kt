@@ -18,24 +18,22 @@ internal class ConnectionPool(
 ) {
     private val available = Channel<Pair<TransactorDriver, CompletableDeferred<Unit>>>()
     private val connections: List<Job> =
-        buildList {
-            repeat(size) {
-                scope.launch {
-                    val driver = TransactorDriver(factory())
-                    try {
-                        while (true) {
-                            val done = CompletableDeferred<Unit>()
-                            try {
-                                available.send(driver to done)
-                            } catch (_: ClosedSendChannelException) {
-                                break // Pool closed
-                            }
-
-                            done.await()
+        List(size) {
+            scope.launch {
+                val driver = TransactorDriver(factory())
+                try {
+                    while (true) {
+                        val done = CompletableDeferred<Unit>()
+                        try {
+                            available.send(driver to done)
+                        } catch (_: ClosedSendChannelException) {
+                            break // Pool closed
                         }
-                    } finally {
-                        driver.driver.close()
+
+                        done.await()
                     }
+                } finally {
+                    driver.driver.close()
                 }
             }
         }
