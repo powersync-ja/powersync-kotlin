@@ -10,6 +10,7 @@ import com.powersync.db.ActiveDatabaseGroup
 import com.powersync.db.getString
 import com.powersync.db.schema.Schema
 import com.powersync.testutils.UserRow
+import com.powersync.testutils.generatePrintLogWriter
 import com.powersync.testutils.getTempDir
 import com.powersync.testutils.waitFor
 import kotlinx.coroutines.CompletableDeferred
@@ -38,7 +39,7 @@ class DatabaseTest {
         Logger(
             TestConfig(
                 minSeverity = Severity.Debug,
-                logWriterList = listOf(logWriter),
+                logWriterList = listOf(logWriter, generatePrintLogWriter()),
             ),
         )
 

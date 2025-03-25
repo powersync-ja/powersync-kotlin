@@ -2,7 +2,6 @@ package com.powersync
 
 import app.cash.turbine.turbineScope
 import co.touchlab.kermit.ExperimentalKermitApi
-import co.touchlab.kermit.LogWriter
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import co.touchlab.kermit.TestConfig
@@ -22,6 +21,7 @@ import com.powersync.testutils.MockSyncService
 import com.powersync.testutils.UserRow
 import com.powersync.testutils.cleanup
 import com.powersync.testutils.factory
+import com.powersync.testutils.generatePrintLogWriter
 import com.powersync.testutils.waitFor
 import com.powersync.utils.JsonUtil
 import dev.mokkery.answering.returns
@@ -48,24 +48,13 @@ class SyncIntegrationTest {
     private val logWriter =
         TestLogWriter(
             loggable = Severity.Debug,
-
         )
 
     private val logger =
         Logger(
             TestConfig(
                 minSeverity = Severity.Debug,
-                logWriterList = listOf(logWriter, object: LogWriter() {
-                    override fun log(
-                        severity: Severity,
-                        message: String,
-                        tag: String,
-                        throwable: Throwable?
-                    ) {
-                        println("[$severity:$tag] - $message")
-                    }
-
-                }),
+                logWriterList = listOf(logWriter, generatePrintLogWriter()),
             ),
         )
     private lateinit var database: PowerSyncDatabaseImpl
@@ -77,27 +66,26 @@ class SyncIntegrationTest {
     @BeforeTest
     fun setup() {
         try {
-        println("Running setup")
-        cleanup("testdb")
-        logWriter.reset()
-        database = openDb()
-        connector =
-            mock<PowerSyncBackendConnector> {
-                everySuspend { getCredentialsCached() } returns
-                    PowerSyncCredentials(
-                        token = "test-token",
-                        userId = "test-user",
-                        endpoint = "https://test.com",
-                    )
+            println("Running setup")
+            cleanup("testdb")
+            logWriter.reset()
+            database = openDb()
+            connector =
+                mock<PowerSyncBackendConnector> {
+                    everySuspend { getCredentialsCached() } returns
+                        PowerSyncCredentials(
+                            token = "test-token",
+                            userId = "test-user",
+                            endpoint = "https://test.com",
+                        )
 
-                everySuspend { invalidateCredentials() } returns Unit
+                    everySuspend { invalidateCredentials() } returns Unit
+                }
+            syncLines = Channel()
+
+            runBlocking {
+                database.disconnectAndClear(true)
             }
-        syncLines = Channel()
-
-        runBlocking {
-            database.disconnectAndClear(true)
-        }
-
         } catch (exception: Exception) {
             println("Caught an exception in setup $exception")
             setupException = exception

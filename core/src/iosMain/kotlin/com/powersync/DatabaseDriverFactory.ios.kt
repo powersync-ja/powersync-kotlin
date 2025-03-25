@@ -84,9 +84,6 @@ public actual class DatabaseDriverFactory {
                                             wrapConnection(connection) { driver ->
                                                 schema.create(driver)
                                             }
-                                            if (readOnly) {
-                                                connection.rawExecSql("PRAGMA query_only=true")
-                                            }
                                         },
                                         onCloseConnection = { connection ->
                                             deregisterSqliteBinding(connection)
@@ -95,6 +92,19 @@ public actual class DatabaseDriverFactory {
                             ),
                     ),
             )
+
+        // The iOS driver implementation generates 1 write and 1 read connection internally
+        // It uses the read connection for all queries and the write connection for all
+        // execute statements. Unfortunately the driver does not seem to respond to query
+        // calls if the read connection count is set to zero.
+        // We'd like to ensure a driver is set to read-only. Ideally we could do this in the
+        // onCreateConnection lifecycle hook, but this runs before driver internal migrations.
+        // Setting the connection to read only there breaks migrations.
+        // We explicitly execute this pragma twice to reflect on both connections.
+        if (readOnly) {
+            driver.execute("PRAGMA query_only=true")
+            driver.getOptional("PRAGMA query_only=true") {}
+        }
 
         deferredDriver.setDriver(driver)
 
