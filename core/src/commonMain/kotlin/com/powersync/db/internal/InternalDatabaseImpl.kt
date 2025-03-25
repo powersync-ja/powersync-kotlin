@@ -1,17 +1,15 @@
 package com.powersync.db.internal
 
-import app.cash.sqldelight.ExecutableQuery
-import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlPreparedStatement
-import com.persistence.PowersyncQueries
+import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncException
-import com.powersync.PsSqlDriver
 import com.powersync.db.SqlCursor
+import com.powersync.db.ThrowableLockCallback
+import com.powersync.db.ThrowableTransactionCallback
 import com.powersync.db.runWrapped
-import com.powersync.persistence.PsDatabase
+import com.powersync.db.runWrappedSuspending
 import com.powersync.utils.JsonUtil
 import com.powersync.utils.throttle
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -28,41 +26,33 @@ import kotlinx.serialization.encodeToString
 
 @OptIn(FlowPreview::class)
 internal class InternalDatabaseImpl(
-    private val driver: PsSqlDriver,
+    private val factory: DatabaseDriverFactory,
     private val scope: CoroutineScope,
+    private val dbFilename: String,
+    private val dbDirectory: String?,
+    private val writeLockMutex: Mutex,
 ) : InternalDatabase {
-    override val transactor: PsDatabase = PsDatabase(driver)
-    override val queries: PowersyncQueries = transactor.powersyncQueries
+    private val writeConnection =
+        TransactorDriver(
+            factory.createDriver(
+                scope = scope,
+                dbFilename = dbFilename,
+                dbDirectory = dbDirectory,
+            ),
+        )
+
+    private val readPool =
+        ConnectionPool(factory = {
+            factory.createDriver(
+                scope = scope,
+                dbFilename = dbFilename,
+                dbDirectory = dbDirectory,
+                readOnly = true,
+            )
+        }, scope = scope)
 
     // Could be scope.coroutineContext, but the default is GlobalScope, which seems like a bad idea. To discuss.
     private val dbContext = Dispatchers.IO
-    private val writeLock = Mutex()
-
-    private val transaction =
-        object : PowerSyncTransaction {
-            override fun execute(
-                sql: String,
-                parameters: List<Any?>?,
-            ): Long = this@InternalDatabaseImpl.executeSync(sql, parameters ?: emptyList())
-
-            override fun <RowType : Any> get(
-                sql: String,
-                parameters: List<Any?>?,
-                mapper: (SqlCursor) -> RowType,
-            ): RowType = this@InternalDatabaseImpl.getSync(sql, parameters ?: emptyList(), mapper)
-
-            override fun <RowType : Any> getAll(
-                sql: String,
-                parameters: List<Any?>?,
-                mapper: (SqlCursor) -> RowType,
-            ): List<RowType> = this@InternalDatabaseImpl.getAllSync(sql, parameters ?: emptyList(), mapper)
-
-            override fun <RowType : Any> getOptional(
-                sql: String,
-                parameters: List<Any?>?,
-                mapper: (SqlCursor) -> RowType,
-            ): RowType? = this@InternalDatabaseImpl.getOptionalSync(sql, parameters ?: emptyList(), mapper)
-        }
 
     companion object {
         const val DEFAULT_WATCH_THROTTLE_MS = 30L
@@ -72,90 +62,27 @@ internal class InternalDatabaseImpl(
         sql: String,
         parameters: List<Any?>?,
     ): Long =
-        writeLock.withLock {
-            withContext(dbContext) {
-                executeSync(sql, parameters)
-            }.also {
-                driver.fireTableUpdates()
-            }
+        writeLock { context ->
+            context.execute(sql, parameters)
         }
-
-    private fun executeSync(
-        sql: String,
-        parameters: List<Any?>?,
-    ): Long {
-        val numParams = parameters?.size ?: 0
-
-        return runWrapped {
-            driver
-                .execute(
-                    identifier = null,
-                    sql = sql,
-                    parameters = numParams,
-                    binders = getBindersFromParams(parameters),
-                ).value
-        }
-    }
 
     override suspend fun <RowType : Any> get(
         sql: String,
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType,
-    ): RowType = withContext(dbContext) { getSync(sql, parameters, mapper) }
-
-    private fun <RowType : Any> getSync(
-        sql: String,
-        parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType,
-    ): RowType {
-        val result =
-            this
-                .createQuery(
-                    query = sql,
-                    parameters = parameters?.size ?: 0,
-                    binders = getBindersFromParams(parameters),
-                    mapper = mapper,
-                ).executeAsOneOrNull()
-        return requireNotNull(result) { "Query returned no result" }
-    }
+    ): RowType = readLock { connection -> connection.get(sql, parameters, mapper) }
 
     override suspend fun <RowType : Any> getAll(
         sql: String,
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType,
-    ): List<RowType> = withContext(dbContext) { getAllSync(sql, parameters, mapper) }
-
-    private fun <RowType : Any> getAllSync(
-        sql: String,
-        parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType,
-    ): List<RowType> =
-        this
-            .createQuery(
-                query = sql,
-                parameters = parameters?.size ?: 0,
-                binders = getBindersFromParams(parameters),
-                mapper = mapper,
-            ).executeAsList()
+    ): List<RowType> = readLock { connection -> connection.getAll(sql, parameters, mapper) }
 
     override suspend fun <RowType : Any> getOptional(
         sql: String,
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType,
-    ): RowType? = withContext(dbContext) { getOptionalSync(sql, parameters, mapper) }
-
-    private fun <RowType : Any> getOptionalSync(
-        sql: String,
-        parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType,
-    ): RowType? =
-        this
-            .createQuery(
-                query = sql,
-                parameters = parameters?.size ?: 0,
-                binders = getBindersFromParams(parameters),
-                mapper = mapper,
-            ).executeAsOneOrNull()
+    ): RowType? = readLock { connection -> connection.getOptional(sql, parameters, mapper) }
 
     override fun <RowType : Any> watch(
         sql: String,
@@ -192,53 +119,85 @@ internal class InternalDatabaseImpl(
                 }
         }
 
-    private fun <T : Any> createQuery(
-        query: String,
-        mapper: (SqlCursor) -> T,
-        parameters: Int = 0,
-        binders: (SqlPreparedStatement.() -> Unit)? = null,
-    ): ExecutableQuery<T> =
-        object : ExecutableQuery<T>(wrapperMapper(mapper)) {
-            override fun <R> execute(mapper: (app.cash.sqldelight.db.SqlCursor) -> QueryResult<R>): QueryResult<R> =
-                runWrapped {
-                    driver.executeQuery(null, query, mapper, parameters, binders)
-                }
-        }
-
-    override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R =
+    /**
+     * Creates a read lock while providing an internal transactor for transactions
+     */
+    private suspend fun <R> internalReadLock(callback: (TransactorDriver) -> R): R =
         withContext(dbContext) {
-            transactor.transactionWithResult(noEnclosing = true) {
-                runWrapped {
-                    val result = callback.execute(transaction)
-                    if (result is PowerSyncException) {
-                        throw result
+            runWrappedSuspending {
+                readPool.withConnection {
+                    catchSwiftExceptions {
+                        callback(it)
                     }
-                    result
                 }
             }
         }
 
-    override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R =
-        writeLock.withLock {
-            withContext(dbContext) {
-                transactor.transactionWithResult(noEnclosing = true) {
-                    runWrapped {
-                        val result = callback.execute(transaction)
-                        if (result is PowerSyncException) {
-                            throw result
-                        }
-                        result
-                    }
+    override suspend fun <R> readLock(callback: ThrowableLockCallback<R>): R =
+        internalReadLock {
+            callback.execute(it.driver)
+        }
+
+    override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R =
+        internalReadLock {
+            it.transactor.transactionWithResult(noEnclosing = true) {
+                catchSwiftExceptions {
+                    callback.execute(
+                        PowerSyncTransactionImpl(
+                            it.driver,
+                        ),
+                    )
                 }
-            }.also {
-                // Trigger watched queries
-                // Fire updates inside the write lock
-                driver.fireTableUpdates()
+            }
+        }
+
+    private suspend fun <R> internalWriteLock(callback: (TransactorDriver) -> R): R =
+        withContext(dbContext) {
+            writeLockMutex.withLock {
+                runWrapped {
+                    catchSwiftExceptions {
+                        callback(writeConnection)
+                    }
+                }.also {
+                    // Trigger watched queries
+                    // Fire updates inside the write lock
+                    writeConnection.driver.fireTableUpdates()
+                }
+            }
+        }
+
+    override suspend fun <R> writeLock(callback: ThrowableLockCallback<R>): R =
+        internalWriteLock {
+            callback.execute(it.driver)
+        }
+
+    override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R =
+        internalWriteLock {
+            it.transactor.transactionWithResult(noEnclosing = true) {
+                // Need to catch Swift exceptions here for Rollback
+                catchSwiftExceptions {
+                    callback.execute(
+                        PowerSyncTransactionImpl(
+                            it.driver,
+                        ),
+                    )
+                }
             }
         }
 
     // Register callback for table updates on a specific table
-    override fun updatesOnTables(): SharedFlow<Set<String>> = driver.updatesOnTables()
+    override fun updatesOnTables(): SharedFlow<Set<String>> = writeConnection.driver.updatesOnTables()
+
+    // Unfortunately Errors can't be thrown from Swift SDK callbacks.
+    // These are currently returned and should be thrown here.
+    private fun <R> catchSwiftExceptions(action: () -> R): R {
+        val result = action()
+
+        if (result is PowerSyncException) {
+            throw result
+        }
+        return result
+    }
 
     private suspend fun getSourceTables(
         sql: String,
@@ -276,8 +235,11 @@ internal class InternalDatabaseImpl(
         return tableRows.toSet()
     }
 
-    override fun close() {
-        runWrapped { this.driver.close() }
+    override suspend fun close() {
+        runWrappedSuspending {
+            writeConnection.driver.close()
+            readPool.close()
+        }
     }
 
     internal data class ExplainQueryResult(
@@ -309,12 +271,4 @@ internal fun getBindersFromParams(parameters: List<Any?>?): (SqlPreparedStatemen
             }
         }
     }
-}
-
-/**
- * Kotlin allows SAM (Single Abstract Method) interfaces to be treated like lambda expressions.
- */
-public fun interface ThrowableTransactionCallback<R> {
-    @Throws(PowerSyncException::class, CancellationException::class)
-    public fun execute(transaction: PowerSyncTransaction): R
 }

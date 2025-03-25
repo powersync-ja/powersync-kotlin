@@ -1,13 +1,15 @@
-import com.android.build.gradle.internal.tasks.factory.dependsOn
 import com.powersync.plugins.sonatype.setupGithubRepository
 import de.undercouch.gradle.tasks.download.Download
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.internal.os.OperatingSystem
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable
 import org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest
+import org.jetbrains.kotlin.gradle.tasks.KotlinTest
 import org.jetbrains.kotlin.konan.target.Family
+
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -21,75 +23,26 @@ plugins {
     alias(libs.plugins.kotlin.atomicfu)
 }
 
-val sqliteVersion = "3450200"
-val sqliteReleaseYear = "2024"
-
-val sqliteSrcFolder =
-    project.layout.buildDirectory
-        .dir("native/sqlite")
-        .get()
-
-val downloadSQLiteSources by tasks.registering(Download::class) {
-    val zipFileName = "sqlite-amalgamation-$sqliteVersion.zip"
-    val destination = sqliteSrcFolder.file(zipFileName).asFile
-    src("https://www.sqlite.org/$sqliteReleaseYear/$zipFileName")
-    dest(destination)
-    onlyIfNewer(true)
-    overwrite(false)
-}
-
-val unzipSQLiteSources by tasks.registering(Copy::class) {
-    dependsOn(downloadSQLiteSources)
-
-    from(
-        zipTree(downloadSQLiteSources.get().dest).matching {
-            include("*/sqlite3.*")
-            exclude {
-                it.isDirectory
-            }
-            eachFile {
-                this.path = this.name
-            }
-        },
-    )
-    into(sqliteSrcFolder)
-}
-
-val buildCInteropDef by tasks.registering {
-    dependsOn(unzipSQLiteSources)
-
-    val interopFolder =
-        project.layout.buildDirectory
-            .dir("interop/sqlite")
-            .get()
-
-    val cFile = sqliteSrcFolder.file("sqlite3.c").asFile
-    val defFile = interopFolder.file("sqlite3.def").asFile
-
-    doFirst {
-        defFile.writeText(
-            """
-            package = com.powersync.sqlite3
-            ---
-
-            """.trimIndent() + cFile.readText(),
-        )
-    }
-    outputs.files(defFile)
-}
-
 val binariesFolder = project.layout.buildDirectory.dir("binaries/desktop")
 val downloadPowersyncDesktopBinaries by tasks.registering(Download::class) {
     description = "Download PowerSync core extensions for JVM builds and releases"
 
-    val coreVersion = libs.versions.powersync.core.get()
-    val linux_aarch64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_aarch64.so"
-    val linux_x64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_x64.so"
-    val macos_aarch64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_aarch64.dylib"
-    val macos_x64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_x64.dylib"
-    val windows_x64 = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/powersync_x64.dll"
+    val coreVersion =
+        libs.versions.powersync.core
+            .get()
+    val linux_aarch64 =
+        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_aarch64.so"
+    val linux_x64 =
+        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_x64.so"
+    val macos_aarch64 =
+        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_aarch64.dylib"
+    val macos_x64 =
+        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_x64.dylib"
+    val windows_x64 =
+        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/powersync_x64.dll"
 
-    val includeAllPlatformsForJvmBuild = project.findProperty("powersync.binaries.allPlatforms") == "true"
+    val includeAllPlatformsForJvmBuild =
+        project.findProperty("powersync.binaries.allPlatforms") == "true"
     val os = OperatingSystem.current()
 
     // The jar we're releasing for JVM clients needs to include the core extension. For local tests, it's enough to only
@@ -99,26 +52,32 @@ val downloadPowersyncDesktopBinaries by tasks.registering(Download::class) {
     if (includeAllPlatformsForJvmBuild) {
         src(listOf(linux_aarch64, linux_x64, macos_aarch64, macos_x64, windows_x64))
     } else {
-        val (aarch64, x64) = when {
-            os.isLinux -> linux_aarch64 to linux_x64
-            os.isMacOsX -> macos_aarch64 to macos_x64
-            os.isWindows -> null to windows_x64
-            else -> error("Unknown operating system: $os")
-        }
+        val (aarch64, x64) =
+            when {
+                os.isLinux -> linux_aarch64 to linux_x64
+                os.isMacOsX -> macos_aarch64 to macos_x64
+                os.isWindows -> null to windows_x64
+                else -> error("Unknown operating system: $os")
+            }
         val arch = System.getProperty("os.arch")
-        src(when (arch) {
-            "aarch64" -> listOfNotNull(aarch64)
-            "amd64", "x86_64" -> listOfNotNull(x64)
-            else -> error("Unsupported architecture: $arch")
-        })
+        src(
+            when (arch) {
+                "aarch64" -> listOfNotNull(aarch64)
+                "amd64", "x86_64" -> listOfNotNull(x64)
+                else -> error("Unsupported architecture: $arch")
+            },
+        )
     }
     dest(binariesFolder.map { it.dir("powersync") })
     onlyIfModified(true)
 }
 
 val downloadPowersyncFramework by tasks.registering(Download::class) {
-    val coreVersion = libs.versions.powersync.core.get()
-    val framework = "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/powersync-sqlite-core.xcframework.zip"
+    val coreVersion =
+        libs.versions.powersync.core
+            .get()
+    val framework =
+        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/powersync-sqlite-core.xcframework.zip"
 
     src(framework)
     dest(binariesFolder.map { it.file("framework/powersync-sqlite-core.xcframework.zip") })
@@ -134,6 +93,60 @@ val unzipPowersyncFramework by tasks.registering(Copy::class) {
         },
     )
     into(binariesFolder.map { it.dir("framework") })
+}
+
+val sqliteJDBCFolder =
+    project.layout.buildDirectory
+        .dir("jdbc")
+        .get()
+
+val jniLibsFolder = layout.projectDirectory.dir("src/androidMain/jni")
+
+val downloadJDBCJar by tasks.registering(Download::class) {
+    val version =
+        libs.versions.sqlite.jdbc
+            .get()
+    val jar =
+        "https://github.com/xerial/sqlite-jdbc/releases/download/$version/sqlite-jdbc-$version.jar"
+
+    src(jar)
+    dest(sqliteJDBCFolder.file("jdbc.jar"))
+    onlyIfModified(true)
+}
+
+val extractJDBCJNI by tasks.registering(Copy::class) {
+    dependsOn(downloadJDBCJar)
+
+    from(
+        zipTree(downloadJDBCJar.get().dest).matching {
+            include("org/sqlite/native/Linux-Android/**")
+        },
+    )
+
+    into(sqliteJDBCFolder.dir("jni"))
+}
+
+val moveJDBCJNIFiles by tasks.registering(Copy::class) {
+    dependsOn(extractJDBCJNI)
+
+    val abiMapping =
+        mapOf(
+            "aarch64" to "arm64-v8a",
+            "arm" to "armeabi-v7a",
+            "x86_64" to "x86_64",
+            "x86" to "x86",
+        )
+
+    abiMapping.forEach { (sourceABI, androidABI) ->
+        from(sqliteJDBCFolder.dir("jni/org/sqlite/native/Linux-Android/$sourceABI")) {
+            include("*.so")
+            eachFile {
+                path = "$androidABI/$name"
+            }
+        }
+    }
+
+    into(jniLibsFolder) // Move everything into the base jniLibs folder
 }
 
 kotlin {
@@ -163,23 +176,17 @@ kotlin {
             compileTaskProvider {
                 compilerOptions.freeCompilerArgs.add("-Xexport-kdoc")
             }
-            cinterops.create("sqlite") {
-                val cInteropTask = tasks[interopProcessingTaskName]
-                cInteropTask.dependsOn(buildCInteropDef)
-                definitionFile =
-                    buildCInteropDef
-                        .get()
-                        .outputs.files.singleFile
-                compilerOpts.addAll(listOf("-DHAVE_GETHOSTUUID=0"))
-            }
-            cinterops.create("powersync-sqlite-core")
         }
 
         if (konanTarget.family == Family.IOS && konanTarget.name.contains("simulator")) {
             binaries.withType<TestExecutable>().configureEach {
-                linkTaskProvider.dependsOn(unzipPowersyncFramework)
+                linkTaskProvider.configure { dependsOn(unzipPowersyncFramework) }
                 linkerOpts("-framework", "powersync-sqlite-core")
-                val frameworkRoot = binariesFolder.map { it.dir("framework/powersync-sqlite-core.xcframework/ios-arm64_x86_64-simulator") }.get().asFile.path
+                val frameworkRoot =
+                    binariesFolder
+                        .map { it.dir("framework/powersync-sqlite-core.xcframework/ios-arm64_x86_64-simulator") }
+                        .get()
+                        .asFile.path
 
                 linkerOpts("-F", frameworkRoot)
                 linkerOpts("-rpath", frameworkRoot)
@@ -212,8 +219,10 @@ kotlin {
         }
 
         val commonJava by creating {
-            kotlin.srcDir("commonJava")
             dependsOn(commonMain.get())
+            dependencies {
+                implementation(libs.sqlite.jdbc)
+            }
         }
 
         commonMain.dependencies {
@@ -227,7 +236,7 @@ kotlin {
             implementation(libs.kotlinx.datetime)
             implementation(libs.stately.concurrency)
             implementation(libs.configuration.annotations)
-            api(project(":persistence"))
+            api(projects.persistence)
             api(libs.kermit)
         }
 
@@ -241,7 +250,6 @@ kotlin {
 
             dependencies {
                 implementation(libs.ktor.client.okhttp)
-                implementation(libs.sqlite.jdbc)
             }
         }
 
@@ -296,23 +304,19 @@ android {
                 .get()
                 .toInt()
         consumerProguardFiles("proguard-rules.pro")
-
-        @Suppress("UnstableApiUsage")
-        externalNativeBuild {
-            cmake {
-                arguments.addAll(
-                    listOf(
-                        "-DSQLITE3_SRC_DIR=${sqliteSrcFolder.asFile.absolutePath}",
-                    ),
-                )
-            }
-        }
     }
 
-    externalNativeBuild {
-        cmake {
-            path = project.file("src/androidMain/cpp/CMakeLists.txt")
+    sourceSets {
+        getByName("main") {
+            jniLibs.srcDirs("src/androidMain/jni", "src/main/jni", "src/jniLibs")
         }
+    }
+    ndkVersion = "27.1.12297006"
+}
+
+androidComponents.onVariants {
+        tasks.named("preBuild") {
+            dependsOn(moveJDBCJNIFiles)
     }
 }
 
@@ -322,9 +326,10 @@ tasks.named<ProcessResources>(kotlin.jvm().compilations["main"].processResources
 
 // We want to build with recent JDKs, but need to make sure we support Java 8. https://jakewharton.com/build-on-latest-java-test-through-lowest-java/
 val testWithJava8 by tasks.registering(KotlinJvmTest::class) {
-    javaLauncher = javaToolchains.launcherFor {
-        languageVersion = JavaLanguageVersion.of(8)
-    }
+    javaLauncher =
+        javaToolchains.launcherFor {
+            languageVersion = JavaLanguageVersion.of(8)
+        }
 
     description = "Run tests with Java 8"
     group = LifecycleBasePlugin.VERIFICATION_GROUP
@@ -336,22 +341,12 @@ val testWithJava8 by tasks.registering(KotlinJvmTest::class) {
 }
 tasks.named("check").configure { dependsOn(testWithJava8) }
 
-afterEvaluate {
-    val buildTasks =
-        tasks.matching {
-            val taskName = it.name
-            if (taskName.contains("Clean")) {
-                return@matching false
-            }
-            if (taskName.contains("externalNative") || taskName.contains("CMake") || taskName.contains("generateJsonModel")) {
-                return@matching true
-            }
-            return@matching false
-        }
-
-    buildTasks.forEach {
-        it.dependsOn(buildCInteropDef)
+tasks.withType<KotlinTest> {
+    testLogging {
+        events("PASSED", "FAILED", "SKIPPED")
+        exceptionFormat = TestExceptionFormat.FULL
+        showStandardStreams = true
+        showStackTraces = true
     }
 }
-
 setupGithubRepository()

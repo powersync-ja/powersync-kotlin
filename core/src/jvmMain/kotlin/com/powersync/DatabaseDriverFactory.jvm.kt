@@ -1,30 +1,42 @@
 package com.powersync
 
+import com.powersync.db.JdbcSqliteDriver
+import com.powersync.db.buildDefaultWalProperties
 import com.powersync.db.internal.InternalSchema
+import com.powersync.db.migrateDriver
 import kotlinx.coroutines.CoroutineScope
 import org.sqlite.SQLiteCommitListener
-import java.nio.file.Path
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING", "SqlNoDataSourceInspection")
 public actual class DatabaseDriverFactory {
     internal actual fun createDriver(
         scope: CoroutineScope,
         dbFilename: String,
+        dbDirectory: String?,
+        readOnly: Boolean,
     ): PsSqlDriver {
         val schema = InternalSchema
 
+        val dbPath =
+            if (dbDirectory != null) {
+                "$dbDirectory/$dbFilename"
+            } else {
+                dbFilename
+            }
+
         val driver =
-            PSJdbcSqliteDriver(
-                url = "jdbc:sqlite:$dbFilename",
-                schema = schema,
+            JdbcSqliteDriver(
+                url = "jdbc:sqlite:$dbPath",
+                properties = buildDefaultWalProperties(readOnly = readOnly),
             )
-        // Generates SQLITE_BUSY errors
-//        driver.enableWriteAheadLogging()
+
+        migrateDriver(driver, schema)
+
         driver.loadExtensions(
             powersyncExtension to "sqlite3_powersync_init",
         )
 
-        val mappedDriver = PsSqlDriver(scope = scope, driver = driver)
+        val mappedDriver = PsSqlDriver(driver = driver)
 
         driver.connection.database.addUpdateListener { _, _, table, _ ->
             mappedDriver.updateTable(table)
@@ -45,6 +57,6 @@ public actual class DatabaseDriverFactory {
     }
 
     public companion object {
-        private val powersyncExtension: Path = extractLib("powersync")
+        private val powersyncExtension: String = extractLib("powersync").toString()
     }
 }

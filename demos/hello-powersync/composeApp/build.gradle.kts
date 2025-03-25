@@ -29,6 +29,7 @@ kotlin {
 
         pod("powersync-sqlite-core") {
             linkOnly = true
+            version = "0.3.12"
         }
 
         framework {

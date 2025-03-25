@@ -22,6 +22,11 @@ public fun PowerSyncDatabase(
     dbFilename: String = DEFAULT_DB_FILENAME,
     scope: CoroutineScope = GlobalScope,
     logger: Logger? = null,
+    /**
+     * Optional database file directory path.
+     * This parameter is ignored for iOS.
+     */
+    dbDirectory: String? = null,
 ): PowerSyncDatabase {
     val generatedLogger: Logger = generateLogger(logger)
 
@@ -31,5 +36,6 @@ public fun PowerSyncDatabase(
         dbFilename = dbFilename,
         scope = scope,
         logger = generatedLogger,
+        dbDirectory = dbDirectory,
     )
 }

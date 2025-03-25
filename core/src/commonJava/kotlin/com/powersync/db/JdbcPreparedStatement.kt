@@ -1,8 +1,9 @@
-package com.powersync.persistence.driver
+package com.powersync.db
 
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlPreparedStatement
+import com.powersync.persistence.driver.ColNamesSqlCursor
 import java.math.BigDecimal
 import java.sql.PreparedStatement
 import java.sql.ResultSet
@@ -206,8 +207,6 @@ internal class JdbcCursor(
     override fun getDouble(index: Int): Double? = getAtIndex(index, resultSet::getDouble)
 
     fun getBigDecimal(index: Int): BigDecimal? = resultSet.getBigDecimal(index + 1)
-
-    inline fun <reified T : Any> getObject(index: Int): T? = resultSet.getObject(index + 1, T::class.java)
 
     fun getDate(index: Int): java.sql.Date? = resultSet.getDate(index)
 

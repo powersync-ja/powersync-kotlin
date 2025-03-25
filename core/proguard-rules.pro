@@ -9,3 +9,5 @@
     private void onTableUpdate(java.lang.String);
     private void onTransactionCommit(boolean);
 }
+-keep class org.sqlite.** { *; }
+-dontwarn java.sql.JDBCType

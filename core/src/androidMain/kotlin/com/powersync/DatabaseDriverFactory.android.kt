@@ -1,87 +1,62 @@
 package com.powersync
 
 import android.content.Context
-import androidx.sqlite.db.SupportSQLiteDatabase
+import com.powersync.db.JdbcSqliteDriver
+import com.powersync.db.buildDefaultWalProperties
 import com.powersync.db.internal.InternalSchema
-import com.powersync.persistence.driver.AndroidSqliteDriver
-import io.requery.android.database.sqlite.RequerySQLiteOpenHelperFactory
-import io.requery.android.database.sqlite.SQLiteCustomExtension
+import com.powersync.db.migrateDriver
 import kotlinx.coroutines.CoroutineScope
+import org.sqlite.SQLiteCommitListener
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 public actual class DatabaseDriverFactory(
     private val context: Context,
 ) {
-    private var driver: PsSqlDriver? = null
-
-    private external fun setupSqliteBinding()
-
-    @Suppress("unused")
-    private fun onTableUpdate(tableName: String) {
-        driver?.updateTable(tableName)
-    }
-
-    @Suppress("unused")
-    private fun onTransactionCommit(success: Boolean) {
-        driver?.also { driver ->
-            // Only clear updates if a rollback happened
-            // We manually fire updates when transactions are completed
-            if (!success) {
-                driver.clearTableUpdates()
-            }
-        }
-    }
-
     internal actual fun createDriver(
         scope: CoroutineScope,
         dbFilename: String,
+        dbDirectory: String?,
+        readOnly: Boolean,
     ): PsSqlDriver {
         val schema = InternalSchema
 
-        this.driver =
-            PsSqlDriver(
-                scope = scope,
-                driver =
-                    AndroidSqliteDriver(
-                        context = context,
-                        schema = schema,
-                        name = dbFilename,
-                        factory =
-                            RequerySQLiteOpenHelperFactory(
-                                listOf(
-                                    RequerySQLiteOpenHelperFactory.ConfigurationOptions { config ->
-                                        config.customExtensions.add(
-                                            SQLiteCustomExtension(
-                                                "libpowersync",
-                                                "sqlite3_powersync_init",
-                                            ),
-                                        )
-                                        config.customExtensions.add(
-                                            SQLiteCustomExtension(
-                                                "libpowersync-sqlite",
-                                                "powersync_init",
-                                            ),
-                                        )
-                                        config
-                                    },
-                                ),
-                            ),
-                        callback =
-                            object : AndroidSqliteDriver.Callback(schema) {
-                                override fun onConfigure(db: SupportSQLiteDatabase) {
-                                    db.enableWriteAheadLogging()
-                                    super.onConfigure(db)
-                                }
-                            },
-                    ),
-            )
-        setupSqliteBinding()
-        return this.driver as PsSqlDriver
-    }
+        val dbPath =
+            if (dbDirectory != null) {
+                "$dbDirectory/$dbFilename"
+            } else {
+                context.getDatabasePath(dbFilename)
+            }
 
-    public companion object {
-        init {
-            System.loadLibrary("powersync-sqlite")
+        val driver =
+            JdbcSqliteDriver(
+                url = "jdbc:sqlite:$dbPath",
+                properties = buildDefaultWalProperties(readOnly = readOnly),
+            )
+
+        migrateDriver(driver, schema)
+
+        driver.loadExtensions(
+            "libpowersync.so" to "sqlite3_powersync_init",
+        )
+
+        val mappedDriver = PsSqlDriver(driver = driver)
+
+        driver.connection.database.addUpdateListener { _, _, table, _ ->
+            mappedDriver.updateTable(table)
         }
+
+        driver.connection.database.addCommitListener(
+            object : SQLiteCommitListener {
+                override fun onCommit() {
+                    // We track transactions manually
+                }
+
+                override fun onRollback() {
+                    mappedDriver.clearTableUpdates()
+                }
+            },
+        )
+
+        return mappedDriver
     }
 }

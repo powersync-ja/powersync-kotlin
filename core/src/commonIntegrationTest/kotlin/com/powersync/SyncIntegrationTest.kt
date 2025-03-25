@@ -21,6 +21,7 @@ import com.powersync.testutils.MockSyncService
 import com.powersync.testutils.UserRow
 import com.powersync.testutils.cleanup
 import com.powersync.testutils.factory
+import com.powersync.testutils.generatePrintLogWriter
 import com.powersync.testutils.waitFor
 import com.powersync.utils.JsonUtil
 import dev.mokkery.answering.returns
@@ -53,7 +54,7 @@ class SyncIntegrationTest {
         Logger(
             TestConfig(
                 minSeverity = Severity.Debug,
-                logWriterList = listOf(logWriter),
+                logWriterList = listOf(logWriter, generatePrintLogWriter()),
             ),
         )
     private lateinit var database: PowerSyncDatabaseImpl

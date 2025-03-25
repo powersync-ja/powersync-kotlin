@@ -26,6 +26,7 @@ internal class ActiveDatabaseGroup(
 ) {
     internal var refCount = 0 // Guarded by companion object
     internal val syncMutex = Mutex()
+    internal val writeLockMutex = Mutex()
 
     fun removeUsage() {
         collection.synchronize {

@@ -1,1 +1,5 @@
 binaries/
+# Required for the JDBC SQLite driver, but should not be commiteed
+src/androidMain/jni
+
+testdb-*

@@ -46,14 +46,9 @@ The PowerSync Kotlin Multiplatform SDK is currently in a beta release. It can be
 Current limitations:
 
 - Integration with SQLDelight schema and API generation (ORM) is not yet supported.
-- Supports only a single database file.
 
 Future work/ideas:
-
-- Improved error handling.
 - Attachments helper package.
-- Management of DB connections on each platform natively.
-- Supporting additional targets (JVM, Wasm).
 
 ## Installation
 

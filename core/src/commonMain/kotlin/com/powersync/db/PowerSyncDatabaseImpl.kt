@@ -3,7 +3,6 @@ package com.powersync.db
 import co.touchlab.kermit.Logger
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
-import com.powersync.PsSqlDriver
 import com.powersync.bucket.BucketPriority
 import com.powersync.bucket.BucketStorage
 import com.powersync.bucket.BucketStorageImpl
@@ -14,7 +13,6 @@ import com.powersync.db.crud.CrudRow
 import com.powersync.db.crud.CrudTransaction
 import com.powersync.db.internal.InternalDatabaseImpl
 import com.powersync.db.internal.InternalTable
-import com.powersync.db.internal.ThrowableTransactionCallback
 import com.powersync.db.schema.Schema
 import com.powersync.sync.PriorityStatusEntry
 import com.powersync.sync.SyncStatus
@@ -56,8 +54,8 @@ internal class PowerSyncDatabaseImpl(
     val scope: CoroutineScope,
     val factory: DatabaseDriverFactory,
     private val dbFilename: String,
+    private val dbDirectory: String? = null,
     val logger: Logger = Logger,
-    driver: PsSqlDriver = factory.createDriver(scope, dbFilename),
 ) : PowerSyncDatabase {
     companion object {
         internal val streamConflictMessage =
@@ -70,14 +68,24 @@ internal class PowerSyncDatabaseImpl(
             """.trimIndent()
     }
 
-    override val identifier = dbFilename
+    override val identifier = dbDirectory + dbFilename
 
-    private val internalDb = InternalDatabaseImpl(driver, scope)
+    private val activeDatabaseGroup = ActiveDatabaseGroup.referenceDatabase(logger, identifier)
+    private val resource = activeDatabaseGroup.first
+    private val clearResourceWhenDisposed = activeDatabaseGroup.second
+
+    private val internalDb =
+        InternalDatabaseImpl(
+            factory = factory,
+            scope = scope,
+            dbFilename = dbFilename,
+            dbDirectory = dbDirectory,
+            writeLockMutex = resource.group.writeLockMutex,
+        )
+
     internal val bucketStorage: BucketStorage = BucketStorageImpl(internalDb, logger)
-    private val resource: ActiveDatabaseResource
-    private val clearResourceWhenDisposed: Any
 
-    var closed = false
+    override var closed = false
 
     /**
      * The current sync status.
@@ -89,17 +97,22 @@ internal class PowerSyncDatabaseImpl(
     private var syncJob: Job? = null
     private var uploadJob: Job? = null
 
-    init {
-        val res = ActiveDatabaseGroup.referenceDatabase(logger, identifier)
-        resource = res.first
-        clearResourceWhenDisposed = res.second
+    // This is set in the init
+    private lateinit var powerSyncVersion: String
 
+    init {
         runBlocking {
-            val sqliteVersion = internalDb.queries.sqliteVersion().executeAsOne()
+            val sqliteVersion = internalDb.get("SELECT sqlite_version()") { it.getString(0)!! }
             logger.d { "SQLiteVersion: $sqliteVersion" }
-            checkVersion()
+            powerSyncVersion =
+                internalDb.get("SELECT powersync_rs_version()") { it.getString(0)!! }
+            checkVersion(powerSyncVersion)
             logger.d { "PowerSyncVersion: ${getPowerSyncVersion()}" }
-            internalDb.queries.powersyncInit()
+
+            internalDb.writeTransaction { tx ->
+                tx.getOptional("SELECT powersync_init()") {}
+            }
+
             applySchema()
             updateHasSynced()
         }
@@ -108,8 +121,11 @@ internal class PowerSyncDatabaseImpl(
     private suspend fun applySchema() {
         val schemaJson = JsonUtil.json.encodeToString(schema)
 
-        internalDb.writeTransaction {
-            internalDb.queries.replaceSchema(schemaJson).executeAsOne()
+        internalDb.writeTransaction { tx ->
+            tx.getOptional(
+                "SELECT powersync_replace_schema(?);",
+                listOf(schemaJson),
+            ) {}
         }
     }
 
@@ -214,12 +230,15 @@ internal class PowerSyncDatabaseImpl(
         }
 
         val entries =
-            internalDb.queries.getCrudEntries((limit + 1).toLong()).executeAsList().map {
+            internalDb.getAll(
+                "SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC LIMIT ?",
+                listOf(limit.toLong()),
+            ) {
                 CrudEntry.fromRow(
                     CrudRow(
-                        id = it.id.toString(),
-                        data = it.data_!!,
-                        txId = it.tx_id?.toInt(),
+                        id = it.getString("id"),
+                        data = it.getString("data"),
+                        txId = it.getLongOptional("tx_id")?.toInt(),
                     ),
                 )
             }
@@ -249,12 +268,12 @@ internal class PowerSyncDatabaseImpl(
                 if (txId == null) {
                     listOf(entry)
                 } else {
-                    internalDb.queries.getCrudEntryByTxId(txId.toLong()).executeAsList().map {
+                    transaction.getAll("SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC LIMIT 1") {
                         CrudEntry.fromRow(
                             CrudRow(
-                                id = it.id.toString(),
-                                data = it.data_!!,
-                                txId = it.tx_id?.toInt(),
+                                id = it.getString("id"),
+                                data = it.getString("data"),
+                                txId = it.getLongOptional("tx_id")?.toInt(),
                             ),
                         )
                     }
@@ -271,7 +290,8 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 
-    override suspend fun getPowerSyncVersion(): String = internalDb.queries.powerSyncVersion().executeAsOne()
+    // The initialization sets powerSyncVersion. We currently run the init as a blocking operation
+    override suspend fun getPowerSyncVersion(): String = powerSyncVersion
 
     override suspend fun <RowType : Any> get(
         sql: String,
@@ -298,7 +318,11 @@ internal class PowerSyncDatabaseImpl(
         mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>> = internalDb.watch(sql, parameters, throttleMs, mapper)
 
+    override suspend fun <R> readLock(callback: ThrowableLockCallback<R>): R = internalDb.readLock(callback)
+
     override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R = internalDb.writeTransaction(callback)
+
+    override suspend fun <R> writeLock(callback: ThrowableLockCallback<R>): R = internalDb.writeLock(callback)
 
     override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R = internalDb.writeTransaction(callback)
 
@@ -312,7 +336,10 @@ internal class PowerSyncDatabaseImpl(
         writeCheckpoint: String?,
     ) {
         internalDb.writeTransaction { transaction ->
-            internalDb.queries.deleteEntriesWithIdLessThan(lastTransactionId.toLong())
+            transaction.execute(
+                "DELETE FROM ps_crud WHERE id <= ?",
+                listOf(lastTransactionId.toLong()),
+            )
 
             if (writeCheckpoint != null && !bucketStorage.hasCrud(transaction)) {
                 transaction.execute(
@@ -354,8 +381,8 @@ internal class PowerSyncDatabaseImpl(
     override suspend fun disconnectAndClear(clearLocal: Boolean) {
         disconnect()
 
-        internalDb.writeTransaction {
-            internalDb.queries.powersyncClear(if (clearLocal) "1" else "0").executeAsOne()
+        internalDb.writeTransaction { tx ->
+            tx.getOptional("SELECT powersync_clear(?)", listOf(if (clearLocal) "1" else "0")) {}
         }
         currentStatus.update(lastSyncedAt = null, hasSynced = false)
     }
@@ -437,28 +464,21 @@ internal class PowerSyncDatabaseImpl(
     /**
      * Check that a supported version of the powersync extension is loaded.
      */
-    private suspend fun checkVersion() {
-        val version: String =
-            try {
-                getPowerSyncVersion()
-            } catch (e: Exception) {
-                throw Exception("The powersync extension is not loaded correctly. Details: $e")
-            }
-
+    private suspend fun checkVersion(powerSyncVersion: String) {
         // Parse version
         val versionInts: List<Int> =
             try {
-                version
+                powerSyncVersion
                     .split(Regex("[./]"))
                     .take(3)
                     .map { it.toInt() }
             } catch (e: Exception) {
-                throw Exception("Unsupported powersync extension version. Need ^0.2.0, got: $version. Details: $e")
+                throw Exception("Unsupported powersync extension version. Need ^0.2.0, got: $powerSyncVersion. Details: $e")
             }
 
         // Validate ^0.2.0
         if (versionInts[0] != 0 || versionInts[1] < 2 || versionInts[2] < 0) {
-            throw Exception("Unsupported powersync extension version. Need ^0.2.0, got: $version")
+            throw Exception("Unsupported powersync extension version. Need ^0.2.0, got: $powerSyncVersion")
         }
     }
 }
