@@ -116,17 +116,7 @@ public actual class DatabaseDriverFactory {
         driver: DeferredDriver,
     ) {
         val ptr = connection.getDbPointer().getPointer(MemScope())
-        // Try and find the bundle path for the SQLite core extension.
-        val bundlePath =
-            NSBundle.bundleWithIdentifier("co.powersync.sqlitecore")?.bundlePath
-                ?: // The bundle is not installed in the project
-                throw PowerSyncException(
-                    "Please install the PowerSync SQLite core extension",
-                    cause = Exception("The `co.powersync.sqlitecore` bundle could not be found in the project."),
-                )
-
-        // Construct full path to the shared library inside the bundle
-        val extensionPath = bundlePath.let { "$it/powersync-sqlite-core" }
+        val extensionPath = powerSyncExtensionPath
 
         // Enable extension loading
         // We don't disable this after the fact, this should allow users to load their own extensions
@@ -196,5 +186,21 @@ public actual class DatabaseDriverFactory {
             null,
             null,
         )
+    }
+
+    internal companion object {
+        internal val powerSyncExtensionPath by lazy {
+            // Try and find the bundle path for the SQLite core extension.
+            val bundlePath =
+                NSBundle.bundleWithIdentifier("co.powersync.sqlitecore")?.bundlePath
+                    ?: // The bundle is not installed in the project
+                    throw PowerSyncException(
+                        "Please install the PowerSync SQLite core extension",
+                        cause = Exception("The `co.powersync.sqlitecore` bundle could not be found in the project."),
+                    )
+
+            // Construct full path to the shared library inside the bundle
+            bundlePath.let { "$it/powersync-sqlite-core" }
+        }
     }
 }
