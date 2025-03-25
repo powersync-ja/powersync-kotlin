@@ -23,6 +23,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -263,6 +264,9 @@ class DatabaseTest {
             // The database should not close yet
             assertEquals(actual = database.closed, expected = false)
 
+            // Any new readLocks should throw
+            val exception = assertFailsWith<PowerSyncException> { database.readLock {} }
+            assertEquals(expected = "Pool is closed", actual = exception.cause!!.cause!!.message)
             // Release the lock
             pausedLock.complete(Unit)
             lockJob.await()

@@ -111,6 +111,7 @@ internal class JdbcSqliteDriver(
         override val enclosingTransaction: Transaction?,
     ) : Transacter.Transaction() {
         init {
+            assert(enclosingTransaction == null) { "Nested transactions are not supported" }
             connection.prepareStatement("BEGIN TRANSACTION").use(PreparedStatement::execute)
         }
 
