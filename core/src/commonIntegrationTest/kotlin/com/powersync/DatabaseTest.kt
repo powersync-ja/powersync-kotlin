@@ -266,7 +266,7 @@ class DatabaseTest {
 
             // Any new readLocks should throw
             val exception = assertFailsWith<PowerSyncException> { database.readLock {} }
-            assertEquals(expected = "Pool is closed", actual = exception.cause!!.cause!!.message)
+            assertEquals(expected = "Cannot process connection pool request", actual = exception.message)
             // Release the lock
             pausedLock.complete(Unit)
             lockJob.await()
