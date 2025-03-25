@@ -1,11 +1,13 @@
 import com.powersync.plugins.sonatype.setupGithubRepository
 import de.undercouch.gradle.tasks.download.Download
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.internal.os.OperatingSystem
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable
 import org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest
+import org.jetbrains.kotlin.gradle.tasks.KotlinTest
 import org.jetbrains.kotlin.konan.target.Family
 
 
@@ -339,4 +341,17 @@ val testWithJava8 by tasks.registering(KotlinJvmTest::class) {
 }
 tasks.named("check").configure { dependsOn(testWithJava8) }
 
+tasks.named("iosSimulatorArm64Test") {
+    logging.captureStandardOutput(LogLevel.ERROR)
+    logging.captureStandardError(LogLevel.ERROR)
+}
+
+tasks.withType<KotlinTest> {
+    testLogging {
+        events("PASSED", "FAILED", "SKIPPED")
+        exceptionFormat = TestExceptionFormat.FULL
+        showStandardStreams = true
+        showStackTraces = true
+    }
+}
 setupGithubRepository()

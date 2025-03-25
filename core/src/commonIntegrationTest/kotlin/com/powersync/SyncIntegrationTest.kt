@@ -2,6 +2,7 @@ package com.powersync
 
 import app.cash.turbine.turbineScope
 import co.touchlab.kermit.ExperimentalKermitApi
+import co.touchlab.kermit.LogWriter
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import co.touchlab.kermit.TestConfig
@@ -47,13 +48,24 @@ class SyncIntegrationTest {
     private val logWriter =
         TestLogWriter(
             loggable = Severity.Debug,
+
         )
 
     private val logger =
         Logger(
             TestConfig(
                 minSeverity = Severity.Debug,
-                logWriterList = listOf(logWriter),
+                logWriterList = listOf(logWriter, object: LogWriter() {
+                    override fun log(
+                        severity: Severity,
+                        message: String,
+                        tag: String,
+                        throwable: Throwable?
+                    ) {
+                        println("[$severity:$tag] - $message")
+                    }
+
+                }),
             ),
         )
     private lateinit var database: PowerSyncDatabaseImpl
