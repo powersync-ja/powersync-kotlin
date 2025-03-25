@@ -313,4 +313,34 @@ class DatabaseTest {
             }
             db2.close()
         }
+
+    @Test
+    fun readConnectionsReadOnly() =
+        runTest {
+            val exception =
+                assertFailsWith<PowerSyncException> {
+                    database.getOptional(
+                        """
+                        INSERT INTO 
+                             users (id, name, email)
+                         VALUES
+                             (uuid(), ?, ?) 
+                         RETURNING *
+                        """.trimIndent(),
+                        parameters = listOf("steven", "steven@journeyapps.com"),
+                    ) {}
+                }
+            // The exception messages differ slightly between drivers
+            assertTrue { exception.message!!.contains("write a readonly database") }
+        }
+
+    @Test
+    fun basicReadTransaction() =
+        runTest {
+            val count =
+                database.readTransaction { it ->
+                    it.get("SELECT COUNT(*) from users") { it.getLong(0)!! }
+                }
+            assertEquals(expected = 0, actual = count)
+        }
 }

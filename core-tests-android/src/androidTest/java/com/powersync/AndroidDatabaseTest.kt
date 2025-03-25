@@ -199,4 +199,27 @@ class AndroidDatabaseTest {
 
             db.close()
         }
+
+    @Test
+    fun readConnectionsReadOnly() =
+        runTest {
+            val exception =
+                assertThrows(PowerSyncException::class.java) {
+                    // This version of assertThrows does not support suspending functions
+                    runBlocking {
+                        database.getOptional(
+                            """
+                            INSERT INTO 
+                                 users (id, name, email)
+                             VALUES
+                                 (uuid(), ?, ?) 
+                             RETURNING *
+                            """.trimIndent(),
+                            parameters = listOf("steven", "steven@journeyapps.com"),
+                        ) {}
+                    }
+                }
+            // The exception messages differ slightly between drivers
+            assertEquals(exception.message!!.contains("write a readonly database"), true)
+        }
 }

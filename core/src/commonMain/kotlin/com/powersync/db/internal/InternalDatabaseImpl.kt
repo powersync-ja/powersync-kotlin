@@ -47,6 +47,7 @@ internal class InternalDatabaseImpl(
                 scope = scope,
                 dbFilename = dbFilename,
                 dbDirectory = dbDirectory,
+                readOnly = true,
             )
         }, scope = scope)
 

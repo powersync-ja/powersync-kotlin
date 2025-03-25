@@ -13,6 +13,7 @@ public actual class DatabaseDriverFactory {
         scope: CoroutineScope,
         dbFilename: String,
         dbDirectory: String?,
+        readOnly: Boolean,
     ): PsSqlDriver {
         val schema = InternalSchema
 
@@ -26,7 +27,7 @@ public actual class DatabaseDriverFactory {
         val driver =
             JdbcSqliteDriver(
                 url = "jdbc:sqlite:$dbPath",
-                properties = buildDefaultWalProperties(),
+                properties = buildDefaultWalProperties(readOnly = readOnly),
             )
 
         migrateDriver(driver, schema)

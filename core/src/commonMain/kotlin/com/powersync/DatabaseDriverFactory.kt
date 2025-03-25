@@ -8,5 +8,6 @@ public expect class DatabaseDriverFactory {
         scope: CoroutineScope,
         dbFilename: String,
         dbDirectory: String?,
+        readOnly: Boolean = false,
     ): PsSqlDriver
 }

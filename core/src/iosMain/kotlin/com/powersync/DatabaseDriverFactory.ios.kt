@@ -35,6 +35,7 @@ public actual class DatabaseDriverFactory {
         scope: CoroutineScope,
         dbFilename: String,
         dbDirectory: String?,
+        readOnly: Boolean,
     ): PsSqlDriver {
         val schema = InternalSchema
         val sqlLogger =
@@ -82,6 +83,9 @@ public actual class DatabaseDriverFactory {
                                             setupSqliteBinding(connection, deferredDriver)
                                             wrapConnection(connection) { driver ->
                                                 schema.create(driver)
+                                            }
+                                            if (readOnly) {
+                                                connection.rawExecSql("PRAGMA query_only=true")
                                             }
                                         },
                                         onCloseConnection = { connection ->
