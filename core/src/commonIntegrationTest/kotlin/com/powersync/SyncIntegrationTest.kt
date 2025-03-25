@@ -60,6 +60,8 @@ class SyncIntegrationTest {
     private lateinit var connector: PowerSyncBackendConnector
     private lateinit var syncLines: Channel<SyncLine>
 
+    private var setupException: Exception? = null
+
     @BeforeTest
     fun setup() {
         try {
@@ -86,6 +88,7 @@ class SyncIntegrationTest {
 
         } catch (exception: Exception) {
             println("Caught an exception in setup $exception")
+            setupException = exception
             throw exception
         }
     }
@@ -126,6 +129,7 @@ class SyncIntegrationTest {
     @Test
     fun testPartialSync() =
         runTest {
+            reportSetupException()
             val syncStream = syncStream()
             database.connectInternal(syncStream, 1000L)
 
@@ -220,6 +224,8 @@ class SyncIntegrationTest {
     @Test
     fun testRemembersLastPartialSync() =
         runTest {
+            reportSetupException()
+
             val syncStream = syncStream()
             database.connectInternal(syncStream, 1000L)
 
@@ -259,6 +265,8 @@ class SyncIntegrationTest {
     @Test
     fun setsDownloadingState() =
         runTest {
+            reportSetupException()
+
             val syncStream = syncStream()
             database.connectInternal(syncStream, 1000L)
 
@@ -294,6 +302,8 @@ class SyncIntegrationTest {
     @Test
     fun setsConnectingState() =
         runTest {
+            reportSetupException()
+
             turbineScope(timeout = 10.0.seconds) {
                 val syncStream = syncStream()
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -314,6 +324,8 @@ class SyncIntegrationTest {
     @Test
     fun testMultipleSyncsDoNotCreateMultipleStatusEntries() =
         runTest {
+            reportSetupException()
+
             val syncStream = syncStream()
             database.connectInternal(syncStream, 1000L)
 
@@ -359,6 +371,8 @@ class SyncIntegrationTest {
     @Test
     fun warnsMultipleConnectionAttempts() =
         runTest {
+            reportSetupException()
+
             val db2 =
                 PowerSyncDatabase(
                     factory = factory,
@@ -392,6 +406,8 @@ class SyncIntegrationTest {
     @Test
     fun queuesMultipleConnectionAttempts() =
         runTest {
+            reportSetupException()
+
             val db2 =
                 PowerSyncDatabase(
                     factory = factory,
@@ -433,6 +449,8 @@ class SyncIntegrationTest {
     @Test
     fun reconnectsAfterDisconnecting() =
         runTest {
+            reportSetupException()
+
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
 
@@ -457,6 +475,8 @@ class SyncIntegrationTest {
     @Test
     fun reconnects() =
         runTest {
+            reportSetupException()
+
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
 
@@ -472,4 +492,11 @@ class SyncIntegrationTest {
             database.close()
             syncLines.close()
         }
+
+    private fun reportSetupException() {
+        if (setupException != null) {
+            throw setupException!!
+        }
+        setupException = null
+    }
 }
