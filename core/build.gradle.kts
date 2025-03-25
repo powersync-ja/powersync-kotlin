@@ -341,11 +341,6 @@ val testWithJava8 by tasks.registering(KotlinJvmTest::class) {
 }
 tasks.named("check").configure { dependsOn(testWithJava8) }
 
-tasks.named("iosSimulatorArm64Test") {
-    logging.captureStandardOutput(LogLevel.ERROR)
-    logging.captureStandardError(LogLevel.ERROR)
-}
-
 tasks.withType<KotlinTest> {
     testLogging {
         events("PASSED", "FAILED", "SKIPPED")
