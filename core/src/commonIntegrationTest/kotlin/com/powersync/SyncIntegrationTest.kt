@@ -62,6 +62,8 @@ class SyncIntegrationTest {
 
     @BeforeTest
     fun setup() {
+        try {
+        println("Running setup")
         cleanup("testdb")
         logWriter.reset()
         database = openDb()
@@ -80,6 +82,11 @@ class SyncIntegrationTest {
 
         runBlocking {
             database.disconnectAndClear(true)
+        }
+
+        } catch (exception: Exception) {
+            println("Caught an exception in setup $exception")
+            throw exception
         }
     }
 
