@@ -217,7 +217,6 @@ kotlin {
         }
 
         val commonJava by creating {
-            kotlin.srcDir("commonJava")
             dependsOn(commonMain.get())
             dependencies {
                 implementation(libs.sqlite.jdbc)
@@ -313,11 +312,9 @@ android {
     ndkVersion = "27.1.12297006"
 }
 
-androidComponents.onVariants { variant ->
-    if (variant.buildType == "debug" || variant.buildType == "release") {
+androidComponents.onVariants {
         tasks.named("preBuild") {
             dependsOn(moveJDBCJNIFiles)
-        }
     }
 }
 

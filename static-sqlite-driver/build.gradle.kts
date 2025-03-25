@@ -15,8 +15,8 @@ plugins {
     id("com.powersync.plugins.sonatype")
 }
 
-val sqliteVersion = "3450200"
-val sqliteReleaseYear = "2024"
+val sqliteVersion = "3490100"
+val sqliteReleaseYear = "2025"
 
 setupGithubRepository()
 

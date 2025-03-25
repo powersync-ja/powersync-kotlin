@@ -98,7 +98,7 @@ internal class PowerSyncDatabaseImpl(
     private var uploadJob: Job? = null
 
     // This is set in the init
-    private var powerSyncVersion: String? = null
+    private lateinit var powerSyncVersion: String
 
     init {
         runBlocking {
@@ -106,7 +106,7 @@ internal class PowerSyncDatabaseImpl(
             logger.d { "SQLiteVersion: $sqliteVersion" }
             powerSyncVersion =
                 internalDb.get("SELECT powersync_rs_version()") { it.getString(0)!! }
-            checkVersion(powerSyncVersion!!)
+            checkVersion(powerSyncVersion)
             logger.d { "PowerSyncVersion: ${getPowerSyncVersion()}" }
 
             internalDb.writeTransaction { tx ->
@@ -291,7 +291,7 @@ internal class PowerSyncDatabaseImpl(
     }
 
     // The initialization sets powerSyncVersion. We currently run the init as a blocking operation
-    override suspend fun getPowerSyncVersion(): String = powerSyncVersion!!
+    override suspend fun getPowerSyncVersion(): String = powerSyncVersion
 
     override suspend fun <RowType : Any> get(
         sql: String,
