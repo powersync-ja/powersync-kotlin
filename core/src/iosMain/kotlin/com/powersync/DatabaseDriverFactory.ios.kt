@@ -100,10 +100,10 @@ public actual class DatabaseDriverFactory {
         // We'd like to ensure a driver is set to read-only. Ideally we could do this in the
         // onCreateConnection lifecycle hook, but this runs before driver internal migrations.
         // Setting the connection to read only there breaks migrations.
-        // We explicitly execute this pragma twice to reflect on both connections.
+        // We explicitly execute this pragma to reflect and guard the "write" connection.
+        // The read connection already has this set.
         if (readOnly) {
             driver.execute("PRAGMA query_only=true")
-            driver.getOptional("PRAGMA query_only=true") {}
         }
 
         deferredDriver.setDriver(driver)

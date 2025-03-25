@@ -61,34 +61,26 @@ class SyncIntegrationTest {
     private lateinit var connector: PowerSyncBackendConnector
     private lateinit var syncLines: Channel<SyncLine>
 
-    private var setupException: Exception? = null
-
     @BeforeTest
     fun setup() {
-        try {
-            cleanup("testdb")
-            logWriter.reset()
-            database = openDb()
-            connector =
-                mock<PowerSyncBackendConnector> {
-                    everySuspend { getCredentialsCached() } returns
-                        PowerSyncCredentials(
-                            token = "test-token",
-                            userId = "test-user",
-                            endpoint = "https://test.com",
-                        )
+        cleanup("testdb")
+        logWriter.reset()
+        database = openDb()
+        connector =
+            mock<PowerSyncBackendConnector> {
+                everySuspend { getCredentialsCached() } returns
+                    PowerSyncCredentials(
+                        token = "test-token",
+                        userId = "test-user",
+                        endpoint = "https://test.com",
+                    )
 
-                    everySuspend { invalidateCredentials() } returns Unit
-                }
-            syncLines = Channel()
-
-            runBlocking {
-                database.disconnectAndClear(true)
+                everySuspend { invalidateCredentials() } returns Unit
             }
-        } catch (exception: Exception) {
-            println("Caught an exception in setup $exception")
-            setupException = exception
-            throw exception
+        syncLines = Channel()
+
+        runBlocking {
+            database.disconnectAndClear(true)
         }
     }
 
