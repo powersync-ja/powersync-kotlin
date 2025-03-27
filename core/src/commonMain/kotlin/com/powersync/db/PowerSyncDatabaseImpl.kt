@@ -201,21 +201,7 @@ internal class PowerSyncDatabaseImpl(
             }
 
         scope.launch {
-            syncStream!!.status.asFlow().collect {
-                currentStatus.update(
-                    connected = it.connected,
-                    connecting = it.connecting,
-                    uploading = it.uploading,
-                    downloading = it.downloading,
-                    lastSyncedAt = it.lastSyncedAt,
-                    hasSynced = it.hasSynced,
-                    uploadError = it.uploadError,
-                    downloadError = it.downloadError,
-                    clearDownloadError = it.downloadError == null,
-                    clearUploadError = it.uploadError == null,
-                    priorityStatusEntries = it.priorityStatusEntries,
-                )
-            }
+            currentStatus.trackOther(syncStream!!.status)
         }
 
         uploadJob =
@@ -377,11 +363,14 @@ internal class PowerSyncDatabaseImpl(
             syncStream = null
         }
 
-        currentStatus.update(
-            connected = false,
-            connecting = false,
-            lastSyncedAt = currentStatus.lastSyncedAt,
-        )
+        currentStatus.update {
+            copy(
+                connected = false,
+                connecting = false,
+                downloading = false,
+                downloadProgress = null,
+            )
+        }
     }
 
     override suspend fun disconnectAndClear(clearLocal: Boolean) {
@@ -390,7 +379,7 @@ internal class PowerSyncDatabaseImpl(
         internalDb.writeTransaction { tx ->
             tx.getOptional("SELECT powersync_clear(?)", listOf(if (clearLocal) "1" else "0")) {}
         }
-        currentStatus.update(lastSyncedAt = null, hasSynced = false)
+        currentStatus.update { copy(lastSyncedAt = null, hasSynced = false) }
     }
 
     private suspend fun updateHasSynced() {
@@ -430,11 +419,13 @@ internal class PowerSyncDatabaseImpl(
             }
         }
 
-        currentStatus.update(
-            hasSynced = lastSyncedAt != null,
-            lastSyncedAt = lastSyncedAt,
-            priorityStatusEntries = priorityStatus,
-        )
+        currentStatus.update {
+            copy(
+                hasSynced = lastSyncedAt != null,
+                lastSyncedAt = lastSyncedAt,
+                priorityStatusEntries = priorityStatus,
+            )
+        }
     }
 
     override suspend fun waitForFirstSync() = waitForFirstSyncImpl(null)
