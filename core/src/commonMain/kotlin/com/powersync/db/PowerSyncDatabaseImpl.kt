@@ -27,6 +27,7 @@ import com.powersync.utils.toJsonObject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
@@ -96,8 +97,7 @@ internal class PowerSyncDatabaseImpl(
 
     private val mutex = Mutex()
     private var syncStream: SyncStream? = null
-    private var syncJob: Job? = null
-    private var uploadJob: Job? = null
+    private var syncSupervisorJob: Job? = null
 
     // This is set in the init
     private lateinit var powerSyncVersion: String
@@ -164,9 +164,10 @@ internal class PowerSyncDatabaseImpl(
         this.syncStream = stream
 
         val db = this
-
-        syncJob =
-            scope.launch {
+        val job = SupervisorJob()
+        syncSupervisorJob = job
+        scope.launch(job) {
+            launch {
                 // Get a global lock for checking mutex maps
                 val streamMutex = resource.group.syncMutex
 
@@ -181,7 +182,7 @@ internal class PowerSyncDatabaseImpl(
                         // (The tryLock should throw if this client already holds the lock).
                         logger.w(streamConflictMessage)
                     }
-                } catch (ex: IllegalStateException) {
+                } catch (_: IllegalStateException) {
                     logger.e { "The streaming sync client did not disconnect before connecting" }
                 }
 
@@ -200,26 +201,25 @@ internal class PowerSyncDatabaseImpl(
                 }
             }
 
-        scope.launch {
-            syncStream!!.status.asFlow().collect {
-                currentStatus.update(
-                    connected = it.connected,
-                    connecting = it.connecting,
-                    uploading = it.uploading,
-                    downloading = it.downloading,
-                    lastSyncedAt = it.lastSyncedAt,
-                    hasSynced = it.hasSynced,
-                    uploadError = it.uploadError,
-                    downloadError = it.downloadError,
-                    clearDownloadError = it.downloadError == null,
-                    clearUploadError = it.uploadError == null,
-                    priorityStatusEntries = it.priorityStatusEntries,
-                )
+            launch {
+                stream.status.asFlow().collect {
+                    currentStatus.update(
+                        connected = it.connected,
+                        connecting = it.connecting,
+                        uploading = it.uploading,
+                        downloading = it.downloading,
+                        lastSyncedAt = it.lastSyncedAt,
+                        hasSynced = it.hasSynced,
+                        uploadError = it.uploadError,
+                        downloadError = it.downloadError,
+                        clearDownloadError = it.downloadError == null,
+                        clearUploadError = it.uploadError == null,
+                        priorityStatusEntries = it.priorityStatusEntries,
+                    )
+                }
             }
-        }
 
-        uploadJob =
-            scope.launch {
+            launch {
                 internalDb
                     .updatesOnTables()
                     .filter { it.contains(InternalTable.CRUD.toString()) }
@@ -228,6 +228,7 @@ internal class PowerSyncDatabaseImpl(
                         syncStream!!.triggerCrudUpload()
                     }
             }
+        }
     }
 
     override suspend fun getCrudBatch(limit: Int): CrudBatch? {
@@ -364,12 +365,10 @@ internal class PowerSyncDatabaseImpl(
     override suspend fun disconnect() = mutex.withLock { disconnectInternal() }
 
     private suspend fun disconnectInternal() {
-        if (syncJob != null && syncJob!!.isActive) {
-            syncJob?.cancelAndJoin()
-        }
-
-        if (uploadJob != null && uploadJob!!.isActive) {
-            uploadJob?.cancelAndJoin()
+        val syncJob = syncSupervisorJob
+        if (syncJob != null && syncJob.isActive) {
+            syncJob.cancelAndJoin()
+            syncSupervisorJob = null
         }
 
         if (syncStream != null) {
@@ -470,7 +469,7 @@ internal class PowerSyncDatabaseImpl(
     /**
      * Check that a supported version of the powersync extension is loaded.
      */
-    private suspend fun checkVersion(powerSyncVersion: String) {
+    private fun checkVersion(powerSyncVersion: String) {
         // Parse version
         val versionInts: List<Int> =
             try {
