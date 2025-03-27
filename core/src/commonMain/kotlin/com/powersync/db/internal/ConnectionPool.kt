@@ -8,8 +8,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ClosedSendChannelException
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlin.coroutines.coroutineContext
 
 internal class ConnectionPool(
     factory: () -> PsSqlDriver,
@@ -57,26 +59,26 @@ internal class ConnectionPool(
     }
 
     suspend fun <R> withAllConnections(action: suspend (connections: List<TransactorDriver>) -> R): R {
-        val connections = mutableListOf<Pair<TransactorDriver, CompletableDeferred<Unit>>>()
-
-        // Try and get all the connections
-        for (i in 1..connections.size) {
-            try {
-                connections.add(available.receive())
-            } catch (e: PoolClosedException) {
-                // Free any connections we already received
-                connections.forEach { it.second.complete(Unit) }
-                throw PowerSyncException(
-                    message = "Cannot process connection pool request",
-                    cause = e,
-                )
-            }
-        }
+        val obtainedConnections = mutableListOf<Pair<TransactorDriver, CompletableDeferred<Unit>>>()
 
         try {
-            return action(connections.map { it.first })
+            // Try and get all the connections
+            repeat(connections.size) {
+                coroutineContext.ensureActive()
+                try {
+                    obtainedConnections.add(available.receive())
+                } catch (e: PoolClosedException) {
+                    throw PowerSyncException(
+                        message = "Cannot process connection pool request",
+                        cause = e,
+                    )
+                }
+            }
+
+            coroutineContext.ensureActive()
+            return action(obtainedConnections.map { it.first })
         } finally {
-            connections.forEach { it.second.complete(Unit) }
+            obtainedConnections.forEach { it.second.complete(Unit) }
         }
     }
 

@@ -356,8 +356,8 @@ class DatabaseTest {
                     Schema(
                         UserRow.table.copy(
                             // Updating the existing "users" view to localOnly causes an error
-                            // no such table: main.ps_data_local__users. Perhaps this is a bug in the
-                            // core extension
+                            // no such table: main.ps_data_local__users.
+                            // Perhaps this is a bug in the core extension
                             name = "local_users",
                             localOnly = true,
                         ),
