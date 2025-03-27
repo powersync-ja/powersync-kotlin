@@ -14,8 +14,8 @@ import com.powersync.bucket.LocalOperationCounters
  * on [SyncStatusData].
  */
 public data class ProgressWithOperations(
+    val completed: Int,
     val total: Int,
-    val completed: Int
 ) {
     /**
      * The relative amount of [total] items that have been [completed], as a number between `0.0` and `1.0`.
@@ -80,7 +80,7 @@ public data class SyncDownloadProgress private constructor(
      */
     public fun untilPriority(priority: BucketPriority): ProgressWithOperations {
         val (total, completed) = targetAndCompletedCounts(priority)
-        return ProgressWithOperations(total, completed)
+        return ProgressWithOperations(completed = completed, total = total)
     }
 
     internal fun incrementDownloaded(batch: SyncDataBatch): SyncDownloadProgress {
