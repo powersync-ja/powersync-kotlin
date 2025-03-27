@@ -12,13 +12,12 @@ import org.jetbrains.kotlin.konan.target.PlatformManager
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.downloadPlugin)
+    alias(libs.plugins.kotlinter)
     id("com.powersync.plugins.sonatype")
 }
 
 val sqliteVersion = "3490100"
 val sqliteReleaseYear = "2025"
-
-setupGithubRepository()
 
 val downloads = layout.buildDirectory.dir("downloads")
 val sqliteSrcFolder = downloads.map { it.dir("sqlite3") }
@@ -155,6 +154,7 @@ kotlin {
     iosSimulatorArm64()
 
     applyDefaultHierarchyTemplate()
+    explicitApi()
 
     sourceSets {
         all {
@@ -187,3 +187,5 @@ kotlin {
         }
     }
 }
+
+setupGithubRepository()
