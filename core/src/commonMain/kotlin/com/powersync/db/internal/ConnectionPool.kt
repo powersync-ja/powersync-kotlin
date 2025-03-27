@@ -60,7 +60,12 @@ internal class ConnectionPool(
         val obtainedConnections = mutableListOf<Pair<TransactorDriver, CompletableDeferred<Unit>>>()
 
         try {
-            // Try and get all the connections
+            /**
+             * This attempts to receive (all) the number of available connections.
+             * This creates a hold for each connection received. This means that subsequent
+             * receive operations must return unique connections until all the available connections
+             * have a hold.
+             */
             repeat(connections.size) {
                 try {
                     obtainedConnections.add(available.receive())
