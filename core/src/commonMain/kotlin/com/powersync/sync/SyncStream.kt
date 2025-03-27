@@ -82,7 +82,7 @@ internal class SyncStream(
         var invalidCredentials = false
         clientId = bucketStorage.getClientId()
         while (true) {
-            status.update(connecting = true)
+            status.update { copy(connecting = true) }
             try {
                 if (invalidCredentials) {
                     // This may error. In that case it will be retried again on the next
@@ -102,15 +102,9 @@ internal class SyncStream(
                 }
 
                 logger.e("Error in streamingSync: ${e.message}")
-                status.update(
-                    downloadError = e,
-                )
+                status.update { copy(downloadError = e) }
             } finally {
-                status.update(
-                    connected = false,
-                    connecting = true,
-                    downloading = false,
-                )
+                status.update { copy(connected = false, connecting = true, downloading = false) }
                 delay(retryDelayMs)
             }
         }
@@ -145,7 +139,7 @@ internal class SyncStream(
                     }
 
                     checkedCrudItem = nextCrudItem
-                    status.update(uploading = true)
+                    status.update { copy(uploading = true) }
                     uploadCrud()
                 } else {
                     // Uploading is completed
@@ -154,12 +148,12 @@ internal class SyncStream(
                 }
             } catch (e: Exception) {
                 logger.e { "Error uploading crud: ${e.message}" }
-                status.update(uploading = false, uploadError = e)
+                status.update { copy(uploading = false, uploadError = e) }
                 delay(retryDelayMs)
                 break
             }
         }
-        status.update(uploading = false)
+        status.update { copy(uploading = false) }
     }
 
     private suspend fun getWriteCheckpoint(): String {
@@ -215,7 +209,7 @@ internal class SyncStream(
                     throw RuntimeException("Received error when connecting to sync stream: ${httpResponse.bodyAsText()}")
                 }
 
-                status.update(connected = true, connecting = false)
+                status.update { copy(connected = true, connecting = false) }
                 val channel: ByteReadChannel = httpResponse.body()
 
                 while (!channel.isClosedForRead) {
@@ -256,7 +250,7 @@ internal class SyncStream(
             state = handleInstruction(line, value, state)
         }
 
-        status.update(downloading = false)
+        status.update { abortedDownload() }
 
         return state
     }
@@ -290,7 +284,6 @@ internal class SyncStream(
     ): SyncStreamState {
         val (checkpoint) = line
         state.targetCheckpoint = checkpoint
-        status.update(downloading = true)
 
         val bucketsToDelete = state.bucketSet!!.toMutableList()
         val newBuckets = mutableSetOf<String>()
@@ -302,15 +295,28 @@ internal class SyncStream(
             }
         }
 
-        if (bucketsToDelete.size > 0) {
+        state.bucketSet = newBuckets
+        startTrackingCheckpoint(checkpoint, bucketsToDelete)
+
+        return state
+    }
+
+    private suspend fun startTrackingCheckpoint(
+        checkpoint: Checkpoint,
+        bucketsToDelete: List<String>,
+    ) {
+        val progress = bucketStorage.getBucketOperationProgress()
+        status.update { copy(
+            downloading = true,
+            downloadProgress = SyncDownloadProgress(progress, checkpoint),
+        ) }
+
+        if (bucketsToDelete.isNotEmpty()) {
             logger.i { "Removing buckets [${bucketsToDelete.joinToString(separator = ", ")}]" }
         }
 
-        state.bucketSet = newBuckets
         bucketStorage.removeBuckets(bucketsToDelete)
         bucketStorage.setTargetCheckpoint(checkpoint)
-
-        return state
     }
 
     private suspend fun handleStreamingSyncCheckpointComplete(state: SyncStreamState): SyncStreamState {
@@ -332,12 +338,7 @@ internal class SyncStream(
         }
 
         state.validatedCheckpoint = state.targetCheckpoint
-        status.update(
-            lastSyncedAt = Clock.System.now(),
-            downloading = false,
-            hasSynced = true,
-            clearDownloadError = true,
-        )
+        status.update { copyWithCompletedDownload() }
 
         return state
     }
@@ -362,8 +363,8 @@ internal class SyncStream(
             logger.i { "validated partial checkpoint ${state.appliedCheckpoint} up to priority of $priority" }
         }
 
-        status.update(
-            priorityStatusEntries =
+        status.update {
+            copy(priorityStatusEntries =
                 buildList {
                     // All states with a higher priority can be deleted since this partial sync includes them.
                     addAll(status.priorityStatusEntries.filter { it.priority >= line.priority })
@@ -374,8 +375,8 @@ internal class SyncStream(
                             hasSynced = true,
                         ),
                     )
-                },
-        )
+                },)
+        }
         return state
     }
 
@@ -387,8 +388,6 @@ internal class SyncStream(
         if (state.targetCheckpoint == null) {
             throw Exception("Checkpoint diff without previous checkpoint")
         }
-
-        status.update(downloading = true)
 
         val newBuckets = mutableMapOf<String, BucketChecksum>()
 
@@ -409,15 +408,7 @@ internal class SyncStream(
             )
 
         state.targetCheckpoint = newCheckpoint
-
-        state.bucketSet = newBuckets.keys.toMutableSet()
-
-        val bucketsToDelete = checkpointDiff.removedBuckets
-        if (bucketsToDelete.isNotEmpty()) {
-            logger.d { "Remove buckets $bucketsToDelete" }
-        }
-        bucketStorage.removeBuckets(bucketsToDelete)
-        bucketStorage.setTargetCheckpoint(state.targetCheckpoint!!)
+        startTrackingCheckpoint(newCheckpoint, checkpointDiff.removedBuckets)
 
         return state
     }
@@ -426,7 +417,8 @@ internal class SyncStream(
         data: SyncLine.SyncDataBucket,
         state: SyncStreamState,
     ): SyncStreamState {
-        status.update(downloading = true)
+        val batch = SyncDataBatch(listOf(data))
+        status.update { copy(downloading = true, downloadProgress = downloadProgress?.incrementDownloaded(batch)) }
         bucketStorage.saveSyncData(SyncDataBatch(listOf(data)))
         return state
     }

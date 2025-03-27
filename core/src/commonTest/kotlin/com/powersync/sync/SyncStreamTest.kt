@@ -77,6 +77,7 @@ class SyncStreamTest {
                         checkpointValid = true,
                         checkpointFailures = emptyList(),
                     )
+                everySuspend { getBucketOperationProgress() } returns mapOf()
             }
         connector =
             mock<PowerSyncBackendConnector> {
@@ -143,7 +144,7 @@ class SyncStreamTest {
                     params = JsonObject(emptyMap()),
                 )
 
-            syncStream.status.update(connected = true)
+            syncStream.status.update { copy(connected=true) }
             syncStream.triggerCrudUpload()
 
             testLogWriter.assertCount(2)
@@ -289,6 +290,7 @@ class SyncStreamTest {
 
                     verifySuspend(order) {
                         if (priorityNo == 0) {
+                            bucketStorage.getBucketOperationProgress()
                             bucketStorage.removeBuckets(any())
                             bucketStorage.setTargetCheckpoint(any())
                         }

@@ -1,41 +1,24 @@
-package com.powersync
+package com.powersync.sync
 
 import app.cash.turbine.turbineScope
-import co.touchlab.kermit.ExperimentalKermitApi
 import co.touchlab.kermit.Logger
-import co.touchlab.kermit.Severity
-import co.touchlab.kermit.TestConfig
-import co.touchlab.kermit.TestLogWriter
+import com.powersync.PowerSyncDatabase
+import com.powersync.PowerSyncException
 import com.powersync.bucket.BucketChecksum
 import com.powersync.bucket.BucketPriority
 import com.powersync.bucket.Checkpoint
 import com.powersync.bucket.OpType
 import com.powersync.bucket.OplogEntry
-import com.powersync.connectors.PowerSyncBackendConnector
-import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.db.PowerSyncDatabaseImpl
 import com.powersync.db.schema.Schema
-import com.powersync.sync.SyncLine
-import com.powersync.sync.SyncStream
-import com.powersync.testutils.MockSyncService
 import com.powersync.testutils.UserRow
-import com.powersync.testutils.cleanup
 import com.powersync.testutils.factory
-import com.powersync.testutils.generatePrintLogWriter
 import com.powersync.testutils.waitFor
 import com.powersync.utils.JsonUtil
-import dev.mokkery.answering.returns
-import dev.mokkery.everySuspend
-import dev.mokkery.mock
 import dev.mokkery.verify
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.JsonObject
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -44,75 +27,8 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 
-@OptIn(ExperimentalKermitApi::class)
-class SyncIntegrationTest {
-    private val logWriter =
-        TestLogWriter(
-            loggable = Severity.Debug,
-        )
-
-    private val logger =
-        Logger(
-            TestConfig(
-                minSeverity = Severity.Debug,
-                logWriterList = listOf(logWriter, generatePrintLogWriter()),
-            ),
-        )
-    private lateinit var database: PowerSyncDatabaseImpl
-    private lateinit var connector: PowerSyncBackendConnector
-    private lateinit var syncLines: Channel<SyncLine>
-
-    @BeforeTest
-    fun setup() {
-        cleanup("testdb")
-        logWriter.reset()
-        database = openDb()
-        connector =
-            mock<PowerSyncBackendConnector> {
-                everySuspend { getCredentialsCached() } returns
-                    PowerSyncCredentials(
-                        token = "test-token",
-                        userId = "test-user",
-                        endpoint = "https://test.com",
-                    )
-
-                everySuspend { invalidateCredentials() } returns Unit
-            }
-        syncLines = Channel()
-
-        runBlocking {
-            database.disconnectAndClear(true)
-        }
-    }
-
-    @AfterTest
-    fun teardown() {
-        runBlocking {
-            database.close()
-        }
-        cleanup("testdb")
-    }
-
-    private fun openDb() =
-        PowerSyncDatabase(
-            factory = factory,
-            schema = Schema(UserRow.table),
-            dbFilename = "testdb",
-        ) as PowerSyncDatabaseImpl
-
-    private fun syncStream(): SyncStream {
-        val client = MockSyncService(syncLines)
-        return SyncStream(
-            bucketStorage = database.bucketStorage,
-            connector = connector,
-            httpEngine = client,
-            uploadCrud = { },
-            retryDelayMs = 10,
-            logger = logger,
-            params = JsonObject(emptyMap()),
-        )
-    }
-
+@OptIn(co.touchlab.kermit.ExperimentalKermitApi::class)
+class SyncIntegrationTest: BaseInMemorySyncTest() {
     private suspend fun expectUserCount(amount: Int) {
         val users = database.getAll("SELECT * FROM users;") { UserRow.from(it) }
         assertEquals(amount, users.size, "Expected $amount users, got $users")
