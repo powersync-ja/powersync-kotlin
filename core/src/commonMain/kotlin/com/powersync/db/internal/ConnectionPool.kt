@@ -8,10 +8,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ClosedSendChannelException
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
-import kotlin.coroutines.coroutineContext
 
 internal class ConnectionPool(
     factory: () -> PsSqlDriver,
@@ -64,7 +62,6 @@ internal class ConnectionPool(
         try {
             // Try and get all the connections
             repeat(connections.size) {
-                coroutineContext.ensureActive()
                 try {
                     obtainedConnections.add(available.receive())
                 } catch (e: PoolClosedException) {
@@ -75,7 +72,6 @@ internal class ConnectionPool(
                 }
             }
 
-            coroutineContext.ensureActive()
             return action(obtainedConnections.map { it.first })
         } finally {
             obtainedConnections.forEach { it.second.complete(Unit) }
