@@ -28,7 +28,7 @@ import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 
 @OptIn(co.touchlab.kermit.ExperimentalKermitApi::class)
-class SyncIntegrationTest: BaseInMemorySyncTest() {
+class SyncIntegrationTest : BaseInMemorySyncTest() {
     private suspend fun expectUserCount(amount: Int) {
         val users = database.getAll("SELECT * FROM users;") { UserRow.from(it) }
         assertEquals(amount, users.size, "Expected $amount users, got $users")

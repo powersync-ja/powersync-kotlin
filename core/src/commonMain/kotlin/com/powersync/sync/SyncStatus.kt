@@ -127,18 +127,20 @@ internal data class SyncStatusDataContainer(
     override val anyError
         get() = downloadError ?: uploadError
 
-    internal fun abortedDownload() = copy(
-        downloading = false,
-        downloadProgress = null,
-    )
+    internal fun abortedDownload() =
+        copy(
+            downloading = false,
+            downloadProgress = null,
+        )
 
-    internal fun copyWithCompletedDownload() = copy(
-        lastSyncedAt = Clock.System.now(),
-        downloading = false,
-        downloadProgress = null,
-        hasSynced = true,
-        downloadError = null,
-    )
+    internal fun copyWithCompletedDownload() =
+        copy(
+            lastSyncedAt = Clock.System.now(),
+            downloading = false,
+            downloadProgress = null,
+            hasSynced = true,
+            downloadError = null,
+        )
 }
 
 @ConsistentCopyVisibility

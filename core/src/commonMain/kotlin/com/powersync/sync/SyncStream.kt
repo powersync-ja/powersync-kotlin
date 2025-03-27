@@ -306,10 +306,12 @@ internal class SyncStream(
         bucketsToDelete: List<String>,
     ) {
         val progress = bucketStorage.getBucketOperationProgress()
-        status.update { copy(
-            downloading = true,
-            downloadProgress = SyncDownloadProgress(progress, checkpoint),
-        ) }
+        status.update {
+            copy(
+                downloading = true,
+                downloadProgress = SyncDownloadProgress(progress, checkpoint),
+            )
+        }
 
         if (bucketsToDelete.isNotEmpty()) {
             logger.i { "Removing buckets [${bucketsToDelete.joinToString(separator = ", ")}]" }
@@ -364,18 +366,20 @@ internal class SyncStream(
         }
 
         status.update {
-            copy(priorityStatusEntries =
-                buildList {
-                    // All states with a higher priority can be deleted since this partial sync includes them.
-                    addAll(status.priorityStatusEntries.filter { it.priority >= line.priority })
-                    add(
-                        PriorityStatusEntry(
-                            priority = priority,
-                            lastSyncedAt = Clock.System.now(),
-                            hasSynced = true,
-                        ),
-                    )
-                },)
+            copy(
+                priorityStatusEntries =
+                    buildList {
+                        // All states with a higher priority can be deleted since this partial sync includes them.
+                        addAll(status.priorityStatusEntries.filter { it.priority >= line.priority })
+                        add(
+                            PriorityStatusEntry(
+                                priority = priority,
+                                lastSyncedAt = Clock.System.now(),
+                                hasSynced = true,
+                            ),
+                        )
+                    },
+            )
         }
         return state
     }
