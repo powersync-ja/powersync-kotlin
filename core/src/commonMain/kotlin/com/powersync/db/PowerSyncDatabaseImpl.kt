@@ -24,11 +24,11 @@ import com.powersync.utils.JsonParam
 import com.powersync.utils.JsonUtil
 import com.powersync.utils.throttle
 import com.powersync.utils.toJsonObject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
@@ -164,7 +164,7 @@ internal class PowerSyncDatabaseImpl(
         this.syncStream = stream
 
         val db = this
-        val job = SupervisorJob()
+        val job = SupervisorJob(scope.coroutineContext[Job])
         syncSupervisorJob = job
         scope.launch(job) {
             launch {
@@ -367,7 +367,8 @@ internal class PowerSyncDatabaseImpl(
     private suspend fun disconnectInternal() {
         val syncJob = syncSupervisorJob
         if (syncJob != null && syncJob.isActive) {
-            syncJob.cancelAndJoin()
+            syncJob.cancel(CancellationException("disconnect() called"))
+            syncJob.join()
             syncSupervisorJob = null
         }
 
