@@ -56,6 +56,33 @@ internal class ConnectionPool(
         }
     }
 
+    suspend fun <R> withAllConnections(action: suspend (connections: List<TransactorDriver>) -> R): R {
+        val obtainedConnections = mutableListOf<Pair<TransactorDriver, CompletableDeferred<Unit>>>()
+
+        try {
+            /**
+             * This attempts to receive (all) the number of available connections.
+             * This creates a hold for each connection received. This means that subsequent
+             * receive operations must return unique connections until all the available connections
+             * have a hold.
+             */
+            repeat(connections.size) {
+                try {
+                    obtainedConnections.add(available.receive())
+                } catch (e: PoolClosedException) {
+                    throw PowerSyncException(
+                        message = "Cannot process connection pool request",
+                        cause = e,
+                    )
+                }
+            }
+
+            return action(obtainedConnections.map { it.first })
+        } finally {
+            obtainedConnections.forEach { it.second.complete(Unit) }
+        }
+    }
+
     suspend fun close() {
         available.cancel(PoolClosedException)
         connections.joinAll()

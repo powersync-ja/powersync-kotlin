@@ -267,7 +267,10 @@ class DatabaseTest {
 
             // Any new readLocks should throw
             val exception = assertFailsWith<PowerSyncException> { database.readLock {} }
-            assertEquals(expected = "Cannot process connection pool request", actual = exception.message)
+            assertEquals(
+                expected = "Cannot process connection pool request",
+                actual = exception.message,
+            )
             // Release the lock
             pausedLock.complete(Unit)
             lockJob.await()
@@ -343,5 +346,80 @@ class DatabaseTest {
                     it.get("SELECT COUNT(*) from users") { it.getLong(0)!! }
                 }
             assertEquals(expected = 0, actual = count)
+        }
+
+    @Test
+    fun localOnlyCRUD() =
+        runTest {
+            database.updateSchema(
+                schema =
+                    Schema(
+                        UserRow.table.copy(
+                            // Updating the existing "users" view to localOnly causes an error
+                            // no such table: main.ps_data_local__users.
+                            // Perhaps this is a bug in the core extension
+                            name = "local_users",
+                            localOnly = true,
+                        ),
+                    ),
+            )
+
+            database.execute(
+                """
+                    INSERT INTO
+                       local_users (id, name, email)
+                    VALUES
+                     (uuid(), "one", "two@t.com")
+                    """,
+            )
+
+            val count = database.get("SELECT COUNT(*) FROM local_users") { it.getLong(0)!! }
+            assertEquals(actual = count, expected = 1)
+
+            // No CRUD entries should be present for local only tables
+            val crudItems = database.getAll("SELECT id from ps_crud") { it.getLong(0)!! }
+            assertEquals(actual = crudItems.size, expected = 0)
+        }
+
+    @Test
+    fun insertOnlyCRUD() =
+        runTest {
+            database.updateSchema(schema = Schema(UserRow.table.copy(insertOnly = true)))
+
+            database.execute(
+                """
+                    INSERT INTO
+                       users (id, name, email)
+                    VALUES
+                     (uuid(), "one", "two@t.com")
+                    """,
+            )
+
+            val crudItems = database.getAll("SELECT id from ps_crud") { it.getLong(0)!! }
+            assertEquals(actual = crudItems.size, expected = 1)
+
+            val count = database.get("SELECT COUNT(*) from users") { it.getLong(0)!! }
+            assertEquals(actual = count, expected = 0)
+        }
+
+    @Test
+    fun viewOverride() =
+        runTest {
+            database.updateSchema(schema = Schema(UserRow.table.copy(viewNameOverride = "people")))
+
+            database.execute(
+                """
+                    INSERT INTO
+                       people (id, name, email)
+                    VALUES
+                     (uuid(), "one", "two@t.com")
+                    """,
+            )
+
+            val crudItems = database.getAll("SELECT id from ps_crud") { it.getLong(0)!! }
+            assertEquals(actual = crudItems.size, expected = 1)
+
+            val count = database.get("SELECT COUNT(*) from people") { it.getLong(0)!! }
+            assertEquals(actual = count, expected = 1)
         }
 }

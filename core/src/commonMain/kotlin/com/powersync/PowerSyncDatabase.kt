@@ -5,6 +5,7 @@ import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.Queries
 import com.powersync.db.crud.CrudBatch
 import com.powersync.db.crud.CrudTransaction
+import com.powersync.db.schema.Schema
 import com.powersync.sync.SyncStatus
 import com.powersync.utils.JsonParam
 import kotlin.coroutines.cancellation.CancellationException
@@ -35,6 +36,15 @@ public interface PowerSyncDatabase : Queries {
      * The current sync status.
      */
     public val currentStatus: SyncStatus
+
+    /**
+     * Replace the schema with a new version. This is for advanced use cases - typically the schema
+     * should just be specified once in the constructor.
+     *
+     * Cannot be used while connected - this should only be called before connect.
+     */
+    @Throws(PowerSyncException::class, CancellationException::class)
+    public suspend fun updateSchema(schema: Schema)
 
     /**
      * Suspend function that resolves when the first sync has occurred

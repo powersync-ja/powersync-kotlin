@@ -3,6 +3,7 @@ package com.powersync.db
 import co.touchlab.kermit.Logger
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
+import com.powersync.PowerSyncException
 import com.powersync.bucket.BucketPriority
 import com.powersync.bucket.BucketStorage
 import com.powersync.bucket.BucketStorageImpl
@@ -14,6 +15,7 @@ import com.powersync.db.crud.CrudTransaction
 import com.powersync.db.internal.InternalDatabaseImpl
 import com.powersync.db.internal.InternalTable
 import com.powersync.db.schema.Schema
+import com.powersync.db.schema.toSerializable
 import com.powersync.sync.PriorityStatusEntry
 import com.powersync.sync.SyncStatus
 import com.powersync.sync.SyncStatusData
@@ -50,7 +52,7 @@ import kotlinx.serialization.encodeToString
  * All changes to local tables are automatically recorded, whether connected or not. Once connected, the changes are uploaded.
  */
 internal class PowerSyncDatabaseImpl(
-    val schema: Schema,
+    var schema: Schema,
     val scope: CoroutineScope,
     val factory: DatabaseDriverFactory,
     private val dbFilename: String,
@@ -113,21 +115,25 @@ internal class PowerSyncDatabaseImpl(
                 tx.getOptional("SELECT powersync_init()") {}
             }
 
-            applySchema()
+            updateSchema(schema)
             updateHasSynced()
         }
     }
 
-    private suspend fun applySchema() {
-        val schemaJson = JsonUtil.json.encodeToString(schema)
-
-        internalDb.writeTransaction { tx ->
-            tx.getOptional(
-                "SELECT powersync_replace_schema(?);",
-                listOf(schemaJson),
-            ) {}
+    override suspend fun updateSchema(schema: Schema) =
+        runWrappedSuspending {
+            mutex.withLock {
+                if (this.syncStream != null) {
+                    throw PowerSyncException(
+                        "Cannot update schema while connected",
+                        cause = Exception("PowerSync client is already connected"),
+                    )
+                }
+                val schemaJson = JsonUtil.json.encodeToString(schema.toSerializable())
+                internalDb.updateSchema(schemaJson)
+                this.schema = schema
+            }
         }
-    }
 
     override suspend fun connect(
         connector: PowerSyncBackendConnector,

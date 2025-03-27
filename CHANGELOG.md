@@ -7,6 +7,9 @@
 * Improved concurrent SQLite connection support accross various platforms. All platforms now use a single write connection and multiple read connections for concurrent read queries.
 * Added the ability to open a SQLite database given a custom `dbDirectory` path. This is currently not supported on iOS due to internal driver restrictions.
 * Internaly improved the linking of SQLite for iOS.
+* Enabled Full Text Search on iOS platforms.
+* Added the ability to update the schema for existing PowerSync clients.
+* Fixed bug where local only, insert only and view name overrides were not applied for schema tables.
 * The Android SQLite driver now uses the [Xerial JDBC library](https://github.com/xerial/sqlite-jdbc). This removes the requirement for users to add the jitpack Maven repository to their projects.
 ```diff
 // settings.gradle.kts example

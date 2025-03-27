@@ -3,18 +3,8 @@ package com.powersync.db.schema
 import kotlinx.serialization.Serializable
 
 /** A single column in a table schema. */
-@Serializable
 public data class Column(
-    /** Name of the column. */
     val name: String,
-    /** Type of the column.
-     *
-     * If the underlying data does not match this type,
-     * it is cast automatically.
-     *
-     * For details on the cast, see:
-     * https://www.sqlite.org/lang_expr.html#castexpr
-     */
     val type: ColumnType,
 ) {
     public companion object {
@@ -28,3 +18,11 @@ public data class Column(
         public fun real(name: String): Column = Column(name, ColumnType.REAL)
     }
 }
+
+@Serializable
+internal data class SerializableColumn(
+    val name: String,
+    val type: ColumnType,
+)
+
+internal fun Column.toSerializable(): SerializableColumn = with(this) { SerializableColumn(name, type) }
