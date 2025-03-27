@@ -157,38 +157,6 @@ public data class SyncStatus internal constructor(
     /**
      * Updates the internal sync status indicators and emits Flow updates
      */
-    @Deprecated("Use callback-based approach instead")
-    internal fun update(
-        connected: Boolean? = null,
-        connecting: Boolean? = null,
-        downloading: Boolean? = null,
-        uploading: Boolean? = null,
-        hasSynced: Boolean? = null,
-        lastSyncedAt: Instant? = null,
-        uploadError: Any? = null,
-        downloadError: Any? = null,
-        clearUploadError: Boolean = false,
-        clearDownloadError: Boolean = false,
-        priorityStatusEntries: List<PriorityStatusEntry>? = null,
-    ) {
-        data =
-            data.copy(
-                connected = connected ?: data.connected,
-                connecting = connecting ?: data.connecting,
-                downloading = downloading ?: data.downloading,
-                uploading = uploading ?: data.uploading,
-                lastSyncedAt = lastSyncedAt ?: data.lastSyncedAt,
-                hasSynced = hasSynced ?: data.hasSynced,
-                priorityStatusEntries = priorityStatusEntries ?: data.priorityStatusEntries,
-                uploadError = if (clearUploadError) null else uploadError,
-                downloadError = if (clearDownloadError) null else downloadError,
-            )
-        stateFlow.value = data
-    }
-
-    /**
-     * Updates the internal sync status indicators and emits Flow updates
-     */
     internal inline fun update(makeCopy: SyncStatusDataContainer.() -> SyncStatusDataContainer) {
         data = data.makeCopy()
         stateFlow.value = data
