@@ -66,6 +66,26 @@ internal class InternalDatabaseImpl(
             context.execute(sql, parameters)
         }
 
+    override suspend fun updateSchema(schemaJson: String) {
+        withContext(dbContext) {
+            runWrappedSuspending {
+                // First get a lock on all read connections
+                readPool.withAllConnections { readConnections ->
+                    // Then get access to the write connection
+                    writeTransaction { tx ->
+                        tx.getOptional(
+                            "SELECT powersync_replace_schema(?);",
+                            listOf(schemaJson),
+                        ) {}
+                    }
+
+                    // Update the schema on all write connections
+                    readConnections.forEach { it.driver.getAll("pragma table_info('sqlite_master')") {} }
+                }
+            }
+        }
+    }
+
     override suspend fun <RowType : Any> get(
         sql: String,
         parameters: List<Any?>?,

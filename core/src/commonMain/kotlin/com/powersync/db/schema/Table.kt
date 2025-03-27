@@ -1,5 +1,6 @@
 package com.powersync.db.schema
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 private const val MAX_AMOUNT_OF_COLUMNS = 1999
@@ -7,7 +8,6 @@ private const val MAX_AMOUNT_OF_COLUMNS = 1999
 /**
  * A single table in the schema.
  */
-@Serializable
 public data class Table constructor(
     /**
      * The synced table name, matching sync rules.
@@ -24,15 +24,15 @@ public data class Table constructor(
     /**
      * Whether the table only exists only.
      */
-    private val localOnly: Boolean = false,
+    val localOnly: Boolean = false,
     /**
      * Whether this is an insert-only table.
      */
-    private val insertOnly: Boolean = false,
+    val insertOnly: Boolean = false,
     /**
      * Override the name for the view
      */
-    private val viewNameOverride: String? = null,
+    val viewNameOverride: String? = null,
 ) {
     init {
         /**
@@ -184,3 +184,28 @@ public data class Table constructor(
     public val viewName: String
         get() = viewNameOverride ?: name
 }
+
+@Serializable
+internal data class SerializableTable(
+    var name: String,
+    var columns: List<SerializableColumn>,
+    var indexes: List<SerializableIndex> = listOf(),
+    @SerialName("local_only")
+    val localOnly: Boolean = false,
+    @SerialName("insert_only")
+    val insertOnly: Boolean = false,
+    @SerialName("view_name")
+    val viewName: String? = null,
+)
+
+internal fun Table.toSerializable(): SerializableTable =
+    with(this) {
+        SerializableTable(
+            name,
+            columns.map { it.toSerializable() },
+            indexes.map { it.toSerializable() },
+            localOnly,
+            insertOnly,
+            viewName,
+        )
+    }

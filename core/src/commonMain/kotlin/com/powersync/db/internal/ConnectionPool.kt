@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 
 internal class ConnectionPool(
     factory: () -> PsSqlDriver,
-    size: Int = 5,
+    val size: Int = 5,
     private val scope: CoroutineScope,
 ) {
     private val available = Channel<Pair<TransactorDriver, CompletableDeferred<Unit>>>()
@@ -53,6 +53,30 @@ internal class ConnectionPool(
             return action(connection)
         } finally {
             done.complete(Unit)
+        }
+    }
+
+    suspend fun <R> withAllConnections(action: suspend (connections: List<TransactorDriver>) -> R): R {
+        val connections = mutableListOf<Pair<TransactorDriver, CompletableDeferred<Unit>>>()
+
+        // Try and get all the connections
+        for (i in 1..connections.size) {
+            try {
+                connections.add(available.receive())
+            } catch (e: PoolClosedException) {
+                // Free any connections we already received
+                connections.forEach { it.second.complete(Unit) }
+                throw PowerSyncException(
+                    message = "Cannot process connection pool request",
+                    cause = e,
+                )
+            }
+        }
+
+        try {
+            return action(connections.map { it.first })
+        } finally {
+            connections.forEach { it.second.complete(Unit) }
         }
     }
 

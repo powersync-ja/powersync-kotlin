@@ -6,21 +6,10 @@ import kotlinx.serialization.Serializable
 /**
  * Describes an indexed column.
  */
-@Serializable
 public data class IndexedColumn(
-    /**
-     * Name of the column to index.
-     */
-    @SerialName("name")
     val column: String,
-    /**
-     * Whether this column is stored in ascending order in the index.
-     */
-    private val ascending: Boolean = true,
+    val ascending: Boolean = true,
     private var columnDefinition: Column? = null,
-    /**
-     * The column definition type
-     */
     var type: ColumnType? = null,
 ) {
     public companion object {
@@ -45,5 +34,18 @@ public data class IndexedColumn(
         }
     }
 }
+
+@Serializable
+internal data class SerializableIndexColumn(
+    @SerialName("name")
+    val column: String,
+    val type: ColumnType?,
+    val ascending: Boolean,
+)
+
+internal fun IndexedColumn.toSerializable(): SerializableIndexColumn =
+    with(this) {
+        SerializableIndexColumn(column, type, ascending)
+    }
 
 internal fun mapColumn(column: Column): String = "CAST(json_extract(data, ${column.name}) as ${column.type})"

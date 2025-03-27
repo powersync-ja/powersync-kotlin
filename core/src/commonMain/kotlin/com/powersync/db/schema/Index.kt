@@ -2,7 +2,6 @@ package com.powersync.db.schema
 
 import kotlinx.serialization.Serializable
 
-@Serializable
 public data class Index(
     /**
      * Descriptive name of the index.
@@ -44,3 +43,17 @@ public data class Index(
         return """CREATE INDEX "${fullName(table)}" ON "${table.internalName}"($fields)"""
     }
 }
+
+@Serializable
+internal data class SerializableIndex(
+    val name: String,
+    val columns: List<SerializableIndexColumn>,
+)
+
+internal fun Index.toSerializable(): SerializableIndex =
+    with(this) {
+        SerializableIndex(
+            name,
+            columns.map { it.toSerializable() },
+        )
+    }
