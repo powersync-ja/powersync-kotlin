@@ -52,7 +52,7 @@ import kotlinx.serialization.encodeToString
  * All changes to local tables are automatically recorded, whether connected or not. Once connected, the changes are uploaded.
  */
 internal class PowerSyncDatabaseImpl(
-    val schema: Schema,
+    var schema: Schema,
     val scope: CoroutineScope,
     val factory: DatabaseDriverFactory,
     private val dbFilename: String,
@@ -131,6 +131,7 @@ internal class PowerSyncDatabaseImpl(
                 }
                 val schemaJson = JsonUtil.json.encodeToString(schema.toSerializable())
                 internalDb.updateSchema(schemaJson)
+                this.schema = schema
             }
         }
 
