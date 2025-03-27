@@ -4,7 +4,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class ProgressTest {
-
     @Test
     fun reportsFraction() {
         assertEquals(0.0, ProgressWithOperations(0, 10).fraction)

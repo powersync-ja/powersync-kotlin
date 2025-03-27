@@ -357,12 +357,14 @@ internal class PowerSyncDatabaseImpl(
             syncStream = null
         }
 
-        currentStatus.update { copy(
-            connected = false,
-            connecting = false,
-            downloading = false,
-            downloadProgress = null,
-        ) }
+        currentStatus.update {
+            copy(
+                connected = false,
+                connecting = false,
+                downloading = false,
+                downloadProgress = null,
+            )
+        }
     }
 
     override suspend fun disconnectAndClear(clearLocal: Boolean) {

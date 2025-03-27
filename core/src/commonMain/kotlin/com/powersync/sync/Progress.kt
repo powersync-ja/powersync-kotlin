@@ -22,7 +22,7 @@ public data class ProgressWithOperations(
      */
     public val fraction: Double get() {
         if (completed == 0) {
-            return 0.0;
+            return 0.0
         }
 
         return completed.toDouble() / total.toDouble()
@@ -45,24 +45,29 @@ public data class ProgressWithOperations(
  */
 @ConsistentCopyVisibility
 public data class SyncDownloadProgress private constructor(
-    private val buckets: Map<String, BucketProgress>
+    private val buckets: Map<String, BucketProgress>,
 ) {
     /**
      * Creates download progress information from the local progress counters since the last full sync and the target
      * checkpoint.
      */
-    internal constructor(localProgress: Map<String, LocalOperationCounters>, target: Checkpoint) : this(buildMap {
-        for (entry in target.checksums) {
-            val savedProgress = localProgress[entry.bucket]
+    internal constructor(localProgress: Map<String, LocalOperationCounters>, target: Checkpoint) : this(
+        buildMap {
+            for (entry in target.checksums) {
+                val savedProgress = localProgress[entry.bucket]
 
-            put(entry.bucket, BucketProgress(
-                priority = entry.priority,
-                atLast = savedProgress?.atLast ?: 0,
-                sinceLast = savedProgress?.sinceLast ?: 0,
-                targetCount = entry.count ?: 0,
-            ))
-        }
-    })
+                put(
+                    entry.bucket,
+                    BucketProgress(
+                        priority = entry.priority,
+                        atLast = savedProgress?.atLast ?: 0,
+                        sinceLast = savedProgress?.sinceLast ?: 0,
+                        targetCount = entry.count ?: 0,
+                    ),
+                )
+            }
+        },
+    )
 
     /**
      * Download progress towards a complete checkpoint being received.
@@ -83,33 +88,37 @@ public data class SyncDownloadProgress private constructor(
         return ProgressWithOperations(completed = completed, total = total)
     }
 
-    internal fun incrementDownloaded(batch: SyncDataBatch): SyncDownloadProgress {
-        return SyncDownloadProgress(buildMap {
-            putAll(this@SyncDownloadProgress.buckets)
+    internal fun incrementDownloaded(batch: SyncDataBatch): SyncDownloadProgress =
+        SyncDownloadProgress(
+            buildMap {
+                putAll(this@SyncDownloadProgress.buckets)
 
-            for (bucket in batch.buckets) {
-                val previous = get(bucket.bucket) ?: continue
-                put(bucket.bucket, previous.copy(
-                    sinceLast = previous.sinceLast + bucket.data.size
-                ))
-            }
-        })
-    }
+                for (bucket in batch.buckets) {
+                    val previous = get(bucket.bucket) ?: continue
+                    put(
+                        bucket.bucket,
+                        previous.copy(
+                            sinceLast = previous.sinceLast + bucket.data.size,
+                        ),
+                    )
+                }
+            },
+        )
 
-    private fun targetAndCompletedCounts(priority: BucketPriority): Pair<Int, Int> {
-        return buckets.values.asSequence()
+    private fun targetAndCompletedCounts(priority: BucketPriority): Pair<Int, Int> =
+        buckets.values
+            .asSequence()
             .filter { it.priority >= priority }
             .fold(0 to 0) { (prevTarget, prevCompleted), entry ->
                 (prevTarget + entry.total) to (prevCompleted + entry.sinceLast)
             }
-    }
 }
 
 private data class BucketProgress(
     val priority: BucketPriority,
     val atLast: Int,
     val sinceLast: Int,
-    val targetCount: Int
+    val targetCount: Int,
 ) {
     val total get(): Int = targetCount - atLast
 }

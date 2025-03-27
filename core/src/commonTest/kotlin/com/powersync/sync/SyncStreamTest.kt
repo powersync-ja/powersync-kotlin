@@ -144,7 +144,7 @@ class SyncStreamTest {
                     params = JsonObject(emptyMap()),
                 )
 
-            syncStream.status.update { copy(connected=true) }
+            syncStream.status.update { copy(connected = true) }
             syncStream.triggerCrudUpload()
 
             testLogWriter.assertCount(2)
