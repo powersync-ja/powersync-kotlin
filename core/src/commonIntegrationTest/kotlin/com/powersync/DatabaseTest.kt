@@ -373,6 +373,9 @@ class DatabaseTest {
                     """,
             )
 
+            val count = database.get("SELECT COUNT(*) FROM local_users") { it.getLong(0)!! }
+            assertEquals(actual = count, expected = 1)
+
             // No CRUD entries should be present for local only tables
             val crudItems = database.getAll("SELECT id from ps_crud") { it.getLong(0)!! }
             assertEquals(actual = crudItems.size, expected = 0)

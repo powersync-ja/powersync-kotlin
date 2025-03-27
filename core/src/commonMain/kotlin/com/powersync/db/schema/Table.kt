@@ -32,7 +32,7 @@ public data class Table constructor(
     /**
      * Override the name for the view
      */
-    val viewNameOverride: String? = null,
+    private val viewNameOverride: String? = null,
 ) {
     init {
         /**

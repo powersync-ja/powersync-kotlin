@@ -79,7 +79,7 @@ internal class InternalDatabaseImpl(
                         ) {}
                     }
 
-                    // Update the schema on all write connections
+                    // Update the schema on all read connections
                     readConnections.forEach { it.driver.getAll("pragma table_info('sqlite_master')") {} }
                 }
             }

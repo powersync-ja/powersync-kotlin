@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 
 internal class ConnectionPool(
     factory: () -> PsSqlDriver,
-    val size: Int = 5,
+    size: Int = 5,
     private val scope: CoroutineScope,
 ) {
     private val available = Channel<Pair<TransactorDriver, CompletableDeferred<Unit>>>()
