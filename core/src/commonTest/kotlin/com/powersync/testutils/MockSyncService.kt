@@ -47,10 +47,11 @@ internal class MockSyncService(
         val scope = CoroutineScope(context)
 
         return if (data.url.encodedPath == "/sync/stream") {
-            val job = scope.writer(autoFlush = true) {
+            val job = scope.writer {
                 lines.consumeEach {
                     val serializedLine = JsonUtil.json.encodeToString(it)
                     channel.writeStringUtf8("$serializedLine\n")
+                    channel.flush()
                 }
             }
 
