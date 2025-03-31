@@ -27,9 +27,9 @@ import com.powersync.utils.JsonUtil
 import dev.mokkery.answering.returns
 import dev.mokkery.everySuspend
 import dev.mokkery.mock
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
@@ -99,8 +99,8 @@ class SyncIntegrationTest {
             dbFilename = "testdb",
         ) as PowerSyncDatabaseImpl
 
-    private fun CoroutineScope.syncStream(): SyncStream {
-        val client = MockSyncService.client(this, syncLines.receiveAsFlow())
+    private fun syncStream(): SyncStream {
+        val client = MockSyncService(syncLines)
         return SyncStream(
             bucketStorage = database.bucketStorage,
             connector = connector,
@@ -115,6 +115,27 @@ class SyncIntegrationTest {
     private suspend fun expectUserCount(amount: Int) {
         val users = database.getAll("SELECT * FROM users;") { UserRow.from(it) }
         assertEquals(amount, users.size, "Expected $amount users, got $users")
+    }
+
+    @Test
+    @OptIn(DelicateCoroutinesApi::class)
+    fun closesResponseStreamOnDisconnect() = runTest {
+        val syncStream = syncStream()
+        database.connectInternal(syncStream, 1000L)
+
+        turbineScope(timeout = 10.0.seconds) {
+            val turbine = database.currentStatus.asFlow().testIn(this)
+            turbine.waitFor { it.connected }
+
+            database.close()
+            turbine.waitFor { !it.connected }
+            turbine.cancel()
+        }
+
+        // Closing the database should close the channel
+        val channelClose = CompletableDeferred<Unit>()
+        syncLines.invokeOnClose { channelClose.complete(Unit) }
+        channelClose.await()
     }
 
     @Test

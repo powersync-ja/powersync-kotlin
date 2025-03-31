@@ -96,7 +96,6 @@ internal class PowerSyncDatabaseImpl(
     override val currentStatus: SyncStatus = SyncStatus()
 
     private val mutex = Mutex()
-    private var syncStream: SyncStream? = null
     private var syncSupervisorJob: Job? = null
 
     // This is set in the init
@@ -123,7 +122,7 @@ internal class PowerSyncDatabaseImpl(
     override suspend fun updateSchema(schema: Schema) =
         runWrappedSuspending {
             mutex.withLock {
-                if (this.syncStream != null) {
+                if (this.syncSupervisorJob != null) {
                     throw PowerSyncException(
                         "Cannot update schema while connected",
                         cause = Exception("PowerSync client is already connected"),
@@ -161,8 +160,6 @@ internal class PowerSyncDatabaseImpl(
         stream: SyncStream,
         crudThrottleMs: Long,
     ) {
-        this.syncStream = stream
-
         val db = this
         val job = SupervisorJob(scope.coroutineContext[Job])
         syncSupervisorJob = job
@@ -195,7 +192,7 @@ internal class PowerSyncDatabaseImpl(
                 // We have a lock if we reached here
                 try {
                     ensureActive()
-                    syncStream!!.streamingSync()
+                    stream.streamingSync()
                 } finally {
                     streamMutex.unlock(db)
                 }
@@ -225,8 +222,14 @@ internal class PowerSyncDatabaseImpl(
                     .filter { it.contains(InternalTable.CRUD.toString()) }
                     .throttle(crudThrottleMs)
                     .collect {
-                        syncStream!!.triggerCrudUpload()
+                        stream.triggerCrudUpload()
                     }
+            }
+        }
+
+        job.invokeOnCompletion {
+            if (it is DisconnectRequestedException) {
+                stream.invalidateCredentials()
             }
         }
     }
@@ -367,14 +370,10 @@ internal class PowerSyncDatabaseImpl(
     private suspend fun disconnectInternal() {
         val syncJob = syncSupervisorJob
         if (syncJob != null && syncJob.isActive) {
-            syncJob.cancel(CancellationException("disconnect() called"))
+            // Using this exception type will also make the sync job invalidate credentials.
+            syncJob.cancel(DisconnectRequestedException)
             syncJob.join()
             syncSupervisorJob = null
-        }
-
-        if (syncStream != null) {
-            syncStream?.invalidateCredentials()
-            syncStream = null
         }
 
         currentStatus.update(
@@ -488,3 +487,5 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 }
+
+internal object DisconnectRequestedException: CancellationException("disconnect() called")

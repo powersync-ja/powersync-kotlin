@@ -210,7 +210,7 @@ class SyncStreamTest {
             // TODO: It would be neat if we could use in-memory sqlite instances instead of mocking everything
             // Revisit https://github.com/powersync-ja/powersync-kotlin/pull/117/files at some point
             val syncLines = Channel<SyncLine>()
-            val client = MockSyncService.client(this, syncLines.receiveAsFlow())
+            val client = MockSyncService(syncLines)
 
             syncStream =
                 SyncStream(
