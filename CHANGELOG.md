@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0-BETA29 (unreleased)
+
+* Fix potential race condition between jobs in `connect()` and `disconnect()`.
+
 ## 1.0.0-BETA28
 
 * Update PowerSync SQLite core extension to 0.3.12.
