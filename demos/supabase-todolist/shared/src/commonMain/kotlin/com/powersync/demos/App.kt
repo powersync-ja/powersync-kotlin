@@ -35,6 +35,7 @@ import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.core.module.dsl.withOptions
 import org.koin.dsl.module
+import kotlin.time.Duration.Companion.milliseconds
 
 val sharedAppModule = module {
     // This is overridden by the androidBackgroundSync example
@@ -71,7 +72,7 @@ fun AppContent(
     db: PowerSyncDatabase = koinInject(),
     modifier: Modifier = Modifier,
 ) {
-    val status by db.currentStatus.composeState()
+    val status by db.currentStatus.composeState(debounce = 200.0.milliseconds)
 
     val authViewModel = koinViewModel<AuthViewModel>()
     val navController = koinInject<NavController>()
