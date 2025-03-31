@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.powersync.PowerSyncDatabase
+import com.powersync.bucket.BucketPriority
 import com.powersync.compose.composeState
 import org.koin.compose.koinInject
 
@@ -26,6 +27,7 @@ import org.koin.compose.koinInject
 @Composable
 fun GuardBySync(
     db: PowerSyncDatabase = koinInject(),
+    priority: BucketPriority? = null,
     content: @Composable () -> Unit
 ) {
     val state by db.currentStatus.composeState()
@@ -40,12 +42,24 @@ fun GuardBySync(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(
-            text = "Busy with initial sync...",
-            style = MaterialTheme.typography.h6,
-        )
+        // When we have no hasSynced information, the database is still being opened. We just show a
+        // generic progress bar in that case.
+        val databaseOpening = state.hasSynced == null
 
-        val progress = state.downloadProgress?.untilCompletion
+        if (!databaseOpening) {
+            Text(
+                text = "Busy with initial sync...",
+                style = MaterialTheme.typography.h6,
+            )
+        }
+
+        val progress = state.downloadProgress?.let {
+            if (priority == null) {
+                it.untilCompletion
+            } else {
+                it.untilPriority(priority)
+            }
+        }
         if (progress != null) {
             LinearProgressIndicator(
                 modifier = Modifier.fillMaxWidth().padding(8.dp),
