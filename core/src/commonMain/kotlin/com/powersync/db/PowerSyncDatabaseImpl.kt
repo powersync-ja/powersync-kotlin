@@ -14,6 +14,7 @@ import com.powersync.db.crud.CrudRow
 import com.powersync.db.crud.CrudTransaction
 import com.powersync.db.internal.InternalDatabaseImpl
 import com.powersync.db.internal.InternalTable
+import com.powersync.db.internal.PowerSyncVersion
 import com.powersync.db.schema.Schema
 import com.powersync.db.schema.toSerializable
 import com.powersync.sync.PriorityStatusEntry
@@ -461,20 +462,9 @@ internal class PowerSyncDatabaseImpl(
      * Check that a supported version of the powersync extension is loaded.
      */
     private fun checkVersion(powerSyncVersion: String) {
-        // Parse version
-        val versionInts: List<Int> =
-            try {
-                powerSyncVersion
-                    .split(Regex("[./]"))
-                    .take(3)
-                    .map { it.toInt() }
-            } catch (e: Exception) {
-                throw Exception("Unsupported powersync extension version. Need ^0.2.0, got: $powerSyncVersion. Details: $e")
-            }
-
-        // Validate ^0.2.0
-        if (versionInts[0] != 0 || versionInts[1] < 2 || versionInts[2] < 0) {
-            throw Exception("Unsupported powersync extension version. Need ^0.2.0, got: $powerSyncVersion")
+        val version = PowerSyncVersion.parse(powerSyncVersion)
+        if (version < PowerSyncVersion.MINIMUM) {
+            PowerSyncVersion.mismatchError(powerSyncVersion)
         }
     }
 }
