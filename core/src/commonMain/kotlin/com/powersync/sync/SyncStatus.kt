@@ -5,7 +5,6 @@ import com.powersync.connectors.PowerSyncBackendConnector
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.cancel
 import kotlinx.datetime.Instant
 
 @ConsistentCopyVisibility

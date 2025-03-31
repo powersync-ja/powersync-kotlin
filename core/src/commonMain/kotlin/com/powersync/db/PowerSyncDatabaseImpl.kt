@@ -488,4 +488,4 @@ internal class PowerSyncDatabaseImpl(
     }
 }
 
-internal object DisconnectRequestedException: CancellationException("disconnect() called")
+internal object DisconnectRequestedException : CancellationException("disconnect() called")

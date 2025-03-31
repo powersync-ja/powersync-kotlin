@@ -120,62 +120,65 @@ class SyncIntegrationTest {
 
     @Test
     @OptIn(DelicateCoroutinesApi::class)
-    fun closesResponseStreamOnDatabaseClose() = runTest {
-        val syncStream = syncStream()
-        database.connectInternal(syncStream, 1000L)
+    fun closesResponseStreamOnDatabaseClose() =
+        runTest {
+            val syncStream = syncStream()
+            database.connectInternal(syncStream, 1000L)
 
-        turbineScope(timeout = 10.0.seconds) {
-            val turbine = database.currentStatus.asFlow().testIn(this)
-            turbine.waitFor { it.connected }
+            turbineScope(timeout = 10.0.seconds) {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                turbine.waitFor { it.connected }
 
-            database.close()
-            turbine.waitFor { !it.connected }
-            turbine.cancel()
+                database.close()
+                turbine.waitFor { !it.connected }
+                turbine.cancel()
+            }
+
+            // Closing the database should have closed the channel
+            assertTrue { syncLines.isClosedForSend }
         }
-
-        // Closing the database should have closed the channel
-        assertTrue { syncLines.isClosedForSend }
-    }
 
     @Test
     @OptIn(DelicateCoroutinesApi::class)
-    fun cleansResourcesOnDisconnect() = runTest {
-        val syncStream = syncStream()
-        database.connectInternal(syncStream, 1000L)
+    fun cleansResourcesOnDisconnect() =
+        runTest {
+            val syncStream = syncStream()
+            database.connectInternal(syncStream, 1000L)
 
-        turbineScope(timeout = 10.0.seconds) {
-            val turbine = database.currentStatus.asFlow().testIn(this)
-            turbine.waitFor { it.connected }
+            turbineScope(timeout = 10.0.seconds) {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                turbine.waitFor { it.connected }
 
-            database.disconnect()
-            turbine.waitFor { !it.connected }
-            turbine.cancel()
+                database.disconnect()
+                turbine.waitFor { !it.connected }
+                turbine.cancel()
+            }
+
+            // Disconnecting should have closed the channel
+            assertTrue { syncLines.isClosedForSend }
+
+            // And called invalidateCredentials on the connector
+            verify { connector.invalidateCredentials() }
         }
-
-        // Disconnecting should have closed the channel
-        assertTrue { syncLines.isClosedForSend }
-
-        // And called invalidateCredentials on the connector
-        verify { connector.invalidateCredentials() }
-    }
 
     @Test
-    fun cannotUpdateSchemaWhileConnected() = runTest {
-        val syncStream = syncStream()
-        database.connectInternal(syncStream, 1000L)
+    fun cannotUpdateSchemaWhileConnected() =
+        runTest {
+            val syncStream = syncStream()
+            database.connectInternal(syncStream, 1000L)
 
-        turbineScope(timeout = 10.0.seconds) {
-            val turbine = database.currentStatus.asFlow().testIn(this)
-            turbine.waitFor { it.connected }
-            turbine.cancel()
+            turbineScope(timeout = 10.0.seconds) {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                turbine.waitFor { it.connected }
+                turbine.cancel()
+            }
+
+            assertFailsWith<PowerSyncException>("Cannot update schema while connected") {
+                database.updateSchema(Schema())
+            }
+
+            database.close()
         }
-
-        assertFailsWith<PowerSyncException>("Cannot update schema while connected") {
-            database.updateSchema(Schema())
-        }
-
-        database.close()
-    }
 
     @Test
     fun testPartialSync() =
