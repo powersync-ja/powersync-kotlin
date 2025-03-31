@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.powersync.demos.Screen
+import com.powersync.demos.components.GuardBySync
 import com.powersync.demos.components.Input
 import com.powersync.demos.components.ListContent
 import com.powersync.demos.components.Menu
@@ -57,34 +58,20 @@ internal fun HomeScreen(
             },
         )
 
-        when {
-            syncStatus.hasSynced == null || syncStatus.hasSynced == false -> {
-                Box(
-                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colors.background),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "Busy with initial sync...",
-                        style = MaterialTheme.typography.h6,
-                    )
-                }
-            }
+        GuardBySync {
+            Input(
+                text = inputText,
+                onAddClicked = onAddItemClicked,
+                onTextChanged = onInputTextChanged,
+                screen = Screen.Home,
+            )
 
-            else -> {
-                Input(
-                    text = inputText,
-                    onAddClicked = onAddItemClicked,
-                    onTextChanged = onInputTextChanged,
-                    screen = Screen.Home,
+            Box(Modifier.weight(1F)) {
+                ListContent(
+                    items = items,
+                    onItemClicked = onItemClicked,
+                    onItemDeleteClicked = onItemDeleteClicked,
                 )
-
-                Box(Modifier.weight(1F)) {
-                    ListContent(
-                        items = items,
-                        onItemClicked = onItemClicked,
-                        onItemDeleteClicked = onItemDeleteClicked,
-                    )
-                }
             }
         }
     }

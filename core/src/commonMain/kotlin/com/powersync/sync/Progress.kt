@@ -20,12 +20,12 @@ public data class ProgressWithOperations(
     /**
      * The relative amount of [total] items that have been [completed], as a number between `0.0` and `1.0`.
      */
-    public val fraction: Double get() {
+    public val fraction: Float get() {
         if (completed == 0) {
-            return 0.0
+            return 0.0f
         }
 
-        return completed.toDouble() / total.toDouble()
+        return completed.toFloat() / total.toFloat()
     }
 }
 
