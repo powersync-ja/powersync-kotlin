@@ -16,10 +16,12 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.util.date.GMTDate
 import io.ktor.utils.io.InternalAPI
+import io.ktor.utils.io.awaitFreeSpace
 import io.ktor.utils.io.writeStringUtf8
 import io.ktor.utils.io.writer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.coroutines.channels.consume
 import kotlinx.coroutines.channels.consumeEach
 import kotlinx.serialization.encodeToString
 
@@ -49,10 +51,15 @@ internal class MockSyncService(
         return if (data.url.encodedPath == "/sync/stream") {
             val job =
                 scope.writer {
-                    lines.consumeEach {
-                        val serializedLine = JsonUtil.json.encodeToString(it)
-                        channel.writeStringUtf8("$serializedLine\n")
-                        channel.flush()
+                    lines.consume {
+                        while (true) {
+                            // Wait for a downstream listener being ready before requesting a sync line
+                            channel.awaitFreeSpace()
+                            val line = receive()
+                            val serializedLine = JsonUtil.json.encodeToString(line)
+                            channel.writeStringUtf8("$serializedLine\n")
+                            channel.flush()
+                        }
                     }
                 }
 
