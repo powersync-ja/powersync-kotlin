@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
 import com.powersync.bucket.BucketPriority
+import com.powersync.compose.composeState
 import com.powersync.connector.supabase.SupabaseConnector
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.demos.components.EditDialog
@@ -25,7 +26,6 @@ import com.powersync.demos.screens.HomeScreen
 import com.powersync.demos.screens.SignInScreen
 import com.powersync.demos.screens.SignUpScreen
 import com.powersync.demos.screens.TodosScreen
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.runBlocking
 import org.koin.compose.KoinApplication
 import org.koin.compose.koinInject
@@ -35,6 +35,7 @@ import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.core.module.dsl.withOptions
 import org.koin.dsl.module
+import kotlin.time.Duration.Companion.milliseconds
 
 val sharedAppModule = module {
     // This is overridden by the androidBackgroundSync example
@@ -71,19 +72,7 @@ fun AppContent(
     db: PowerSyncDatabase = koinInject(),
     modifier: Modifier = Modifier,
 ) {
-    // Debouncing the status flow prevents flicker
-    val status by db.currentStatus
-        .asFlow()
-        .debounce(200)
-        .collectAsState(initial = db.currentStatus)
-
-    // This assumes that the buckets for lists has a priority of 1 (but it will work fine with sync
-    // rules not defining any priorities at all too). When giving lists a higher priority than
-    // items, we can have a consistent snapshot of lists without items. In the case where many items
-    // exist (that might take longer to sync initially), this allows us to display lists earlier.
-    val hasSyncedLists by remember {
-        derivedStateOf { status.statusForPriority(BucketPriority(1)).hasSynced }
-    }
+    val status by db.currentStatus.composeState(debounce = 200.0.milliseconds)
 
     val authViewModel = koinViewModel<AuthViewModel>()
     val navController = koinInject<NavController>()

@@ -44,6 +44,7 @@ kotlin {
             // at: https://central.sonatype.com/artifact/com.powersync/core
             api("com.powersync:core:latest.release")
             implementation("com.powersync:connector-supabase:latest.release")
+            implementation("com.powersync:compose:latest.release")
             implementation(libs.uuid)
             implementation(compose.runtime)
             implementation(compose.foundation)

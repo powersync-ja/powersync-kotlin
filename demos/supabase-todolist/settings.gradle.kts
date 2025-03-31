@@ -44,15 +44,18 @@ val useReleasedVersions = localProperties.getProperty("USE_RELEASED_POWERSYNC_VE
 if (!useReleasedVersions) {
     includeBuild("../..") {
         dependencySubstitution {
-            substitute(module("com.powersync:core"))
-                .using(project(":core"))
-                .because("we want to auto-wire up sample dependency")
-            substitute(module("com.powersync:persistence"))
-                .using(project(":persistence"))
-                .because("we want to auto-wire up sample dependency")
-            substitute(module("com.powersync:connector-supabase"))
-                .using(project(":connectors:supabase"))
-                .because("we want to auto-wire up sample dependency")
+            val replacements = mapOf(
+                "core" to "core",
+                "persistence" to "persistence",
+                "connector-supabase" to "connectors:supabase",
+                "compose" to "compose"
+            )
+
+            replacements.forEach { (moduleName, projectName) ->
+                substitute(module("com.powersync:$moduleName"))
+                    .using(project(":$projectName"))
+                    .because("we want to auto-wire up sample dependency")
+            }
         }
     }
 }

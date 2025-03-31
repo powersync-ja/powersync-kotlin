@@ -16,7 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.powersync.bucket.BucketPriority
 import com.powersync.demos.Screen
+import com.powersync.demos.components.GuardBySync
 import com.powersync.demos.components.Input
 import com.powersync.demos.components.ListContent
 import com.powersync.demos.components.Menu
@@ -57,34 +59,25 @@ internal fun HomeScreen(
             },
         )
 
-        when {
-            syncStatus.hasSynced == null || syncStatus.hasSynced == false -> {
-                Box(
-                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colors.background),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "Busy with initial sync...",
-                        style = MaterialTheme.typography.h6,
-                    )
-                }
-            }
+        // This assumes that the buckets for lists has a priority of 1 (but it will work fine with
+        // sync rules not defining any priorities at all too). When giving lists a higher priority
+        // than items, we can have a consistent snapshot of lists without items. In the case where
+        // many items exist (that might take longer to sync initially), this allows us to display
+        // lists earlier.
+        GuardBySync(priority = BucketPriority(1)) {
+            Input(
+                text = inputText,
+                onAddClicked = onAddItemClicked,
+                onTextChanged = onInputTextChanged,
+                screen = Screen.Home,
+            )
 
-            else -> {
-                Input(
-                    text = inputText,
-                    onAddClicked = onAddItemClicked,
-                    onTextChanged = onInputTextChanged,
-                    screen = Screen.Home,
+            Box(Modifier.weight(1F)) {
+                ListContent(
+                    items = items,
+                    onItemClicked = onItemClicked,
+                    onItemDeleteClicked = onItemDeleteClicked,
                 )
-
-                Box(Modifier.weight(1F)) {
-                    ListContent(
-                        items = items,
-                        onItemClicked = onItemClicked,
-                        onItemDeleteClicked = onItemDeleteClicked,
-                    )
-                }
             }
         }
     }

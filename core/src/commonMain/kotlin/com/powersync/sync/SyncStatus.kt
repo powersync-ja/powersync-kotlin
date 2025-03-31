@@ -5,6 +5,7 @@ import com.powersync.connectors.PowerSyncBackendConnector
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 
 @ConsistentCopyVisibility
@@ -35,6 +36,15 @@ public interface SyncStatusData {
      * This is only true when [connected] is also true.
      */
     public val downloading: Boolean
+
+    /**
+     * Realtime progress information about downloaded operations during an active sync.
+     *
+     *
+     * For more information on what progress is reported, see [SyncDownloadProgress].
+     * This value will be non-null only if [downloading] is true.
+     */
+    public val downloadProgress: SyncDownloadProgress?
 
     /**
      * true if uploading changes
@@ -106,6 +116,7 @@ internal data class SyncStatusDataContainer(
     override val connected: Boolean = false,
     override val connecting: Boolean = false,
     override val downloading: Boolean = false,
+    override val downloadProgress: SyncDownloadProgress? = null,
     override val uploading: Boolean = false,
     override val lastSyncedAt: Instant? = null,
     override val hasSynced: Boolean? = null,
@@ -115,6 +126,21 @@ internal data class SyncStatusDataContainer(
 ) : SyncStatusData {
     override val anyError
         get() = downloadError ?: uploadError
+
+    internal fun abortedDownload() =
+        copy(
+            downloading = false,
+            downloadProgress = null,
+        )
+
+    internal fun copyWithCompletedDownload() =
+        copy(
+            lastSyncedAt = Clock.System.now(),
+            downloading = false,
+            downloadProgress = null,
+            hasSynced = true,
+            downloadError = null,
+        )
 }
 
 @ConsistentCopyVisibility
@@ -131,32 +157,15 @@ public data class SyncStatus internal constructor(
     /**
      * Updates the internal sync status indicators and emits Flow updates
      */
-    internal fun update(
-        connected: Boolean? = null,
-        connecting: Boolean? = null,
-        downloading: Boolean? = null,
-        uploading: Boolean? = null,
-        hasSynced: Boolean? = null,
-        lastSyncedAt: Instant? = null,
-        uploadError: Any? = null,
-        downloadError: Any? = null,
-        clearUploadError: Boolean = false,
-        clearDownloadError: Boolean = false,
-        priorityStatusEntries: List<PriorityStatusEntry>? = null,
-    ) {
-        data =
-            data.copy(
-                connected = connected ?: data.connected,
-                connecting = connecting ?: data.connecting,
-                downloading = downloading ?: data.downloading,
-                uploading = uploading ?: data.uploading,
-                lastSyncedAt = lastSyncedAt ?: data.lastSyncedAt,
-                hasSynced = hasSynced ?: data.hasSynced,
-                priorityStatusEntries = priorityStatusEntries ?: data.priorityStatusEntries,
-                uploadError = if (clearUploadError) null else uploadError,
-                downloadError = if (clearDownloadError) null else downloadError,
-            )
+    internal inline fun update(makeCopy: SyncStatusDataContainer.() -> SyncStatusDataContainer) {
+        data = data.makeCopy()
         stateFlow.value = data
+    }
+
+    internal suspend fun trackOther(source: SyncStatus) {
+        source.stateFlow.collect {
+            update { it }
+        }
     }
 
     override val anyError: Any?
@@ -170,6 +179,9 @@ public data class SyncStatus internal constructor(
 
     override val downloading: Boolean
         get() = data.downloading
+
+    override val downloadProgress: SyncDownloadProgress?
+        get() = data.downloadProgress
 
     override val uploading: Boolean
         get() = data.uploading
