@@ -3,6 +3,8 @@
 ## 1.0.0-BETA29 (unreleased)
 
 * Fix potential race condition between jobs in `connect()` and `disconnect()`.
+* Report real-time progress information about downloads through `SyncStatus.downloadProgress`.
+* Compose: Add `composeState()` extension method on `SyncStatus`.
 
 ## 1.0.0-BETA28
 
