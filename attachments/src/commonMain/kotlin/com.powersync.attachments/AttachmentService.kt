@@ -33,8 +33,8 @@ public class AttachmentService(
      */
     public suspend fun ignoreAttachment(id: String) {
         db.execute(
-            "UPDATE $table SET state = ${AttachmentState.ARCHIVED.ordinal} WHERE id = ?",
-            listOf(id),
+            "UPDATE $table SET state = ? WHERE id = ?",
+            listOf(AttachmentState.ARCHIVED.ordinal, id),
         )
     }
 
@@ -88,16 +88,20 @@ public class AttachmentService(
     public suspend fun getActiveAttachments(): List<Attachment> =
         db.getAll(
             """
-                SELECT 
+                    SELECT 
                         *
                     FROM
                         $table 
                     WHERE 
-                        state = ${AttachmentState.QUEUED_DOWNLOAD.ordinal}
-                        OR state = ${AttachmentState.QUEUED_DELETE.ordinal}
-                        OR state = ${AttachmentState.QUEUED_UPLOAD.ordinal}
+                        state = ?
+                        OR state = ?
+                        OR state = ?
                 """,
-            listOf(AttachmentState.ARCHIVED.ordinal),
+            listOf(
+                AttachmentState.QUEUED_UPLOAD.ordinal,
+                AttachmentState.QUEUED_DOWNLOAD.ordinal,
+                AttachmentState.QUEUED_DELETE.ordinal,
+            ),
         ) { Attachment.fromCursor(it) }
 
     /**
@@ -114,11 +118,16 @@ public class AttachmentService(
                 FROM 
                     $table
                 WHERE 
-                    state = ${AttachmentState.QUEUED_DOWNLOAD.ordinal}
-                    OR state = ${AttachmentState.QUEUED_DELETE.ordinal}
-                    OR state = ${AttachmentState.QUEUED_UPLOAD.ordinal}
+                    state = ?
+                    OR state = ?
+                    OR state = ?
             """,
-            ) { }
+                listOf(
+                    AttachmentState.QUEUED_UPLOAD.ordinal,
+                    AttachmentState.QUEUED_DOWNLOAD.ordinal,
+                    AttachmentState.QUEUED_DELETE.ordinal,
+                ),
+            ) { it.getString(0)!! }
             // We only use changes here to trigger a sync consolidation
             .map { Unit }
     }
@@ -139,8 +148,9 @@ public class AttachmentService(
         db.execute(
             """
             DELETE FROM $table
-            WHERE state = ${AttachmentState.ARCHIVED.ordinal}
+            WHERE state = ?
         """,
+            listOf(AttachmentState.ARCHIVED.ordinal),
         )
     }
 

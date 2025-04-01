@@ -53,15 +53,15 @@ public abstract class AbstractAttachmentQueue(
     /**
      * PowerSync database client
      */
-    private val db: PowerSyncDatabase,
+    public val db: PowerSyncDatabase,
     /**
      * Adapter which interfaces with the remote storage backend
      */
-    private val remoteStorage: RemoteStorageAdapter,
+    public val remoteStorage: RemoteStorageAdapter,
     /**
      * Provides access to local filesystem storage methods
      */
-    private val localStorage: LocalStorageAdapter = IOLocalStorageAdapter(),
+    public val localStorage: LocalStorageAdapter = IOLocalStorageAdapter(),
     /**
      * Directory where attachment files will be written to disk
      */
@@ -74,7 +74,7 @@ public abstract class AbstractAttachmentQueue(
      * Attachment operation error handler. This specified if failed attachment operations
      * should be retried.
      */
-    private val errorHandler: SyncErrorHandler?,
+    private val errorHandler: SyncErrorHandler? = null,
     /**
      * Periodic interval to trigger attachment sync operations
      */
@@ -86,7 +86,7 @@ public abstract class AbstractAttachmentQueue(
     /**
      * Logging interface used for all log operations
      */
-    private val logger: Logger = Logger,
+    public val logger: Logger = Logger,
 ) {
     public companion object {
         public const val DEFAULT_TABLE_NAME: String = "attachments"
@@ -271,6 +271,8 @@ public abstract class AbstractAttachmentQueue(
                 .forEach {
                     attachmentUpdates.add(it.copy(state = AttachmentState.ARCHIVED.ordinal))
                 }
+
+            attachmentsService.saveAttachments(attachmentUpdates)
         }
 
     /**

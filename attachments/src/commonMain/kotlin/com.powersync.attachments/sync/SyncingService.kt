@@ -8,6 +8,7 @@ import com.powersync.attachments.AttachmentState
 import com.powersync.attachments.LocalStorageAdapter
 import com.powersync.attachments.RemoteStorageAdapter
 import com.powersync.attachments.SyncErrorHandler
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -58,7 +59,7 @@ internal class SyncingService(
                     // We only use these flows to trigger the process. We can skip multiple invocations
                     // while we are processing. We will always process on the trailing edge.
                     // This buffer operation should automatically be applied to all merged sources.
-                    .buffer(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+                    .buffer(3, onBufferOverflow = BufferOverflow.DROP_OLDEST)
                     .collect {
                         /**
                          * Gets and performs the operations for active attachments which are
@@ -71,6 +72,9 @@ internal class SyncingService(
                             // Cleanup
                             attachmentsService.deleteArchivedAttachments()
                         } catch (ex: Exception) {
+                            if (ex is CancellationException) {
+                                throw ex
+                            }
                             // Rare exceptions caught here will be swallowed and retried on the
                             // next tick.
                             logger.e("Caught exception when processing attachments $ex")

@@ -281,6 +281,7 @@ internal fun getBindersFromParams(parameters: List<Any?>?): (SqlPreparedStatemen
                 is Boolean -> bindBoolean(index, parameter)
                 is String -> bindString(index, parameter)
                 is Long -> bindLong(index, parameter)
+                is Int -> bindLong(index, parameter.toLong())
                 is Double -> bindDouble(index, parameter)
                 is ByteArray -> bindBytes(index, parameter)
                 else -> {

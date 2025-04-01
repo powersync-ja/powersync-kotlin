@@ -2,7 +2,9 @@ package com.powersync.attachments
 
 import com.powersync.db.SqlCursor
 import com.powersync.db.getLong
+import com.powersync.db.getLongOptional
 import com.powersync.db.getString
+import com.powersync.db.getStringOptional
 
 /**
  * Enum for the attachment state
@@ -33,9 +35,9 @@ public data class Attachment(
                 id = cursor.getString(name = "id"),
                 timestamp = cursor.getLong("timestamp"),
                 filename = cursor.getString(name = "filename"),
-                localUri = cursor.getString(name = "local_uri"),
-                mediaType = cursor.getString(name = "media_type"),
-                size = cursor.getLong("size"),
+                localUri = cursor.getStringOptional(name = "local_uri"),
+                mediaType = cursor.getStringOptional(name = "media_type"),
+                size = cursor.getLongOptional("size"),
                 state = cursor.getLong("state").toInt(),
             )
     }
