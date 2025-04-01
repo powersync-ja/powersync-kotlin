@@ -4,6 +4,7 @@ android-minSdk = "24"
 android-targetSdk = "35"
 android-compileSdk = "35"
 configurationAnnotations = "0.9.5"
+gradleDownloadTask = "5.5.0"
 java = "17"
 idea = "243.22562.218" # Meerkat | 2024.3.1 (see https://plugins.jetbrains.com/docs/intellij/android-studio-releases-list.html)
 
@@ -11,6 +12,7 @@ idea = "243.22562.218" # Meerkat | 2024.3.1 (see https://plugins.jetbrains.com/d
 kermit = "2.0.5"
 kotlin = "2.1.10"
 coroutines = "1.8.1"
+kotlinGradlePlugin = "1.9.22"
 kotlinx-datetime = "0.6.2"
 kotlinx-io = "0.5.4"
 ktor = "3.0.1"
@@ -54,8 +56,10 @@ junitVersion = "1.2.1"
 
 [libraries]
 configuration-annotations = { module = "co.touchlab.skie:configuration-annotations", version.ref = "configurationAnnotations" }
+gradle-download-task = { module = "de.undercouch:gradle-download-task", version.ref = "gradleDownloadTask" }
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 kermit-test = { module = "co.touchlab:kermit-test", version.ref = "kermit" }
+kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlinGradlePlugin" }
 powersync-sqlite-core-android = { module = "co.powersync:powersync-sqlite-core", version.ref = "powersync-core" }
 mavenPublishPlugin = { module = "com.vanniktech:gradle-maven-publish-plugin", version.ref = "maven-publish" }
 

@@ -27,5 +27,6 @@ include(":persistence")
 include(":PowerSyncKotlin")
 
 include(":compose")
+include(":attachments")
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
