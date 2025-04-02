@@ -1,4 +1,4 @@
-package com.powersync.attachments.testutils
+package com.powersync.testutils
 
 import com.powersync.attachments.RemoteStorageAdapter
 import kotlinx.coroutines.flow.Flow

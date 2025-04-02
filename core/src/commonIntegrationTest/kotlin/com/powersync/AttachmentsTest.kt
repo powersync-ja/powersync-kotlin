@@ -1,12 +1,15 @@
-package com.powersync.attachments
+package com.powersync
 
 import app.cash.turbine.turbineScope
 import co.touchlab.kermit.ExperimentalKermitApi
-import com.powersync.PowerSyncDatabase
-import com.powersync.attachments.testutils.MockedRemoteStorage
-import com.powersync.attachments.testutils.TestAttachmentsQueue
-import com.powersync.attachments.testutils.UserRow
+import com.powersync.attachments.Attachment
+import com.powersync.attachments.AttachmentState
+import com.powersync.attachments.RemoteStorageAdapter
+import com.powersync.attachments.createAttachmentsTable
 import com.powersync.db.schema.Schema
+import com.powersync.testutils.MockedRemoteStorage
+import com.powersync.testutils.TestAttachmentsQueue
+import com.powersync.testutils.UserRow
 import dev.mokkery.matcher.any
 import dev.mokkery.spy
 import dev.mokkery.verifySuspend
@@ -27,7 +30,7 @@ class AttachmentsTest {
 
     private fun openDB() =
         PowerSyncDatabase(
-            factory = com.powersync.attachments.testutils.factory,
+            factory = com.powersync.testutils.factory,
             schema = Schema(UserRow.table, createAttachmentsTable("attachments")),
             dbFilename = "testdb",
         )
@@ -49,7 +52,7 @@ class AttachmentsTest {
                 database.close()
             }
         }
-        com.powersync.attachments.testutils
+        com.powersync.testutils
             .cleanup("testdb")
     }
 
