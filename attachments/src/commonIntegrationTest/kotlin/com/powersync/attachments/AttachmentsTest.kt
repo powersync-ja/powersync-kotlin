@@ -7,14 +7,19 @@ import com.powersync.attachments.testutils.MockedRemoteStorage
 import com.powersync.attachments.testutils.TestAttachmentsQueue
 import com.powersync.attachments.testutils.UserRow
 import com.powersync.db.schema.Schema
+import dev.mokkery.matcher.any
 import dev.mokkery.spy
 import dev.mokkery.verifySuspend
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalKermitApi::class)
 class AttachmentsTest {
@@ -61,7 +66,12 @@ class AttachmentsTest {
                 val remote = spy<RemoteStorageAdapter>(MockedRemoteStorage())
 
                 val queue =
-                    TestAttachmentsQueue(db = database, remoteStorage = remote)
+                    TestAttachmentsQueue(
+                        db = database,
+                        remoteStorage = remote,
+                        // For these tests (jvm/ios) this should be fine for now
+                        attachmentDirectoryName = "/tmp",
+                    )
 
                 queue.start()
 
@@ -88,20 +98,158 @@ class AttachmentsTest {
                     """,
                 )
 
-//                 The watched query should cause the attachment record to be pending download
-                val afterInsert = attachmentQuery.awaitItem()
-
-                assertEquals(
-                    expected = 1,
-                    actual = afterInsert.size,
-                    "Should contain 1 attachment record",
+                var attachmentRecord = attachmentQuery.awaitItem().first()
+                assertNotNull(
+                    attachmentRecord,
+                    """
+                    An attachment record should be created after creating a user with a photo_id
+                    "
+                    """.trimIndent(),
                 )
 
-                val item = afterInsert.first()
-                assertEquals(expected = AttachmentState.QUEUED_DOWNLOAD.ordinal, item.state)
+                /**
+                 * The timing of the watched query resolving might differ slightly.
+                 * We might get a watched query result where the attachment is QUEUED_DOWNLOAD
+                 * or we could get the result once it has been DOWNLOADED.
+                 * We should assert that the download happens eventually.
+                 */
+
+                if (attachmentRecord.state == AttachmentState.QUEUED_DOWNLOAD.ordinal) {
+                    // Wait for the download to be triggered
+                    attachmentRecord = attachmentQuery.awaitItem().first()
+                }
+
+                assertEquals(expected = AttachmentState.SYNCED.ordinal, attachmentRecord.state)
 
                 // A download should have been attempted for this file
-                verifySuspend { remote.downloadFile(item.filename) }
+                verifySuspend { remote.downloadFile(attachmentRecord.filename) }
+
+                // A file should now exist
+                val localUri = attachmentRecord.localUri!!
+                assertTrue { queue.localStorage.fileExists(localUri) }
+
+                // Now clear the user's photo_id. The attachment should be archived
+                database.execute(
+                    """
+                            UPDATE
+                                users
+                            SET 
+                                photo_id = NULL
+                         """,
+                )
+
+                /**
+                 * The timing of the watched query resolving might differ slightly.
+                 * We might get a watched query result where the attachment is ARCHIVED
+                 * or we could get the result once it has been deleted.
+                 * The file should be deleted eventually
+                 */
+                var nextRecord: Attachment? = attachmentQuery.awaitItem().first()
+                if (nextRecord?.state == AttachmentState.ARCHIVED.ordinal) {
+                    nextRecord = attachmentQuery.awaitItem().getOrNull(0)
+                }
+
+                // The record should have been deleted
+                assertNull(nextRecord)
+
+                // The file should have been deleted from storage
+                assertEquals(expected = false, actual = queue.localStorage.fileExists(localUri))
+
+                attachmentQuery.cancel()
+                queue.close()
+            }
+        }
+
+    @Test
+    fun testAttachmentUpload() =
+        runTest {
+            turbineScope {
+                val remote = spy<RemoteStorageAdapter>(MockedRemoteStorage())
+
+                val queue =
+                    TestAttachmentsQueue(
+                        db = database,
+                        remoteStorage = remote,
+                        // For these tests (jvm/ios) this should be fine for now
+                        attachmentDirectoryName = "/tmp",
+                    )
+
+                queue.start()
+
+                // Monitor the attachments table for testing
+                val attachmentQuery =
+                    database
+                        .watch("SELECT * FROM attachments") { Attachment.fromCursor(it) }
+                        .testIn(this)
+
+                val result = attachmentQuery.awaitItem()
+
+                // There should not be any attachment records here
+                assertEquals(expected = 0, actual = result.size)
+
+                /**
+                 * Creates an attachment given a flow of bytes (the file data) then assigns this to
+                 * a newly created user.
+                 */
+                queue.saveFile(flowOf(ByteArray(1)), "image/jpg", "jpg") { tx, attachment ->
+                    // Set the photo_id of a new user to the attachment id
+                    tx.execute(
+                        """
+                                INSERT INTO
+                                    users (id, name, email, photo_id)
+                                VALUES
+                                    (uuid(), "steven", "steven@steven.com", ?)
+                            """,
+                        listOf(attachment.id),
+                    )
+                }
+
+                var attachmentRecord = attachmentQuery.awaitItem().first()
+                assertNotNull(attachmentRecord)
+
+                if (attachmentRecord.state == AttachmentState.QUEUED_UPLOAD.ordinal) {
+                    // Wait for it to be synced
+                    attachmentRecord = attachmentQuery.awaitItem().first()
+                }
+
+                assertEquals(
+                    expected = AttachmentState.SYNCED.ordinal,
+                    attachmentRecord.state,
+                )
+
+                // A download should have been attempted for this file
+                verifySuspend {
+                    remote.uploadFile(
+                        attachmentRecord.filename,
+                        any(),
+                        attachmentRecord.mediaType,
+                    )
+                }
+
+                // A file should now exist
+                val localUri = attachmentRecord.localUri!!
+                assertTrue { queue.localStorage.fileExists(localUri) }
+
+                // Now clear the user's photo_id. The attachment should be archived
+                database.execute(
+                    """
+                            UPDATE
+                                users
+                            SET
+                                photo_id = NULL
+                         """,
+                )
+
+                var nextRecord: Attachment? = attachmentQuery.awaitItem().first()
+                if (nextRecord?.state == AttachmentState.ARCHIVED.ordinal) {
+                    nextRecord = attachmentQuery.awaitItem().getOrNull(0)
+                }
+
+                // The record should have been deleted
+                assertNull(nextRecord)
+
+                // The file should have been deleted from storage
+                assertEquals(expected = false, actual = queue.localStorage.fileExists(localUri))
 
                 attachmentQuery.cancel()
                 queue.close()

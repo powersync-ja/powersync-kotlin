@@ -1,14 +1,18 @@
 package com.powersync.attachments
 
 import com.powersync.attachments.storage.AbstractLocalStorageAdapter
+import io.ktor.utils.io.core.remaining
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import kotlinx.io.Buffer
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.readByteArray
+import kotlin.math.min
 
 /**
  * Storage adapter for local storage using the KotlinX IO library
@@ -16,25 +20,46 @@ import kotlinx.io.readByteArray
 public class IOLocalStorageAdapter : AbstractLocalStorageAdapter() {
     public override suspend fun saveFile(
         filePath: String,
-        data: ByteArray,
-    ): Unit =
+        data: Flow<ByteArray>,
+    ): Long =
         withContext(Dispatchers.IO) {
-            SystemFileSystem.sink(Path(filePath)).use {
+            var totalSize = 0L
+            SystemFileSystem.sink(Path(filePath)).use { sink ->
                 // Copy to a buffer in order to write
-                val buffer = Buffer()
-                buffer.write(data)
-                it.write(buffer, buffer.size)
-                it.flush()
+                Buffer().use { buffer ->
+                    data.collect { chunk ->
+                        // Copy into a buffer in order to sink the chunk
+                        buffer.write(chunk, 0)
+                        val chunkSize = chunk.size.toLong()
+                        totalSize += chunkSize
+                        sink.write(buffer, chunkSize)
+                    }
+                }
+                sink.flush()
+                return@withContext totalSize
             }
         }
 
     public override suspend fun readFile(
         filePath: String,
         mediaType: String?,
-    ): ByteArray =
-        withContext(Dispatchers.IO) {
-            SystemFileSystem.source(Path(filePath)).use {
-                it.buffered().readByteArray()
+    ): Flow<ByteArray> =
+        flow {
+            withContext(Dispatchers.IO) {
+                SystemFileSystem.source(Path(filePath)).use { source ->
+                    source.buffered().use { bufferedSource ->
+                        val bufferSize = 8192L // Read in 8KB chunks
+                        while (bufferedSource.remaining > 0) {
+                            val byteCount =
+                                min(
+                                    bufferedSource.remaining,
+                                    bufferSize,
+                                )
+                            val bytesRead = bufferedSource.readByteArray(byteCount.toInt())
+                            emit(bytesRead)
+                        }
+                    }
+                }
             }
         }
 

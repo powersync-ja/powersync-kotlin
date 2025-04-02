@@ -6,6 +6,8 @@ import com.powersync.db.internal.ConnectionContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 /**
  * Service for interacting with the local attachment records.
@@ -79,7 +81,16 @@ public class AttachmentService(
 
     public suspend fun getAttachments(): List<Attachment> =
         db.getAll(
-            "SELECT * FROM $table WHERE id IS NOT NULL",
+            """
+                    SELECT 
+                        * 
+                    FROM 
+                        $table 
+                    WHERE 
+                        id IS NOT NULL
+                    ORDER BY 
+                        timestamp ASC
+                """,
         ) { Attachment.fromCursor(it) }
 
     /**
@@ -96,6 +107,8 @@ public class AttachmentService(
                         state = ?
                         OR state = ?
                         OR state = ?
+                    ORDER BY 
+                        timestamp ASC
                 """,
             listOf(
                 AttachmentState.QUEUED_UPLOAD.ordinal,
@@ -121,6 +134,8 @@ public class AttachmentService(
                     state = ?
                     OR state = ?
                     OR state = ?
+                ORDER BY 
+                        timestamp ASC
             """,
                 listOf(
                     AttachmentState.QUEUED_UPLOAD.ordinal,
@@ -144,17 +159,26 @@ public class AttachmentService(
     /**
      * Delete attachments which have been archived
      */
-    public suspend fun deleteArchivedAttachments() {
+    public suspend fun deleteArchivedAttachments(callback: suspend (attachments: List<Attachment>) -> Unit) {
+        // First fetch the attachments in order to allow other cleanup
+        val attachments =
+            db.getAll(
+                "SELECT * FROM $table WHERE state = ?",
+                listOf(AttachmentState.ARCHIVED.ordinal),
+            ) { Attachment.fromCursor(it) }
+        callback(attachments)
         db.execute(
-            """
-            DELETE FROM $table
-            WHERE state = ?
-        """,
-            listOf(AttachmentState.ARCHIVED.ordinal),
+            "DELETE FROM $table WHERE id IN (SELECT value FROM json_each(?));",
+            listOf(
+                Json.encodeToString(attachments.map { it.id }),
+            ),
         )
     }
 
-    private fun upsertAttachment(
+    /**
+     * Upserts an attachment record synchronously given a database connection context.
+     */
+    public fun upsertAttachment(
         attachment: Attachment,
         context: ConnectionContext,
     ): Attachment {

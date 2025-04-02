@@ -4,6 +4,7 @@ import co.touchlab.kermit.Logger
 import com.powersync.PowerSyncDatabase
 import com.powersync.PowerSyncException
 import com.powersync.attachments.sync.SyncingService
+import com.powersync.db.internal.ConnectionContext
 import com.powersync.db.runWrappedSuspending
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -278,42 +279,52 @@ public abstract class AbstractAttachmentQueue(
     /**
      * A function which creates a new attachment locally. This new attachment is queued for upload
      * after creation.
-     * The relevant attachment file should be persisted to disk before calling this method.
-     * The default implementation assumes the attachment file has been written to the path
-     *  ```kotlin
-     *      val path = getLocalFilePathSuffix(
-     *          resolveNewAttachmentFilename(
-     *              attachmentId = attachmentId,
-     *              fileExtension = fileExtension,
-     *      ))
-     *  )
-     *  ```
-     *  This method can be overriden for custom behaviour.
+     *
+     * The filename is resolved using [resolveNewAttachmentFilename].
+     *
+     * A [updateHook] is provided which should be used when assigning relationships to the newly
+     * created attachment. This hook is executed in the same writeTransaction which creates the
+     * attachment record.
+     *
+     * This method can be overriden for custom behaviour.
      */
     @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun saveFile(
-        attachmentId: String,
-        size: Long,
+    public suspend fun <R> saveFile(
+        data: Flow<ByteArray>,
         mediaType: String,
         fileExtension: String?,
-    ): Attachment =
+        updateHook: (context: ConnectionContext, attachment: Attachment) -> R,
+    ): R =
         runWrappedSuspending {
+            val id = db.get("SELECT uuid()") { it.getString(0)!! }
             val filename =
-                resolveNewAttachmentFilename(
-                    attachmentId = attachmentId,
-                    fileExtension = fileExtension,
-                )
+                resolveNewAttachmentFilename(attachmentId = id, fileExtension = fileExtension)
+            val localUri = getLocalUri(filename)
 
-            return@runWrappedSuspending attachmentsService.saveAttachment(
-                Attachment(
-                    id = attachmentId,
-                    filename = filename,
-                    size = size,
-                    mediaType = mediaType,
-                    state = AttachmentState.QUEUED_UPLOAD.ordinal,
-                    localUri = getLocalFilePathSuffix(filename).toString(),
-                ),
-            )
+            // write the file to the filesystem
+            val fileSize = localStorage.saveFile(localUri, data)
+
+            /**
+             * Starts a write transaction. The attachment record and relevant local relationship
+             * assignment should happen in the same transaction.
+             */
+            db.writeTransaction { tx ->
+                val attachment =
+                    attachmentsService.upsertAttachment(
+                        Attachment(
+                            id = id,
+                            filename = filename,
+                            size = fileSize,
+                            mediaType = mediaType,
+                            state = AttachmentState.QUEUED_UPLOAD.ordinal,
+                            localUri = localUri,
+                        ),
+                        tx,
+                    )
+
+                // Allow consumers to set relationships to this attachment id
+                updateHook(tx, attachment)
+            }
         }
 
     /**
@@ -354,8 +365,8 @@ public abstract class AbstractAttachmentQueue(
      * Return users storage directory with the attachmentPath use to load the file.
      * Example: filePath: "attachments/attachment-1.jpg" returns "/data/user/0/com.yourdomain.app/files/attachments/attachment-1.jpg"
      */
-    public fun getLocalUri(filePath: String): String {
+    public fun getLocalUri(filename: String): String {
         val storageDirectory = getStorageDirectory()
-        return Path(storageDirectory, filePath).toString()
+        return Path(storageDirectory, filename).toString()
     }
 }

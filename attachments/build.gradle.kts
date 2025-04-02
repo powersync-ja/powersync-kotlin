@@ -100,6 +100,8 @@ kotlin {
             implementation(libs.kermit.test)
             implementation(libs.ktor.client.mock)
             implementation(libs.test.turbine)
+            // Allows using the core test utils
+            implementation(project(":core"))
         }
 
         jvmTest.get().dependsOn(commonIntegrationTest)

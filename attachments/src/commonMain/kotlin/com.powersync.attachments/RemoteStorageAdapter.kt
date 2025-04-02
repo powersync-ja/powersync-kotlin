@@ -1,5 +1,7 @@
 package com.powersync.attachments
 
+import kotlinx.coroutines.flow.Flow
+
 /**
  * Adapter for interfacing with remote attachment storage.
  */
@@ -9,14 +11,14 @@ public interface RemoteStorageAdapter {
      */
     public suspend fun uploadFile(
         filename: String,
-        file: ByteArray,
-        mediaType: String,
+        file: Flow<ByteArray>,
+        mediaType: String?,
     ): Unit
 
     /**
      * Download a file from remote storage
      */
-    public suspend fun downloadFile(filename: String): ByteArray
+    public suspend fun downloadFile(filename: String): Flow<ByteArray>
 
     /**
      * Delete a file from remote storage

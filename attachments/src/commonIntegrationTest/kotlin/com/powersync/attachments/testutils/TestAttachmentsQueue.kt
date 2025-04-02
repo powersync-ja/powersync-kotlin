@@ -10,13 +10,13 @@ import kotlinx.coroutines.flow.Flow
 internal class TestAttachmentsQueue(
     db: PowerSyncDatabase,
     remoteStorage: RemoteStorageAdapter,
-) : AbstractAttachmentQueue(db, remoteStorage) {
+    attachmentDirectoryName: String,
+) : AbstractAttachmentQueue(db, remoteStorage, attachmentDirectoryName = attachmentDirectoryName) {
     override fun watchAttachments(): Flow<List<WatchedAttachmentItem>> =
         db.watch(
             sql =
                 """
                 SELECT
-                    id,
                     photo_id
                 FROM
                     users
@@ -24,6 +24,6 @@ internal class TestAttachmentsQueue(
                     photo_id IS NOT NULL
                 """,
         ) {
-            WatchedAttachmentItem(id = it.getString("id"), fileExtension = "jpg")
+            WatchedAttachmentItem(id = it.getString("photo_id"), fileExtension = "jpg")
         }
 }

@@ -59,7 +59,7 @@ internal class SyncingService(
                     // We only use these flows to trigger the process. We can skip multiple invocations
                     // while we are processing. We will always process on the trailing edge.
                     // This buffer operation should automatically be applied to all merged sources.
-                    .buffer(3, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+                    .buffer(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
                     .collect {
                         /**
                          * Gets and performs the operations for active attachments which are
@@ -69,8 +69,19 @@ internal class SyncingService(
                             val attachments = attachmentsService.getActiveAttachments()
                             // Performs pending operations and updates attachment states
                             handleSync(attachments)
-                            // Cleanup
-                            attachmentsService.deleteArchivedAttachments()
+
+                            // Cleanup archived attachments
+                            attachmentsService.deleteArchivedAttachments { pendingDelete ->
+                                for (attachment in pendingDelete) {
+                                    if (attachment.localUri == null) {
+                                        continue
+                                    }
+                                    if (!localStorage.fileExists(attachment.localUri)) {
+                                        continue
+                                    }
+                                    localStorage.deleteFile(attachment.localUri)
+                                }
+                            }
                         } catch (ex: Exception) {
                             if (ex is CancellationException) {
                                 throw ex
@@ -157,11 +168,9 @@ internal class SyncingService(
                 )
             }
 
-            val attachmentPath = getLocalUri(attachment.filename)
-
             remoteStorage.uploadFile(
                 attachment.filename,
-                localStorage.readFile(attachmentPath),
+                localStorage.readFile(attachment.localUri),
                 mediaType = attachment.mediaType ?: "",
             )
             logger.i("Uploaded attachment \"${attachment.id}\" to Cloud Storage")
@@ -186,15 +195,22 @@ internal class SyncingService(
      * Returns the updated state of the attachment.
      */
     private suspend fun downloadAttachment(attachment: Attachment): Attachment {
-        val imagePath = getLocalUri(attachment.filename)
+        /**
+         * When downloading an attachment we take the filename and resolve
+         * the local_uri where the file will be stored
+         */
+        val attachmentPath = getLocalUri(attachment.filename)
 
         try {
-            val fileBlob = remoteStorage.downloadFile(attachment.filename)
-            localStorage.saveFile(imagePath, fileBlob)
+            val fileFlow = remoteStorage.downloadFile(attachment.filename)
+            localStorage.saveFile(attachmentPath, fileFlow)
             logger.i("Downloaded file \"${attachment.id}\"")
 
             // The attachment has been downloaded locally
-            return attachment.copy(state = AttachmentState.SYNCED.ordinal)
+            return attachment.copy(
+                localUri = attachmentPath,
+                state = AttachmentState.SYNCED.ordinal,
+            )
         } catch (e: Exception) {
             if (errorHandler != null) {
                 val shouldRetry = errorHandler.onDownloadError(attachment, e)
@@ -214,10 +230,11 @@ internal class SyncingService(
      * Delete attachment from remote, local storage and then remove it from the queue.
      */
     private suspend fun deleteAttachment(attachment: Attachment): Attachment {
-        val fileUri = getLocalUri(attachment.filename)
         try {
             remoteStorage.deleteFile(attachment.filename)
-            localStorage.deleteFile(fileUri)
+            if (attachment.localUri != null) {
+                localStorage.deleteFile(attachment.localUri)
+            }
             return attachment.copy(state = AttachmentState.ARCHIVED.ordinal)
         } catch (e: Exception) {
             if (errorHandler != null) {
