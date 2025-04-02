@@ -186,7 +186,7 @@ internal class SyncStream(
     }
 
     private fun powerSyncUserAgent(): String {
-        "$LIBRARY_NAME/$LIBRARY_VERSION ${getOS()}"
+        return "$LIBRARY_NAME/$LIBRARY_VERSION ${getOS()}"
     }
 
     private fun streamingSyncRequest(req: StreamingSyncRequest): Flow<String> =
