@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable
 import org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest
 import org.jetbrains.kotlin.gradle.tasks.KotlinTest
 import org.jetbrains.kotlin.konan.target.Family
+import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING
 
 
 plugins {
@@ -21,6 +22,7 @@ plugins {
     id("com.powersync.plugins.sonatype")
     alias(libs.plugins.mokkery)
     alias(libs.plugins.kotlin.atomicfu)
+    alias(libs.plugins.buildKonfig)
 }
 
 val binariesFolder = project.layout.buildDirectory.dir("binaries/desktop")
@@ -317,6 +319,17 @@ android {
 androidComponents.onVariants {
         tasks.named("preBuild") {
             dependsOn(moveJDBCJNIFiles)
+    }
+}
+
+buildkonfig {
+    packageName = "com.powersync.core"
+    defaultConfigs {
+        buildConfigField(STRING, "LIBRARY_VERSION", version.toString())
+
+        // TODO: Swift SDK relies on this too.
+        // Find out how to add a build flag to toggle between "powersync-kotlin" and "powersync-swift".
+        buildConfigField(STRING, "LIBRARY_NAME", "powersync-kotlin")
     }
 }
 

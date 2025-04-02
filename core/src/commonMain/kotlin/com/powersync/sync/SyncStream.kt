@@ -22,10 +22,6 @@ import io.ktor.client.request.headers
 import io.ktor.client.request.preparePost
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.contentType
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.readUTF8Line
 import kotlinx.coroutines.CancellationException
@@ -35,6 +31,9 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonObject
+import com.powersync.core.BuildKonfig.LIBRARY_NAME
+import com.powersync.core.BuildKonfig.LIBRARY_VERSION
+import io.ktor.http.*
 
 internal class SyncStream(
     private val bucketStorage: BucketStorage,
@@ -172,7 +171,7 @@ internal class SyncStream(
                 contentType(ContentType.Application.Json)
                 headers {
                     append(HttpHeaders.Authorization, "Token ${credentials.token}")
-                    append("User-Id", credentials.userId ?: "")
+                    append("User-Agent", powerSyncUserAgent())
                 }
             }
         if (response.status.value == 401) {
@@ -184,6 +183,10 @@ internal class SyncStream(
 
         val body = JsonUtil.json.decodeFromString<WriteCheckpointResponse>(response.body())
         return body.data.writeCheckpoint
+    }
+
+    private fun powerSyncUserAgent(): String {
+        "$LIBRARY_NAME/$LIBRARY_VERSION ${getOS()}"
     }
 
     private fun streamingSyncRequest(req: StreamingSyncRequest): Flow<String> =
@@ -200,7 +203,7 @@ internal class SyncStream(
                     contentType(ContentType.Application.Json)
                     headers {
                         append(HttpHeaders.Authorization, "Token ${credentials.token}")
-                        append("User-Id", credentials.userId ?: "")
+                        append("User-Agent", powerSyncUserAgent())
                     }
                     timeout { socketTimeoutMillis = Long.MAX_VALUE }
                     setBody(bodyJson)
@@ -448,6 +451,8 @@ internal class SyncStream(
         return state
     }
 }
+
+internal expect fun getOS(): String
 
 internal data class SyncStreamState(
     var targetCheckpoint: Checkpoint?,

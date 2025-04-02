@@ -40,6 +40,7 @@ mokkery = "2.7.1"
 kotlinter = "5.0.1"
 keeper = "0.16.1"
 atomicfu = "0.27.0"
+buildKonfig = "0.17.0"
 
 # Sample - Android
 androidx-core = "1.15.0"
@@ -128,6 +129,7 @@ kotlinter = { id = "org.jmailen.kotlinter", version.ref = "kotlinter" }
 keeper = { id = "com.slack.keeper", version.ref = "keeper" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version.ref = "atomicfu" }
+buildKonfig = { id = "com.codingfeline.buildkonfig", version.ref = "buildKonfig" }
 
 [bundles]
 sqldelight = [
