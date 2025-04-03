@@ -37,5 +37,5 @@ internal class TestAttachmentsQueue(
     /**
      * For tests this uses a temporary directory. On iOS it uses the user storage directory
      */
-    override fun getStorageDirectory(): String = getTempDir() ?: super.getStorageDirectory()
+    override fun getStorageDirectory(): String = getTempDir()
 }
