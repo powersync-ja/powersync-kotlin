@@ -173,9 +173,8 @@ internal class SyncingService(
             }
 
             remoteStorage.uploadFile(
-                attachment.filename,
                 localStorage.readFile(attachment.localUri),
-                mediaType = attachment.mediaType ?: "",
+                attachment,
             )
             logger.i("Uploaded attachment \"${attachment.id}\" to Cloud Storage")
             return attachment.copy(state = AttachmentState.SYNCED.ordinal, hasSynced = 1)
@@ -206,7 +205,7 @@ internal class SyncingService(
         val attachmentPath = getLocalUri(attachment.filename)
 
         try {
-            val fileFlow = remoteStorage.downloadFile(attachment.filename)
+            val fileFlow = remoteStorage.downloadFile(attachment)
             localStorage.saveFile(attachmentPath, fileFlow)
             logger.i("Downloaded file \"${attachment.id}\"")
 
@@ -236,7 +235,7 @@ internal class SyncingService(
      */
     private suspend fun deleteAttachment(attachment: Attachment): Attachment {
         try {
-            remoteStorage.deleteFile(attachment.filename)
+            remoteStorage.deleteFile(attachment)
             if (attachment.localUri != null) {
                 localStorage.deleteFile(attachment.localUri)
             }

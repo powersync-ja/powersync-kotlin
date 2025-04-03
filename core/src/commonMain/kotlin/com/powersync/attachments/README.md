@@ -11,8 +11,8 @@ stored in a local only attachments table.
 
 ### Key Assumptions
 
-- Attachments are immutable.
 - Each attachment should be identifiable by a unique ID.
+- Attachments are immutable.
 - Relational data should contain a foreign key column that references the attachment ID.
 - Relational data should reflect the holistic state of attachments at any given time. An existing
   local attachment will deleted locally if no relational data references it.
@@ -123,18 +123,17 @@ class AttachmentsQueue(
 ```kotlin
 val remote = object : RemoteStorageAdapter() {
     override suspend fun uploadFile(
-        filename: String,
-        file: Flow<ByteArray>,
-        mediaType: String?
+        fileData: Flow<ByteArray>,
+        attachment: Attachment,
     ) {
         TODO("Make a request to the backend")
     }
 
-    override suspend fun downloadFile(filename: String): Flow<ByteArray> {
+    override suspend fun downloadFile(attachment: Attachment): Flow<ByteArray> {
         TODO("Make a request to the backend")
     }
 
-    override suspend fun deleteFile(filename: String) {
+    override suspend fun deleteFile(attachment: Attachment) {
         TODO("Make a request to the backend")
     }
 

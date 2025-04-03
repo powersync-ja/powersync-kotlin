@@ -10,18 +10,17 @@ public interface RemoteStorageAdapter {
      * Upload a file to remote storage
      */
     public suspend fun uploadFile(
-        filename: String,
-        file: Flow<ByteArray>,
-        mediaType: String?,
+        fileData: Flow<ByteArray>,
+        attachment: Attachment,
     ): Unit
 
     /**
      * Download a file from remote storage
      */
-    public suspend fun downloadFile(filename: String): Flow<ByteArray>
+    public suspend fun downloadFile(attachment: Attachment): Flow<ByteArray>
 
     /**
      * Delete a file from remote storage
      */
-    public suspend fun deleteFile(filename: String)
+    public suspend fun deleteFile(attachment: Attachment)
 }

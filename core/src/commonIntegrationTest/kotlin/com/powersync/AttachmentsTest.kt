@@ -123,7 +123,7 @@ class AttachmentsTest {
                 assertEquals(expected = AttachmentState.SYNCED.ordinal, attachmentRecord.state)
 
                 // A download should have been attempted for this file
-                verifySuspend { remote.downloadFile(attachmentRecord.filename) }
+                verifySuspend { remote.downloadFile(attachmentRecord) }
 
                 // A file should now exist
                 val localUri = attachmentRecord.localUri!!
@@ -228,9 +228,8 @@ class AttachmentsTest {
                 // A download should have been attempted for this file
                 verifySuspend {
                     remote.uploadFile(
-                        attachmentRecord.filename,
                         any(),
-                        attachmentRecord.mediaType,
+                        attachmentRecord,
                     )
                 }
 
@@ -329,7 +328,7 @@ class AttachmentsTest {
                 assertEquals(expected = AttachmentState.SYNCED.ordinal, attachmentRecord.state)
 
                 // A download should have been attempted for this file
-                verifySuspend { remote.downloadFile(attachmentRecord.filename) }
+                verifySuspend { remote.downloadFile(attachmentRecord) }
 
                 // A file should now exist
                 val localUri = attachmentRecord.localUri!!
