@@ -28,6 +28,11 @@ public data class Attachment(
     val localUri: String? = null,
     val mediaType: String? = null,
     val size: Long? = null,
+    /**
+     * Specifies if the attachment has been synced locally before. This is particularly useful
+     * for restoring archived attachments in edge cases.
+     */
+    val hasSynced: Int = 0,
 ) {
     public companion object {
         public fun fromCursor(cursor: SqlCursor): Attachment =
@@ -39,6 +44,7 @@ public data class Attachment(
                 mediaType = cursor.getStringOptional(name = "media_type"),
                 size = cursor.getLongOptional("size"),
                 state = cursor.getLong("state").toInt(),
+                hasSynced = cursor.getLong("has_synced").toInt(),
             )
     }
 }

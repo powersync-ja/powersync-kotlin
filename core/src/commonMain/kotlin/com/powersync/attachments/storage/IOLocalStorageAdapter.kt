@@ -1,6 +1,7 @@
-package com.powersync.attachments
+package com.powersync.attachments.storage
 
 import com.powersync.attachments.storage.AbstractLocalStorageAdapter
+import com.powersync.db.runWrappedSuspending
 import io.ktor.utils.io.core.remaining
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -22,21 +23,23 @@ public class IOLocalStorageAdapter : AbstractLocalStorageAdapter() {
         filePath: String,
         data: Flow<ByteArray>,
     ): Long =
-        withContext(Dispatchers.IO) {
-            var totalSize = 0L
-            SystemFileSystem.sink(Path(filePath)).use { sink ->
-                // Copy to a buffer in order to write
-                Buffer().use { buffer ->
-                    data.collect { chunk ->
-                        // Copy into a buffer in order to sink the chunk
-                        buffer.write(chunk, 0)
-                        val chunkSize = chunk.size.toLong()
-                        totalSize += chunkSize
-                        sink.write(buffer, chunkSize)
+        runWrappedSuspending {
+            withContext(Dispatchers.IO) {
+                var totalSize = 0L
+                SystemFileSystem.sink(Path(filePath)).use { sink ->
+                    // Copy to a buffer in order to write
+                    Buffer().use { buffer ->
+                        data.collect { chunk ->
+                            // Copy into a buffer in order to sink the chunk
+                            buffer.write(chunk, 0)
+                            val chunkSize = chunk.size.toLong()
+                            totalSize += chunkSize
+                            sink.write(buffer, chunkSize)
+                        }
                     }
+                    sink.flush()
+                    return@withContext totalSize
                 }
-                sink.flush()
-                return@withContext totalSize
             }
         }
 
@@ -64,28 +67,43 @@ public class IOLocalStorageAdapter : AbstractLocalStorageAdapter() {
         }
 
     public override suspend fun deleteFile(filePath: String): Unit =
-        withContext(Dispatchers.IO) {
-            SystemFileSystem.delete(Path(filePath))
+        runWrappedSuspending {
+            withContext(Dispatchers.IO) {
+                SystemFileSystem.delete(Path(filePath))
+            }
         }
 
     public override suspend fun fileExists(filePath: String): Boolean =
-        withContext(Dispatchers.IO) {
-            SystemFileSystem.exists(Path(filePath))
+        runWrappedSuspending {
+            withContext(Dispatchers.IO) {
+                SystemFileSystem.exists(Path(filePath))
+            }
         }
 
-    public override suspend fun makeDir(filePath: String): Unit =
-        withContext(Dispatchers.IO) {
-            SystemFileSystem.createDirectories(Path(filePath))
+    public override suspend fun makeDir(path: String): Unit =
+        runWrappedSuspending {
+            withContext(Dispatchers.IO) {
+                SystemFileSystem.createDirectories(Path(path))
+            }
+        }
+
+    public override suspend fun rmDir(path: String): Unit =
+        runWrappedSuspending {
+            withContext(Dispatchers.IO) {
+                SystemFileSystem.delete(Path(path))
+            }
         }
 
     public override suspend fun copyFile(
         sourcePath: String,
         targetPath: String,
     ): Unit =
-        withContext(Dispatchers.IO) {
-            SystemFileSystem.source(Path(sourcePath)).use { source ->
-                SystemFileSystem.sink(Path(targetPath)).use { sink ->
-                    source.buffered().transferTo(sink.buffered())
+        runWrappedSuspending {
+            withContext(Dispatchers.IO) {
+                SystemFileSystem.source(Path(sourcePath)).use { source ->
+                    SystemFileSystem.sink(Path(targetPath)).use { sink ->
+                        source.buffered().transferTo(sink.buffered())
+                    }
                 }
             }
         }

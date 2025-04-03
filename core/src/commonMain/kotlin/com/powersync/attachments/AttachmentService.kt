@@ -16,6 +16,7 @@ public class AttachmentService(
     private val db: PowerSyncDatabase,
     private val tableName: String,
     private val logger: Logger,
+    private val maxArchivedCount: Long,
 ) {
     /**
      * Table used for storing attachments in the attachment queue.
@@ -158,13 +159,30 @@ public class AttachmentService(
 
     /**
      * Delete attachments which have been archived
+     * @returns true if all items have been deleted. Returns false if there might be more archived
+     * items remaining.
      */
-    public suspend fun deleteArchivedAttachments(callback: suspend (attachments: List<Attachment>) -> Unit) {
+    public suspend fun deleteArchivedAttachments(callback: suspend (attachments: List<Attachment>) -> Unit): Boolean {
         // First fetch the attachments in order to allow other cleanup
+        val limit = 1000
         val attachments =
             db.getAll(
-                "SELECT * FROM $table WHERE state = ?",
-                listOf(AttachmentState.ARCHIVED.ordinal),
+                """
+                        SELECT
+                            * 
+                        FROM 
+                            $table
+                        WHERE 
+                            state = ?
+                        ORDER BY
+                            timestamp DESC
+                        LIMIT ? OFFSET ?
+                    """,
+                listOf(
+                    AttachmentState.ARCHIVED.ordinal,
+                    limit,
+                    maxArchivedCount,
+                ),
             ) { Attachment.fromCursor(it) }
         callback(attachments)
         db.execute(
@@ -173,6 +191,7 @@ public class AttachmentService(
                 Json.encodeToString(attachments.map { it.id }),
             ),
         )
+        return attachments.size < limit
     }
 
     /**
@@ -190,9 +209,9 @@ public class AttachmentService(
         context.execute(
             """
                 INSERT OR REPLACE INTO 
-                    $table (id, timestamp, filename, local_uri, media_type, size, state) 
+                    $table (id, timestamp, filename, local_uri, media_type, size, state, has_synced) 
                 VALUES
-                    (?, ?, ?, ?, ?, ?, ?)
+                    (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             listOf(
                 updatedRecord.id,
@@ -202,6 +221,7 @@ public class AttachmentService(
                 updatedRecord.mediaType,
                 updatedRecord.size,
                 updatedRecord.state,
+                updatedRecord.hasSynced,
             ),
         )
 

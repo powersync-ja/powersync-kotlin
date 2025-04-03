@@ -3,6 +3,7 @@ package com.powersync.attachments
 import co.touchlab.kermit.Logger
 import com.powersync.PowerSyncDatabase
 import com.powersync.PowerSyncException
+import com.powersync.attachments.storage.IOLocalStorageAdapter
 import com.powersync.attachments.sync.SyncingService
 import com.powersync.db.internal.ConnectionContext
 import com.powersync.db.runWrappedSuspending
@@ -64,7 +65,8 @@ public abstract class AbstractAttachmentQueue(
      */
     public val localStorage: LocalStorageAdapter = IOLocalStorageAdapter(),
     /**
-     * Directory where attachment files will be written to disk
+     * Directory name where attachment files will be written to disk.
+     * This will be created under the directory returned from [getStorageDirectory]
      */
     private val attachmentDirectoryName: String = DEFAULT_ATTACHMENTS_DIRECTORY_NAME,
     /**
@@ -81,9 +83,19 @@ public abstract class AbstractAttachmentQueue(
      */
     private val syncInterval: Duration = 30.seconds,
     /**
+     * Archived attachments can be used as a cache which can be restored if an attachment id
+     * reappears after being removed. This parameter defines how many archived records are retained.
+     * Records are deleted once the number of items exceeds this value.
+     */
+    private val archivedCacheLimit: Long = 100,
+    /**
      * Creates a list of subdirectories in the {attachmentDirectoryName} directory
      */
     private val subdirectories: List<String>? = null,
+    /**
+     * Should attachments be downloaded
+     */
+    private val downloadAttachments: Boolean = true,
     /**
      * Logging interface used for all log operations
      */
@@ -101,7 +113,12 @@ public abstract class AbstractAttachmentQueue(
      *  - Create new attachment records for upload/download
      */
     public val attachmentsService: AttachmentService =
-        AttachmentService(db, attachmentsQueueTableName, logger)
+        AttachmentService(
+            db,
+            attachmentsQueueTableName,
+            logger,
+            maxArchivedCount = archivedCacheLimit,
+        )
 
     /**
      * Syncing service for this attachment queue.
@@ -151,20 +168,27 @@ public abstract class AbstractAttachmentQueue(
                 // Listen for connectivity changes
                 syncStatusJob =
                     scope.launch {
-                        scope.launch {
-                            db.currentStatus.asFlow().collect { status ->
-                                if (status.connected) {
-                                    syncingService.triggerSync()
+                        val statusJob =
+                            scope.launch {
+                                var previousConnected = db.currentStatus.connected
+                                db.currentStatus.asFlow().collect { status ->
+                                    if (!previousConnected && status.connected) {
+                                        syncingService.triggerSync()
+                                    }
+                                    previousConnected = status.connected
                                 }
                             }
-                        }
 
-                        scope.launch {
-                            // Watch local attachment relationships and sync the attachment records
-                            watchAttachments().collect { items ->
-                                processWatchedAttachments(items)
+                        val watchJob =
+                            scope.launch {
+                                // Watch local attachment relationships and sync the attachment records
+                                watchAttachments().collect { items ->
+                                    processWatchedAttachments(items)
+                                }
                             }
-                        }
+
+                        statusJob.join()
+                        watchJob.join()
                     }
             }
         }
@@ -217,7 +241,7 @@ public abstract class AbstractAttachmentQueue(
      * This method can be overriden for custom behaviour.
      */
     @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun resolveNewAttachmentFilename(
+    public open suspend fun resolveNewAttachmentFilename(
         attachmentId: String,
         fileExtension: String?,
     ): String = "$attachmentId.$fileExtension"
@@ -237,8 +261,12 @@ public abstract class AbstractAttachmentQueue(
      * This method can be overriden for custom behaviour.
      */
     @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun processWatchedAttachments(items: List<WatchedAttachmentItem>): Unit =
+    public open suspend fun processWatchedAttachments(items: List<WatchedAttachmentItem>): Unit =
         runWrappedSuspending {
+            /**
+             * Need to get all the attachments which are tracked in the DB.
+             * We might need to restore an archived attachment.
+             */
             val currentAttachments = attachmentsService.getAttachments()
             val attachmentUpdates = mutableListOf<Attachment>()
 
@@ -246,6 +274,9 @@ public abstract class AbstractAttachmentQueue(
                 val existingQueueItem = currentAttachments.find { it.id == item.id }
 
                 if (existingQueueItem == null) {
+                    if (!downloadAttachments) {
+                        continue
+                    }
                     // This item should be added to the queue
                     // This item is assumed to be coming from an upstream sync
                     // Locally created new items should be persisted using [saveFile] before
@@ -263,10 +294,36 @@ public abstract class AbstractAttachmentQueue(
                             state = AttachmentState.QUEUED_DOWNLOAD.ordinal,
                         ),
                     )
+                } else if
+                    (existingQueueItem.state == AttachmentState.ARCHIVED.ordinal) {
+                    // The attachment is present again. Need to queue it for sync.
+                    // We might be able to optimize this in future
+                    if (existingQueueItem.hasSynced == 1) {
+                        // No remote action required, we can restore the record (avoids deletion)
+                        attachmentUpdates.add(
+                            existingQueueItem.copy(state = AttachmentState.SYNCED.ordinal),
+                        )
+                    } else {
+                        /**
+                         * The localURI should be set if the record was meant to be downloaded
+                         * and has been synced. If it's missing and hasSynced is false then
+                         * it must be an upload operation
+                         */
+                        attachmentUpdates.add(
+                            existingQueueItem.copy(
+                                state =
+                                    if (existingQueueItem.localUri == null) {
+                                        AttachmentState.QUEUED_DOWNLOAD.ordinal
+                                    } else {
+                                        AttachmentState.QUEUED_UPLOAD.ordinal
+                                    },
+                            ),
+                        )
+                    }
                 }
             }
 
-            // Remove any items not specified in the items
+            // Archive any items not specified in the watched items
             currentAttachments
                 .filter { null == items.find { update -> update.id == it.id } }
                 .forEach {
@@ -289,7 +346,7 @@ public abstract class AbstractAttachmentQueue(
      * This method can be overriden for custom behaviour.
      */
     @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun <R> saveFile(
+    public open suspend fun <R> saveFile(
         data: Flow<ByteArray>,
         mediaType: String,
         fileExtension: String?,
@@ -335,7 +392,7 @@ public abstract class AbstractAttachmentQueue(
      * This method can be overriden for custom behaviour.
      */
     @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun deleteFile(attachmentId: String): Attachment =
+    public open suspend fun deleteFile(attachmentId: String): Attachment =
         runWrappedSuspending {
             val attachment =
                 attachmentsService.getAttachment(attachmentId)
@@ -350,13 +407,13 @@ public abstract class AbstractAttachmentQueue(
      * Returns the local file path for the given filename, used to store in the database.
      * Example: filename: "attachment-1.jpg" returns "attachments/attachment-1.jpg"
      */
-    public fun getLocalFilePathSuffix(filename: String): String = Path(attachmentDirectoryName, filename).toString()
+    public open fun getLocalFilePathSuffix(filename: String): String = Path(attachmentDirectoryName, filename).toString()
 
     /**
      * Returns the directory where attachments are stored on the device, used to make dir
      * Example: "/data/user/0/com.yourdomain.app/files/attachments/"
      */
-    public fun getStorageDirectory(): String {
+    public open fun getStorageDirectory(): String {
         val userStorageDirectory = localStorage.getUserStorageDirectory()
         return Path(userStorageDirectory, attachmentDirectoryName).toString()
     }
@@ -365,8 +422,27 @@ public abstract class AbstractAttachmentQueue(
      * Return users storage directory with the attachmentPath use to load the file.
      * Example: filePath: "attachments/attachment-1.jpg" returns "/data/user/0/com.yourdomain.app/files/attachments/attachment-1.jpg"
      */
-    public fun getLocalUri(filename: String): String {
+    public open fun getLocalUri(filename: String): String {
         val storageDirectory = getStorageDirectory()
         return Path(storageDirectory, filename).toString()
+    }
+
+    /**
+     * Removes all archived items
+     */
+    public suspend fun expireCache() {
+        var done: Boolean
+        do {
+            done = syncingService.deleteArchivedAttachments()
+        } while (!done)
+    }
+
+    /**
+     * Clears the attachment queue and deletes all attachment files
+     */
+    public suspend fun clearQueue() {
+        attachmentsService.clearQueue()
+        // Remove the attachments directory
+        localStorage.rmDir(getStorageDirectory())
     }
 }

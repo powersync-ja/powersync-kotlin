@@ -9,6 +9,14 @@ This package is included in the PowerSync Core module.
 An `AttachmentQueue` is used to manage and sync attachments in your app. The attachments' state are
 stored in a local only attachments table.
 
+### Key Assumptions
+
+- Attachments are immutable.
+- Each attachment should be identifiable by a unique ID.
+- Relational data should contain a foreign key column that references the attachment ID.
+- Relational data should reflect the holistic state of attachments at any given time. An existing
+  local attachment will deleted locally if no relational data references it.
+
 ### Example
 
 In this example, the user captures photos when checklist items are completed as part of an
@@ -50,14 +58,15 @@ An attachments table definition can be created with the following options.
 
 The default columns in `AttachmentTable`:
 
-| Column Name  | Type      | Description                                                       |
-|--------------|-----------|-------------------------------------------------------------------|
-| `id`         | `TEXT`    | The ID of the attachment record                                   |
-| `filename`   | `TEXT`    | The filename of the attachment                                    |
-| `media_type` | `TEXT`    | The media type of the attachment                                  |
-| `state`      | `INTEGER` | The state of the attachment, one of `AttachmentState` enum values |
-| `timestamp`  | `INTEGER` | The timestamp of last update to the attachment record             |
-| `size`       | `INTEGER` | The size of the attachment in bytes                               |
+| Column Name  | Type      | Description                                                                                                        |
+|--------------|-----------|--------------------------------------------------------------------------------------------------------------------|
+| `id`         | `TEXT`    | The ID of the attachment record                                                                                    |
+| `filename`   | `TEXT`    | The filename of the attachment                                                                                     |
+| `media_type` | `TEXT`    | The media type of the attachment                                                                                   |
+| `state`      | `INTEGER` | The state of the attachment, one of `AttachmentState` enum values                                                  |
+| `timestamp`  | `INTEGER` | The timestamp of last update to the attachment record                                                              |
+| `size`       | `INTEGER` | The size of the attachment in bytes                                                                                |
+| `has_synced` | `INTEGER` | Internal tracker which tracks if the attachment has ever been synced. This is used for caching/archiving purposes. |
 
 ### Steps to implement
 
@@ -151,11 +160,15 @@ queue.start()
 
 ```kotlin
 queue.saveFile(
-    // The attachment's data flow
+    // The attachment's data flow, this is just an example
     data = flowOf(ByteArray(1)),
     mediaType = "image/jpg",
     fileExtension = "jpg",
 ) { tx, attachment ->
+    /**
+     * This lambda is invoked in the same transaction which creates the attachment record.
+     * Assignments of the newly created photo_id should be done in the same transaction for maximum efficiency.
+     */
     // Set the photo_id of a checklist to the attachment id
     tx.execute(
         """
@@ -182,6 +195,7 @@ The state of an attachment can be one of the following:
 | State             | Description                                                                   |
 |-------------------|-------------------------------------------------------------------------------|
 | `QUEUED_UPLOAD`   | The attachment has been queued for upload to the cloud storage                |
+| `QUEUED_DELETE`   | The attachment has been queued for delete in the cloud storage (and locally)  |
 | `QUEUED_DOWNLOAD` | The attachment has been queued for download from the cloud storage            |
 | `SYNCED`          | The attachment has been synced                                                |
 | `ARCHIVED`        | The attachment has been orphaned, i.e. the associated record has been deleted |
@@ -189,7 +203,8 @@ The state of an attachment can be one of the following:
 ## Syncing attachments
 
 The `AttachmentQueue` sets a watched query on the `attachments` table, for record in the
-`QUEUED_UPLOAD` and `QUEUED_DOWNLOAD` state. An event loop triggers calls to the remote storage for
+`QUEUED_UPLOAD`, `QUEUED_DELETE` and `QUEUED_DOWNLOAD` state. An event loop triggers calls to the
+remote storage for
 these operations.
 
 In addition to watching for changes, the `AttachmentQueue` also triggers a sync periodically.
@@ -237,4 +252,6 @@ instance:
   state.
 - By default, the `AttachmentQueue` only keeps the last `100` attachment records and then expires
   the rest.
-- This can be configured by setting `cacheLimit` in the `AttachmentQueue` constructor options.
+- In some cases these records (attachment ids) might be restored. An archived attachment will be
+  restored if it is still in the cache. This can be configured by setting `cacheLimit` in the
+  `AttachmentQueue` constructor options.

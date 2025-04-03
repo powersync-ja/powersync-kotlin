@@ -10,11 +10,11 @@ import kotlinx.coroutines.flow.Flow
 internal class TestAttachmentsQueue(
     db: PowerSyncDatabase,
     remoteStorage: RemoteStorageAdapter,
-    attachmentDirectoryName: String,
+    archivedCacheLimit: Long,
 ) : AbstractAttachmentQueue(
         db,
         remoteStorage,
-        attachmentDirectoryName = attachmentDirectoryName,
+        archivedCacheLimit = archivedCacheLimit,
     ) {
     override fun watchAttachments(): Flow<List<WatchedAttachmentItem>> =
         db.watch(
@@ -30,4 +30,9 @@ internal class TestAttachmentsQueue(
         ) {
             WatchedAttachmentItem(id = it.getString("photo_id"), fileExtension = "jpg")
         }
+
+    /**
+     * For tests this uses a temporary directory. On iOS it uses the user storage directory
+     */
+    override fun getStorageDirectory(): String = getTempDir() ?: super.getStorageDirectory()
 }

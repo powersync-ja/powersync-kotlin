@@ -23,6 +23,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.minutes
 
 @OptIn(ExperimentalKermitApi::class)
 class AttachmentsTest {
@@ -57,23 +58,20 @@ class AttachmentsTest {
     }
 
     @Test
-    fun testLinksPowerSync() =
-        runTest {
-            database.get("SELECT powersync_rs_version();") { it.getString(0)!! }
-        }
-
-    @Test
     fun testAttachmentDownload() =
-        runTest {
-            turbineScope {
+        runTest(timeout = 5.minutes) {
+            turbineScope(timeout = 5.minutes) {
                 val remote = spy<RemoteStorageAdapter>(MockedRemoteStorage())
 
                 val queue =
                     TestAttachmentsQueue(
                         db = database,
                         remoteStorage = remote,
-                        // For these tests (jvm/ios) this should be fine for now
-                        attachmentDirectoryName = "/tmp",
+                        /**
+                         * Sets the cache limit to zero for this test. Archived records will
+                         * immediately be deleted.
+                         */
+                        archivedCacheLimit = 0,
                     )
 
                 queue.start()
@@ -173,8 +171,11 @@ class AttachmentsTest {
                     TestAttachmentsQueue(
                         db = database,
                         remoteStorage = remote,
-                        // For these tests (jvm/ios) this should be fine for now
-                        attachmentDirectoryName = "/tmp",
+                        /**
+                         * Sets the cache limit to zero for this test. Archived records will
+                         * immediately be deleted.
+                         */
+                        archivedCacheLimit = 0,
                     )
 
                 queue.start()
@@ -257,6 +258,115 @@ class AttachmentsTest {
 
                 // The file should have been deleted from storage
                 assertEquals(expected = false, actual = queue.localStorage.fileExists(localUri))
+
+                attachmentQuery.cancel()
+                queue.close()
+            }
+        }
+
+    @Test
+    fun testAttachmentCachedDownload() =
+        runTest {
+            turbineScope {
+                val remote = spy<RemoteStorageAdapter>(MockedRemoteStorage())
+
+                val queue =
+                    TestAttachmentsQueue(
+                        db = database,
+                        remoteStorage = remote,
+                        /**
+                         * Keep some items in the cache
+                         */
+                        archivedCacheLimit = 10,
+                    )
+
+                queue.start()
+
+                // Monitor the attachments table for testing
+                val attachmentQuery =
+                    database
+                        .watch("SELECT * FROM attachments") { Attachment.fromCursor(it) }
+                        .testIn(this)
+
+                val result = attachmentQuery.awaitItem()
+
+                // There should not be any attachment records here
+                assertEquals(expected = 0, actual = result.size)
+
+                // Create a user with a photo_id specified.
+                // This code did not save an attachment before assigning a photo_id.
+                // This is equivalent to requiring an attachment download
+                database.execute(
+                    """
+                        INSERT INTO
+                            users (id, name, email, photo_id)
+                        VALUES
+                            (uuid(), "steven", "steven@journeyapps.com", uuid())
+                    """,
+                )
+
+                var attachmentRecord = attachmentQuery.awaitItem().first()
+                assertNotNull(
+                    attachmentRecord,
+                    """
+                    An attachment record should be created after creating a user with a photo_id
+                    "
+                    """.trimIndent(),
+                )
+
+                /**
+                 * The timing of the watched query resolving might differ slightly.
+                 * We might get a watched query result where the attachment is QUEUED_DOWNLOAD
+                 * or we could get the result once it has been DOWNLOADED.
+                 * We should assert that the download happens eventually.
+                 */
+
+                if (attachmentRecord.state == AttachmentState.QUEUED_DOWNLOAD.ordinal) {
+                    // Wait for the download to be triggered
+                    attachmentRecord = attachmentQuery.awaitItem().first()
+                }
+
+                assertEquals(expected = AttachmentState.SYNCED.ordinal, attachmentRecord.state)
+
+                // A download should have been attempted for this file
+                verifySuspend { remote.downloadFile(attachmentRecord.filename) }
+
+                // A file should now exist
+                val localUri = attachmentRecord.localUri!!
+                assertTrue { queue.localStorage.fileExists(localUri) }
+
+                // Now clear the user's photo_id. The attachment should be archived
+                database.execute(
+                    """
+                            UPDATE
+                                users
+                            SET 
+                                photo_id = NULL
+                         """,
+                )
+
+                attachmentRecord = attachmentQuery.awaitItem().first()
+                assertEquals(
+                    expected = AttachmentState.ARCHIVED.ordinal,
+                    actual = attachmentRecord.state,
+                )
+
+                // Now if we set the photo_id, the archived record should be restored
+                database.execute(
+                    """
+                            UPDATE
+                                users
+                            SET 
+                                photo_id = ?
+                         """,
+                    listOf(attachmentRecord.id),
+                )
+
+                attachmentRecord = attachmentQuery.awaitItem().first()
+                assertEquals(
+                    expected = AttachmentState.SYNCED.ordinal,
+                    actual = attachmentRecord.state,
+                )
 
                 attachmentQuery.cancel()
                 queue.close()

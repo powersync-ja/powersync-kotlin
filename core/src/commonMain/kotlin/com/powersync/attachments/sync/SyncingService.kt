@@ -71,17 +71,7 @@ internal class SyncingService(
                             handleSync(attachments)
 
                             // Cleanup archived attachments
-                            attachmentsService.deleteArchivedAttachments { pendingDelete ->
-                                for (attachment in pendingDelete) {
-                                    if (attachment.localUri == null) {
-                                        continue
-                                    }
-                                    if (!localStorage.fileExists(attachment.localUri)) {
-                                        continue
-                                    }
-                                    localStorage.deleteFile(attachment.localUri)
-                                }
-                            }
+                            deleteArchivedAttachments()
                         } catch (ex: Exception) {
                             if (ex is CancellationException) {
                                 throw ex
@@ -119,8 +109,22 @@ internal class SyncingService(
     suspend fun close(): Unit =
         mutex.withLock {
             periodicSyncTrigger?.cancel()
+            periodicSyncTrigger?.join()
             syncJob.cancel()
             syncJob.join()
+        }
+
+    suspend fun deleteArchivedAttachments() =
+        attachmentsService.deleteArchivedAttachments { pendingDelete ->
+            for (attachment in pendingDelete) {
+                if (attachment.localUri == null) {
+                    continue
+                }
+                if (!localStorage.fileExists(attachment.localUri)) {
+                    continue
+                }
+                localStorage.deleteFile(attachment.localUri)
+            }
         }
 
     /**
@@ -174,7 +178,7 @@ internal class SyncingService(
                 mediaType = attachment.mediaType ?: "",
             )
             logger.i("Uploaded attachment \"${attachment.id}\" to Cloud Storage")
-            return attachment.copy(state = AttachmentState.SYNCED.ordinal)
+            return attachment.copy(state = AttachmentState.SYNCED.ordinal, hasSynced = 1)
         } catch (e: Exception) {
             logger.e("Upload attachment error for attachment $attachment: ${e.message}")
             if (errorHandler != null) {
@@ -210,6 +214,7 @@ internal class SyncingService(
             return attachment.copy(
                 localUri = attachmentPath,
                 state = AttachmentState.SYNCED.ordinal,
+                hasSynced = 1,
             )
         } catch (e: Exception) {
             if (errorHandler != null) {

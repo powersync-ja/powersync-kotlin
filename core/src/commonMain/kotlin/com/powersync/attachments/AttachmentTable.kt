@@ -21,6 +21,7 @@ public fun createAttachmentsTable(
                 Column("size", ColumnType.INTEGER),
                 Column("media_type", ColumnType.TEXT),
                 Column("state", ColumnType.INTEGER),
+                Column("has_synced", ColumnType.INTEGER),
             ).plus(additionalColumns ?: emptyList()),
         localOnly = true,
     )
