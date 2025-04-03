@@ -322,10 +322,14 @@ public abstract class AbstractAttachmentQueue(
                 }
             }
 
-            // Archive any items not specified in the watched items
+            /**
+             * Archive any items not specified in the watched items except for items pending delete.
+             */
             currentAttachments
-                .filter { null == items.find { update -> update.id == it.id } }
-                .forEach {
+                .filter {
+                    it.state != AttachmentState.QUEUED_DELETE.ordinal &&
+                        null == items.find { update -> update.id == it.id }
+                }.forEach {
                     attachmentUpdates.add(it.copy(state = AttachmentState.ARCHIVED.ordinal))
                 }
 
@@ -345,12 +349,12 @@ public abstract class AbstractAttachmentQueue(
      * This method can be overriden for custom behaviour.
      */
     @Throws(PowerSyncException::class, CancellationException::class)
-    public open suspend fun <R> saveFile(
+    public open suspend fun saveFile(
         data: Flow<ByteArray>,
         mediaType: String,
         fileExtension: String?,
-        updateHook: (context: ConnectionContext, attachment: Attachment) -> R,
-    ): R =
+        updateHook: (context: ConnectionContext, attachment: Attachment) -> Unit,
+    ): Attachment =
         runWrappedSuspending {
             val id = db.get("SELECT uuid()") { it.getString(0)!! }
             val filename =
@@ -380,12 +384,13 @@ public abstract class AbstractAttachmentQueue(
 
                 // Allow consumers to set relationships to this attachment id
                 updateHook(tx, attachment)
+                return@writeTransaction attachment
             }
         }
 
     /**
      * A function which creates an attachment delete operation locally. This operation is queued
-     * for delete after creating.
+     * for delete.
      * The default implementation assumes the attachment record already exists locally. An exception
      * is thrown if the record does not exist locally.
      * This method can be overriden for custom behaviour.

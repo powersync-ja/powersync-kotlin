@@ -225,8 +225,6 @@ By default, this is every 30 seconds, but can be configured by setting `syncInte
 - An `AttachmentRecord` is created or updated with `QUEUED_DOWNLOAD` state.
 - The watched query from `watchAttachments` adds the attachment `id` into a queue of IDs to download
   and triggers the download process
-- The watched query from `watchAttachments` adds the attachment `id` into a queue of IDs to download
-  and triggers the download process
 - If the photo is not on the device, it is downloaded from cloud storage.
 - Writes file to the user's local storage.
 - If this is successful, update the `AttachmentRecord` state to `SYNCED`.
@@ -236,9 +234,10 @@ By default, this is every 30 seconds, but can be configured by setting `syncInte
 
 When an attachment is deleted by a user action or cache expiration:
 
-- Related `AttachmentRecord` is removed from attachments table.
+- An `AttachmentRecord` is created or updated with `QUEUED_DELETE` state.
+- The `RemoteStorage`'s `deleteFile` method will be called.
 - Local file (if exists) is deleted.
-- File on cloud storage is deleted.
+- If successful, the `AttachmentRecord` is deleted.
 
 ### Expire Cache
 
