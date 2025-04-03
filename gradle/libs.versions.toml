@@ -30,7 +30,7 @@ compose-preview = "1.7.8"
 androidxSqlite = "2.4.0"
 
 # plugins
-android-gradle-plugin = "8.9.0"
+android-gradle-plugin = "8.9.1"
 kmmBridge = "0.5.7"
 skie = "0.10.1"
 maven-publish = "0.27.0"

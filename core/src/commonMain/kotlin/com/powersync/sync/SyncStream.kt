@@ -8,6 +8,8 @@ import com.powersync.bucket.BucketStorage
 import com.powersync.bucket.Checkpoint
 import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.connectors.PowerSyncBackendConnector
+import com.powersync.core.BuildKonfig.LIBRARY_NAME
+import com.powersync.core.BuildKonfig.LIBRARY_VERSION
 import com.powersync.db.crud.CrudEntry
 import com.powersync.utils.JsonUtil
 import io.ktor.client.HttpClient
@@ -22,6 +24,10 @@ import io.ktor.client.request.headers
 import io.ktor.client.request.preparePost
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.readUTF8Line
 import kotlinx.coroutines.CancellationException
@@ -31,9 +37,22 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonObject
-import com.powersync.core.BuildKonfig.LIBRARY_NAME
-import com.powersync.core.BuildKonfig.LIBRARY_VERSION
-import io.ktor.http.*
+import kotlin.collections.MutableSet
+import kotlin.collections.buildList
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.collections.filter
+import kotlin.collections.forEach
+import kotlin.collections.isNotEmpty
+import kotlin.collections.joinToString
+import kotlin.collections.listOf
+import kotlin.collections.map
+import kotlin.collections.mutableMapOf
+import kotlin.collections.mutableSetOf
+import kotlin.collections.set
+import kotlin.collections.toList
+import kotlin.collections.toMutableList
+import kotlin.collections.toMutableSet
 
 internal class SyncStream(
     private val bucketStorage: BucketStorage,
@@ -185,9 +204,7 @@ internal class SyncStream(
         return body.data.writeCheckpoint
     }
 
-    private fun powerSyncUserAgent(): String {
-        return "$LIBRARY_NAME/$LIBRARY_VERSION ${getOS()}"
-    }
+    private fun powerSyncUserAgent(): String = "$LIBRARY_NAME/$LIBRARY_VERSION ${getOS()}"
 
     private fun streamingSyncRequest(req: StreamingSyncRequest): Flow<String> =
         flow {

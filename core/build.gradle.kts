@@ -1,3 +1,4 @@
+import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING
 import com.powersync.plugins.sonatype.setupGithubRepository
 import de.undercouch.gradle.tasks.download.Download
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
@@ -9,7 +10,6 @@ import org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable
 import org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest
 import org.jetbrains.kotlin.gradle.tasks.KotlinTest
 import org.jetbrains.kotlin.konan.target.Family
-import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING
 
 
 plugins {
@@ -317,8 +317,8 @@ android {
 }
 
 androidComponents.onVariants {
-        tasks.named("preBuild") {
-            dependsOn(moveJDBCJNIFiles)
+    tasks.named("preBuild") {
+        dependsOn(moveJDBCJNIFiles)
     }
 }
 
@@ -362,4 +362,13 @@ tasks.withType<KotlinTest> {
         showStackTraces = true
     }
 }
+
+tasks.formatKotlinCommonMain {
+    exclude { it.file.name == "BuildKonfig.kt" }
+}
+
+tasks.lintKotlinCommonMain {
+    exclude { it.file.name == "BuildKonfig.kt" }
+}
+
 setupGithubRepository()
