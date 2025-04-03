@@ -11,6 +11,8 @@ import com.powersync.bucket.BucketPriority
 import com.powersync.bucket.Checkpoint
 import com.powersync.bucket.OpType
 import com.powersync.bucket.OplogEntry
+import com.powersync.bucket.WriteCheckpointData
+import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.db.PowerSyncDatabaseImpl
@@ -24,11 +26,15 @@ import com.powersync.testutils.factory
 import com.powersync.testutils.generatePrintLogWriter
 import com.powersync.testutils.waitFor
 import com.powersync.utils.JsonUtil
+import dev.mokkery.answering.calls
 import dev.mokkery.answering.returns
 import dev.mokkery.everySuspend
+import dev.mokkery.matcher.any
 import dev.mokkery.mock
 import dev.mokkery.verify
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
@@ -61,6 +67,7 @@ class SyncIntegrationTest {
     private lateinit var database: PowerSyncDatabaseImpl
     private lateinit var connector: PowerSyncBackendConnector
     private lateinit var syncLines: Channel<SyncLine>
+    private lateinit var checkpointResponse: () -> WriteCheckpointResponse
 
     @BeforeTest
     fun setup() {
@@ -79,6 +86,7 @@ class SyncIntegrationTest {
                 everySuspend { invalidateCredentials() } returns Unit
             }
         syncLines = Channel()
+        checkpointResponse = { WriteCheckpointResponse(WriteCheckpointData("1000")) }
 
         runBlocking {
             database.disconnectAndClear(true)
@@ -100,16 +108,18 @@ class SyncIntegrationTest {
             dbFilename = "testdb",
         ) as PowerSyncDatabaseImpl
 
+    @OptIn(DelicateCoroutinesApi::class)
     private fun syncStream(): SyncStream {
-        val client = MockSyncService(syncLines)
+        val client = MockSyncService(syncLines, { checkpointResponse() })
         return SyncStream(
             bucketStorage = database.bucketStorage,
             connector = connector,
             httpEngine = client,
-            uploadCrud = { },
+            uploadCrud = { connector.uploadData(database) },
             retryDelayMs = 10,
             logger = logger,
             params = JsonObject(emptyMap()),
+            scope = GlobalScope,
         )
     }
 
@@ -529,4 +539,99 @@ class SyncIntegrationTest {
             database.close()
             syncLines.close()
         }
+
+    @Test
+    fun `handles checkpoints during uploads`() = runTest {
+        database.connectInternal(syncStream(), 1000L)
+
+        suspend fun expectUserRows(amount: Int) {
+            val row = database.get("SELECT COUNT(*) FROM users") { it.getLong(0)!! }
+            assertEquals(amount, row.toInt())
+        }
+
+        val completeUpload = CompletableDeferred<Unit>()
+        val uploadStarted = CompletableDeferred<Unit>()
+        everySuspend { connector.uploadData(any()) } calls { (db: PowerSyncDatabase) ->
+            val batch = db.getCrudBatch()
+            if (batch == null) return@calls
+
+            uploadStarted.complete(Unit)
+            completeUpload.await()
+            batch.complete.invoke(null)
+        }
+
+        // Trigger an upload (adding a keep-alive sync line because the execute could start before the database is fully
+        // connected).
+        database.execute("INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)", listOf("local", "local@example.org"))
+        syncLines.send(SyncLine.KeepAlive(1234))
+        expectUserRows(1)
+        uploadStarted.await()
+
+        // Pretend that the connector takes forever in uploadData, but the data gets uploaded before the method returns.
+        syncLines.send(SyncLine.FullCheckpoint(Checkpoint(
+            writeCheckpoint = "1",
+            lastOpId = "2",
+            checksums = listOf(BucketChecksum("a", checksum = 0))
+        )))
+        turbineScope {
+            val turbine = database.currentStatus.asFlow().testIn(this)
+            turbine.waitFor { it.downloading }
+            turbine.cancel()
+        }
+
+        syncLines.send(SyncLine.SyncDataBucket(
+            bucket = "a",
+            data = listOf(
+                OplogEntry(
+                    checksum = 0,
+                    opId = "1",
+                    op = OpType.PUT,
+                    rowId = "1",
+                    rowType = "users",
+                    data = """{"id": "test1", "name": "from local", "email": ""}"""
+                ),
+                OplogEntry(
+                    checksum = 0,
+                    opId = "2",
+                    op = OpType.PUT,
+                    rowId = "2",
+                    rowType = "users",
+                    data = """{"id": "test1", "name": "additional entry", "email": ""}"""
+                ),
+            ),
+            after = null,
+            nextAfter = null,
+            hasMore = false,
+        ))
+        syncLines.send(SyncLine.CheckpointComplete(lastOpId = "2"))
+
+        // Despite receiving a valid checkpoint with two rows, it should not be visible because we have local data.
+        waitFor {
+            assertNotNull(
+                logWriter.logs.find {
+                    it.message.contains("Could not apply checkpoint due to local data")
+                },
+            )
+        }
+        expectUserCount(1)
+
+        // Mark the upload as completed, this should trigger a write_checkpoint.json request
+        val requestedCheckpoint = CompletableDeferred<Unit>()
+        checkpointResponse = {
+            requestedCheckpoint.complete(Unit)
+            WriteCheckpointResponse(WriteCheckpointData(""))
+        }
+        completeUpload.complete(Unit)
+        requestedCheckpoint.await()
+
+        // This should apply the checkpoint
+        turbineScope {
+            val turbine = database.currentStatus.asFlow().testIn(this)
+            turbine.waitFor { !it.downloading }
+            turbine.cancel()
+        }
+
+        // Meaning that the two rows are now visible
+        expectUserCount(2)
+    }
 }
