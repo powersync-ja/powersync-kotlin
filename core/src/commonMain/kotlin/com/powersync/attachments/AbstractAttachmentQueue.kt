@@ -17,7 +17,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.io.files.Path
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * A watched attachment record item.
@@ -79,7 +79,7 @@ public abstract class AbstractAttachmentQueue(
     /**
      * Periodic interval to trigger attachment sync operations
      */
-    private val syncInterval: Duration = 5.minutes,
+    private val syncInterval: Duration = 30.seconds,
     /**
      * Creates a list of subdirectories in the {attachmentDirectoryName} directory
      */

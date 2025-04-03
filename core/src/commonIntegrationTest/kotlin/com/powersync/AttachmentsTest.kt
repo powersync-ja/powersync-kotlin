@@ -194,7 +194,11 @@ class AttachmentsTest {
                  * Creates an attachment given a flow of bytes (the file data) then assigns this to
                  * a newly created user.
                  */
-                queue.saveFile(flowOf(ByteArray(1)), "image/jpg", "jpg") { tx, attachment ->
+                queue.saveFile(
+                    data = flowOf(ByteArray(1)),
+                    mediaType = "image/jpg",
+                    fileExtension = "jpg",
+                ) { tx, attachment ->
                     // Set the photo_id of a new user to the attachment id
                     tx.execute(
                         """

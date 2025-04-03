@@ -11,7 +11,11 @@ internal class TestAttachmentsQueue(
     db: PowerSyncDatabase,
     remoteStorage: RemoteStorageAdapter,
     attachmentDirectoryName: String,
-) : AbstractAttachmentQueue(db, remoteStorage, attachmentDirectoryName = attachmentDirectoryName) {
+) : AbstractAttachmentQueue(
+        db,
+        remoteStorage,
+        attachmentDirectoryName = attachmentDirectoryName,
+    ) {
     override fun watchAttachments(): Flow<List<WatchedAttachmentItem>> =
         db.watch(
             sql =
