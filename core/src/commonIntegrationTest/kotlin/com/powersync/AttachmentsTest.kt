@@ -13,7 +13,9 @@ import com.powersync.testutils.TestAttachmentsQueue
 import com.powersync.testutils.UserRow
 import dev.mokkery.answering.throws
 import dev.mokkery.everySuspend
+import dev.mokkery.matcher.ArgMatchersScope
 import dev.mokkery.matcher.any
+import dev.mokkery.matcher.matching
 import dev.mokkery.mock
 import dev.mokkery.spy
 import dev.mokkery.verifySuspend
@@ -127,7 +129,7 @@ class AttachmentsTest {
                 assertEquals(expected = AttachmentState.SYNCED.ordinal, attachmentRecord.state)
 
                 // A download should have been attempted for this file
-                verifySuspend { remote.downloadFile(attachmentRecord) }
+                verifySuspend { remote.downloadFile(attachmentMatcher(attachmentRecord)) }
 
                 // A file should now exist
                 val localUri = attachmentRecord.localUri!!
@@ -233,7 +235,7 @@ class AttachmentsTest {
                 verifySuspend {
                     remote.uploadFile(
                         any(),
-                        attachmentRecord,
+                        attachmentMatcher(attachmentRecord),
                     )
                 }
 
@@ -332,7 +334,7 @@ class AttachmentsTest {
                 assertEquals(expected = AttachmentState.SYNCED.ordinal, attachmentRecord.state)
 
                 // A download should have been attempted for this file
-                verifySuspend { remote.downloadFile(attachmentRecord) }
+                verifySuspend { remote.downloadFile(attachmentMatcher(attachmentRecord)) }
 
                 // A file should now exist
                 val localUri = attachmentRecord.localUri!!
@@ -454,3 +456,6 @@ class AttachmentsTest {
             }
         }
 }
+
+fun ArgMatchersScope.attachmentMatcher(attachment: Attachment): Attachment =
+    matching(toString = { "attachment($attachment)" }, predicate = { it.id == attachment.id })

@@ -160,7 +160,6 @@ public abstract class AbstractAttachmentQueue(
                     localStorage.makeDir(Path(getStorageDirectory(), subdirectory).toString())
                 }
 
-                // Start watching for changes
                 val scope = CoroutineScope(Dispatchers.IO)
 
                 syncingService.startPeriodicSync(syncInterval)
@@ -169,7 +168,7 @@ public abstract class AbstractAttachmentQueue(
                 syncStatusJob =
                     scope.launch {
                         val statusJob =
-                            scope.launch {
+                            launch {
                                 var previousConnected = db.currentStatus.connected
                                 db.currentStatus.asFlow().collect { status ->
                                     if (!previousConnected && status.connected) {
@@ -180,7 +179,7 @@ public abstract class AbstractAttachmentQueue(
                             }
 
                         val watchJob =
-                            scope.launch {
+                            launch {
                                 // Watch local attachment relationships and sync the attachment records
                                 watchAttachments().collect { items ->
                                     processWatchedAttachments(items)
