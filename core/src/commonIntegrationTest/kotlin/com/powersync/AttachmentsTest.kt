@@ -5,12 +5,16 @@ import co.touchlab.kermit.ExperimentalKermitApi
 import com.powersync.attachments.Attachment
 import com.powersync.attachments.AttachmentState
 import com.powersync.attachments.RemoteStorageAdapter
+import com.powersync.attachments.SyncErrorHandler
 import com.powersync.attachments.createAttachmentsTable
 import com.powersync.db.schema.Schema
 import com.powersync.testutils.MockedRemoteStorage
 import com.powersync.testutils.TestAttachmentsQueue
 import com.powersync.testutils.UserRow
+import dev.mokkery.answering.throws
+import dev.mokkery.everySuspend
 import dev.mokkery.matcher.any
+import dev.mokkery.mock
 import dev.mokkery.spy
 import dev.mokkery.verifySuspend
 import kotlinx.coroutines.flow.flowOf
@@ -364,6 +368,84 @@ class AttachmentsTest {
                 attachmentRecord = attachmentQuery.awaitItem().first()
                 assertEquals(
                     expected = AttachmentState.SYNCED.ordinal,
+                    actual = attachmentRecord.state,
+                )
+
+                attachmentQuery.cancel()
+                queue.close()
+            }
+        }
+
+    @Test
+    fun testSkipFailedDownload() =
+        runTest {
+            turbineScope {
+                val remote =
+                    mock<RemoteStorageAdapter> {
+                        everySuspend { downloadFile(any()) } throws (Exception("Test error"))
+                    }
+
+                val queue =
+                    TestAttachmentsQueue(
+                        db = database,
+                        remoteStorage = remote,
+                        archivedCacheLimit = 0,
+                        errorHandler =
+                            object : SyncErrorHandler {
+                                override suspend fun onDownloadError(
+                                    attachment: Attachment,
+                                    exception: Exception,
+                                ): Boolean = false
+
+                                override suspend fun onUploadError(
+                                    attachment: Attachment,
+                                    exception: Exception,
+                                ): Boolean = false
+
+                                override suspend fun onDeleteError(
+                                    attachment: Attachment,
+                                    exception: Exception,
+                                ): Boolean = false
+                            },
+                    )
+
+                queue.start()
+
+                // Monitor the attachments table for testing
+                val attachmentQuery =
+                    database
+                        .watch("SELECT * FROM attachments") { Attachment.fromCursor(it) }
+                        .testIn(this)
+
+                val result = attachmentQuery.awaitItem()
+
+                // There should not be any attachment records here
+                assertEquals(expected = 0, actual = result.size)
+
+                // Create a user with a photo_id specified.
+                // This code did not save an attachment before assigning a photo_id.
+                // This is equivalent to requiring an attachment download
+                database.execute(
+                    """
+                        INSERT INTO
+                            users (id, name, email, photo_id)
+                        VALUES
+                            (uuid(), "steven", "steven@journeyapps.com", uuid())
+                    """,
+                )
+
+                var attachmentRecord = attachmentQuery.awaitItem().first()
+                assertNotNull(attachmentRecord)
+
+                assertEquals(
+                    expected = AttachmentState.QUEUED_DOWNLOAD.ordinal,
+                    actual = attachmentRecord.state,
+                )
+
+                // The download should fail. We don't specify a retry. The record should be archived.
+                attachmentRecord = attachmentQuery.awaitItem().first()
+                assertEquals(
+                    expected = AttachmentState.ARCHIVED.ordinal,
                     actual = attachmentRecord.state,
                 )
 

@@ -3,6 +3,7 @@ package com.powersync.testutils
 import com.powersync.PowerSyncDatabase
 import com.powersync.attachments.AbstractAttachmentQueue
 import com.powersync.attachments.RemoteStorageAdapter
+import com.powersync.attachments.SyncErrorHandler
 import com.powersync.attachments.WatchedAttachmentItem
 import com.powersync.db.getString
 import kotlinx.coroutines.flow.Flow
@@ -11,10 +12,12 @@ internal class TestAttachmentsQueue(
     db: PowerSyncDatabase,
     remoteStorage: RemoteStorageAdapter,
     archivedCacheLimit: Long,
+    errorHandler: SyncErrorHandler? = null,
 ) : AbstractAttachmentQueue(
         db,
         remoteStorage,
         archivedCacheLimit = archivedCacheLimit,
+        errorHandler = errorHandler,
     ) {
     override fun watchAttachments(): Flow<List<WatchedAttachmentItem>> =
         db.watch(

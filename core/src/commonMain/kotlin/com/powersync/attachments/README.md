@@ -168,7 +168,6 @@ queue.saveFile(
      * This lambda is invoked in the same transaction which creates the attachment record.
      * Assignments of the newly created photo_id should be done in the same transaction for maximum efficiency.
      */
-    // Set the photo_id of a checklist to the attachment id
     tx.execute(
         """
                UPDATE
