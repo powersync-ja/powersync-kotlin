@@ -541,97 +541,105 @@ class SyncIntegrationTest {
         }
 
     @Test
-    fun `handles checkpoints during uploads`() = runTest {
-        database.connectInternal(syncStream(), 1000L)
+    fun `handles checkpoints during uploads`() =
+        runTest {
+            database.connectInternal(syncStream(), 1000L)
 
-        suspend fun expectUserRows(amount: Int) {
-            val row = database.get("SELECT COUNT(*) FROM users") { it.getLong(0)!! }
-            assertEquals(amount, row.toInt())
-        }
+            suspend fun expectUserRows(amount: Int) {
+                val row = database.get("SELECT COUNT(*) FROM users") { it.getLong(0)!! }
+                assertEquals(amount, row.toInt())
+            }
 
-        val completeUpload = CompletableDeferred<Unit>()
-        val uploadStarted = CompletableDeferred<Unit>()
-        everySuspend { connector.uploadData(any()) } calls { (db: PowerSyncDatabase) ->
-            val batch = db.getCrudBatch()
-            if (batch == null) return@calls
+            val completeUpload = CompletableDeferred<Unit>()
+            val uploadStarted = CompletableDeferred<Unit>()
+            everySuspend { connector.uploadData(any()) } calls { (db: PowerSyncDatabase) ->
+                val batch = db.getCrudBatch()
+                if (batch == null) return@calls
 
-            uploadStarted.complete(Unit)
-            completeUpload.await()
-            batch.complete.invoke(null)
-        }
+                uploadStarted.complete(Unit)
+                completeUpload.await()
+                batch.complete.invoke(null)
+            }
 
-        // Trigger an upload (adding a keep-alive sync line because the execute could start before the database is fully
-        // connected).
-        database.execute("INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)", listOf("local", "local@example.org"))
-        syncLines.send(SyncLine.KeepAlive(1234))
-        expectUserRows(1)
-        uploadStarted.await()
+            // Trigger an upload (adding a keep-alive sync line because the execute could start before the database is fully
+            // connected).
+            database.execute("INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)", listOf("local", "local@example.org"))
+            syncLines.send(SyncLine.KeepAlive(1234))
+            expectUserRows(1)
+            uploadStarted.await()
 
-        // Pretend that the connector takes forever in uploadData, but the data gets uploaded before the method returns.
-        syncLines.send(SyncLine.FullCheckpoint(Checkpoint(
-            writeCheckpoint = "1",
-            lastOpId = "2",
-            checksums = listOf(BucketChecksum("a", checksum = 0))
-        )))
-        turbineScope {
-            val turbine = database.currentStatus.asFlow().testIn(this)
-            turbine.waitFor { it.downloading }
-            turbine.cancel()
-        }
-
-        syncLines.send(SyncLine.SyncDataBucket(
-            bucket = "a",
-            data = listOf(
-                OplogEntry(
-                    checksum = 0,
-                    opId = "1",
-                    op = OpType.PUT,
-                    rowId = "1",
-                    rowType = "users",
-                    data = """{"id": "test1", "name": "from local", "email": ""}"""
+            // Pretend that the connector takes forever in uploadData, but the data gets uploaded before the method returns.
+            syncLines.send(
+                SyncLine.FullCheckpoint(
+                    Checkpoint(
+                        writeCheckpoint = "1",
+                        lastOpId = "2",
+                        checksums = listOf(BucketChecksum("a", checksum = 0)),
+                    ),
                 ),
-                OplogEntry(
-                    checksum = 0,
-                    opId = "2",
-                    op = OpType.PUT,
-                    rowId = "2",
-                    rowType = "users",
-                    data = """{"id": "test1", "name": "additional entry", "email": ""}"""
-                ),
-            ),
-            after = null,
-            nextAfter = null,
-            hasMore = false,
-        ))
-        syncLines.send(SyncLine.CheckpointComplete(lastOpId = "2"))
-
-        // Despite receiving a valid checkpoint with two rows, it should not be visible because we have local data.
-        waitFor {
-            assertNotNull(
-                logWriter.logs.find {
-                    it.message.contains("Could not apply checkpoint due to local data")
-                },
             )
-        }
-        expectUserCount(1)
+            turbineScope {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                turbine.waitFor { it.downloading }
+                turbine.cancel()
+            }
 
-        // Mark the upload as completed, this should trigger a write_checkpoint.json request
-        val requestedCheckpoint = CompletableDeferred<Unit>()
-        checkpointResponse = {
-            requestedCheckpoint.complete(Unit)
-            WriteCheckpointResponse(WriteCheckpointData(""))
-        }
-        completeUpload.complete(Unit)
-        requestedCheckpoint.await()
+            syncLines.send(
+                SyncLine.SyncDataBucket(
+                    bucket = "a",
+                    data =
+                        listOf(
+                            OplogEntry(
+                                checksum = 0,
+                                opId = "1",
+                                op = OpType.PUT,
+                                rowId = "1",
+                                rowType = "users",
+                                data = """{"id": "test1", "name": "from local", "email": ""}""",
+                            ),
+                            OplogEntry(
+                                checksum = 0,
+                                opId = "2",
+                                op = OpType.PUT,
+                                rowId = "2",
+                                rowType = "users",
+                                data = """{"id": "test1", "name": "additional entry", "email": ""}""",
+                            ),
+                        ),
+                    after = null,
+                    nextAfter = null,
+                    hasMore = false,
+                ),
+            )
+            syncLines.send(SyncLine.CheckpointComplete(lastOpId = "2"))
 
-        // This should apply the checkpoint
-        turbineScope {
-            val turbine = database.currentStatus.asFlow().testIn(this)
-            turbine.waitFor { !it.downloading }
-            turbine.cancel()
-        }
+            // Despite receiving a valid checkpoint with two rows, it should not be visible because we have local data.
+            waitFor {
+                assertNotNull(
+                    logWriter.logs.find {
+                        it.message.contains("Could not apply checkpoint due to local data")
+                    },
+                )
+            }
+            expectUserCount(1)
 
-        // Meaning that the two rows are now visible
-        expectUserCount(2)
-    }
+            // Mark the upload as completed, this should trigger a write_checkpoint.json request
+            val requestedCheckpoint = CompletableDeferred<Unit>()
+            checkpointResponse = {
+                requestedCheckpoint.complete(Unit)
+                WriteCheckpointResponse(WriteCheckpointData(""))
+            }
+            completeUpload.complete(Unit)
+            requestedCheckpoint.await()
+
+            // This should apply the checkpoint
+            turbineScope {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                turbine.waitFor { !it.downloading }
+                turbine.cancel()
+            }
+
+            // Meaning that the two rows are now visible
+            expectUserCount(2)
+        }
 }

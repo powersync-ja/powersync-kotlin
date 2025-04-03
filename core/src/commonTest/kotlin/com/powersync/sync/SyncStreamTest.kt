@@ -30,10 +30,7 @@ import dev.mokkery.verify.VerifyMode.Companion.order
 import dev.mokkery.verifyNoMoreCalls
 import dev.mokkery.verifySuspend
 import io.ktor.client.engine.mock.MockEngine
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest

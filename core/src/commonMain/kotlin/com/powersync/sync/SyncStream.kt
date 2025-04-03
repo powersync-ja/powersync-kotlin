@@ -121,19 +121,20 @@ internal class SyncStream(
         }
     }
 
-    fun triggerCrudUploadAsync(): Job = scope.launch {
-        val thisIteration = PendingCrudUpload(CompletableDeferred())
-        try {
-            if (!status.connected || !isUploadingCrud.compareAndSet(null, thisIteration)) {
-                return@launch
-            }
+    fun triggerCrudUploadAsync(): Job =
+        scope.launch {
+            val thisIteration = PendingCrudUpload(CompletableDeferred())
+            try {
+                if (!status.connected || !isUploadingCrud.compareAndSet(null, thisIteration)) {
+                    return@launch
+                }
 
-            uploadAllCrud()
-        } finally {
-            isUploadingCrud.set(null)
-            thisIteration.done.complete(Unit)
+                uploadAllCrud()
+            } finally {
+                isUploadingCrud.set(null)
+                thisIteration.done.complete(Unit)
+            }
         }
-    }
 
     private suspend fun uploadAllCrud() {
         var checkedCrudItem: CrudEntry? = null
@@ -484,7 +485,9 @@ internal data class SyncStreamState(
     var validatedCheckpoint: Checkpoint?,
     var appliedCheckpoint: Checkpoint?,
     var bucketSet: MutableSet<String>?,
-    var abortIteration: Boolean = false
+    var abortIteration: Boolean = false,
 )
 
-private class PendingCrudUpload(val done: CompletableDeferred<Unit>)
+private class PendingCrudUpload(
+    val done: CompletableDeferred<Unit>,
+)
