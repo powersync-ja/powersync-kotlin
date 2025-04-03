@@ -30,7 +30,6 @@ import dev.mokkery.verifySuspend
 import io.ktor.client.engine.mock.MockEngine
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
@@ -210,7 +209,7 @@ class SyncStreamTest {
             // TODO: It would be neat if we could use in-memory sqlite instances instead of mocking everything
             // Revisit https://github.com/powersync-ja/powersync-kotlin/pull/117/files at some point
             val syncLines = Channel<SyncLine>()
-            val client = MockSyncService.client(this, syncLines.receiveAsFlow())
+            val client = MockSyncService(syncLines)
 
             syncStream =
                 SyncStream(

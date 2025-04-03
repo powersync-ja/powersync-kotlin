@@ -24,10 +24,11 @@ import com.powersync.utils.JsonParam
 import com.powersync.utils.JsonUtil
 import com.powersync.utils.throttle
 import com.powersync.utils.toJsonObject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
@@ -95,9 +96,7 @@ internal class PowerSyncDatabaseImpl(
     override val currentStatus: SyncStatus = SyncStatus()
 
     private val mutex = Mutex()
-    private var syncStream: SyncStream? = null
-    private var syncJob: Job? = null
-    private var uploadJob: Job? = null
+    private var syncSupervisorJob: Job? = null
 
     // This is set in the init
     private lateinit var powerSyncVersion: String
@@ -123,7 +122,7 @@ internal class PowerSyncDatabaseImpl(
     override suspend fun updateSchema(schema: Schema) =
         runWrappedSuspending {
             mutex.withLock {
-                if (this.syncStream != null) {
+                if (this.syncSupervisorJob != null) {
                     throw PowerSyncException(
                         "Cannot update schema while connected",
                         cause = Exception("PowerSync client is already connected"),
@@ -161,12 +160,11 @@ internal class PowerSyncDatabaseImpl(
         stream: SyncStream,
         crudThrottleMs: Long,
     ) {
-        this.syncStream = stream
-
         val db = this
-
-        syncJob =
-            scope.launch {
+        val job = SupervisorJob(scope.coroutineContext[Job])
+        syncSupervisorJob = job
+        scope.launch(job) {
+            launch {
                 // Get a global lock for checking mutex maps
                 val streamMutex = resource.group.syncMutex
 
@@ -181,7 +179,7 @@ internal class PowerSyncDatabaseImpl(
                         // (The tryLock should throw if this client already holds the lock).
                         logger.w(streamConflictMessage)
                     }
-                } catch (ex: IllegalStateException) {
+                } catch (_: IllegalStateException) {
                     logger.e { "The streaming sync client did not disconnect before connecting" }
                 }
 
@@ -194,40 +192,46 @@ internal class PowerSyncDatabaseImpl(
                 // We have a lock if we reached here
                 try {
                     ensureActive()
-                    syncStream!!.streamingSync()
+                    stream.streamingSync()
                 } finally {
                     streamMutex.unlock(db)
                 }
             }
 
-        scope.launch {
-            syncStream!!.status.asFlow().collect {
-                currentStatus.update(
-                    connected = it.connected,
-                    connecting = it.connecting,
-                    uploading = it.uploading,
-                    downloading = it.downloading,
-                    lastSyncedAt = it.lastSyncedAt,
-                    hasSynced = it.hasSynced,
-                    uploadError = it.uploadError,
-                    downloadError = it.downloadError,
-                    clearDownloadError = it.downloadError == null,
-                    clearUploadError = it.uploadError == null,
-                    priorityStatusEntries = it.priorityStatusEntries,
-                )
+            launch {
+                stream.status.asFlow().collect {
+                    currentStatus.update(
+                        connected = it.connected,
+                        connecting = it.connecting,
+                        uploading = it.uploading,
+                        downloading = it.downloading,
+                        lastSyncedAt = it.lastSyncedAt,
+                        hasSynced = it.hasSynced,
+                        uploadError = it.uploadError,
+                        downloadError = it.downloadError,
+                        clearDownloadError = it.downloadError == null,
+                        clearUploadError = it.uploadError == null,
+                        priorityStatusEntries = it.priorityStatusEntries,
+                    )
+                }
             }
-        }
 
-        uploadJob =
-            scope.launch {
+            launch {
                 internalDb
                     .updatesOnTables()
                     .filter { it.contains(InternalTable.CRUD.toString()) }
                     .throttle(crudThrottleMs)
                     .collect {
-                        syncStream!!.triggerCrudUpload()
+                        stream.triggerCrudUpload()
                     }
             }
+        }
+
+        job.invokeOnCompletion {
+            if (it is DisconnectRequestedException) {
+                stream.invalidateCredentials()
+            }
+        }
     }
 
     override suspend fun getCrudBatch(limit: Int): CrudBatch? {
@@ -364,17 +368,12 @@ internal class PowerSyncDatabaseImpl(
     override suspend fun disconnect() = mutex.withLock { disconnectInternal() }
 
     private suspend fun disconnectInternal() {
-        if (syncJob != null && syncJob!!.isActive) {
-            syncJob?.cancelAndJoin()
-        }
-
-        if (uploadJob != null && uploadJob!!.isActive) {
-            uploadJob?.cancelAndJoin()
-        }
-
-        if (syncStream != null) {
-            syncStream?.invalidateCredentials()
-            syncStream = null
+        val syncJob = syncSupervisorJob
+        if (syncJob != null && syncJob.isActive) {
+            // Using this exception type will also make the sync job invalidate credentials.
+            syncJob.cancel(DisconnectRequestedException)
+            syncJob.join()
+            syncSupervisorJob = null
         }
 
         currentStatus.update(
@@ -470,7 +469,7 @@ internal class PowerSyncDatabaseImpl(
     /**
      * Check that a supported version of the powersync extension is loaded.
      */
-    private suspend fun checkVersion(powerSyncVersion: String) {
+    private fun checkVersion(powerSyncVersion: String) {
         // Parse version
         val versionInts: List<Int> =
             try {
@@ -488,3 +487,5 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 }
+
+internal object DisconnectRequestedException : CancellationException("disconnect() called")

@@ -27,9 +27,9 @@ import com.powersync.utils.JsonUtil
 import dev.mokkery.answering.returns
 import dev.mokkery.everySuspend
 import dev.mokkery.mock
-import kotlinx.coroutines.CoroutineScope
+import dev.mokkery.verify
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
@@ -38,6 +38,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -99,8 +100,8 @@ class SyncIntegrationTest {
             dbFilename = "testdb",
         ) as PowerSyncDatabaseImpl
 
-    private fun CoroutineScope.syncStream(): SyncStream {
-        val client = MockSyncService.client(this, syncLines.receiveAsFlow())
+    private fun syncStream(): SyncStream {
+        val client = MockSyncService(syncLines)
         return SyncStream(
             bucketStorage = database.bucketStorage,
             connector = connector,
@@ -116,6 +117,68 @@ class SyncIntegrationTest {
         val users = database.getAll("SELECT * FROM users;") { UserRow.from(it) }
         assertEquals(amount, users.size, "Expected $amount users, got $users")
     }
+
+    @Test
+    @OptIn(DelicateCoroutinesApi::class)
+    fun closesResponseStreamOnDatabaseClose() =
+        runTest {
+            val syncStream = syncStream()
+            database.connectInternal(syncStream, 1000L)
+
+            turbineScope(timeout = 10.0.seconds) {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                turbine.waitFor { it.connected }
+
+                database.close()
+                turbine.waitFor { !it.connected }
+                turbine.cancel()
+            }
+
+            // Closing the database should have closed the channel
+            assertTrue { syncLines.isClosedForSend }
+        }
+
+    @Test
+    @OptIn(DelicateCoroutinesApi::class)
+    fun cleansResourcesOnDisconnect() =
+        runTest {
+            val syncStream = syncStream()
+            database.connectInternal(syncStream, 1000L)
+
+            turbineScope(timeout = 10.0.seconds) {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                turbine.waitFor { it.connected }
+
+                database.disconnect()
+                turbine.waitFor { !it.connected }
+                turbine.cancel()
+            }
+
+            // Disconnecting should have closed the channel
+            assertTrue { syncLines.isClosedForSend }
+
+            // And called invalidateCredentials on the connector
+            verify { connector.invalidateCredentials() }
+        }
+
+    @Test
+    fun cannotUpdateSchemaWhileConnected() =
+        runTest {
+            val syncStream = syncStream()
+            database.connectInternal(syncStream, 1000L)
+
+            turbineScope(timeout = 10.0.seconds) {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                turbine.waitFor { it.connected }
+                turbine.cancel()
+            }
+
+            assertFailsWith<PowerSyncException>("Cannot update schema while connected") {
+                database.updateSchema(Schema())
+            }
+
+            database.close()
+        }
 
     @Test
     fun testPartialSync() =
