@@ -3,7 +3,7 @@ package com.powersync
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.connectors.PowerSyncCredentials
 
-class TestConnector: PowerSyncBackendConnector() {
+class TestConnector : PowerSyncBackendConnector() {
     var fetchCredentialsCallback: suspend () -> PowerSyncCredentials? = {
         PowerSyncCredentials(
             token = "test-token",
@@ -16,9 +16,7 @@ class TestConnector: PowerSyncBackendConnector() {
         tx?.complete(null)
     }
 
-    override suspend fun fetchCredentials(): PowerSyncCredentials? {
-        return fetchCredentialsCallback()
-    }
+    override suspend fun fetchCredentials(): PowerSyncCredentials? = fetchCredentialsCallback()
 
     override suspend fun uploadData(database: PowerSyncDatabase) {
         uploadDataCallback(database)
