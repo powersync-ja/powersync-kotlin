@@ -91,11 +91,6 @@ internal class SyncStream(
                     invalidCredentials = false
                 }
                 streamingSyncIteration()
-//                val state = streamingSyncIteration()
-//                TODO: We currently always retry
-//                if (!state.retry) {
-//                    break;
-//                }
             } catch (e: Exception) {
                 if (e is CancellationException) {
                     throw e

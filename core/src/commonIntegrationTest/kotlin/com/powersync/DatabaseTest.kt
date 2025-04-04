@@ -12,6 +12,7 @@ import com.powersync.db.schema.Schema
 import com.powersync.testutils.UserRow
 import com.powersync.testutils.generatePrintLogWriter
 import com.powersync.testutils.getTempDir
+import com.powersync.testutils.isIOS
 import com.powersync.testutils.waitFor
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -294,7 +295,13 @@ class DatabaseTest {
                     factory = com.powersync.testutils.factory,
                     schema = Schema(UserRow.table),
                     dbFilename = dbFilename,
-                    dbDirectory = getTempDir(),
+                    dbDirectory =
+                        if (isIOS()) {
+                            // Not supported for iOS
+                            null
+                        } else {
+                            getTempDir()
+                        },
                     logger = logger,
                 )
 

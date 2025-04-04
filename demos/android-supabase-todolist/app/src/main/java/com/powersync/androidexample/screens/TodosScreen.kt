@@ -36,7 +36,7 @@ internal fun TodosScreen(
     onItemDoneChanged: (item: TodoItem, isDone: Boolean) -> Unit,
     onItemDeleteClicked: (item: TodoItem) -> Unit,
     onAddItemClicked: () -> Unit,
-    onInputTextChanged: (value: String) -> Unit,
+    onInputTextChanged: (value: String) -> Unit
 ) {
     Column(modifier) {
         TopAppBar(

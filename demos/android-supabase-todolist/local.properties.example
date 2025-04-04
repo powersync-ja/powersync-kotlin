@@ -11,6 +11,7 @@ sdk.dir=/Users/dominic/Library/Android/sdk
 
 SUPABASE_URL=https://foo.supabase.co
 SUPABASE_ANON_KEY=foo
+SUPABASE_ATTACHMENT_BUCKET=media # optional attachment bucket
 POWERSYNC_URL=https://foo.powersync.journeyapps.com
 # Set to true to use released PowerSync packages instead of the ones built locally.
 USE_RELEASED_POWERSYNC_VERSIONS=false
