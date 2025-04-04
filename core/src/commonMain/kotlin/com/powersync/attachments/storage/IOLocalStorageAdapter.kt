@@ -2,11 +2,13 @@ package com.powersync.attachments.storage
 
 import com.powersync.attachments.storage.AbstractLocalStorageAdapter
 import com.powersync.db.runWrappedSuspending
+import io.ktor.utils.io.core.readBytes
 import io.ktor.utils.io.core.remaining
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import kotlinx.io.Buffer
 import kotlinx.io.buffered
@@ -48,23 +50,19 @@ public class IOLocalStorageAdapter : AbstractLocalStorageAdapter() {
         mediaType: String?,
     ): Flow<ByteArray> =
         flow {
-            withContext(Dispatchers.IO) {
                 SystemFileSystem.source(Path(filePath)).use { source ->
                     source.buffered().use { bufferedSource ->
-                        val bufferSize = 8192L // Read in 8KB chunks
-                        while (bufferedSource.remaining > 0) {
-                            val byteCount =
-                                min(
-                                    bufferedSource.remaining,
-                                    bufferSize,
-                                )
-                            val bytesRead = bufferedSource.readByteArray(byteCount.toInt())
-                            emit(bytesRead)
-                        }
+                        var remaining  = 0L
+                        val bufferSize = 8192L
+                        do {
+                            bufferedSource.request(bufferSize)
+                            remaining  = bufferedSource.remaining
+                            emit(bufferedSource.readBytes(remaining.toInt()))
+                        } while (remaining > 0)
+
                     }
                 }
-            }
-        }
+        }.flowOn(Dispatchers.IO)
 
     public override suspend fun deleteFile(filePath: String): Unit =
         runWrappedSuspending {

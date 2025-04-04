@@ -8,6 +8,7 @@ import com.powersync.attachments.AttachmentState
 import com.powersync.attachments.LocalStorageAdapter
 import com.powersync.attachments.RemoteStorageAdapter
 import com.powersync.attachments.SyncErrorHandler
+import com.powersync.utils.throttle
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +24,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Service used to sync attachments between local and remote storage
@@ -34,6 +36,7 @@ internal class SyncingService(
     private val getLocalUri: suspend (String) -> String,
     private val errorHandler: SyncErrorHandler?,
     private val logger: Logger,
+    private val syncThrottle: Duration = 5.seconds,
 ) {
     private val scope = CoroutineScope(Dispatchers.IO)
     private val mutex = Mutex()
@@ -60,6 +63,7 @@ internal class SyncingService(
                     // while we are processing. We will always process on the trailing edge.
                     // This buffer operation should automatically be applied to all merged sources.
                     .buffer(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+                    .throttle(syncThrottle.inWholeMilliseconds)
                     .collect {
                         /**
                          * Gets and performs the operations for active attachments which are

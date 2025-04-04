@@ -89,6 +89,10 @@ public abstract class AbstractAttachmentQueue(
      */
     private val archivedCacheLimit: Long = 100,
     /**
+     * Throttles remote sync operations triggering
+     */
+    private val syncThrottleDuration: Duration = 1.seconds,
+    /**
      * Creates a list of subdirectories in the {attachmentDirectoryName} directory
      */
     private val subdirectories: List<String>? = null,
@@ -133,6 +137,7 @@ public abstract class AbstractAttachmentQueue(
             ::getLocalUri,
             errorHandler,
             logger,
+            syncThrottleDuration,
         )
 
     private var syncStatusJob: Job? = null
@@ -147,7 +152,7 @@ public abstract class AbstractAttachmentQueue(
      * 3. Adding trigger to run uploads, downloads, and deletes when device is online after being offline
      */
     @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun start(): Unit =
+    public suspend fun startSync(): Unit =
         runWrappedSuspending {
             mutex.withLock {
                 if (closed) {
@@ -353,7 +358,7 @@ public abstract class AbstractAttachmentQueue(
         data: Flow<ByteArray>,
         mediaType: String,
         fileExtension: String?,
-        updateHook: (context: ConnectionContext, attachment: Attachment) -> Unit,
+        updateHook: ((context: ConnectionContext, attachment: Attachment) -> Unit)? = null,
     ): Attachment =
         runWrappedSuspending {
             val id = db.get("SELECT uuid()") { it.getString(0)!! }
@@ -369,22 +374,24 @@ public abstract class AbstractAttachmentQueue(
              * assignment should happen in the same transaction.
              */
             db.writeTransaction { tx ->
-                val attachment =
-                    attachmentsService.upsertAttachment(
-                        Attachment(
-                            id = id,
-                            filename = filename,
-                            size = fileSize,
-                            mediaType = mediaType,
-                            state = AttachmentState.QUEUED_UPLOAD.ordinal,
-                            localUri = localUri,
-                        ),
-                        tx,
-                    )
+                val attachment =  Attachment(
+                    id = id,
+                    filename = filename,
+                    size = fileSize,
+                    mediaType = mediaType,
+                    state = AttachmentState.QUEUED_UPLOAD.ordinal,
+                    localUri = localUri,
+                )
 
-                // Allow consumers to set relationships to this attachment id
-                updateHook(tx, attachment)
-                return@writeTransaction attachment
+                /**
+                 * Allow consumers to set relationships to this attachment id
+                  */
+                updateHook?.invoke(tx, attachment)
+
+                return@writeTransaction attachmentsService.upsertAttachment(
+                    attachment,
+                    tx,
+                )
             }
         }
 
@@ -396,15 +403,21 @@ public abstract class AbstractAttachmentQueue(
      * This method can be overriden for custom behaviour.
      */
     @Throws(PowerSyncException::class, CancellationException::class)
-    public open suspend fun deleteFile(attachmentId: String): Attachment =
+    public open suspend fun deleteFile(attachmentId: String,
+                                       updateHook: ((context: ConnectionContext, attachment: Attachment) -> Unit)? = null,
+                                       ): Attachment =
         runWrappedSuspending {
             val attachment =
                 attachmentsService.getAttachment(attachmentId)
                     ?: throw Exception("Attachment record with id $attachmentId was not found.")
 
-            return@runWrappedSuspending attachmentsService.saveAttachment(
-                attachment.copy(state = AttachmentState.QUEUED_DELETE.ordinal),
-            )
+            db.writeTransaction { tx ->
+                updateHook?.invoke(tx, attachment)
+                return@writeTransaction attachmentsService.upsertAttachment(
+                    attachment.copy(state = AttachmentState.QUEUED_DELETE.ordinal),
+                    tx,
+                )
+            }
         }
 
     /**

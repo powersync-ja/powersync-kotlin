@@ -80,7 +80,7 @@ class AttachmentsTest {
                         archivedCacheLimit = 0,
                     )
 
-                queue.start()
+                queue.startSync()
 
                 // Monitor the attachments table for testing
                 val attachmentQuery =
@@ -184,7 +184,7 @@ class AttachmentsTest {
                         archivedCacheLimit = 0,
                     )
 
-                queue.start()
+                queue.startSync()
 
                 // Monitor the attachments table for testing
                 val attachmentQuery =
@@ -285,7 +285,7 @@ class AttachmentsTest {
                         archivedCacheLimit = 10,
                     )
 
-                queue.start()
+                queue.startSync()
 
                 // Monitor the attachments table for testing
                 val attachmentQuery =
@@ -411,7 +411,7 @@ class AttachmentsTest {
                             },
                     )
 
-                queue.start()
+                queue.startSync()
 
                 // Monitor the attachments table for testing
                 val attachmentQuery =

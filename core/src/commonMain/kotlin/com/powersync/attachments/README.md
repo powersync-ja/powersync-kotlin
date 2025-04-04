@@ -141,7 +141,7 @@ val remote = object : RemoteStorageAdapter() {
 
 ```
 
-5. Instantiate a new `AttachmentQueue` and call `start()` to start syncing attachments.
+5. Instantiate a new `AttachmentQueue` and call `startSync()` to start syncing attachments.
 
 ```kotlin
     val queue =
@@ -150,7 +150,7 @@ val remote = object : RemoteStorageAdapter() {
         remoteStorage = remote,
     )
 
-queue.start()
+queue.startSync()
 ```
 
 7. Finally, to create an attachment and add it to the queue, call `saveFile()`. This method will
