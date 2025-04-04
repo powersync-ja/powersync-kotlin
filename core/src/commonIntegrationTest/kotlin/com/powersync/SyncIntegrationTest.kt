@@ -26,15 +26,13 @@ import com.powersync.testutils.factory
 import com.powersync.testutils.generatePrintLogWriter
 import com.powersync.testutils.waitFor
 import com.powersync.utils.JsonUtil
-import dev.mokkery.answering.calls
 import dev.mokkery.answering.returns
 import dev.mokkery.everySuspend
-import dev.mokkery.matcher.any
 import dev.mokkery.mock
 import dev.mokkery.verify
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
@@ -109,7 +107,7 @@ class SyncIntegrationTest {
         ) as PowerSyncDatabaseImpl
 
     @OptIn(DelicateCoroutinesApi::class)
-    private fun syncStream(): SyncStream {
+    private fun CoroutineScope.syncStream(): SyncStream {
         val client = MockSyncService(syncLines, { checkpointResponse() })
         return SyncStream(
             bucketStorage = database.bucketStorage,
@@ -119,7 +117,7 @@ class SyncIntegrationTest {
             retryDelayMs = 10,
             logger = logger,
             params = JsonObject(emptyMap()),
-            scope = GlobalScope,
+            scope = this,
         )
     }
 
@@ -543,6 +541,8 @@ class SyncIntegrationTest {
     @Test
     fun `handles checkpoints during uploads`() =
         runTest {
+            val testConnector = TestConnector()
+            connector = testConnector
             database.connectInternal(syncStream(), 1000L)
 
             suspend fun expectUserRows(amount: Int) {
@@ -552,13 +552,13 @@ class SyncIntegrationTest {
 
             val completeUpload = CompletableDeferred<Unit>()
             val uploadStarted = CompletableDeferred<Unit>()
-            everySuspend { connector.uploadData(any()) } calls { (db: PowerSyncDatabase) ->
-                val batch = db.getCrudBatch()
-                if (batch == null) return@calls
-
-                uploadStarted.complete(Unit)
-                completeUpload.await()
-                batch.complete.invoke(null)
+            testConnector.uploadDataCallback = { db ->
+                println("upload data callback called")
+                db.getCrudBatch()?.let { batch ->
+                    uploadStarted.complete(Unit)
+                    completeUpload.await()
+                    batch.complete.invoke(null)
+                }
             }
 
             // Trigger an upload (adding a keep-alive sync line because the execute could start before the database is fully
@@ -629,6 +629,7 @@ class SyncIntegrationTest {
                 requestedCheckpoint.complete(Unit)
                 WriteCheckpointResponse(WriteCheckpointData(""))
             }
+            println("marking update as completed")
             completeUpload.complete(Unit)
             requestedCheckpoint.await()
 

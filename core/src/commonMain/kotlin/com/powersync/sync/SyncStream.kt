@@ -124,14 +124,20 @@ internal class SyncStream(
     fun triggerCrudUploadAsync(): Job =
         scope.launch {
             val thisIteration = PendingCrudUpload(CompletableDeferred())
+            var holdingUploadLock = false
+
             try {
                 if (!status.connected || !isUploadingCrud.compareAndSet(null, thisIteration)) {
                     return@launch
                 }
 
+                holdingUploadLock = true
                 uploadAllCrud()
             } finally {
-                isUploadingCrud.set(null)
+                if (holdingUploadLock) {
+                    isUploadingCrud.set(null)
+                }
+
                 thisIteration.done.complete(Unit)
             }
         }
