@@ -553,7 +553,6 @@ class SyncIntegrationTest {
             val completeUpload = CompletableDeferred<Unit>()
             val uploadStarted = CompletableDeferred<Unit>()
             testConnector.uploadDataCallback = { db ->
-                println("upload data callback called")
                 db.getCrudBatch()?.let { batch ->
                     uploadStarted.complete(Unit)
                     completeUpload.await()
