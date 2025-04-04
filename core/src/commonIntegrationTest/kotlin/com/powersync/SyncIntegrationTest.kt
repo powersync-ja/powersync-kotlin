@@ -626,9 +626,8 @@ class SyncIntegrationTest {
             val requestedCheckpoint = CompletableDeferred<Unit>()
             checkpointResponse = {
                 requestedCheckpoint.complete(Unit)
-                WriteCheckpointResponse(WriteCheckpointData(""))
+                WriteCheckpointResponse(WriteCheckpointData("1"))
             }
-            println("marking update as completed")
             completeUpload.complete(Unit)
             requestedCheckpoint.await()
 
