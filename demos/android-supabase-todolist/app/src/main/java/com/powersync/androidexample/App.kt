@@ -12,12 +12,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import com.powersync.PowerSyncDatabase
-import com.powersync.androidexample.AttachmentsQueue
 import com.powersync.androidexample.BuildConfig
 import com.powersync.androidexample.SupabaseRemoteStorage
 import com.powersync.androidexample.ui.CameraService
+import com.powersync.attachments.AttachmentQueue
+import com.powersync.attachments.WatchedAttachmentItem
 import com.powersync.compose.rememberDatabaseDriverFactory
 import com.powersync.connector.supabase.SupabaseConnector
+import com.powersync.db.getString
 import com.powersync.demos.components.EditDialog
 import com.powersync.demos.powersync.ListContent
 import com.powersync.demos.powersync.ListItem
@@ -30,7 +32,7 @@ import com.powersync.demos.screens.TodosScreen
 import kotlinx.coroutines.runBlocking
 
 @Composable
-fun App(cameraService: CameraService) {
+fun App(cameraService: CameraService, attachmentDirectory: String) {
     val driverFactory = rememberDatabaseDriverFactory()
     val supabase =
         remember {
@@ -44,7 +46,17 @@ fun App(cameraService: CameraService) {
 
     val db = remember { PowerSyncDatabase(driverFactory, schema, dbFilename = "222.sqlite") }
     val attachments =
-        remember { AttachmentsQueue(db = db, remoteStorage = SupabaseRemoteStorage(supabase)) }
+        remember { AttachmentQueue(
+            db = db, remoteStorage = SupabaseRemoteStorage(supabase),
+            attachmentDirectory = attachmentDirectory,
+            watchedAttachments = db.watch(
+            "SELECT photo_id from todos WHERE photo_id IS NOT NULL"
+        ) {
+            WatchedAttachmentItem(
+                id = it.getString("photo_id"),
+                fileExtension = "jpg"
+            )
+        }) }
 
     val syncStatus = db.currentStatus
     val status by syncStatus.asFlow().collectAsState(syncStatus)

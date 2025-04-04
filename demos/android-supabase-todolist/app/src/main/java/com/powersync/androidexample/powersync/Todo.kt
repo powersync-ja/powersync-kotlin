@@ -5,8 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import com.powersync.PowerSyncDatabase
-import com.powersync.androidexample.AttachmentsQueue
 import com.powersync.androidexample.ui.CameraService
+import com.powersync.attachments.AttachmentQueue
 import com.powersync.db.getLongOptional
 import com.powersync.db.getString
 import com.powersync.db.getStringOptional
@@ -20,7 +20,7 @@ import kotlinx.datetime.Clock
 
 internal class Todo(
     private val db: PowerSyncDatabase,
-    private val attachmentsQueue: AttachmentsQueue,
+    private val attachmentsQueue: AttachmentQueue,
     private val userId: String?,
 ) : ViewModel() {
     private val _inputText = MutableStateFlow<String>("")

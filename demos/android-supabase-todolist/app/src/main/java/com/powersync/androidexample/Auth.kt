@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import com.powersync.PowerSyncDatabase
-import com.powersync.androidexample.AttachmentsQueue
+import com.powersync.attachments.AttachmentQueue
 import com.powersync.connector.supabase.SupabaseConnector
 import io.github.jan.supabase.auth.status.RefreshFailureCause
 import io.github.jan.supabase.auth.status.SessionStatus
@@ -21,7 +21,7 @@ sealed class AuthState {
 internal class AuthViewModel(
     private val supabase: SupabaseConnector,
     private val db: PowerSyncDatabase,
-    private val attachmentsQueue: AttachmentsQueue,
+    private val attachmentsQueue: AttachmentQueue,
     private val navController: NavController,
 ) : ViewModel() {
     private val _authState = MutableStateFlow<AuthState>(AuthState.SignedOut)

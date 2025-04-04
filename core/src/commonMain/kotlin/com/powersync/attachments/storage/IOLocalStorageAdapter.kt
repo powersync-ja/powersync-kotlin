@@ -1,6 +1,6 @@
 package com.powersync.attachments.storage
 
-import com.powersync.attachments.storage.AbstractLocalStorageAdapter
+import com.powersync.attachments.LocalStorageAdapter
 import com.powersync.db.runWrappedSuspending
 import io.ktor.utils.io.core.readBytes
 import io.ktor.utils.io.core.remaining
@@ -14,13 +14,11 @@ import kotlinx.io.Buffer
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
-import kotlinx.io.readByteArray
-import kotlin.math.min
 
 /**
  * Storage adapter for local storage using the KotlinX IO library
  */
-public class IOLocalStorageAdapter : AbstractLocalStorageAdapter() {
+public class IOLocalStorageAdapter : LocalStorageAdapter {
     public override suspend fun saveFile(
         filePath: String,
         data: Flow<ByteArray>,
@@ -50,18 +48,17 @@ public class IOLocalStorageAdapter : AbstractLocalStorageAdapter() {
         mediaType: String?,
     ): Flow<ByteArray> =
         flow {
-                SystemFileSystem.source(Path(filePath)).use { source ->
-                    source.buffered().use { bufferedSource ->
-                        var remaining  = 0L
-                        val bufferSize = 8192L
-                        do {
-                            bufferedSource.request(bufferSize)
-                            remaining  = bufferedSource.remaining
-                            emit(bufferedSource.readBytes(remaining.toInt()))
-                        } while (remaining > 0)
-
-                    }
+            SystemFileSystem.source(Path(filePath)).use { source ->
+                source.buffered().use { bufferedSource ->
+                    var remaining = 0L
+                    val bufferSize = 8192L
+                    do {
+                        bufferedSource.request(bufferSize)
+                        remaining = bufferedSource.remaining
+                        emit(bufferedSource.readBytes(remaining.toInt()))
+                    } while (remaining > 0)
                 }
+            }
         }.flowOn(Dispatchers.IO)
 
     public override suspend fun deleteFile(filePath: String): Unit =

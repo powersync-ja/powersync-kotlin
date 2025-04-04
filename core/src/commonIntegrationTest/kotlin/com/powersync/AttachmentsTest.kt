@@ -3,14 +3,17 @@ package com.powersync
 import app.cash.turbine.turbineScope
 import co.touchlab.kermit.ExperimentalKermitApi
 import com.powersync.attachments.Attachment
+import com.powersync.attachments.AttachmentQueue
 import com.powersync.attachments.AttachmentState
 import com.powersync.attachments.RemoteStorageAdapter
 import com.powersync.attachments.SyncErrorHandler
+import com.powersync.attachments.WatchedAttachmentItem
 import com.powersync.attachments.createAttachmentsTable
+import com.powersync.db.getString
 import com.powersync.db.schema.Schema
 import com.powersync.testutils.MockedRemoteStorage
-import com.powersync.testutils.TestAttachmentsQueue
 import com.powersync.testutils.UserRow
+import com.powersync.testutils.getTempDir
 import dev.mokkery.answering.throws
 import dev.mokkery.everySuspend
 import dev.mokkery.matcher.ArgMatchersScope
@@ -63,6 +66,24 @@ class AttachmentsTest {
             .cleanup("testdb")
     }
 
+    fun watchAttachments() =
+        database.watch(
+            sql =
+                """
+                    SELECT
+                        photo_id
+                    FROM
+                        users
+                    WHERE
+                        photo_id IS NOT NULL
+                """,
+        ) {
+            WatchedAttachmentItem(
+                id = it.getString("photo_id"),
+                fileExtension = "jpg",
+            )
+        }
+
     @Test
     fun testAttachmentDownload() =
         runTest(timeout = 5.minutes) {
@@ -70,9 +91,11 @@ class AttachmentsTest {
                 val remote = spy<RemoteStorageAdapter>(MockedRemoteStorage())
 
                 val queue =
-                    TestAttachmentsQueue(
+                    AttachmentQueue(
                         db = database,
                         remoteStorage = remote,
+                        attachmentDirectory = getTempDir(),
+                        watchedAttachments = watchAttachments(),
                         /**
                          * Sets the cache limit to zero for this test. Archived records will
                          * immediately be deleted.
@@ -174,9 +197,11 @@ class AttachmentsTest {
                 val remote = spy<RemoteStorageAdapter>(MockedRemoteStorage())
 
                 val queue =
-                    TestAttachmentsQueue(
+                    AttachmentQueue(
                         db = database,
                         remoteStorage = remote,
+                        attachmentDirectory = getTempDir(),
+                        watchedAttachments = watchAttachments(),
                         /**
                          * Sets the cache limit to zero for this test. Archived records will
                          * immediately be deleted.
@@ -246,10 +271,10 @@ class AttachmentsTest {
                 // Now clear the user's photo_id. The attachment should be archived
                 database.execute(
                     """
-                            UPDATE
-                                users
-                            SET
-                                photo_id = NULL
+                        UPDATE
+                            users
+                        SET
+                            photo_id = NULL
                          """,
                 )
 
@@ -276,9 +301,11 @@ class AttachmentsTest {
                 val remote = spy<RemoteStorageAdapter>(MockedRemoteStorage())
 
                 val queue =
-                    TestAttachmentsQueue(
+                    AttachmentQueue(
                         db = database,
                         remoteStorage = remote,
+                        attachmentDirectory = getTempDir(),
+                        watchedAttachments = watchAttachments(),
                         /**
                          * Keep some items in the cache
                          */
@@ -388,9 +415,11 @@ class AttachmentsTest {
                     }
 
                 val queue =
-                    TestAttachmentsQueue(
+                    AttachmentQueue(
                         db = database,
                         remoteStorage = remote,
+                        attachmentDirectory = getTempDir(),
+                        watchedAttachments = watchAttachments(),
                         archivedCacheLimit = 0,
                         errorHandler =
                             object : SyncErrorHandler {

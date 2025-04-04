@@ -41,6 +41,4 @@ public interface LocalStorageAdapter {
         sourcePath: String,
         targetPath: String,
     ): Unit
-
-    public fun getUserStorageDirectory(): String
 }

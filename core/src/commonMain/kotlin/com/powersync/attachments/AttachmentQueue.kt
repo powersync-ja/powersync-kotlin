@@ -46,12 +46,12 @@ public data class WatchedAttachmentItem(
 }
 
 /**
- * Abstract class used to implement the attachment queue
+ * Class used to implement the attachment queue
  * Requires a PowerSyncDatabase, an implementation of
  * AbstractRemoteStorageAdapter and an attachment directory name which will
  * determine which folder attachments are stored into.
  */
-public abstract class AbstractAttachmentQueue(
+public open class AttachmentQueue(
     /**
      * PowerSync database client
      */
@@ -61,14 +61,36 @@ public abstract class AbstractAttachmentQueue(
      */
     public val remoteStorage: RemoteStorageAdapter,
     /**
+     * Directory name where attachment files will be written to disk.
+     * This will be created if it does not exist
+     */
+    private val attachmentDirectory: String,
+    /**
+     * A flow for the current state of local attachments
+     * ```kotlin
+     *     watchedAttachment = db.watch(
+     *             sql =
+     *                 """
+     *                 SELECT
+     *                     photo_id as id
+     *                 FROM
+     *                     checklists
+     *                 WHERE
+     *                     photo_id IS NOT NULL
+     *                 """,
+     *         ) { cursor ->
+     *             WatchedAttachmentItem(
+     *                 id = cursor.getString("id"),
+     *                 fileExtension = "jpg",
+     *             )
+     *         }
+     * ```
+     */
+    private val watchedAttachments: Flow<List<WatchedAttachmentItem>>,
+    /**
      * Provides access to local filesystem storage methods
      */
     public val localStorage: LocalStorageAdapter = IOLocalStorageAdapter(),
-    /**
-     * Directory name where attachment files will be written to disk.
-     * This will be created under the directory returned from [getStorageDirectory]
-     */
-    private val attachmentDirectoryName: String = DEFAULT_ATTACHMENTS_DIRECTORY_NAME,
     /**
      * SQLite table where attachment state will be recorded
      */
@@ -159,10 +181,10 @@ public abstract class AbstractAttachmentQueue(
                     throw Exception("Attachment queue has been closed")
                 }
                 // Ensure the directory where attachments are downloaded, exists
-                localStorage.makeDir(getStorageDirectory())
+                localStorage.makeDir(attachmentDirectory)
 
                 subdirectories?.forEach { subdirectory ->
-                    localStorage.makeDir(Path(getStorageDirectory(), subdirectory).toString())
+                    localStorage.makeDir(Path(attachmentDirectory, subdirectory).toString())
                 }
 
                 val scope = CoroutineScope(Dispatchers.IO)
@@ -186,7 +208,7 @@ public abstract class AbstractAttachmentQueue(
                         val watchJob =
                             launch {
                                 // Watch local attachment relationships and sync the attachment records
-                                watchAttachments().collect { items ->
+                                watchedAttachments.collect { items ->
                                     processWatchedAttachments(items)
                                 }
                             }
@@ -212,31 +234,6 @@ public abstract class AbstractAttachmentQueue(
                 closed = true
             }
         }
-
-    /**
-     * Creates a watcher for the current state of local attachments
-     * ```kotlin
-     *      public fun watchAttachments(): Flow<List<WatchedAttachmentItem>> =
-     *         db.watch(
-     *             sql =
-     *                 """
-     *                 SELECT
-     *                     photo_id as id
-     *                 FROM
-     *                     checklists
-     *                 WHERE
-     *                     photo_id IS NOT NULL
-     *                 """,
-     *         ) { cursor ->
-     *             WatchedAttachmentItem(
-     *                 id = cursor.getString("id"),
-     *                 fileExtension = "jpg",
-     *             )
-     *         }
-     * ```
-     */
-    @Throws(PowerSyncException::class)
-    public abstract fun watchAttachments(): Flow<List<WatchedAttachmentItem>>
 
     /**
      * Resolves the filename for new attachment items.
@@ -374,18 +371,19 @@ public abstract class AbstractAttachmentQueue(
              * assignment should happen in the same transaction.
              */
             db.writeTransaction { tx ->
-                val attachment =  Attachment(
-                    id = id,
-                    filename = filename,
-                    size = fileSize,
-                    mediaType = mediaType,
-                    state = AttachmentState.QUEUED_UPLOAD.ordinal,
-                    localUri = localUri,
-                )
+                val attachment =
+                    Attachment(
+                        id = id,
+                        filename = filename,
+                        size = fileSize,
+                        mediaType = mediaType,
+                        state = AttachmentState.QUEUED_UPLOAD.ordinal,
+                        localUri = localUri,
+                    )
 
                 /**
                  * Allow consumers to set relationships to this attachment id
-                  */
+                 */
                 updateHook?.invoke(tx, attachment)
 
                 return@writeTransaction attachmentsService.upsertAttachment(
@@ -403,9 +401,10 @@ public abstract class AbstractAttachmentQueue(
      * This method can be overriden for custom behaviour.
      */
     @Throws(PowerSyncException::class, CancellationException::class)
-    public open suspend fun deleteFile(attachmentId: String,
-                                       updateHook: ((context: ConnectionContext, attachment: Attachment) -> Unit)? = null,
-                                       ): Attachment =
+    public open suspend fun deleteFile(
+        attachmentId: String,
+        updateHook: ((context: ConnectionContext, attachment: Attachment) -> Unit)? = null,
+    ): Attachment =
         runWrappedSuspending {
             val attachment =
                 attachmentsService.getAttachment(attachmentId)
@@ -421,28 +420,10 @@ public abstract class AbstractAttachmentQueue(
         }
 
     /**
-     * Returns the local file path for the given filename, used to store in the database.
-     * Example: filename: "attachment-1.jpg" returns "attachments/attachment-1.jpg"
-     */
-    public open fun getLocalFilePathSuffix(filename: String): String = Path(attachmentDirectoryName, filename).toString()
-
-    /**
-     * Returns the directory where attachments are stored on the device, used to make dir
-     * Example: "/data/user/0/com.yourdomain.app/files/attachments/"
-     */
-    public open fun getStorageDirectory(): String {
-        val userStorageDirectory = localStorage.getUserStorageDirectory()
-        return Path(userStorageDirectory, attachmentDirectoryName).toString()
-    }
-
-    /**
      * Return users storage directory with the attachmentPath use to load the file.
-     * Example: filePath: "attachments/attachment-1.jpg" returns "/data/user/0/com.yourdomain.app/files/attachments/attachment-1.jpg"
+     * Example: filePath: "attachment-1.jpg" returns "/data/user/0/com.yourdomain.app/files/attachments/attachment-1.jpg"
      */
-    public open fun getLocalUri(filename: String): String {
-        val storageDirectory = getStorageDirectory()
-        return Path(storageDirectory, filename).toString()
-    }
+    public open fun getLocalUri(filename: String): String = Path(attachmentDirectory, filename).toString()
 
     /**
      * Removes all archived items
@@ -460,6 +441,6 @@ public abstract class AbstractAttachmentQueue(
     public suspend fun clearQueue() {
         attachmentsService.clearQueue()
         // Remove the attachments directory
-        localStorage.rmDir(getStorageDirectory())
+        localStorage.rmDir(attachmentDirectory)
     }
 }
