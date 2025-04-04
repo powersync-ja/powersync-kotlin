@@ -11,6 +11,8 @@ import com.powersync.bucket.BucketPriority
 import com.powersync.bucket.Checkpoint
 import com.powersync.bucket.OpType
 import com.powersync.bucket.OplogEntry
+import com.powersync.bucket.WriteCheckpointData
+import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.db.PowerSyncDatabaseImpl
@@ -28,6 +30,8 @@ import dev.mokkery.answering.returns
 import dev.mokkery.everySuspend
 import dev.mokkery.mock
 import dev.mokkery.verify
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.runBlocking
@@ -61,6 +65,7 @@ class SyncIntegrationTest {
     private lateinit var database: PowerSyncDatabaseImpl
     private lateinit var connector: PowerSyncBackendConnector
     private lateinit var syncLines: Channel<SyncLine>
+    private lateinit var checkpointResponse: () -> WriteCheckpointResponse
 
     @BeforeTest
     fun setup() {
@@ -79,6 +84,7 @@ class SyncIntegrationTest {
                 everySuspend { invalidateCredentials() } returns Unit
             }
         syncLines = Channel()
+        checkpointResponse = { WriteCheckpointResponse(WriteCheckpointData("1000")) }
 
         runBlocking {
             database.disconnectAndClear(true)
@@ -100,16 +106,18 @@ class SyncIntegrationTest {
             dbFilename = "testdb",
         ) as PowerSyncDatabaseImpl
 
-    private fun syncStream(): SyncStream {
-        val client = MockSyncService(syncLines)
+    @OptIn(DelicateCoroutinesApi::class)
+    private fun CoroutineScope.syncStream(): SyncStream {
+        val client = MockSyncService(syncLines, { checkpointResponse() })
         return SyncStream(
             bucketStorage = database.bucketStorage,
             connector = connector,
             httpEngine = client,
-            uploadCrud = { },
+            uploadCrud = { connector.uploadData(database) },
             retryDelayMs = 10,
             logger = logger,
             params = JsonObject(emptyMap()),
+            scope = this,
         )
     }
 
@@ -131,7 +139,7 @@ class SyncIntegrationTest {
 
                 database.close()
                 turbine.waitFor { !it.connected }
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
 
             // Closing the database should have closed the channel
@@ -151,7 +159,7 @@ class SyncIntegrationTest {
 
                 database.disconnect()
                 turbine.waitFor { !it.connected }
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
 
             // Disconnecting should have closed the channel
@@ -170,7 +178,7 @@ class SyncIntegrationTest {
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
                 turbine.waitFor { it.connected }
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
 
             assertFailsWith<PowerSyncException>("Cannot update schema while connected") {
@@ -268,7 +276,7 @@ class SyncIntegrationTest {
                 turbine.waitFor { it.hasSynced == true }
                 expectUserCount(4)
 
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
 
             syncLines.close()
@@ -341,7 +349,7 @@ class SyncIntegrationTest {
 
                 syncLines.send(SyncLine.CheckpointComplete(lastOpId = "1"))
                 turbine.waitFor { !it.downloading }
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
 
             database.close()
@@ -361,7 +369,7 @@ class SyncIntegrationTest {
                 database.disconnect()
 
                 turbine.waitFor { !it.connecting && !it.connected }
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
 
             database.close()
@@ -406,7 +414,7 @@ class SyncIntegrationTest {
                     assertEquals(1, rows.size)
                 }
 
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
 
             database.close()
@@ -478,8 +486,8 @@ class SyncIntegrationTest {
                 db2.disconnect()
                 turbine2.waitFor { !it.connecting }
 
-                turbine1.cancel()
-                turbine2.cancel()
+                turbine1.cancelAndIgnoreRemainingEvents()
+                turbine2.cancelAndIgnoreRemainingEvents()
             }
 
             db2.close()
@@ -504,7 +512,7 @@ class SyncIntegrationTest {
                 database.disconnect()
                 turbine.waitFor { !it.connecting }
 
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
 
             database.close()
@@ -523,10 +531,114 @@ class SyncIntegrationTest {
                 database.connect(connector, 1000L, retryDelayMs = 5000)
                 turbine.waitFor { it.connecting }
 
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
 
             database.close()
             syncLines.close()
+        }
+
+    @Test
+    fun `handles checkpoints during uploads`() =
+        runTest {
+            val testConnector = TestConnector()
+            connector = testConnector
+            database.connectInternal(syncStream(), 1000L)
+
+            suspend fun expectUserRows(amount: Int) {
+                val row = database.get("SELECT COUNT(*) FROM users") { it.getLong(0)!! }
+                assertEquals(amount, row.toInt())
+            }
+
+            val completeUpload = CompletableDeferred<Unit>()
+            val uploadStarted = CompletableDeferred<Unit>()
+            testConnector.uploadDataCallback = { db ->
+                db.getCrudBatch()?.let { batch ->
+                    uploadStarted.complete(Unit)
+                    completeUpload.await()
+                    batch.complete.invoke(null)
+                }
+            }
+
+            // Trigger an upload (adding a keep-alive sync line because the execute could start before the database is fully
+            // connected).
+            database.execute("INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)", listOf("local", "local@example.org"))
+            syncLines.send(SyncLine.KeepAlive(1234))
+            expectUserRows(1)
+            uploadStarted.await()
+
+            // Pretend that the connector takes forever in uploadData, but the data gets uploaded before the method returns.
+            syncLines.send(
+                SyncLine.FullCheckpoint(
+                    Checkpoint(
+                        writeCheckpoint = "1",
+                        lastOpId = "2",
+                        checksums = listOf(BucketChecksum("a", checksum = 0)),
+                    ),
+                ),
+            )
+            turbineScope {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                turbine.waitFor { it.downloading }
+                turbine.cancelAndIgnoreRemainingEvents()
+            }
+
+            syncLines.send(
+                SyncLine.SyncDataBucket(
+                    bucket = "a",
+                    data =
+                        listOf(
+                            OplogEntry(
+                                checksum = 0,
+                                opId = "1",
+                                op = OpType.PUT,
+                                rowId = "1",
+                                rowType = "users",
+                                data = """{"id": "test1", "name": "from local", "email": ""}""",
+                            ),
+                            OplogEntry(
+                                checksum = 0,
+                                opId = "2",
+                                op = OpType.PUT,
+                                rowId = "2",
+                                rowType = "users",
+                                data = """{"id": "test1", "name": "additional entry", "email": ""}""",
+                            ),
+                        ),
+                    after = null,
+                    nextAfter = null,
+                    hasMore = false,
+                ),
+            )
+            syncLines.send(SyncLine.CheckpointComplete(lastOpId = "2"))
+
+            // Despite receiving a valid checkpoint with two rows, it should not be visible because we have local data.
+            waitFor {
+                assertNotNull(
+                    logWriter.logs.find {
+                        it.message.contains("Could not apply checkpoint due to local data")
+                    },
+                )
+            }
+            expectUserCount(1)
+
+            // Mark the upload as completed, this should trigger a write_checkpoint.json request
+            val requestedCheckpoint = CompletableDeferred<Unit>()
+            checkpointResponse = {
+                requestedCheckpoint.complete(Unit)
+                WriteCheckpointResponse(WriteCheckpointData("1"))
+            }
+            completeUpload.complete(Unit)
+            requestedCheckpoint.await()
+
+            // This should apply the checkpoint
+            turbineScope {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                turbine.waitFor { !it.downloading }
+                turbine.cancelAndIgnoreRemainingEvents()
+            }
+
+            // Meaning that the two rows are now visible
+            expectUserCount(2)
         }
 }

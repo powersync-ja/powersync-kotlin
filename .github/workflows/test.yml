@@ -45,3 +45,13 @@ jobs:
           -PGITHUB_PUBLISH_TOKEN=${{ secrets.GITHUB_TOKEN }} \
           ${{ matrix.targets }}
       shell: bash
+
+    # Credit: https://github.com/gradle/actions/issues/76#issuecomment-2007584323
+    - name: Upload reports on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: report-for-${{ matrix.os }}
+        path: |
+          **/build/reports/
+          **/build/test-results/

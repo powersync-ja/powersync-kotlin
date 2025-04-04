@@ -3,6 +3,7 @@
 ## 1.0.0-BETA29 (unreleased)
 
 * Fix potential race condition between jobs in `connect()` and `disconnect()`.
+* Fix race condition causing data received during uploads not to be applied.
 
 ## 1.0.0-BETA28
 

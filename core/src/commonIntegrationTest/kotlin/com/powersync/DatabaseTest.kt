@@ -69,6 +69,7 @@ class DatabaseTest {
         runBlocking {
             if (!database.closed) {
                 database.disconnectAndClear(true)
+                database.close()
             }
         }
         com.powersync.testutils.cleanup("testdb")
