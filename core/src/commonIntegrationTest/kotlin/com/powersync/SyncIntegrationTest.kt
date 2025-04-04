@@ -139,7 +139,7 @@ class SyncIntegrationTest {
 
                 database.close()
                 turbine.waitFor { !it.connected }
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
 
             // Closing the database should have closed the channel
@@ -159,7 +159,7 @@ class SyncIntegrationTest {
 
                 database.disconnect()
                 turbine.waitFor { !it.connected }
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
 
             // Disconnecting should have closed the channel
@@ -178,7 +178,7 @@ class SyncIntegrationTest {
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
                 turbine.waitFor { it.connected }
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
 
             assertFailsWith<PowerSyncException>("Cannot update schema while connected") {
@@ -276,7 +276,7 @@ class SyncIntegrationTest {
                 turbine.waitFor { it.hasSynced == true }
                 expectUserCount(4)
 
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
 
             syncLines.close()
@@ -349,7 +349,7 @@ class SyncIntegrationTest {
 
                 syncLines.send(SyncLine.CheckpointComplete(lastOpId = "1"))
                 turbine.waitFor { !it.downloading }
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
 
             database.close()
@@ -369,7 +369,7 @@ class SyncIntegrationTest {
                 database.disconnect()
 
                 turbine.waitFor { !it.connecting && !it.connected }
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
 
             database.close()
@@ -414,7 +414,7 @@ class SyncIntegrationTest {
                     assertEquals(1, rows.size)
                 }
 
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
 
             database.close()
@@ -486,8 +486,8 @@ class SyncIntegrationTest {
                 db2.disconnect()
                 turbine2.waitFor { !it.connecting }
 
-                turbine1.cancel()
-                turbine2.cancel()
+                turbine1.cancelAndIgnoreRemainingEvents()
+                turbine2.cancelAndIgnoreRemainingEvents()
             }
 
             db2.close()
@@ -512,7 +512,7 @@ class SyncIntegrationTest {
                 database.disconnect()
                 turbine.waitFor { !it.connecting }
 
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
 
             database.close()
@@ -531,7 +531,7 @@ class SyncIntegrationTest {
                 database.connect(connector, 1000L, retryDelayMs = 5000)
                 turbine.waitFor { it.connecting }
 
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
 
             database.close()
@@ -580,7 +580,7 @@ class SyncIntegrationTest {
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)
                 turbine.waitFor { it.downloading }
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
 
             syncLines.send(
@@ -635,7 +635,7 @@ class SyncIntegrationTest {
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)
                 turbine.waitFor { !it.downloading }
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
 
             // Meaning that the two rows are now visible
