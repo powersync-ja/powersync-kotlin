@@ -6,6 +6,7 @@ import co.touchlab.kermit.Logger
 import com.powersync.PowerSyncDatabase
 import com.powersync.attachments.AttachmentQueue
 import com.powersync.connector.supabase.SupabaseConnector
+import com.powersync.demos.screens.SignInScreen
 import io.github.jan.supabase.auth.status.RefreshFailureCause
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,7 +39,10 @@ internal class AuthViewModel(
                         _userId.value = it.session.user?.id
                         db.connect(supabase)
                         attachmentsQueue.startSync()
-                        navController.navigate(Screen.Home)
+                        if (navController.currentScreen.value is Screen.SignIn
+                            || navController.currentScreen.value is Screen.SignUp) {
+                            navController.navigate(Screen.Home)
+                        }
                     }
                     is SessionStatus.Initializing -> Logger.e("Loading from storage")
                     is SessionStatus.RefreshFailure -> {

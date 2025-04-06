@@ -44,7 +44,7 @@ fun App(cameraService: CameraService, attachmentDirectory: String) {
             )
         }
 
-    val db = remember { PowerSyncDatabase(driverFactory, schema, dbFilename = "222.sqlite") }
+    val db = remember { PowerSyncDatabase(driverFactory, schema, dbFilename = "333.sqlite") }
     val attachments =
         remember { AttachmentQueue(
             db = db, remoteStorage = SupabaseRemoteStorage(supabase),
@@ -61,7 +61,10 @@ fun App(cameraService: CameraService, attachmentDirectory: String) {
     val syncStatus = db.currentStatus
     val status by syncStatus.asFlow().collectAsState(syncStatus)
 
-    val navController = remember { NavController(Screen.Home) }
+    val navController = remember {
+        NavController(Screen.Home)
+    }
+
     val authViewModel =
         remember {
             AuthViewModel(supabase, db, attachments, navController)
