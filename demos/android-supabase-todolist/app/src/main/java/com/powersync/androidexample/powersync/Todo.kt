@@ -77,7 +77,7 @@ internal class Todo(
     fun onItemDeleteClicked(item: TodoItem) {
         viewModelScope.launch {
             if (item.photoId != null) {
-                attachmentsQueue?.deleteFile(item.photoId)
+                attachmentsQueue?.deleteFile(item.photoId) {_,_ -> }
             }
             db.writeTransaction { tx ->
                 tx.execute("DELETE FROM $TODOS_TABLE WHERE id = ?", listOf(item.id))

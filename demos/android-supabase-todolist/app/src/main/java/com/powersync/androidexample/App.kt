@@ -50,7 +50,7 @@ fun App(cameraService: CameraService, attachmentDirectory: String) {
             if (BuildConfig.SUPABASE_ATTACHMENT_BUCKET != "null") {
                 AttachmentQueue(
                     db = db, remoteStorage = SupabaseRemoteStorage(supabase),
-                    attachmentDirectory = attachmentDirectory,
+                    attachmentsDirectory = attachmentDirectory,
                     watchedAttachments = db.watch(
                         "SELECT photo_id from todos WHERE photo_id IS NOT NULL"
                     ) {
