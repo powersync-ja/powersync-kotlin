@@ -15,7 +15,6 @@ import com.powersync.testutils.databaseTest
 import com.powersync.testutils.waitFor
 import com.powersync.utils.JsonUtil
 import dev.mokkery.verify
-import io.kotest.assertions.withClue
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -48,10 +47,8 @@ class SyncIntegrationTest {
                 turbine.cancel()
             }
 
-            // Closing the database should have closed the channel
-            withClue("Should have closed sync stream") {
-                syncLines.isClosedForSend shouldBe true
-            }
+            // Closing the database should have closed the channel.
+            waitFor { syncLines.isClosedForSend shouldBe true }
         }
 
     @Test
@@ -71,9 +68,7 @@ class SyncIntegrationTest {
             }
 
             // Disconnecting should have closed the channel
-            withClue("Should have closed sync stream") {
-                syncLines.isClosedForSend shouldBe true
-            }
+            waitFor { syncLines.isClosedForSend shouldBe true }
 
             // And called invalidateCredentials on the connector
             verify { connector.invalidateCredentials() }
