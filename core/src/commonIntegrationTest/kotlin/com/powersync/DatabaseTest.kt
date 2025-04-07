@@ -33,7 +33,8 @@ class DatabaseTest {
     @Test
     fun testWAL() =
         databaseTest {
-            val mode = database.get(
+            val mode =
+                database.get(
                     "PRAGMA journal_mode",
                     mapper = { it.getString(0)!! },
                 )
@@ -258,18 +259,19 @@ class DatabaseTest {
     @Test
     fun readConnectionsReadOnly() =
         databaseTest {
-            val exception = shouldThrow<PowerSyncException> {
-                database.getOptional(
-                    """
+            val exception =
+                shouldThrow<PowerSyncException> {
+                    database.getOptional(
+                        """
                         INSERT INTO 
                              users (id, name, email)
                          VALUES
                              (uuid(), ?, ?) 
                          RETURNING *
                         """.trimIndent(),
-                    parameters = listOf("steven", "steven@journeyapps.com"),
-                ) {}
-            }
+                        parameters = listOf("steven", "steven@journeyapps.com"),
+                    ) {}
+                }
 
             // The exception messages differ slightly between drivers
             exception.message shouldContain "write a readonly database"

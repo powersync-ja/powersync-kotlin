@@ -350,10 +350,11 @@ internal class PowerSyncDatabaseImpl(
         parameters: List<Any?>?,
         throttleMs: Long?,
         mapper: (SqlCursor) -> RowType,
-    ): Flow<List<RowType>> = flow {
-        waitReady()
-        emitAll(internalDb.watch(sql, parameters, throttleMs, mapper))
-    }
+    ): Flow<List<RowType>> =
+        flow {
+            waitReady()
+            emitAll(internalDb.watch(sql, parameters, throttleMs, mapper))
+        }
 
     override suspend fun <R> readLock(callback: ThrowableLockCallback<R>): R {
         waitReady()

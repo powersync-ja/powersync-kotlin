@@ -41,22 +41,23 @@ fun generatePrintLogWriter() =
         }
     }
 
-internal fun databaseTest(
-    testBody: suspend ActiveDatabaseTest.() -> Unit
-) = runTest {
-    val running = ActiveDatabaseTest(this)
-    // Make sure the database is initialized, we're using internal APIs that expect initialization.
-    running.database = running.openDatabaseAndInitialize()
+internal fun databaseTest(testBody: suspend ActiveDatabaseTest.() -> Unit) =
+    runTest {
+        val running = ActiveDatabaseTest(this)
+        // Make sure the database is initialized, we're using internal APIs that expect initialization.
+        running.database = running.openDatabaseAndInitialize()
 
-    try {
-        running.testBody()
-    } finally {
-        running.cleanup()
+        try {
+            running.testBody()
+        } finally {
+            running.cleanup()
+        }
     }
-}
 
 @OptIn(ExperimentalKermitApi::class)
-internal class ActiveDatabaseTest(val scope: TestScope) {
+internal class ActiveDatabaseTest(
+    val scope: TestScope,
+) {
     private val cleanupItems: MutableList<suspend () -> Unit> = mutableListOf()
 
     lateinit var database: PowerSyncDatabaseImpl
@@ -83,34 +84,34 @@ internal class ActiveDatabaseTest(val scope: TestScope) {
         "db-$suffix"
     }
 
-    val connector = mock<PowerSyncBackendConnector> {
-        everySuspend { getCredentialsCached() } returns
+    val connector =
+        mock<PowerSyncBackendConnector> {
+            everySuspend { getCredentialsCached() } returns
                 PowerSyncCredentials(
                     token = "test-token",
                     userId = "test-user",
                     endpoint = "https://test.com",
                 )
 
-        everySuspend { invalidateCredentials() } returns Unit
-    }
+            everySuspend { invalidateCredentials() } returns Unit
+        }
 
     fun openDatabase(): PowerSyncDatabaseImpl {
         logger.d { "Opening database $databaseName in directory $testDirectory" }
-        val db = PowerSyncDatabase(
-            factory = factory,
-            schema = Schema(UserRow.table),
-            dbFilename = databaseName,
-            dbDirectory = testDirectory,
-            logger = logger,
-            scope = scope,
-        )
+        val db =
+            PowerSyncDatabase(
+                factory = factory,
+                schema = Schema(UserRow.table),
+                dbFilename = databaseName,
+                dbDirectory = testDirectory,
+                logger = logger,
+                scope = scope,
+            )
         doOnCleanup { db.close() }
         return db as PowerSyncDatabaseImpl
     }
 
-    suspend fun openDatabaseAndInitialize(): PowerSyncDatabaseImpl {
-        return openDatabase().also { it.readLock {  } }
-    }
+    suspend fun openDatabaseAndInitialize(): PowerSyncDatabaseImpl = openDatabase().also { it.readLock { } }
 
     fun syncStream(): SyncStream {
         val client = MockSyncService(syncLines)
