@@ -73,7 +73,7 @@ public interface AttachmentContext {
 /**
  * Service for interacting with the local attachment records.
  */
-public interface AttachmentService : AttachmentContext {
+public interface AttachmentService {
     /**
      * Watcher for changes to attachments table.
      * Once a change is detected it will initiate a sync of the attachments

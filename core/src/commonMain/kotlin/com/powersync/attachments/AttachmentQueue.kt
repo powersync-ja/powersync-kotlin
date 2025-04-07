@@ -365,8 +365,8 @@ public open class AttachmentQueue(
     public open suspend fun saveFile(
         data: Flow<ByteArray>,
         mediaType: String,
-        fileExtension: String?,
-        metaData: String?,
+        fileExtension: String? = null,
+        metaData: String? = null,
         updateHook: (context: ConnectionContext, attachment: Attachment) -> Unit,
     ): Attachment =
         runWrappedSuspending {
@@ -382,27 +382,29 @@ public open class AttachmentQueue(
              * Starts a write transaction. The attachment record and relevant local relationship
              * assignment should happen in the same transaction.
              */
-            db.writeTransaction { tx ->
-                val attachment =
-                    Attachment(
-                        id = id,
-                        filename = filename,
-                        size = fileSize,
-                        mediaType = mediaType,
-                        state = AttachmentState.QUEUED_UPLOAD.ordinal,
-                        localUri = localUri,
-                        metaData = metaData,
+            attachmentsService.withLock { attachmentContext ->
+                db.writeTransaction { tx ->
+                    val attachment =
+                        Attachment(
+                            id = id,
+                            filename = filename,
+                            size = fileSize,
+                            mediaType = mediaType,
+                            state = AttachmentState.QUEUED_UPLOAD.ordinal,
+                            localUri = localUri,
+                            metaData = metaData,
+                        )
+
+                    /**
+                     * Allow consumers to set relationships to this attachment id
+                     */
+                    updateHook.invoke(tx, attachment)
+
+                    return@writeTransaction attachmentContext.upsertAttachment(
+                        attachment,
+                        tx,
                     )
-
-                /**
-                 * Allow consumers to set relationships to this attachment id
-                 */
-                updateHook.invoke(tx, attachment)
-
-                return@writeTransaction attachmentsService.upsertAttachment(
-                    attachment,
-                    tx,
-                )
+                }
             }
         }
 
@@ -419,16 +421,18 @@ public open class AttachmentQueue(
         updateHook: (context: ConnectionContext, attachment: Attachment) -> Unit,
     ): Attachment =
         runWrappedSuspending {
-            val attachment =
-                attachmentsService.getAttachment(attachmentId)
-                    ?: throw Exception("Attachment record with id $attachmentId was not found.")
+            attachmentsService.withLock { attachmentContext ->
+                val attachment =
+                    attachmentContext.getAttachment(attachmentId)
+                        ?: throw Exception("Attachment record with id $attachmentId was not found.")
 
-            db.writeTransaction { tx ->
-                updateHook?.invoke(tx, attachment)
-                return@writeTransaction attachmentsService.upsertAttachment(
-                    attachment.copy(state = AttachmentState.QUEUED_DELETE.ordinal),
-                    tx,
-                )
+                db.writeTransaction { tx ->
+                    updateHook?.invoke(tx, attachment)
+                    return@writeTransaction attachmentContext.upsertAttachment(
+                        attachment.copy(state = AttachmentState.QUEUED_DELETE.ordinal),
+                        tx,
+                    )
+                }
             }
         }
 
@@ -454,7 +458,9 @@ public open class AttachmentQueue(
      * Clears the attachment queue and deletes all attachment files
      */
     public suspend fun clearQueue() {
-        attachmentsService.clearQueue()
+        attachmentsService.withLock {
+            it.clearQueue()
+        }
         // Remove the attachments directory
         localStorage.rmDir(attachmentDirectory)
     }
