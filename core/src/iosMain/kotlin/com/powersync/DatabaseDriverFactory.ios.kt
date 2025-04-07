@@ -3,6 +3,7 @@ package com.powersync
 import co.touchlab.sqliter.DatabaseConfiguration
 import co.touchlab.sqliter.DatabaseConfiguration.Logging
 import co.touchlab.sqliter.DatabaseConnection
+import co.touchlab.sqliter.NO_VERSION_CHECK
 import co.touchlab.sqliter.interop.Logger
 import co.touchlab.sqliter.interop.SqliteErrorType
 import co.touchlab.sqliter.sqlite3.sqlite3_commit_hook
@@ -68,7 +69,13 @@ public actual class DatabaseDriverFactory {
                         configuration =
                             DatabaseConfiguration(
                                 name = dbFilename,
-                                version = schema.version.toInt(),
+                                version =
+                                    if (!readOnly) {
+                                        schema.version.toInt()
+                                    } else {
+                                        // Don't do migrations on read only connections
+                                        NO_VERSION_CHECK
+                                    },
                                 create = { connection ->
                                     wrapConnection(connection) {
                                         schema.create(
