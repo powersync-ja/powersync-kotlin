@@ -26,9 +26,9 @@ internal fun extractLib(fileName: String): String {
     val resourceURI =
         (R::class.java.getResource(path) ?: error("Resource $path not found"))
 
-    /**
-     * Wrapping in a File handle resolves the URI to a path usable by SQLite.
-     * This is particularly relevant on Windows.
-     */
+    // Wrapping the above in a File handle resolves the URI to a path usable by SQLite.
+    // This is particularly relevant on Windows.
+    // On Windows [resourceURI.path] starts with a `/`, e.g. `/c:/...`. SQLite does not load this path correctly.
+    // The wrapping here transforms the path to `c:/...` which does load correctly.
     return File(resourceURI.path).path.toString()
 }
