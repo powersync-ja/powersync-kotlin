@@ -1,3 +1,9 @@
+import com.sun.net.httpserver.HttpExchange
+import com.sun.net.httpserver.HttpServer
+import java.net.InetSocketAddress
+import java.net.URLDecoder
+import java.nio.file.Files
+
 plugins {
     alias(libs.plugins.jetbrainsCompose) apply false
     alias(libs.plugins.compose.compiler) apply false
@@ -16,6 +22,7 @@ plugins {
     alias(libs.plugins.kotlinter) apply false
     alias(libs.plugins.keeper) apply false
     alias(libs.plugins.kotlin.atomicfu) apply false
+    id("org.jetbrains.dokka") version "2.0.0"
 }
 
 allprojects {
@@ -56,4 +63,42 @@ subprojects {
 
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
+}
+
+tasks.register("serveDokka") {
+    dependsOn("dokkaHtml")
+    doLast {
+        val server = HttpServer.create(InetSocketAddress(0), 0)
+        val root = file("core/build/dokka/html")
+
+        val handler =
+            com.sun.net.httpserver.HttpHandler { exchange: HttpExchange ->
+                val rawPath = exchange.requestURI.path
+                val cleanPath = URLDecoder.decode(rawPath.removePrefix("/"), "UTF-8")
+                val requestedFile = File(root, cleanPath)
+
+                val file =
+                    when {
+                        requestedFile.exists() && !requestedFile.isDirectory -> requestedFile
+                        else -> File(root, "index.html") // fallback
+                    }
+
+                val contentType =
+                    Files.probeContentType(file.toPath()) ?: "application/octet-stream"
+                val bytes = file.readBytes()
+                exchange.responseHeaders.add("Content-Type", contentType)
+                exchange.sendResponseHeaders(200, bytes.size.toLong())
+                exchange.responseBody.use { it.write(bytes) }
+            }
+
+        server.createContext("/", handler)
+        server.executor = null
+        server.start()
+
+        println("📘 Serving Dokka docs at http://localhost:${server.address.port}/")
+        println("Press Ctrl+C to stop.")
+
+        // Keep the task alive
+        Thread.currentThread().join()
+    }
 }
