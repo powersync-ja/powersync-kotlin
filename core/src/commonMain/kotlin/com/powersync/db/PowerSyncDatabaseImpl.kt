@@ -166,7 +166,7 @@ internal class PowerSyncDatabaseImpl(
     }
 
     @OptIn(FlowPreview::class)
-    internal suspend fun connectInternal(
+    internal fun connectInternal(
         stream: SyncStream,
         crudThrottleMs: Long,
     ) {
