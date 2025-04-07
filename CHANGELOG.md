@@ -3,6 +3,7 @@
 ## 1.0.0-BETA29 (unreleased)
 
 * Fix potential race condition between jobs in `connect()` and `disconnect()`.
+* [JVM Windows] Fixed PowerSync Extension temporary file deletion error on process shutdown.
 
 ## 1.0.0-BETA28
 
