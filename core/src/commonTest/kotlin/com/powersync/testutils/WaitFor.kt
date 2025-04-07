@@ -4,13 +4,14 @@ import kotlinx.coroutines.delay
 import kotlinx.datetime.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeSource
 
-internal suspend fun waitFor(
+internal suspend inline fun waitFor(
     timeout: Duration = 500.milliseconds,
     interval: Duration = 100.milliseconds,
     test: () -> Unit,
 ) {
-    val begin = Clock.System.now().toEpochMilliseconds()
+    val begin = TimeSource.Monotonic.markNow()
     do {
         try {
             test()
@@ -18,8 +19,8 @@ internal suspend fun waitFor(
         } catch (_: Error) {
             // Treat exceptions as failed
         }
-        delay(interval.inWholeMilliseconds)
-    } while ((Clock.System.now().toEpochMilliseconds() - begin) < timeout.inWholeMilliseconds)
+        delay(interval)
+    } while (begin.elapsedNow() < timeout)
 
     throw Exception("Timeout reached")
 }

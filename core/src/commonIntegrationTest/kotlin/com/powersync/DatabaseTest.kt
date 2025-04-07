@@ -2,109 +2,58 @@ package com.powersync
 
 import app.cash.turbine.turbineScope
 import co.touchlab.kermit.ExperimentalKermitApi
-import co.touchlab.kermit.Logger
-import co.touchlab.kermit.Severity
-import co.touchlab.kermit.TestConfig
-import co.touchlab.kermit.TestLogWriter
 import com.powersync.db.ActiveDatabaseGroup
-import com.powersync.db.getString
 import com.powersync.db.schema.Schema
+import com.powersync.testutils.PowerSyncTestFixtures
 import com.powersync.testutils.UserRow
-import com.powersync.testutils.generatePrintLogWriter
 import com.powersync.testutils.getTempDir
 import com.powersync.testutils.waitFor
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 
 @OptIn(ExperimentalKermitApi::class)
-class DatabaseTest {
-    private val logWriter =
-        TestLogWriter(
-            loggable = Severity.Debug,
-        )
-
-    private val logger =
-        Logger(
-            TestConfig(
-                minSeverity = Severity.Debug,
-                logWriterList = listOf(logWriter, generatePrintLogWriter()),
-            ),
-        )
-
-    private lateinit var database: PowerSyncDatabase
-
-    private fun openDB() =
-        PowerSyncDatabase(
-            factory = com.powersync.testutils.factory,
-            schema = Schema(UserRow.table),
-            dbFilename = "testdb",
-            logger = logger,
-        )
-
-    @BeforeTest
-    fun setupDatabase() {
-        logWriter.reset()
-
-        database = openDB()
-
-        runBlocking {
-            database.disconnectAndClear(true)
-        }
-    }
-
-    @AfterTest
-    fun tearDown() {
-        runBlocking {
-            if (!database.closed) {
-                database.disconnectAndClear(true)
-            }
-        }
-        com.powersync.testutils.cleanup("testdb")
-    }
-
+class DatabaseTest: PowerSyncTestFixtures() {
     @Test
     fun testLinksPowerSync() =
-        runTest {
+        databaseTest {
             database.get("SELECT powersync_rs_version();") { it.getString(0)!! }
         }
 
     @Test
     fun testWAL() =
-        runTest {
-            val mode =
-                database.get(
+        databaseTest {
+            val mode = database.get(
                     "PRAGMA journal_mode",
                     mapper = { it.getString(0)!! },
                 )
-            assertEquals(mode, "wal")
+            mode shouldBe "wal"
         }
 
     @Test
     fun testFTS() =
-        runTest {
+        databaseTest {
             val mode =
                 database.get(
                     "SELECT sqlite_compileoption_used('ENABLE_FTS5');",
                     mapper = { it.getLong(0)!! },
                 )
-            assertEquals(mode, 1)
+            mode shouldBe 1
         }
 
     @Test
     fun testConcurrentReads() =
-        runTest {
+        databaseTest {
             database.execute(
                 "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
                 listOf(
@@ -117,7 +66,7 @@ class DatabaseTest {
             val transactionItemCreated = CompletableDeferred<Unit>()
             // Start a long running writeTransaction
             val transactionJob =
-                async {
+                scope.async {
                     database.writeTransaction { tx ->
                         // Create another user
                         // External readers should not see this user while the transaction is open
@@ -155,7 +104,7 @@ class DatabaseTest {
 
     @Test
     fun testTransactionReads() =
-        runTest {
+        databaseTest {
             database.execute(
                 "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
                 listOf(
@@ -186,18 +135,18 @@ class DatabaseTest {
 
     @Test
     fun testTableUpdates() =
-        runTest {
+        databaseTest {
             turbineScope {
                 val query = database.watch("SELECT * FROM users") { UserRow.from(it) }.testIn(this)
 
                 // Wait for initial query
-                assertEquals(0, query.awaitItem().size)
+                query.awaitItem() shouldHaveSize 0
 
                 database.execute(
                     "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
                     listOf("Test", "test@example.org"),
                 )
-                assertEquals(1, query.awaitItem().size)
+                query.awaitItem() shouldHaveSize 1
 
                 database.writeTransaction {
                     it.execute(
@@ -210,7 +159,7 @@ class DatabaseTest {
                     )
                 }
 
-                assertEquals(3, query.awaitItem().size)
+                query.awaitItem() shouldHaveSize 3
 
                 try {
                     database.writeTransaction {
@@ -225,7 +174,7 @@ class DatabaseTest {
                     "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
                     listOf("Test4", "test4@example.org"),
                 )
-                assertEquals(4, query.awaitItem().size)
+                query.awaitItem() shouldHaveSize 4
 
                 query.expectNoEvents()
                 query.cancel()
@@ -234,12 +183,12 @@ class DatabaseTest {
 
     @Test
     fun testClosingReadPool() =
-        runTest {
+        databaseTest {
             val pausedLock = CompletableDeferred<Unit>()
             val inLock = CompletableDeferred<Unit>()
             // Request a lock
             val lockJob =
-                async {
+                scope.async {
                     database.readLock {
                         inLock.complete(Unit)
                         runBlocking {
@@ -254,63 +203,51 @@ class DatabaseTest {
             // Close the database. This should close the read pool
             // The pool should wait for jobs to complete before closing
             val closeJob =
-                async {
+                scope.async {
                     database.close()
                 }
 
             // Wait a little for testing
-            // Spawns in a different context for the delay to actually take affect
-            async { withContext(Dispatchers.Default) { delay(500) } }.await()
+            // Spawns in a different context for the delay to actually take effect
+            scope.async { withContext(Dispatchers.Default) { delay(500) } }.await()
 
             // The database should not close yet
             assertEquals(actual = database.closed, expected = false)
 
             // Any new readLocks should throw
-            val exception = assertFailsWith<PowerSyncException> { database.readLock {} }
-            assertEquals(
-                expected = "Cannot process connection pool request",
-                actual = exception.message,
-            )
+            val exception = shouldThrow<PowerSyncException> { database.readLock {} }
+            exception.message shouldBe "Cannot process connection pool request"
+
             // Release the lock
             pausedLock.complete(Unit)
             lockJob.await()
             closeJob.await()
 
-            assertEquals(actual = database.closed, expected = true)
+            database.closed shouldBe true
         }
 
     @Test
     fun openDBWithDirectory() =
-        runTest {
+        databaseTest {
             val tempDir =
                 getTempDir()
                     ?: // SQLiteR, which is used on iOS, does not support opening dbs from directories
-                    return@runTest
+                    return@databaseTest
 
-            val dbFilename = "testdb"
-
-            val db =
-                PowerSyncDatabase(
-                    factory = com.powersync.testutils.factory,
-                    schema = Schema(UserRow.table),
-                    dbFilename = dbFilename,
-                    dbDirectory = getTempDir(),
-                    logger = logger,
-                )
-
-            val path = db.get("SELECT file FROM pragma_database_list;") { it.getString(0)!! }
-            assertTrue { path.contains(tempDir) }
-            db.close()
+            // On platforms that support it, openDatabase() from our test utils should use a temporary
+            // location.
+            val path = database.get("SELECT file FROM pragma_database_list;") { it.getString(0)!! }
+            path shouldContain tempDir
         }
 
     @Test
     fun warnsMultipleInstances() =
-        runTest {
+        databaseTest {
             // Opens a second DB with the same database filename
-            val db2 = openDB()
+            val db2 = openDatabase()
             waitFor {
                 assertNotNull(
-                    logWriter.logs.find {
+                    logWriter().logs.find {
                         it.message == ActiveDatabaseGroup.multipleInstancesMessage
                     },
                 )
@@ -320,37 +257,37 @@ class DatabaseTest {
 
     @Test
     fun readConnectionsReadOnly() =
-        runTest {
-            val exception =
-                assertFailsWith<PowerSyncException> {
-                    database.getOptional(
-                        """
+        databaseTest {
+            val exception = shouldThrow<PowerSyncException> {
+                database.getOptional(
+                    """
                         INSERT INTO 
                              users (id, name, email)
                          VALUES
                              (uuid(), ?, ?) 
                          RETURNING *
                         """.trimIndent(),
-                        parameters = listOf("steven", "steven@journeyapps.com"),
-                    ) {}
-                }
+                    parameters = listOf("steven", "steven@journeyapps.com"),
+                ) {}
+            }
+
             // The exception messages differ slightly between drivers
-            assertTrue { exception.message!!.contains("write a readonly database") }
+            exception.message shouldContain "write a readonly database"
         }
 
     @Test
     fun basicReadTransaction() =
-        runTest {
+        databaseTest {
             val count =
                 database.readTransaction { it ->
                     it.get("SELECT COUNT(*) from users") { it.getLong(0)!! }
                 }
-            assertEquals(expected = 0, actual = count)
+            count shouldBe 0
         }
 
     @Test
     fun localOnlyCRUD() =
-        runTest {
+        databaseTest {
             database.updateSchema(
                 schema =
                     Schema(
@@ -374,16 +311,16 @@ class DatabaseTest {
             )
 
             val count = database.get("SELECT COUNT(*) FROM local_users") { it.getLong(0)!! }
-            assertEquals(actual = count, expected = 1)
+            count shouldBe 1
 
             // No CRUD entries should be present for local only tables
             val crudItems = database.getAll("SELECT id from ps_crud") { it.getLong(0)!! }
-            assertEquals(actual = crudItems.size, expected = 0)
+            crudItems shouldHaveSize 0
         }
 
     @Test
     fun insertOnlyCRUD() =
-        runTest {
+        databaseTest {
             database.updateSchema(schema = Schema(UserRow.table.copy(insertOnly = true)))
 
             database.execute(
@@ -396,15 +333,15 @@ class DatabaseTest {
             )
 
             val crudItems = database.getAll("SELECT id from ps_crud") { it.getLong(0)!! }
-            assertEquals(actual = crudItems.size, expected = 1)
+            crudItems shouldHaveSize 1
 
             val count = database.get("SELECT COUNT(*) from users") { it.getLong(0)!! }
-            assertEquals(actual = count, expected = 0)
+            count shouldBe 0
         }
 
     @Test
     fun viewOverride() =
-        runTest {
+        databaseTest {
             database.updateSchema(schema = Schema(UserRow.table.copy(viewNameOverride = "people")))
 
             database.execute(
@@ -417,9 +354,9 @@ class DatabaseTest {
             )
 
             val crudItems = database.getAll("SELECT id from ps_crud") { it.getLong(0)!! }
-            assertEquals(actual = crudItems.size, expected = 1)
+            crudItems shouldHaveSize 1
 
             val count = database.get("SELECT COUNT(*) from people") { it.getLong(0)!! }
-            assertEquals(actual = count, expected = 1)
+            count shouldBe 1
         }
 }
