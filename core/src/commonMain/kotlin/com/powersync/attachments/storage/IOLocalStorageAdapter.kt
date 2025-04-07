@@ -1,6 +1,6 @@
 package com.powersync.attachments.storage
 
-import com.powersync.attachments.LocalStorageAdapter
+import com.powersync.attachments.LocalStorage
 import com.powersync.db.runWrappedSuspending
 import io.ktor.utils.io.core.readBytes
 import io.ktor.utils.io.core.remaining
@@ -18,7 +18,7 @@ import kotlinx.io.files.SystemFileSystem
 /**
  * Storage adapter for local storage using the KotlinX IO library
  */
-public class IOLocalStorageAdapter : LocalStorageAdapter {
+public class IOLocalStorageAdapter : LocalStorage {
     public override suspend fun saveFile(
         filePath: String,
         data: Flow<ByteArray>,

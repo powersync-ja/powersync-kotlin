@@ -5,7 +5,7 @@ import co.touchlab.kermit.ExperimentalKermitApi
 import com.powersync.attachments.Attachment
 import com.powersync.attachments.AttachmentQueue
 import com.powersync.attachments.AttachmentState
-import com.powersync.attachments.RemoteStorageAdapter
+import com.powersync.attachments.RemoteStorage
 import com.powersync.attachments.SyncErrorHandler
 import com.powersync.attachments.WatchedAttachmentItem
 import com.powersync.attachments.createAttachmentsTable
@@ -88,7 +88,7 @@ class AttachmentsTest {
     fun testAttachmentDownload() =
         runTest(timeout = 5.minutes) {
             turbineScope(timeout = 5.minutes) {
-                val remote = spy<RemoteStorageAdapter>(MockedRemoteStorage())
+                val remote = spy<RemoteStorage>(MockedRemoteStorage())
 
                 val queue =
                     AttachmentQueue(
@@ -194,7 +194,7 @@ class AttachmentsTest {
     fun testAttachmentUpload() =
         runTest {
             turbineScope {
-                val remote = spy<RemoteStorageAdapter>(MockedRemoteStorage())
+                val remote = spy<RemoteStorage>(MockedRemoteStorage())
 
                 val queue =
                     AttachmentQueue(
@@ -298,7 +298,7 @@ class AttachmentsTest {
     fun testAttachmentCachedDownload() =
         runTest {
             turbineScope {
-                val remote = spy<RemoteStorageAdapter>(MockedRemoteStorage())
+                val remote = spy<RemoteStorage>(MockedRemoteStorage())
 
                 val queue =
                     AttachmentQueue(
@@ -410,7 +410,7 @@ class AttachmentsTest {
         runTest {
             turbineScope {
                 val remote =
-                    mock<RemoteStorageAdapter> {
+                    mock<RemoteStorage> {
                         everySuspend { downloadFile(any()) } throws (Exception("Test error"))
                     }
 

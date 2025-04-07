@@ -1,11 +1,11 @@
 package com.powersync.testutils
 
 import com.powersync.attachments.Attachment
-import com.powersync.attachments.RemoteStorageAdapter
+import com.powersync.attachments.RemoteStorage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
-class MockedRemoteStorage : RemoteStorageAdapter {
+class MockedRemoteStorage : RemoteStorage {
     override suspend fun uploadFile(
         fileData: Flow<ByteArray>,
         attachment: Attachment,

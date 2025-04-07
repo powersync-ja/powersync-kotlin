@@ -3,10 +3,11 @@ package com.powersync.attachments.sync
 import co.touchlab.kermit.Logger
 import com.powersync.PowerSyncException
 import com.powersync.attachments.Attachment
+import com.powersync.attachments.AttachmentContext
 import com.powersync.attachments.AttachmentService
 import com.powersync.attachments.AttachmentState
-import com.powersync.attachments.LocalStorageAdapter
-import com.powersync.attachments.RemoteStorageAdapter
+import com.powersync.attachments.LocalStorage
+import com.powersync.attachments.RemoteStorage
 import com.powersync.attachments.SyncErrorHandler
 import com.powersync.utils.throttle
 import kotlinx.coroutines.CancellationException
@@ -30,8 +31,8 @@ import kotlin.time.Duration.Companion.seconds
  * Service used to sync attachments between local and remote storage
  */
 internal class SyncingService(
-    private val remoteStorage: RemoteStorageAdapter,
-    private val localStorage: LocalStorageAdapter,
+    private val remoteStorage: RemoteStorage,
+    private val localStorage: LocalStorage,
     private val attachmentsService: AttachmentService,
     private val getLocalUri: suspend (String) -> String,
     private val errorHandler: SyncErrorHandler?,
@@ -65,24 +66,26 @@ internal class SyncingService(
                     .buffer(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
                     .throttle(syncThrottle.inWholeMilliseconds)
                     .collect {
-                        /**
-                         * Gets and performs the operations for active attachments which are
-                         * pending download, upload, or delete.
-                         */
-                        try {
-                            val attachments = attachmentsService.getActiveAttachments()
-                            // Performs pending operations and updates attachment states
-                            handleSync(attachments)
+                        attachmentsService.withLock { context ->
+                            /**
+                             * Gets and performs the operations for active attachments which are
+                             * pending download, upload, or delete.
+                             */
+                            try {
+                                val attachments = context.getActiveAttachments()
+                                // Performs pending operations and updates attachment states
+                                handleSync(attachments, context)
 
-                            // Cleanup archived attachments
-                            deleteArchivedAttachments()
-                        } catch (ex: Exception) {
-                            if (ex is CancellationException) {
-                                throw ex
+                                // Cleanup archived attachments
+                                deleteArchivedAttachments(context)
+                            } catch (ex: Exception) {
+                                if (ex is CancellationException) {
+                                    throw ex
+                                }
+                                // Rare exceptions caught here will be swallowed and retried on the
+                                // next tick.
+                                logger.e("Caught exception when processing attachments $ex")
                             }
-                            // Rare exceptions caught here will be swallowed and retried on the
-                            // next tick.
-                            logger.e("Caught exception when processing attachments $ex")
                         }
                     }
             }
@@ -118,8 +121,8 @@ internal class SyncingService(
             syncJob.join()
         }
 
-    suspend fun deleteArchivedAttachments() =
-        attachmentsService.deleteArchivedAttachments { pendingDelete ->
+    suspend fun deleteArchivedAttachments(context: AttachmentContext) =
+        context.deleteArchivedAttachments { pendingDelete ->
             for (attachment in pendingDelete) {
                 if (attachment.localUri == null) {
                     continue
@@ -134,7 +137,10 @@ internal class SyncingService(
     /**
      * Handle downloading, uploading or deleting of attachments
      */
-    private suspend fun handleSync(attachments: List<Attachment>) {
+    private suspend fun handleSync(
+        attachments: List<Attachment>,
+        context: AttachmentContext,
+    ) {
         val updatedAttachments = mutableListOf<Attachment>()
         try {
             for (attachment in attachments) {
@@ -157,7 +163,7 @@ internal class SyncingService(
             }
 
             // Update the state of processed attachments
-            attachmentsService.saveAttachments(updatedAttachments)
+            context.saveAttachments(updatedAttachments)
         } catch (error: Exception) {
             // We retry, on the next invocation, whenever there are errors on this level
             logger.e("Error during sync: ${error.message}")

@@ -3,6 +3,7 @@ package com.powersync.attachments
 import co.touchlab.kermit.Logger
 import com.powersync.PowerSyncDatabase
 import com.powersync.PowerSyncException
+import com.powersync.attachments.implementation.AttachmentServiceImpl
 import com.powersync.attachments.storage.IOLocalStorageAdapter
 import com.powersync.attachments.sync.SyncingService
 import com.powersync.db.internal.ConnectionContext
@@ -59,7 +60,7 @@ public open class AttachmentQueue(
     /**
      * Adapter which interfaces with the remote storage backend
      */
-    public val remoteStorage: RemoteStorageAdapter,
+    public val remoteStorage: RemoteStorage,
     /**
      * Directory name where attachment files will be written to disk.
      * This will be created if it does not exist
@@ -90,7 +91,7 @@ public open class AttachmentQueue(
     /**
      * Provides access to local filesystem storage methods
      */
-    public val localStorage: LocalStorageAdapter = IOLocalStorageAdapter(),
+    public val localStorage: LocalStorage = IOLocalStorageAdapter(),
     /**
      * SQLite table where attachment state will be recorded
      */
@@ -139,7 +140,7 @@ public open class AttachmentQueue(
      *  - Create new attachment records for upload/download
      */
     public val attachmentsService: AttachmentService =
-        AttachmentService(
+        AttachmentServiceImpl(
             db,
             attachmentsQueueTableName,
             logger,
@@ -265,77 +266,82 @@ public open class AttachmentQueue(
     public open suspend fun processWatchedAttachments(items: List<WatchedAttachmentItem>): Unit =
         runWrappedSuspending {
             /**
-             * Need to get all the attachments which are tracked in the DB.
-             * We might need to restore an archived attachment.
+             * Use a lock here to prevent conflicting state updates
              */
-            val currentAttachments = attachmentsService.getAttachments()
-            val attachmentUpdates = mutableListOf<Attachment>()
+            attachmentsService.withLock { attachmentsContext ->
+                /**
+                 * Need to get all the attachments which are tracked in the DB.
+                 * We might need to restore an archived attachment.
+                 */
+                val currentAttachments = attachmentsContext.getAttachments()
+                val attachmentUpdates = mutableListOf<Attachment>()
 
-            for (item in items) {
-                val existingQueueItem = currentAttachments.find { it.id == item.id }
+                for (item in items) {
+                    val existingQueueItem = currentAttachments.find { it.id == item.id }
 
-                if (existingQueueItem == null) {
-                    if (!downloadAttachments) {
-                        continue
-                    }
-                    // This item should be added to the queue
-                    // This item is assumed to be coming from an upstream sync
-                    // Locally created new items should be persisted using [saveFile] before
-                    // this point.
-                    val filename =
-                        resolveNewAttachmentFilename(
-                            attachmentId = item.id,
-                            fileExtension = item.fileExtension,
-                        )
+                    if (existingQueueItem == null) {
+                        if (!downloadAttachments) {
+                            continue
+                        }
+                        // This item should be added to the queue
+                        // This item is assumed to be coming from an upstream sync
+                        // Locally created new items should be persisted using [saveFile] before
+                        // this point.
+                        val filename =
+                            item.filename ?: resolveNewAttachmentFilename(
+                                attachmentId = item.id,
+                                fileExtension = item.fileExtension,
+                            )
 
-                    attachmentUpdates.add(
-                        Attachment(
-                            id = item.id,
-                            filename = filename,
-                            state = AttachmentState.QUEUED_DOWNLOAD.ordinal,
-                        ),
-                    )
-                } else if
-                    (existingQueueItem.state == AttachmentState.ARCHIVED.ordinal) {
-                    // The attachment is present again. Need to queue it for sync.
-                    // We might be able to optimize this in future
-                    if (existingQueueItem.hasSynced == 1) {
-                        // No remote action required, we can restore the record (avoids deletion)
                         attachmentUpdates.add(
-                            existingQueueItem.copy(state = AttachmentState.SYNCED.ordinal),
-                        )
-                    } else {
-                        /**
-                         * The localURI should be set if the record was meant to be downloaded
-                         * and has been synced. If it's missing and hasSynced is false then
-                         * it must be an upload operation
-                         */
-                        attachmentUpdates.add(
-                            existingQueueItem.copy(
-                                state =
-                                    if (existingQueueItem.localUri == null) {
-                                        AttachmentState.QUEUED_DOWNLOAD.ordinal
-                                    } else {
-                                        AttachmentState.QUEUED_UPLOAD.ordinal
-                                    },
+                            Attachment(
+                                id = item.id,
+                                filename = filename,
+                                state = AttachmentState.QUEUED_DOWNLOAD.ordinal,
                             ),
                         )
+                    } else if
+                        (existingQueueItem.state == AttachmentState.ARCHIVED.ordinal) {
+                        // The attachment is present again. Need to queue it for sync.
+                        // We might be able to optimize this in future
+                        if (existingQueueItem.hasSynced == 1) {
+                            // No remote action required, we can restore the record (avoids deletion)
+                            attachmentUpdates.add(
+                                existingQueueItem.copy(state = AttachmentState.SYNCED.ordinal),
+                            )
+                        } else {
+                            /**
+                             * The localURI should be set if the record was meant to be downloaded
+                             * and has been synced. If it's missing and hasSynced is false then
+                             * it must be an upload operation
+                             */
+                            attachmentUpdates.add(
+                                existingQueueItem.copy(
+                                    state =
+                                        if (existingQueueItem.localUri == null) {
+                                            AttachmentState.QUEUED_DOWNLOAD.ordinal
+                                        } else {
+                                            AttachmentState.QUEUED_UPLOAD.ordinal
+                                        },
+                                ),
+                            )
+                        }
                     }
                 }
+
+                /**
+                 * Archive any items not specified in the watched items except for items pending delete.
+                 */
+                currentAttachments
+                    .filter {
+                        it.state != AttachmentState.QUEUED_DELETE.ordinal &&
+                            null == items.find { update -> update.id == it.id }
+                    }.forEach {
+                        attachmentUpdates.add(it.copy(state = AttachmentState.ARCHIVED.ordinal))
+                    }
+
+                attachmentsContext.saveAttachments(attachmentUpdates)
             }
-
-            /**
-             * Archive any items not specified in the watched items except for items pending delete.
-             */
-            currentAttachments
-                .filter {
-                    it.state != AttachmentState.QUEUED_DELETE.ordinal &&
-                        null == items.find { update -> update.id == it.id }
-                }.forEach {
-                    attachmentUpdates.add(it.copy(state = AttachmentState.ARCHIVED.ordinal))
-                }
-
-            attachmentsService.saveAttachments(attachmentUpdates)
         }
 
     /**
@@ -430,9 +436,11 @@ public open class AttachmentQueue(
      */
     public suspend fun expireCache() {
         var done: Boolean
-        do {
-            done = syncingService.deleteArchivedAttachments()
-        } while (!done)
+        attachmentsService.withLock { context ->
+            do {
+                done = syncingService.deleteArchivedAttachments(context)
+            } while (!done)
+        }
     }
 
     /**

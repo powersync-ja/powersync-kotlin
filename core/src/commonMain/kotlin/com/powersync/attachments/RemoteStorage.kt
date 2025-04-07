@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.Flow
 /**
  * Adapter for interfacing with remote attachment storage.
  */
-public interface RemoteStorageAdapter {
+public interface RemoteStorage {
     /**
      * Upload a file to remote storage
      */

@@ -5,9 +5,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
- * Storage adapter for local storage
+ * Provides access to local storage on a device
  */
-public interface LocalStorageAdapter {
+public interface LocalStorage {
     /**
      * Saves a source of data bytes to a path.
      * @returns the bytesize of the file
