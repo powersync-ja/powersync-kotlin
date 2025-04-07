@@ -30,6 +30,5 @@ internal fun extractLib(fileName: String): String {
      * Wrapping in a File handle resolves the URI to a path usable by SQLite.
      * This is particularly relevant on Windows.
      */
-    val result = File(resourceURI.path).path.toString()
-    return result
+    return File(resourceURI.path).path.toString()
 }
