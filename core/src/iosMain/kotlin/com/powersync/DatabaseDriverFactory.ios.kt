@@ -1,5 +1,6 @@
 package com.powersync
 
+import app.cash.sqldelight.db.QueryResult
 import co.touchlab.sqliter.DatabaseConfiguration
 import co.touchlab.sqliter.DatabaseConfiguration.Logging
 import co.touchlab.sqliter.DatabaseConnection
@@ -112,6 +113,15 @@ public actual class DatabaseDriverFactory {
         if (readOnly) {
             driver.execute("PRAGMA query_only=true")
         }
+
+        // Ensure internal read pool has created a connection at this point. This makes connection
+        // initialization a bit more deterministic.
+        driver.executeQuery(
+            identifier = null,
+            sql = "SELECT 1",
+            mapper = { QueryResult.Value(it.getLong(0)) },
+            parameters = 0,
+        )
 
         deferredDriver.setDriver(driver)
 
