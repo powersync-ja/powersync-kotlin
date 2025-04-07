@@ -73,7 +73,7 @@ The default columns in `AttachmentTable`:
 
 val queue = AttachmentQueue(
     db = db,
-    attachmentDirectory = attachmentDirectory,
+    attachmentsDirectory = attachmentsDirectory,
     remoteStorage = SupabaseRemoteStorage(supabase),
     watchedAttachments = db.watch(
         sql =
@@ -91,7 +91,7 @@ val queue = AttachmentQueue(
 )
 ```
 
-* The `attachmentDirectory`, specifies where local attachment
+* The `attachmentsDirectory`, specifies where local attachment
   files should be stored. This directory needs to be provided to the constructor. On Android
   `"${applicationContext.filesDir.canonicalPath}/attachments"` is a good choice.
 * The `remoteStorage` is responsible for connecting to the attachments backend. See the

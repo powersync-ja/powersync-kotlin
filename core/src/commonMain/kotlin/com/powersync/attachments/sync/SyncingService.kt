@@ -30,7 +30,7 @@ import kotlin.time.Duration.Companion.seconds
 /**
  * Service used to sync attachments between local and remote storage
  */
-internal class SyncingService(
+public class SyncingService(
     private val remoteStorage: RemoteStorage,
     private val localStorage: LocalStorage,
     private val attachmentsService: AttachmentService,
@@ -41,87 +41,99 @@ internal class SyncingService(
 ) {
     private val scope = CoroutineScope(Dispatchers.IO)
     private val mutex = Mutex()
-    private val syncJob: Job
-    private var periodicSyncTrigger: Job? = null
+    private var syncJob: Job? = null
 
     /**
      * Used to trigger the sync process either manually or periodically
      */
     private val syncTriggerFlow = MutableSharedFlow<Unit>(replay = 0)
 
-    init {
-        syncJob =
-            scope.launch {
-                merge(
-                    // Handles manual triggers for sync events
-                    syncTriggerFlow.asSharedFlow(),
-                    // Triggers the sync process whenever an underlaying change to the
-                    // attachments table happens
-                    attachmentsService
-                        .watchActiveAttachments(),
-                )
-                    // We only use these flows to trigger the process. We can skip multiple invocations
-                    // while we are processing. We will always process on the trailing edge.
-                    // This buffer operation should automatically be applied to all merged sources.
-                    .buffer(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-                    .throttle(syncThrottle.inWholeMilliseconds)
-                    .collect {
-                        attachmentsService.withLock { context ->
-                            /**
-                             * Gets and performs the operations for active attachments which are
-                             * pending download, upload, or delete.
-                             */
-                            try {
-                                val attachments = context.getActiveAttachments()
-                                // Performs pending operations and updates attachment states
-                                handleSync(attachments, context)
-
-                                // Cleanup archived attachments
-                                deleteArchivedAttachments(context)
-                            } catch (ex: Exception) {
-                                if (ex is CancellationException) {
-                                    throw ex
-                                }
-                                // Rare exceptions caught here will be swallowed and retried on the
-                                // next tick.
-                                logger.e("Caught exception when processing attachments $ex")
-                            }
-                        }
-                    }
-            }
-    }
-
     /**
-     * Periodically sync attachments and delete archived attachments
+     * Starts syncing operations
      */
-    suspend fun startPeriodicSync(period: Duration): Unit =
+    public suspend fun startSync(period: Duration = 30.seconds): Unit =
         mutex.withLock {
-            periodicSyncTrigger?.cancel()
+            syncJob?.cancel()
+            syncJob?.join()
 
-            periodicSyncTrigger =
+            syncJob =
                 scope.launch {
-                    logger.i("Periodically syncing attachments")
-                    syncTriggerFlow.emit(Unit)
-                    delay(period)
+                    val watchJob =
+                        launch {
+                            merge(
+                                // Handles manual triggers for sync events
+                                syncTriggerFlow.asSharedFlow(),
+                                // Triggers the sync process whenever an underlaying change to the
+                                // attachments table happens
+                                attachmentsService
+                                    .watchActiveAttachments(),
+                            )
+                                // We only use these flows to trigger the process. We can skip multiple invocations
+                                // while we are processing. We will always process on the trailing edge.
+                                // This buffer operation should automatically be applied to all merged sources.
+                                .buffer(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+                                .throttle(syncThrottle.inWholeMilliseconds)
+                                .collect {
+                                    attachmentsService.withLock { context ->
+                                        /**
+                                         * Gets and performs the operations for active attachments which are
+                                         * pending download, upload, or delete.
+                                         */
+                                        try {
+                                            val attachments = context.getActiveAttachments()
+                                            // Performs pending operations and updates attachment states
+                                            handleSync(attachments, context)
+
+                                            // Cleanup archived attachments
+                                            deleteArchivedAttachments(context)
+                                        } catch (ex: Exception) {
+                                            if (ex is CancellationException) {
+                                                throw ex
+                                            }
+                                            // Rare exceptions caught here will be swallowed and retried on the
+                                            // next tick.
+                                            logger.e("Caught exception when processing attachments $ex")
+                                        }
+                                    }
+                                }
+                        }
+
+                    val periodicJob =
+                        launch {
+                            logger.i("Periodically syncing attachments")
+                            syncTriggerFlow.emit(Unit)
+                            delay(period)
+                        }
+
+                    watchJob.join()
+                    periodicJob.join()
                 }
         }
 
     /**
      * Enqueues a sync operation
      */
-    suspend fun triggerSync() {
+    public suspend fun triggerSync() {
         syncTriggerFlow.emit(Unit)
     }
 
-    suspend fun close(): Unit =
+    /**
+     * Stops syncing operations
+     */
+    public suspend fun stopSync(): Unit =
         mutex.withLock {
-            periodicSyncTrigger?.cancel()
-            periodicSyncTrigger?.join()
-            syncJob.cancel()
-            syncJob.join()
+            syncJob?.cancel()
+            syncJob?.join()
         }
 
-    suspend fun deleteArchivedAttachments(context: AttachmentContext) =
+    /**
+     * Closes the syncing service.
+     */
+    public suspend fun close() {
+        stopSync()
+    }
+
+    public suspend fun deleteArchivedAttachments(context: AttachmentContext): Boolean =
         context.deleteArchivedAttachments { pendingDelete ->
             for (attachment in pendingDelete) {
                 if (attachment.localUri == null) {

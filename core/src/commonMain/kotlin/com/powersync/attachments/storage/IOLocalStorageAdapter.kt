@@ -85,7 +85,16 @@ public class IOLocalStorageAdapter : LocalStorage {
     public override suspend fun rmDir(path: String): Unit =
         runWrappedSuspending {
             withContext(Dispatchers.IO) {
-                SystemFileSystem.delete(Path(path))
+                for (item in SystemFileSystem.list(Path(path))) {
+                    // Can't delete directories with files in them. Need to go down the file tree
+                    // and clear the directory.
+                    val meta = SystemFileSystem.metadataOrNull(item)
+                    if (meta?.isDirectory == true) {
+                        rmDir(item.toString())
+                    } else if (meta?.isRegularFile == true) {
+                        SystemFileSystem.delete(item)
+                    }
+                }
             }
         }
 

@@ -133,6 +133,8 @@ internal class ActiveDatabaseTest(
     }
 
     suspend fun cleanup() {
+        // Execute in reverse order
+        cleanupItems.reverse()
         for (item in cleanupItems) {
             item()
         }

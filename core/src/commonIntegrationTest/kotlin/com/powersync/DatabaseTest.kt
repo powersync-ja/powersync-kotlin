@@ -7,7 +7,6 @@ import com.powersync.db.schema.Schema
 import com.powersync.testutils.UserRow
 import com.powersync.testutils.databaseTest
 import com.powersync.testutils.getTempDir
-import com.powersync.testutils.isIOS
 import com.powersync.testutils.waitFor
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveSize

@@ -69,7 +69,7 @@ public open class AttachmentQueue(
      * Directory name where attachment files will be written to disk.
      * This will be created if it does not exist
      */
-    private val attachmentDirectory: String,
+    private val attachmentsDirectory: String,
     /**
      * A flow for the current state of local attachments
      * ```kotlin
@@ -186,15 +186,15 @@ public open class AttachmentQueue(
                     throw Exception("Attachment queue has been closed")
                 }
                 // Ensure the directory where attachments are downloaded, exists
-                localStorage.makeDir(attachmentDirectory)
+                localStorage.makeDir(attachmentsDirectory)
 
                 subdirectories?.forEach { subdirectory ->
-                    localStorage.makeDir(Path(attachmentDirectory, subdirectory).toString())
+                    localStorage.makeDir(Path(attachmentsDirectory, subdirectory).toString())
                 }
 
                 val scope = CoroutineScope(Dispatchers.IO)
 
-                syncingService.startPeriodicSync(syncInterval)
+                syncingService.startSync(syncInterval)
 
                 // Listen for connectivity changes
                 syncStatusJob =
@@ -224,6 +224,29 @@ public open class AttachmentQueue(
             }
         }
 
+    /**
+     * Stops syncing. Syncing may be resumed with [startSync].
+     */
+    @Throws(PowerSyncException::class, CancellationException::class)
+    public suspend fun stopSyncing(): Unit =
+        runWrappedSuspending {
+            mutex.withLock {
+                if (closed) {
+                    return@runWrappedSuspending
+                }
+
+                syncStatusJob?.cancel()
+                syncStatusJob?.join()
+
+                syncingService.stopSync()
+            }
+        }
+
+    /**
+     * Closes the queue.
+     * The queue cannot be used after closing.
+     * A new queue should be created.
+     */
     @Throws(PowerSyncException::class, CancellationException::class)
     public suspend fun close(): Unit =
         runWrappedSuspending {
@@ -235,7 +258,6 @@ public open class AttachmentQueue(
                 syncStatusJob?.cancel()
                 syncStatusJob?.join()
                 syncingService.close()
-
                 closed = true
             }
         }
@@ -440,7 +462,7 @@ public open class AttachmentQueue(
      * Return users storage directory with the attachmentPath use to load the file.
      * Example: filePath: "attachment-1.jpg" returns "/data/user/0/com.yourdomain.app/files/attachments/attachment-1.jpg"
      */
-    public open fun getLocalUri(filename: String): String = Path(attachmentDirectory, filename).toString()
+    public open fun getLocalUri(filename: String): String = Path(attachmentsDirectory, filename).toString()
 
     /**
      * Removes all archived items
@@ -462,6 +484,6 @@ public open class AttachmentQueue(
             it.clearQueue()
         }
         // Remove the attachments directory
-        localStorage.rmDir(attachmentDirectory)
+        localStorage.rmDir(attachmentsDirectory)
     }
 }
