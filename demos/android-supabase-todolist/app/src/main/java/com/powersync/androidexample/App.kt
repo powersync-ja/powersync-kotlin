@@ -46,17 +46,20 @@ fun App(cameraService: CameraService, attachmentDirectory: String) {
 
     val db = remember { PowerSyncDatabase(driverFactory, schema, dbFilename = "333.sqlite") }
     val attachments =
-        remember { AttachmentQueue(
-            db = db, remoteStorage = SupabaseRemoteStorage(supabase),
-            attachmentDirectory = attachmentDirectory,
-            watchedAttachments = db.watch(
-            "SELECT photo_id from todos WHERE photo_id IS NOT NULL"
-        ) {
-            WatchedAttachmentItem(
-                id = it.getString("photo_id"),
-                fileExtension = "jpg"
-            )
-        }) }
+        remember {
+            if (BuildConfig.SUPABASE_ATTACHMENT_BUCKET != "null") {
+                AttachmentQueue(
+                    db = db, remoteStorage = SupabaseRemoteStorage(supabase),
+                    attachmentDirectory = attachmentDirectory,
+                    watchedAttachments = db.watch(
+                        "SELECT photo_id from todos WHERE photo_id IS NOT NULL"
+                    ) {
+                        WatchedAttachmentItem(
+                            id = it.getString("photo_id"),
+                            fileExtension = "jpg"
+                        )
+                    })
+            } else {null} }
 
     val syncStatus = db.currentStatus
     val status by syncStatus.asFlow().collectAsState(syncStatus)
@@ -67,7 +70,7 @@ fun App(cameraService: CameraService, attachmentDirectory: String) {
 
     val authViewModel =
         remember {
-            AuthViewModel(supabase, db, attachments, navController)
+            AuthViewModel(supabase, db, navController, attachments)
         }
 
     val authState by authViewModel.authState.collectAsState()
@@ -146,8 +149,8 @@ fun App(cameraService: CameraService, attachmentDirectory: String) {
                     onTextChanged = todos.value::onEditorTextChanged,
                     onDoneChanged = todos.value::onEditorDoneChanged,
                     onPhotoClear = todos.value::onPhotoDelete,
-                    onPhotoCapture = {todos.value::onPhotoCapture.invoke(cameraService)}
-
+                    onPhotoCapture = {todos.value::onPhotoCapture.invoke(cameraService)},
+                    attachmentsSupported = attachments != null
                 )
             }
         }

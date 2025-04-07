@@ -38,7 +38,8 @@ internal fun EditDialog(
     onTextChanged: (String) -> Unit,
     onDoneChanged: (Boolean) -> Unit,
     onPhotoClear: () -> Unit,
-    onPhotoCapture: () -> Unit
+    onPhotoCapture: () -> Unit,
+    attachmentsSupported: Boolean = false
 ) {
     EditDialog(
         onCloseRequest = onCloseClicked,
@@ -65,6 +66,7 @@ internal fun EditDialog(
                 item.photoURI?.let { BitmapFactory.decodeFile(it)?.asImageBitmap() }
             }
 
+            if (attachmentsSupported == true) {
             Box(
                 modifier = Modifier
                     .clickable { if (item.photoId == null) onPhotoCapture() }
@@ -89,6 +91,7 @@ internal fun EditDialog(
                         Text("Clear Photo", color = Color.Red)
                     }
                 }
+            }
             }
         }
     }

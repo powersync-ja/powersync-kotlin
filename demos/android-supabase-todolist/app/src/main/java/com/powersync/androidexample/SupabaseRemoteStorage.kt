@@ -1,15 +1,14 @@
 package com.powersync.androidexample
 
 import com.powersync.attachments.Attachment
-import com.powersync.attachments.RemoteStorageAdapter
+import com.powersync.attachments.RemoteStorage
 import com.powersync.connector.supabase.SupabaseConnector
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 
 class SupabaseRemoteStorage(
     val connector: SupabaseConnector,
-) : RemoteStorageAdapter {
+) : RemoteStorage {
     override suspend fun uploadFile(
         fileData: Flow<ByteArray>,
         attachment: Attachment,

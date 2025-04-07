@@ -7,10 +7,7 @@ import com.powersync.db.schema.Table
 /**
  * Creates a PowerSync table for storing local attachment state
  */
-public fun createAttachmentsTable(
-    name: String,
-    additionalColumns: List<Column>? = null,
-): Table =
+public fun createAttachmentsTable(name: String): Table =
     Table(
         name = name,
         columns =
@@ -22,6 +19,7 @@ public fun createAttachmentsTable(
                 Column("media_type", ColumnType.TEXT),
                 Column("state", ColumnType.INTEGER),
                 Column("has_synced", ColumnType.INTEGER),
-            ).plus(additionalColumns ?: emptyList()),
+                Column("meta_data", ColumnType.TEXT),
+            ),
         localOnly = true,
     )

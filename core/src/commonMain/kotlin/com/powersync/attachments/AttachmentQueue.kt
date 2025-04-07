@@ -38,6 +38,10 @@ public data class WatchedAttachmentItem(
      * Filename to store the attachment with
      */
     public val filename: String? = null,
+    /**
+     * Optional meta data for the attachment record
+     */
+    public val metaData: String? = null,
 ) {
     init {
         require(fileExtension != null || filename != null) {
@@ -298,6 +302,7 @@ public open class AttachmentQueue(
                                 id = item.id,
                                 filename = filename,
                                 state = AttachmentState.QUEUED_DOWNLOAD.ordinal,
+                                metaData = item.metaData,
                             ),
                         )
                     } else if
@@ -361,7 +366,8 @@ public open class AttachmentQueue(
         data: Flow<ByteArray>,
         mediaType: String,
         fileExtension: String?,
-        updateHook: ((context: ConnectionContext, attachment: Attachment) -> Unit)? = null,
+        metaData: String?,
+        updateHook: (context: ConnectionContext, attachment: Attachment) -> Unit,
     ): Attachment =
         runWrappedSuspending {
             val id = db.get("SELECT uuid()") { it.getString(0)!! }
@@ -385,12 +391,13 @@ public open class AttachmentQueue(
                         mediaType = mediaType,
                         state = AttachmentState.QUEUED_UPLOAD.ordinal,
                         localUri = localUri,
+                        metaData = metaData,
                     )
 
                 /**
                  * Allow consumers to set relationships to this attachment id
                  */
-                updateHook?.invoke(tx, attachment)
+                updateHook.invoke(tx, attachment)
 
                 return@writeTransaction attachmentsService.upsertAttachment(
                     attachment,
@@ -409,7 +416,7 @@ public open class AttachmentQueue(
     @Throws(PowerSyncException::class, CancellationException::class)
     public open suspend fun deleteFile(
         attachmentId: String,
-        updateHook: ((context: ConnectionContext, attachment: Attachment) -> Unit)? = null,
+        updateHook: (context: ConnectionContext, attachment: Attachment) -> Unit,
     ): Attachment =
         runWrappedSuspending {
             val attachment =

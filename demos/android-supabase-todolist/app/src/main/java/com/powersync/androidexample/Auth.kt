@@ -6,7 +6,6 @@ import co.touchlab.kermit.Logger
 import com.powersync.PowerSyncDatabase
 import com.powersync.attachments.AttachmentQueue
 import com.powersync.connector.supabase.SupabaseConnector
-import com.powersync.demos.screens.SignInScreen
 import io.github.jan.supabase.auth.status.RefreshFailureCause
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,8 +21,8 @@ sealed class AuthState {
 internal class AuthViewModel(
     private val supabase: SupabaseConnector,
     private val db: PowerSyncDatabase,
-    private val attachmentsQueue: AttachmentQueue,
     private val navController: NavController,
+    private val attachmentsQueue: AttachmentQueue?
 ) : ViewModel() {
     private val _authState = MutableStateFlow<AuthState>(AuthState.SignedOut)
     val authState: StateFlow<AuthState> = _authState
@@ -38,7 +37,7 @@ internal class AuthViewModel(
                         _authState.value = AuthState.SignedIn
                         _userId.value = it.session.user?.id
                         db.connect(supabase)
-                        attachmentsQueue.startSync()
+                        attachmentsQueue?.startSync()
                         if (navController.currentScreen.value is Screen.SignIn
                             || navController.currentScreen.value is Screen.SignUp) {
                             navController.navigate(Screen.Home)
@@ -79,8 +78,8 @@ internal class AuthViewModel(
 
     suspend fun signOut() {
         try {
-            attachmentsQueue.clearQueue()
-            attachmentsQueue.close()
+            attachmentsQueue?.clearQueue()
+            attachmentsQueue?.close()
             supabase.signOut()
         } catch (e: Exception) {
             Logger.e("Error signing out: $e")

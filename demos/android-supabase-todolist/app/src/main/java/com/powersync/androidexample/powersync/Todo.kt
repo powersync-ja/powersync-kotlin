@@ -20,7 +20,7 @@ import kotlinx.datetime.Clock
 
 internal class Todo(
     private val db: PowerSyncDatabase,
-    private val attachmentsQueue: AttachmentQueue,
+    private val attachmentsQueue: AttachmentQueue?,
     private val userId: String?,
 ) : ViewModel() {
     private val _inputText = MutableStateFlow<String>("")
@@ -77,7 +77,7 @@ internal class Todo(
     fun onItemDeleteClicked(item: TodoItem) {
         viewModelScope.launch {
             if (item.photoId != null) {
-                attachmentsQueue.deleteFile(item.photoId)
+                attachmentsQueue?.deleteFile(item.photoId)
             }
             db.writeTransaction { tx ->
                 tx.execute("DELETE FROM $TODOS_TABLE WHERE id = ?", listOf(item.id))
@@ -144,7 +144,7 @@ internal class Todo(
                     return@launch
                 }
             }
-            val attachment  = attachmentsQueue.saveFile(data = flowOf(photoData), mediaType = "image/jped", fileExtension = "jpg" ) {tx, attachment ->
+            val attachment  = attachmentsQueue!!.saveFile(data = flowOf(photoData), mediaType = "image/jped", fileExtension = "jpg" ) {tx, attachment ->
                 tx.execute("UPDATE $TODOS_TABLE SET photo_id = ? WHERE id = ?", listOf(attachment.id, item.id))
             }
 
@@ -155,7 +155,7 @@ internal class Todo(
     fun onPhotoDelete() {
         viewModelScope.launch {
             val item = requireNotNull(_editingItem.value)
-            attachmentsQueue.deleteFile(item.photoId!!) {tx, _ ->
+            attachmentsQueue!!.deleteFile(item.photoId!!) {tx, _ ->
                 tx.execute("UPDATE $TODOS_TABLE SET photo_id = NULL WHERE id = ?", listOf(item.id))
             }
             updateEditingItem(item = item) {it.copy(photoURI = null)}
