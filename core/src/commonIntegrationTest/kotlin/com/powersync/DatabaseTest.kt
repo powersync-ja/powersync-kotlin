@@ -4,8 +4,8 @@ import app.cash.turbine.turbineScope
 import co.touchlab.kermit.ExperimentalKermitApi
 import com.powersync.db.ActiveDatabaseGroup
 import com.powersync.db.schema.Schema
-import com.powersync.testutils.PowerSyncTestFixtures
 import com.powersync.testutils.UserRow
+import com.powersync.testutils.databaseTest
 import com.powersync.testutils.getTempDir
 import com.powersync.testutils.waitFor
 import io.kotest.assertions.throwables.shouldThrow
@@ -23,7 +23,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
 @OptIn(ExperimentalKermitApi::class)
-class DatabaseTest: PowerSyncTestFixtures() {
+class DatabaseTest {
     @Test
     fun testLinksPowerSync() =
         databaseTest {
@@ -247,7 +247,7 @@ class DatabaseTest: PowerSyncTestFixtures() {
             val db2 = openDatabase()
             waitFor {
                 assertNotNull(
-                    logWriter().logs.find {
+                    logWriter.logs.find {
                         it.message == ActiveDatabaseGroup.multipleInstancesMessage
                     },
                 )

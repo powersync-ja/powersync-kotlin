@@ -10,8 +10,8 @@ import com.powersync.bucket.OplogEntry
 import com.powersync.db.PowerSyncDatabaseImpl
 import com.powersync.db.schema.Schema
 import com.powersync.sync.SyncLine
-import com.powersync.testutils.PowerSyncTestFixtures
 import com.powersync.testutils.UserRow
+import com.powersync.testutils.databaseTest
 import com.powersync.testutils.waitFor
 import com.powersync.utils.JsonUtil
 import dev.mokkery.verify
@@ -26,7 +26,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.time.Duration.Companion.seconds
 
-class SyncIntegrationTest: PowerSyncTestFixtures() {
+class SyncIntegrationTest {
     private suspend fun PowerSyncDatabase.expectUserCount(amount: Int) {
         val users = getAll("SELECT * FROM users;") { UserRow.from(it) }
         users shouldHaveSize amount

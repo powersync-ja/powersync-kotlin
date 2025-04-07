@@ -7,17 +7,21 @@ import co.touchlab.kermit.Severity
 import co.touchlab.kermit.TestConfig
 import co.touchlab.kermit.TestLogWriter
 import com.powersync.DatabaseDriverFactory
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.job
-import kotlinx.coroutines.launch
+import com.powersync.PowerSyncDatabase
+import com.powersync.connectors.PowerSyncBackendConnector
+import com.powersync.connectors.PowerSyncCredentials
+import com.powersync.db.PowerSyncDatabaseImpl
+import com.powersync.db.schema.Schema
+import com.powersync.sync.SyncLine
+import com.powersync.sync.SyncStream
+import dev.mokkery.answering.returns
+import dev.mokkery.everySuspend
+import dev.mokkery.mock
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.withContext
 import kotlinx.io.files.Path
-import kotlinx.io.files.SystemFileSystem
-import kotlin.coroutines.CoroutineContext
+import kotlinx.serialization.json.JsonObject
 
 expect val factory: DatabaseDriverFactory
 
@@ -37,8 +41,26 @@ fun generatePrintLogWriter() =
         }
     }
 
+internal fun databaseTest(
+    testBody: suspend ActiveDatabaseTest.() -> Unit
+) = runTest {
+    val running = ActiveDatabaseTest(this)
+    // Make sure the database is initialized, we're using internal APIs that expect initialization.
+    running.database = running.openDatabaseAndInitialize()
+
+    try {
+        running.testBody()
+    } finally {
+        running.cleanup()
+    }
+}
+
 @OptIn(ExperimentalKermitApi::class)
-class DatabaseTestScope : CoroutineContext.Element {
+internal class ActiveDatabaseTest(val scope: TestScope) {
+    private val cleanupItems: MutableList<suspend () -> Unit> = mutableListOf()
+
+    lateinit var database: PowerSyncDatabaseImpl
+
     val logWriter =
         TestLogWriter(
             loggable = Severity.Debug,
@@ -51,31 +73,71 @@ class DatabaseTestScope : CoroutineContext.Element {
             ),
         )
 
-    val testDirectory by lazy {
-        getTempDir() ?: SystemFileSystem.resolve(Path(".")).name
-    }
+    val syncLines = Channel<SyncLine>()
 
+    val testDirectory by lazy { getTempDir() }
     val databaseName by lazy {
         val allowedChars = ('A'..'Z') + ('a'..'z') + ('0'..'9')
-        CharArray(8) { allowedChars.random() }.concatToString()
+        val suffix = CharArray(8) { allowedChars.random() }.concatToString()
+
+        "db-$suffix"
     }
 
-    private val cleanupItems: MutableList<suspend () -> Unit> = mutableListOf()
+    val connector = mock<PowerSyncBackendConnector> {
+        everySuspend { getCredentialsCached() } returns
+                PowerSyncCredentials(
+                    token = "test-token",
+                    userId = "test-user",
+                    endpoint = "https://test.com",
+                )
 
-    override val key: CoroutineContext.Key<*>
-        get() = Companion
+        everySuspend { invalidateCredentials() } returns Unit
+    }
 
-    companion object : CoroutineContext.Key<DatabaseTestScope>
-}
+    fun openDatabase(): PowerSyncDatabaseImpl {
+        logger.d { "Opening database $databaseName in directory $testDirectory" }
+        val db = PowerSyncDatabase(
+            factory = factory,
+            schema = Schema(UserRow.table),
+            dbFilename = databaseName,
+            dbDirectory = testDirectory,
+            logger = logger,
+            scope = scope,
+        )
+        doOnCleanup { db.close() }
+        return db as PowerSyncDatabaseImpl
+    }
 
-val CoroutineContext.database: DatabaseTestScope get() = get(DatabaseTestScope) ?: error("Not in PowerSync test: $this")
+    suspend fun openDatabaseAndInitialize(): PowerSyncDatabaseImpl {
+        return openDatabase().also { it.readLock {  } }
+    }
 
-fun databaseTest(
-    testBody: suspend TestScope.() -> Unit
-) = runTest {
-    val test = DatabaseTestScope()
+    fun syncStream(): SyncStream {
+        val client = MockSyncService(syncLines)
+        return SyncStream(
+            bucketStorage = database.bucketStorage,
+            connector = connector,
+            httpEngine = client,
+            uploadCrud = { },
+            retryDelayMs = 10,
+            logger = logger,
+            params = JsonObject(emptyMap()),
+        )
+    }
 
-    withContext(test) {
-        testBody()
+    fun doOnCleanup(action: suspend () -> Unit) {
+        cleanupItems += action
+    }
+
+    suspend fun cleanup() {
+        for (item in cleanupItems) {
+            item()
+        }
+
+        var path = databaseName
+        testDirectory?.let {
+            path = Path(it, path).name
+        }
+        cleanup(path)
     }
 }
