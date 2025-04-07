@@ -3,6 +3,10 @@
 ## 1.0.0-BETA29 (unreleased)
 
 * Fix potential race condition between jobs in `connect()` and `disconnect()`.
+* [iOS] Fixed issue where automatic driver migrations would fail with the error:
+```
+Sqlite operation failure database is locked attempted to run migration and failed. closing connection
+```
 
 ## 1.0.0-BETA28
 
