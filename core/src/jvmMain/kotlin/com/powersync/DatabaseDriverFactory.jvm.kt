@@ -57,6 +57,6 @@ public actual class DatabaseDriverFactory {
     }
 
     public companion object {
-        private val powersyncExtension: String = extractLib("powersync").toString()
+        private val powersyncExtension: String = extractLib("powersync")
     }
 }

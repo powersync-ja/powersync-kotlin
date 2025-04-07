@@ -1,13 +1,10 @@
 package com.powersync
 
-import java.nio.file.Path
-import kotlin.io.path.createTempFile
-import kotlin.io.path.deleteIfExists
-import kotlin.io.path.outputStream
+import java.io.File
 
 private class R
 
-internal fun extractLib(fileName: String): Path {
+internal fun extractLib(fileName: String): String {
     val os = System.getProperty("os.name").lowercase()
     val (prefix, extension) =
         when {
@@ -26,14 +23,12 @@ internal fun extractLib(fileName: String): Path {
 
     val path = "/$prefix${fileName}_$arch.$extension"
 
-    val tmpPath = createTempFile("$prefix$fileName", ".$extension")
-    Runtime.getRuntime().addShutdownHook(Thread { tmpPath.deleteIfExists() })
+    val resourceURI =
+        (R::class.java.getResource(path) ?: error("Resource $path not found"))
 
-    (R::class.java.getResourceAsStream(path) ?: error("Resource $path not found")).use { input ->
-        tmpPath.outputStream().use { output ->
-            input.copyTo(output)
-        }
-    }
-
-    return tmpPath
+    // Wrapping the above in a File handle resolves the URI to a path usable by SQLite.
+    // This is particularly relevant on Windows.
+    // On Windows [resourceURI.path] starts with a `/`, e.g. `/c:/...`. SQLite does not load this path correctly.
+    // The wrapping here transforms the path to `c:/...` which does load correctly.
+    return File(resourceURI.path).path.toString()
 }
