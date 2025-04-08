@@ -1,4 +1,4 @@
-package com.powersync.demos.search
+package com.powersync.demos.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,6 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import co.touchlab.kermit.Logger
 import com.powersync.demos.NavController
+import com.powersync.demos.search.SearchResult
+import com.powersync.demos.search.SearchViewModel
 import org.koin.compose.koinInject // Use koinInject or specific platform injection
 
 @Composable
@@ -44,7 +46,6 @@ fun SearchScreen(
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
-            // --- Search Input Field ---
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { viewModel.onSearchQueryChanged(it) },
@@ -62,7 +63,6 @@ fun SearchScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // --- Results Area ---
             Box(modifier = Modifier.fillMaxSize()) {
                 when {
                     isLoading -> {
