@@ -171,7 +171,7 @@ kotlin {
                 linkerOpts("-framework", "powersync-sqlite-core")
                 val frameworkRoot =
                     binariesFolder
-                        .map { it.dir("framework/powersync-sqlite-core.xcframework/ios-arm64_x86_64-simulator") }
+                        .map { it.dir("framework/extracted/powersync-sqlite-core.xcframework/ios-arm64_x86_64-simulator") }
                         .get()
                         .asFile.path
 
