@@ -160,6 +160,7 @@ internal class PowerSyncDatabaseImpl(
                 retryDelayMs = retryDelayMs,
                 logger = logger,
                 params = params.toJsonObject(),
+                scope = scope,
             ),
             crudThrottleMs,
         )
@@ -232,7 +233,7 @@ internal class PowerSyncDatabaseImpl(
                     .filter { it.contains(InternalTable.CRUD.toString()) }
                     .throttle(crudThrottleMs)
                     .collect {
-                        stream.triggerCrudUpload()
+                        stream.triggerCrudUploadAsync().join()
                     }
             }
         }

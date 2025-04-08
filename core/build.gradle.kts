@@ -346,6 +346,7 @@ tasks.withType<KotlinTest> {
     testLogging {
         events("PASSED", "FAILED", "SKIPPED")
         exceptionFormat = TestExceptionFormat.FULL
+        showCauses = true
         showStandardStreams = true
         showStackTraces = true
     }
