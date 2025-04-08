@@ -1,8 +1,16 @@
-# PowerSync Attachments
+# PowerSync Attachment Helpers
 
 A [PowerSync](https://powersync.com) library to manage attachments in Kotlin Multiplatform apps.
 
 This package is included in the PowerSync Core module.
+
+## Alpha Release
+
+Attachment helpers are currently in an alpha state, intended strictly for testing. Expect breaking
+changes
+and instability as development continues.
+
+Do not rely on this package for production use.
 
 ## Usage
 

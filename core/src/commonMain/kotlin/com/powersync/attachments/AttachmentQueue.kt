@@ -449,7 +449,7 @@ public open class AttachmentQueue(
                         ?: throw Exception("Attachment record with id $attachmentId was not found.")
 
                 db.writeTransaction { tx ->
-                    updateHook?.invoke(tx, attachment)
+                    updateHook.invoke(tx, attachment)
                     return@writeTransaction attachmentContext.upsertAttachment(
                         attachment.copy(state = AttachmentState.QUEUED_DELETE.ordinal),
                         tx,

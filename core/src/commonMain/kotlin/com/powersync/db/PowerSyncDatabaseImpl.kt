@@ -502,15 +502,17 @@ internal class PowerSyncDatabaseImpl(
     }
 
     override suspend fun close() =
-        mutex.withLock {
-            if (closed) {
-                return@withLock
+        runWrappedSuspending {
+            mutex.withLock {
+                if (closed) {
+                    return@withLock
+                }
+                initializeJob.cancelAndJoin()
+                disconnectInternal()
+                internalDb.close()
+                resource.dispose()
+                closed = true
             }
-            initializeJob.cancelAndJoin()
-            disconnectInternal()
-            internalDb.close()
-            resource.dispose()
-            closed = true
         }
 
     /**

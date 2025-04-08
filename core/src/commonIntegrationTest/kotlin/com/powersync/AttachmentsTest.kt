@@ -16,6 +16,7 @@ import com.powersync.testutils.MockedRemoteStorage
 import com.powersync.testutils.UserRow
 import com.powersync.testutils.databaseTest
 import com.powersync.testutils.getTempDir
+import com.powersync.testutils.waitFor
 import dev.mokkery.answering.throws
 import dev.mokkery.everySuspend
 import dev.mokkery.matcher.ArgMatchersScope
@@ -29,11 +30,13 @@ import io.kotest.matchers.shouldNotBe
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.io.files.Path
 import kotlin.test.Test
+import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalKermitApi::class)
 class AttachmentsTest {
     fun watchAttachments(database: PowerSyncDatabase) =
         database.watch(
+            // language=SQL
             sql =
                 """
                     SELECT
@@ -75,6 +78,7 @@ class AttachmentsTest {
                 // Monitor the attachments table for testing
                 val attachmentQuery =
                     database
+                        // language=SQL
                         .watch("SELECT * FROM attachments") { Attachment.fromCursor(it) }
                         .testIn(this)
 
@@ -109,6 +113,7 @@ class AttachmentsTest {
                 // This code did not save an attachment before assigning a photo_id.
                 // This is equivalent to requiring an attachment download
                 database.execute(
+                    // language=SQL
                     """
                         INSERT INTO
                             users (id, name, email, photo_id)
@@ -143,6 +148,7 @@ class AttachmentsTest {
 
                 // Now clear the user's photo_id. The attachment should be archived
                 database.execute(
+                    // language=SQL
                     """
                             UPDATE
                                 users
@@ -183,6 +189,7 @@ class AttachmentsTest {
                 // Monitor the attachments table for testing
                 val attachmentQuery =
                     database
+                        // language=SQL
                         .watch("SELECT * FROM attachments") { Attachment.fromCursor(it) }
                         .testIn(this)
 
@@ -224,6 +231,7 @@ class AttachmentsTest {
                 ) { tx, attachment ->
                     // Set the photo_id of a new user to the attachment id
                     tx.execute(
+                        // language=SQL
                         """
                                 INSERT INTO
                                     users (id, name, email, photo_id)
@@ -258,6 +266,7 @@ class AttachmentsTest {
 
                 // Now clear the user's photo_id. The attachment should be archived
                 database.execute(
+                    // language=SQL
                     """
                         UPDATE
                             users
@@ -282,6 +291,104 @@ class AttachmentsTest {
         }
 
     @Test
+    fun testAttachmentDelete() =
+        databaseTest {
+            turbineScope {
+                updateSchema(database)
+                val remote = spy<RemoteStorage>(MockedRemoteStorage())
+
+                // Monitor the attachments table for testing
+                val attachmentQuery =
+                    database
+                        // language=SQL
+                        .watch("SELECT * FROM attachments") { Attachment.fromCursor(it) }
+                        .testIn(this)
+
+                val queue =
+                    AttachmentQueue(
+                        db = database,
+                        remoteStorage = remote,
+                        attachmentsDirectory = getAttachmentsDir(),
+                        watchedAttachments = watchAttachments(database),
+                        /**
+                         * Sets the cache limit to zero for this test. Archived records will
+                         * immediately be deleted.
+                         */
+                        archivedCacheLimit = 0,
+                        syncThrottleDuration = 0.seconds,
+                    )
+
+                doOnCleanup {
+                    queue.stopSyncing()
+                    queue.clearQueue()
+                    queue.close()
+                    attachmentQuery.cancel()
+                }
+
+                queue.startSync()
+
+                val result = attachmentQuery.awaitItem()
+
+                // There should not be any attachment records here
+                result.size shouldBe 0
+
+                // Create an attachment (simulates a download)
+                database.execute(
+                    // language=SQL
+                    """
+                    INSERT INTO
+                        users (id, name, email, photo_id)
+                    VALUES
+                         (uuid(), "steven", "steven@steven.com", uuid())
+                    """,
+                )
+
+                // language=SQL
+                val attachmentID =
+                    database.get("SELECT photo_id FROM users") { it.getString("photo_id") }
+
+                // Wait for the record to be synced (mocked backend will allow it)
+                waitFor {
+                    val record = attachmentQuery.awaitItem().first()
+                    record shouldNotBe null
+                    record.state shouldBe AttachmentState.SYNCED.ordinal
+                }
+
+                queue.deleteFile(
+                    attachmentId = attachmentID,
+                ) { tx, attachment ->
+                    tx.execute(
+                        // language=SQL
+                        """
+                        UPDATE 
+                            users
+                        SET
+                            photo_id = NULL
+                        WHERE 
+                            photo_id = ?
+                        """.trimIndent(),
+                        listOf(attachment.id),
+                    )
+                }
+
+                waitFor {
+                    // Record should be deleted
+                    val record = attachmentQuery.awaitItem().firstOrNull()
+                    record shouldBe null
+                }
+
+                // A delete should have been attempted for this file
+                verifySuspend {
+                    remote.deleteFile(
+                        any(),
+                    )
+                }
+
+                attachmentQuery.cancel()
+            }
+        }
+
+    @Test
     fun testAttachmentCachedDownload() =
         databaseTest {
             turbineScope {
@@ -292,6 +399,7 @@ class AttachmentsTest {
                 // Monitor the attachments table for testing
                 val attachmentQuery =
                     database
+                        // language=SQL
                         .watch("SELECT * FROM attachments") { Attachment.fromCursor(it) }
                         .testIn(this)
 
@@ -325,6 +433,7 @@ class AttachmentsTest {
                 // This code did not save an attachment before assigning a photo_id.
                 // This is equivalent to requiring an attachment download
                 database.execute(
+                    // language=SQL
                     """
                         INSERT INTO
                             users (id, name, email, photo_id)
@@ -359,11 +468,12 @@ class AttachmentsTest {
 
                 // Now clear the user's photo_id. The attachment should be archived
                 database.execute(
+                    // language=SQL
                     """
-                            UPDATE
-                                users
-                            SET 
-                                photo_id = NULL
+                        UPDATE
+                            users
+                        SET 
+                            photo_id = NULL
                          """,
                 )
 
@@ -372,11 +482,12 @@ class AttachmentsTest {
 
                 // Now if we set the photo_id, the archived record should be restored
                 database.execute(
+                    // language=SQL
                     """
-                            UPDATE
-                                users
-                            SET 
-                                photo_id = ?
+                        UPDATE
+                            users
+                        SET 
+                            photo_id = ?
                          """,
                     listOf(attachmentRecord.id),
                 )
