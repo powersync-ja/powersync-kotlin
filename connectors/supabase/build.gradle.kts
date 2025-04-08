@@ -12,6 +12,13 @@ plugins {
 
 kotlin {
     powersyncTargets()
+    targets.withType<KotlinNativeTarget> {
+        compilations.named("main") {
+            compileTaskProvider {
+                compilerOptions.freeCompilerArgs.add("-Xexport-kdoc")
+            }
+        }
+    }
 
     explicitApi()
 
