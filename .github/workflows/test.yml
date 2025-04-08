@@ -16,9 +16,9 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            targets: iosSimulatorArm64Test jvmTest lintKotlin
+            targets: iosSimulatorArm64Test macosArm64Test jvmTest
           - os: ubuntu-latest
-            targets: testDebugUnitTest testReleaseUnitTest jvmTest
+            targets: testDebugUnitTest testReleaseUnitTest jvmTest lintKotlin
           - os: windows-latest
             targets: jvmTest
     runs-on: ${{ matrix.os }}

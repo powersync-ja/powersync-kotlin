@@ -1,4 +1,5 @@
 import com.powersync.plugins.sonatype.setupGithubRepository
+import com.powersync.plugins.utils.powersyncTargets
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -10,15 +11,7 @@ plugins {
 }
 
 kotlin {
-    androidTarget {
-        publishLibraryVariants("release", "debug")
-    }
-
-    jvm()
-
-    iosX64()
-    iosArm64()
-    iosSimulatorArm64()
+    powersyncTargets(includeTargetsWithoutComposeSupport = false)
 
     explicitApi()
 

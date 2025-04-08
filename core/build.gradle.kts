@@ -1,9 +1,8 @@
 import com.powersync.plugins.sonatype.setupGithubRepository
+import com.powersync.plugins.utils.powersyncTargets
 import de.undercouch.gradle.tasks.download.Download
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.internal.os.OperatingSystem
-import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable
 import org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest
@@ -84,15 +83,22 @@ val downloadPowersyncFramework by tasks.registering(Download::class) {
     onlyIfModified(true)
 }
 
-val unzipPowersyncFramework by tasks.registering(Copy::class) {
+val unzipPowersyncFramework by tasks.registering(Exec::class) {
     dependsOn(downloadPowersyncFramework)
 
-    from(
-        zipTree(downloadPowersyncFramework.get().dest).matching {
-            include("powersync-sqlite-core.xcframework/**")
-        },
-    )
-    into(binariesFolder.map { it.dir("framework") })
+    val zipfile = downloadPowersyncFramework.get().dest
+    inputs.file(zipfile)
+    val destination = File(zipfile.parentFile, "extracted")
+    doFirst {
+        destination.deleteRecursively()
+        destination.mkdir()
+    }
+
+    // We're using unzip here because the Gradle copy task doesn't support symlinks.
+    executable = "unzip"
+    args(zipfile.absolutePath)
+    workingDir(destination)
+    outputs.dir(destination)
 }
 
 val sqliteJDBCFolder =
@@ -150,26 +156,7 @@ val moveJDBCJNIFiles by tasks.registering(Copy::class) {
 }
 
 kotlin {
-    androidTarget {
-        publishLibraryVariants("release", "debug")
-
-        @OptIn(ExperimentalKotlinGradlePluginApi::class)
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_17)
-        }
-    }
-    jvm {
-        @OptIn(ExperimentalKotlinGradlePluginApi::class)
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_1_8)
-            // https://jakewharton.com/kotlins-jdk-release-compatibility-flag/
-            freeCompilerArgs.add("-Xjdk-release=8")
-        }
-    }
-
-    iosX64()
-    iosArm64()
-    iosSimulatorArm64()
+    powersyncTargets()
 
     targets.withType<KotlinNativeTarget> {
         compilations.named("main") {
@@ -184,7 +171,20 @@ kotlin {
                 linkerOpts("-framework", "powersync-sqlite-core")
                 val frameworkRoot =
                     binariesFolder
-                        .map { it.dir("framework/powersync-sqlite-core.xcframework/ios-arm64_x86_64-simulator") }
+                        .map { it.dir("framework/extracted/powersync-sqlite-core.xcframework/ios-arm64_x86_64-simulator") }
+                        .get()
+                        .asFile.path
+
+                linkerOpts("-F", frameworkRoot)
+                linkerOpts("-rpath", frameworkRoot)
+            }
+        } else if (konanTarget.family == Family.OSX) {
+            binaries.withType<TestExecutable>().configureEach {
+                linkTaskProvider.configure { dependsOn(unzipPowersyncFramework) }
+                linkerOpts("-framework", "powersync-sqlite-core")
+                var frameworkRoot =
+                    binariesFolder
+                        .map { it.dir("framework/extracted/powersync-sqlite-core.xcframework/macos-arm64_x86_64") }
                         .get()
                         .asFile.path
 
@@ -253,8 +253,8 @@ kotlin {
             }
         }
 
-        iosMain.dependencies {
-            implementation(libs.ktor.client.ios)
+        appleMain.dependencies {
+            implementation(libs.ktor.client.darwin)
         }
 
         commonTest.dependencies {
@@ -271,8 +271,9 @@ kotlin {
         // tests.
         jvmTest.get().dependsOn(commonIntegrationTest)
 
-        // We're linking the xcframework for the simulator tests, so they can use integration tests too
-        iosSimulatorArm64Test.orNull?.dependsOn(commonIntegrationTest)
+        // We have special setup in this build configuration to make these tests link the PowerSync extension, so they
+        // can run integration tests along with the executable for unit testing.
+        appleTest.orNull?.dependsOn(commonIntegrationTest)
     }
 }
 

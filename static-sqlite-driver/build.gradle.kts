@@ -1,6 +1,7 @@
 import java.io.File
 import java.io.FileInputStream
 import com.powersync.plugins.sonatype.setupGithubRepository
+import com.powersync.plugins.utils.powersyncTargets
 import de.undercouch.gradle.tasks.download.Download
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.utils.NativeCompilerDownloader
@@ -75,6 +76,8 @@ fun compileSqlite(target: KotlinNativeTarget): TaskProvider<Task> {
                 KonanTarget.IOS_X64 -> "x86_64-apple-ios12.0-simulator" to "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk"
                 KonanTarget.IOS_ARM64 -> "arm64-apple-ios12.0" to "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk"
                 KonanTarget.IOS_SIMULATOR_ARM64 -> "arm64-apple-ios14.0-simulator" to "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk"
+                KonanTarget.MACOS_ARM64 -> "aarch64-apple-macos" to "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/"
+                KonanTarget.MACOS_X64 -> "x86_64-apple-macos" to "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/"
                 else -> error("Unexpected target $target")
             }
 
@@ -149,9 +152,8 @@ fun compileSqlite(target: KotlinNativeTarget): TaskProvider<Task> {
 }
 
 kotlin {
-    iosX64()
-    iosArm64()
-    iosSimulatorArm64()
+    // We use sqlite3-jdbc on JVM platforms instead
+    powersyncTargets(jvm=false)
 
     applyDefaultHierarchyTemplate()
     explicitApi()

@@ -17,6 +17,8 @@ kotlin {
         iosX64(),
         iosArm64(),
         iosSimulatorArm64(),
+        macosArm64(),
+        macosX64(),
     ).forEach {
         it.binaries.framework {
             export(project(":core"))
@@ -38,6 +40,26 @@ kotlin {
         commonMain.dependencies {
             api(project(":core"))
         }
+    }
+}
+
+repositories {
+    maven {
+        name = "PowerSyncSQLiterFork"
+        url = uri("https://powersync-ja.github.io/SQLiter")
+        content {
+            includeModuleByRegex("co.touchlab", "sqliter-driver.*")
+        }
+    }
+}
+
+configurations.all {
+    resolutionStrategy {
+        // This version has not been released yet (https://github.com/touchlab/SQLiter/pull/124), so we're pointing this
+        // towards our fork with the repositories block above.
+        // The API is identical, but we have to make sure this particular project builds the xcframework with the
+        // patched SQLiter version to avoid linker errors on macOS.
+        force("co.touchlab:sqliter-driver:1.3.2-powersync")
     }
 }
 

@@ -1,4 +1,5 @@
 import com.powersync.plugins.sonatype.setupGithubRepository
+import com.powersync.plugins.utils.powersyncTargets
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -11,27 +12,7 @@ plugins {
 }
 
 kotlin {
-    androidTarget {
-        publishLibraryVariants("release", "debug")
-
-        @OptIn(ExperimentalKotlinGradlePluginApi::class)
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_17)
-        }
-    }
-
-    jvm {
-        @OptIn(ExperimentalKotlinGradlePluginApi::class)
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_1_8)
-            // https://jakewharton.com/kotlins-jdk-release-compatibility-flag/
-            freeCompilerArgs.add("-Xjdk-release=8")
-        }
-    }
-
-    iosX64()
-    iosArm64()
-    iosSimulatorArm64()
+    powersyncTargets()
 
     explicitApi()
 
@@ -49,7 +30,7 @@ kotlin {
             api(libs.sqldelight.driver.jdbc)
         }
 
-        iosMain.dependencies {
+        appleMain.dependencies {
             api(libs.sqldelight.driver.native)
             api(projects.staticSqliteDriver)
         }
