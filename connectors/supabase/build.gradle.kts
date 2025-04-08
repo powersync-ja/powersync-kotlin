@@ -1,4 +1,5 @@
 import com.powersync.plugins.sonatype.setupGithubRepository
+import com.powersync.plugins.utils.powersyncTargets
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 
 plugins {
@@ -10,23 +11,7 @@ plugins {
 }
 
 kotlin {
-    androidTarget {
-        publishLibraryVariants("release", "debug")
-    }
-
-    jvm()
-
-    targets.withType<KotlinNativeTarget> {
-        compilations.named("main") {
-            compileTaskProvider {
-                compilerOptions.freeCompilerArgs.add("-Xexport-kdoc")
-            }
-        }
-    }
-
-    iosX64()
-    iosArm64()
-    iosSimulatorArm64()
+    powersyncTargets()
 
     explicitApi()
 
