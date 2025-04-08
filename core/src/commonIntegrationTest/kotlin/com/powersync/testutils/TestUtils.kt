@@ -8,6 +8,8 @@ import co.touchlab.kermit.TestConfig
 import co.touchlab.kermit.TestLogWriter
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
+import com.powersync.bucket.WriteCheckpointData
+import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.db.PowerSyncDatabaseImpl
@@ -77,6 +79,9 @@ internal class ActiveDatabaseTest(
         )
 
     val syncLines = Channel<SyncLine>()
+    var checkpointResponse: () -> WriteCheckpointResponse = {
+        WriteCheckpointResponse(WriteCheckpointData("1000"))
+    }
 
     val testDirectory by lazy { getTempDir() }
     val databaseName by lazy {
@@ -86,7 +91,7 @@ internal class ActiveDatabaseTest(
         "db-$suffix"
     }
 
-    val connector =
+    var connector =
         mock<PowerSyncBackendConnector> {
             everySuspend { getCredentialsCached() } returns
                 PowerSyncCredentials(
@@ -115,16 +120,17 @@ internal class ActiveDatabaseTest(
 
     suspend fun openDatabaseAndInitialize(): PowerSyncDatabaseImpl = openDatabase().also { it.readLock { } }
 
-    fun syncStream(): SyncStream {
-        val client = MockSyncService(syncLines)
+    fun PowerSyncDatabase.syncStream(): SyncStream {
+        val client = MockSyncService(syncLines) { checkpointResponse() }
         return SyncStream(
             bucketStorage = database.bucketStorage,
             connector = connector,
             httpEngine = client,
-            uploadCrud = { },
+            uploadCrud = { connector.uploadData(this) },
             retryDelayMs = 10,
             logger = logger,
             params = JsonObject(emptyMap()),
+            scope = scope,
         )
     }
 
