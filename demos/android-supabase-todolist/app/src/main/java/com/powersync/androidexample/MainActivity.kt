@@ -9,6 +9,7 @@ import com.powersync.demos.App
 
 class MainActivity : ComponentActivity() {
     private val cameraService = CameraService(this)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
 
@@ -17,9 +18,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             App(
                 cameraService = cameraService,
-                attachmentDirectory = "${applicationContext.filesDir.canonicalPath}/attachments"
+                attachmentDirectory = "${applicationContext.filesDir.canonicalPath}/attachments",
             )
         }
     }
-
 }

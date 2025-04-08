@@ -39,7 +39,7 @@ internal fun EditDialog(
     onDoneChanged: (Boolean) -> Unit,
     onPhotoClear: () -> Unit,
     onPhotoCapture: () -> Unit,
-    attachmentsSupported: Boolean = false
+    attachmentsSupported: Boolean = false,
 ) {
     EditDialog(
         onCloseRequest = onCloseClicked,
@@ -62,36 +62,38 @@ internal fun EditDialog(
                 )
             }
 
-            val bitmap = remember(item.photoURI) {
-                item.photoURI?.let { BitmapFactory.decodeFile(it)?.asImageBitmap() }
-            }
+            val bitmap =
+                remember(item.photoURI) {
+                    item.photoURI?.let { BitmapFactory.decodeFile(it)?.asImageBitmap() }
+                }
 
             if (attachmentsSupported == true) {
-            Box(
-                modifier = Modifier
-                    .clickable { if (item.photoId == null) onPhotoCapture() }
-                    .padding(8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                if (bitmap == null) {
-                    Button(
-                        onClick = onPhotoCapture,
-                        modifier = Modifier.align(Alignment.Center),
-                        contentPadding = PaddingValues(0.dp)
-                    ) {
-                        Text("Add Photo", color = Color.Gray)
-                    }
-                } else {
-                    Image(bitmap = bitmap, contentDescription = "Photo Preview")
-                    Button(
-                        onClick = onPhotoClear,
-                        modifier = Modifier.align(Alignment.TopEnd),
-                        contentPadding = PaddingValues(0.dp)
-                    ) {
-                        Text("Clear Photo", color = Color.Red)
+                Box(
+                    modifier =
+                        Modifier
+                            .clickable { if (item.photoId == null) onPhotoCapture() }
+                            .padding(8.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (bitmap == null) {
+                        Button(
+                            onClick = onPhotoCapture,
+                            modifier = Modifier.align(Alignment.Center),
+                            contentPadding = PaddingValues(0.dp),
+                        ) {
+                            Text("Add Photo", color = Color.Gray)
+                        }
+                    } else {
+                        Image(bitmap = bitmap, contentDescription = "Photo Preview")
+                        Button(
+                            onClick = onPhotoClear,
+                            modifier = Modifier.align(Alignment.TopEnd),
+                            contentPadding = PaddingValues(0.dp),
+                        ) {
+                            Text("Clear Photo", color = Color.Red)
+                        }
                     }
                 }
-            }
             }
         }
     }
@@ -100,16 +102,17 @@ internal fun EditDialog(
 @Composable
 private fun EditDialog(
     onCloseRequest: () -> Unit,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     Dialog(
         onDismissRequest = onCloseRequest,
     ) {
-        Card(elevation = CardDefaults.cardElevation(defaultElevation = 8.dp) ) {
+        Card(elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)) {
             Column(
-                modifier = Modifier
-                    .padding(8.dp)
-                    .height(IntrinsicSize.Min)
+                modifier =
+                    Modifier
+                        .padding(8.dp)
+                        .height(IntrinsicSize.Min),
             ) {
                 ProvideTextStyle(MaterialTheme.typography.bodySmall) {
                     Text(text = "Edit todo")
@@ -125,7 +128,7 @@ private fun EditDialog(
 
                 Button(
                     onClick = onCloseRequest,
-                    modifier = Modifier.align(Alignment.End)
+                    modifier = Modifier.align(Alignment.End),
                 ) {
                     Text(text = "Done")
                 }

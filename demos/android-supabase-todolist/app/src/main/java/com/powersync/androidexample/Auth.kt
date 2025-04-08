@@ -22,7 +22,7 @@ internal class AuthViewModel(
     private val supabase: SupabaseConnector,
     private val db: PowerSyncDatabase,
     private val navController: NavController,
-    private val attachmentsQueue: AttachmentQueue?
+    private val attachmentsQueue: AttachmentQueue?,
 ) : ViewModel() {
     private val _authState = MutableStateFlow<AuthState>(AuthState.SignedOut)
     val authState: StateFlow<AuthState> = _authState
@@ -38,8 +38,9 @@ internal class AuthViewModel(
                         _userId.value = it.session.user?.id
                         db.connect(supabase)
                         attachmentsQueue?.startSync()
-                        if (navController.currentScreen.value is Screen.SignIn
-                            || navController.currentScreen.value is Screen.SignUp) {
+                        if (navController.currentScreen.value is Screen.SignIn ||
+                            navController.currentScreen.value is Screen.SignUp
+                        ) {
                             navController.navigate(Screen.Home)
                         }
                     }

@@ -32,7 +32,10 @@ import com.powersync.demos.screens.TodosScreen
 import kotlinx.coroutines.runBlocking
 
 @Composable
-fun App(cameraService: CameraService, attachmentDirectory: String) {
+fun App(
+    cameraService: CameraService,
+    attachmentDirectory: String,
+) {
     val driverFactory = rememberDatabaseDriverFactory()
     val supabase =
         remember {
@@ -49,24 +52,31 @@ fun App(cameraService: CameraService, attachmentDirectory: String) {
         remember {
             if (BuildConfig.SUPABASE_ATTACHMENT_BUCKET != "null") {
                 AttachmentQueue(
-                    db = db, remoteStorage = SupabaseRemoteStorage(supabase),
+                    db = db,
+                    remoteStorage = SupabaseRemoteStorage(supabase),
                     attachmentsDirectory = attachmentDirectory,
-                    watchedAttachments = db.watch(
-                        "SELECT photo_id from todos WHERE photo_id IS NOT NULL"
-                    ) {
-                        WatchedAttachmentItem(
-                            id = it.getString("photo_id"),
-                            fileExtension = "jpg"
-                        )
-                    })
-            } else {null} }
+                    watchedAttachments =
+                        db.watch(
+                            "SELECT photo_id from todos WHERE photo_id IS NOT NULL",
+                        ) {
+                            WatchedAttachmentItem(
+                                id = it.getString("photo_id"),
+                                fileExtension = "jpg",
+                            )
+                        },
+                )
+            } else {
+                null
+            }
+        }
 
     val syncStatus = db.currentStatus
     val status by syncStatus.asFlow().collectAsState(syncStatus)
 
-    val navController = remember {
-        NavController(Screen.Home)
-    }
+    val navController =
+        remember {
+            NavController(Screen.Home)
+        }
 
     val authViewModel =
         remember {
@@ -149,8 +159,8 @@ fun App(cameraService: CameraService, attachmentDirectory: String) {
                     onTextChanged = todos.value::onEditorTextChanged,
                     onDoneChanged = todos.value::onEditorDoneChanged,
                     onPhotoClear = todos.value::onPhotoDelete,
-                    onPhotoCapture = {todos.value::onPhotoCapture.invoke(cameraService)},
-                    attachmentsSupported = attachments != null
+                    onPhotoCapture = { todos.value::onPhotoCapture.invoke(cameraService) },
+                    attachmentsSupported = attachments != null,
                 )
             }
         }

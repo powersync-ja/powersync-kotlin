@@ -24,7 +24,8 @@ class SupabaseRemoteStorage(
         connector.storageBucket().upload(attachment.filename, buffer)
     }
 
-    override suspend fun downloadFile(attachment: Attachment): Flow<ByteArray> = flowOf(connector.storageBucket().downloadAuthenticated(attachment.filename))
+    override suspend fun downloadFile(attachment: Attachment): Flow<ByteArray> =
+        flowOf(connector.storageBucket().downloadAuthenticated(attachment.filename))
 
     override suspend fun deleteFile(attachment: Attachment) {
         connector.storageBucket().delete(attachment.filename)

@@ -1,6 +1,5 @@
 package com.powersync.demos.powersync
 
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
@@ -53,7 +52,7 @@ internal class Todo(
                 completed = cursor.getLongOptional("completed") == 1L,
                 listId = cursor.getString("list_id"),
                 photoId = cursor.getStringOptional("photo_id"),
-                photoURI =  cursor.getStringOptional("local_uri")
+                photoURI = cursor.getStringOptional("local_uri"),
             )
         }
 
@@ -77,7 +76,7 @@ internal class Todo(
     fun onItemDeleteClicked(item: TodoItem) {
         viewModelScope.launch {
             if (item.photoId != null) {
-                attachmentsQueue?.deleteFile(item.photoId) {_,_ -> }
+                attachmentsQueue?.deleteFile(item.photoId) { _, _ -> }
             }
             db.writeTransaction { tx ->
                 tx.execute("DELETE FROM $TODOS_TABLE WHERE id = ?", listOf(item.id))
@@ -96,7 +95,7 @@ internal class Todo(
         }
 
         viewModelScope.launch {
-           db.writeTransaction { tx ->
+            db.writeTransaction { tx ->
                 tx.execute(
                     "INSERT INTO $TODOS_TABLE (id, created_at, created_by, description, list_id) VALUES (uuid(), datetime(), ?, ?, ?)",
                     listOf(userId, _inputText.value, listId),
@@ -134,31 +133,33 @@ internal class Todo(
     fun onPhotoCapture(cameraService: CameraService) {
         viewModelScope.launch {
             val item = requireNotNull(_editingItem.value)
-            val photoData = try {
-                cameraService.takePicture()
-            } catch (ex: Exception) {
-                if (ex is CancellationException) {
-                    throw  ex
-                } else {
-                    // otherwise ignore
-                    return@launch
+            val photoData =
+                try {
+                    cameraService.takePicture()
+                } catch (ex: Exception) {
+                    if (ex is CancellationException) {
+                        throw ex
+                    } else {
+                        // otherwise ignore
+                        return@launch
+                    }
                 }
-            }
-            val attachment  = attachmentsQueue!!.saveFile(data = flowOf(photoData), mediaType = "image/jped", fileExtension = "jpg" ) {tx, attachment ->
-                tx.execute("UPDATE $TODOS_TABLE SET photo_id = ? WHERE id = ?", listOf(attachment.id, item.id))
-            }
+            val attachment =
+                attachmentsQueue!!.saveFile(data = flowOf(photoData), mediaType = "image/jped", fileExtension = "jpg") { tx, attachment ->
+                    tx.execute("UPDATE $TODOS_TABLE SET photo_id = ? WHERE id = ?", listOf(attachment.id, item.id))
+                }
 
-            updateEditingItem(item = item) {it.copy(photoURI = attachment.localUri)}
+            updateEditingItem(item = item) { it.copy(photoURI = attachment.localUri) }
         }
     }
 
     fun onPhotoDelete() {
         viewModelScope.launch {
             val item = requireNotNull(_editingItem.value)
-            attachmentsQueue!!.deleteFile(item.photoId!!) {tx, _ ->
+            attachmentsQueue!!.deleteFile(item.photoId!!) { tx, _ ->
                 tx.execute("UPDATE $TODOS_TABLE SET photo_id = NULL WHERE id = ?", listOf(item.id))
             }
-            updateEditingItem(item = item) {it.copy(photoURI = null)}
+            updateEditingItem(item = item) { it.copy(photoURI = null) }
         }
     }
 
