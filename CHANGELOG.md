@@ -9,6 +9,7 @@
 Sqlite operation failure database is locked attempted to run migration and failed. closing connection
 ```
 * Fix race condition causing data received during uploads not to be applied.
+* Added Attachment helpers
 
 ## 1.0.0-BETA28
 

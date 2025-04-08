@@ -36,6 +36,7 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.supabase.client)
             api(libs.supabase.auth)
+            api(libs.supabase.storage)
         }
     }
 }

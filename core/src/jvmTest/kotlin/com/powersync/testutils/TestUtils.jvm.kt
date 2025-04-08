@@ -10,4 +10,6 @@ actual fun cleanup(path: String) {
     File(path).delete()
 }
 
-actual fun getTempDir(): String? = System.getProperty("java.io.tmpdir")
+actual fun getTempDir(): String = System.getProperty("java.io.tmpdir")
+
+actual fun isIOS(): Boolean = false

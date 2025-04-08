@@ -6,13 +6,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -44,8 +44,9 @@ internal fun TodosScreen(
                 Text(
                     "Todo List",
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth().padding(end = 36.dp)
-                ) },
+                    modifier = Modifier.fillMaxWidth().padding(end = 36.dp),
+                )
+            },
             navigationIcon = {
                 IconButton(onClick = { navController.navigate(Screen.Home) }) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Go back")
@@ -54,14 +55,14 @@ internal fun TodosScreen(
             actions = {
                 WifiIcon(isConnected ?: false)
                 Spacer(modifier = Modifier.width(16.dp))
-            }
+            },
         )
 
         Input(
             text = inputText,
             onAddClicked = onAddItemClicked,
             onTextChanged = onInputTextChanged,
-            screen = Screen.Todos
+            screen = Screen.Todos,
         )
 
         Box(Modifier.weight(1F)) {
@@ -69,7 +70,7 @@ internal fun TodosScreen(
                 items = items,
                 onItemClicked = onItemClicked,
                 onItemDoneChanged = onItemDoneChanged,
-                onItemDeleteClicked = onItemDeleteClicked
+                onItemDeleteClicked = onItemDeleteClicked,
             )
         }
     }
