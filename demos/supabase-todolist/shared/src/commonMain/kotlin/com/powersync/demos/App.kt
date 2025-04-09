@@ -21,6 +21,9 @@ import com.powersync.demos.components.EditDialog
 import com.powersync.demos.fts.configureFts
 import com.powersync.demos.powersync.ListContent
 import com.powersync.demos.powersync.ListItem
+import com.powersync.demos.powersync.SearchResult
+import com.powersync.demos.powersync.SearchResult.ListResult
+import com.powersync.demos.powersync.SearchResult.TodoResult
 import com.powersync.demos.powersync.Todo
 import com.powersync.demos.powersync.schema
 import com.powersync.demos.screens.HomeScreen
@@ -28,7 +31,7 @@ import com.powersync.demos.screens.SignInScreen
 import com.powersync.demos.screens.SignUpScreen
 import com.powersync.demos.screens.TodosScreen
 import com.powersync.demos.screens.SearchScreen
-import com.powersync.demos.search.SearchViewModel
+import com.powersync.demos.powersync.SearchViewModel
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.runBlocking
 import org.koin.compose.KoinApplication
@@ -120,6 +123,8 @@ fun AppContent(
     val editingItem by todos.value.editingItem.collectAsState()
     val todosInputText by todos.value.inputText.collectAsState()
 
+    val selectedSearchResult = searchViewModel.selectedSearchResult.collectAsState()
+
     fun handleSignOut() {
         runBlocking {
             authViewModel.signOut()
@@ -151,8 +156,15 @@ fun AppContent(
         }
 
         is Screen.Todos -> {
+
+            val listId = when (selectedSearchResult) {
+                is ListResult -> selectedSearchResult.item.id
+                is TodoResult -> selectedSearchResult.item.listId
+                else -> selectedListId
+            }
+
             val handleOnAddItemClicked = {
-                todos.value.onAddItemClicked(userId, selectedListId)
+                todos.value.onAddItemClicked(userId, listId)
             }
 
             TodosScreen(

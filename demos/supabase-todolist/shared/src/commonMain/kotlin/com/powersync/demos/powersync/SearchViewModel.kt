@@ -1,17 +1,17 @@
-package com.powersync.demos.search
+package com.powersync.demos.powersync
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import com.powersync.PowerSyncDatabase
 import com.powersync.db.internal.PowerSyncTransaction
-import com.powersync.demos.powersync.LISTS_TABLE
-import com.powersync.demos.powersync.ListItem
-import com.powersync.demos.powersync.TODOS_TABLE
-import com.powersync.demos.powersync.TodoItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -26,6 +26,9 @@ class SearchViewModel(
     private val _searchResults = MutableStateFlow<List<SearchResult>>(emptyList())
     val searchResults: StateFlow<List<SearchResult>> = _searchResults.asStateFlow()
 
+    private val _selectedSearchResult = MutableStateFlow<SearchResult?>(null)
+    val selectedSearchResult: StateFlow<SearchResult?> = _selectedSearchResult.asStateFlow()
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -35,8 +38,8 @@ class SearchViewModel(
     init {
         viewModelScope.launch {
             searchQuery
-                .debounce(300) // Wait for 300ms of silence before triggering search
-                .collectLatest { query -> // Use collectLatest to cancel previous searches if query changes quickly
+                .debounce(300)
+                .collectLatest { query ->
                     executeSearch(query)
                 }
         }
@@ -57,16 +60,16 @@ class SearchViewModel(
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
-            Logger.d { "[SearchViewModel] Executing FTS search for: '$query'" }
+            Logger.Companion.d { "[SearchViewModel] Executing FTS search for: '$query'" }
 
             try {
                 val results = withContext(Dispatchers.Default) {
                     searchFtsTables(query)
                 }
                 _searchResults.value = results
-                Logger.d { "[SearchViewModel] Found ${results.size} results." }
+                Logger.Companion.d { "[SearchViewModel] Found ${results.size} results." }
             } catch (e: Exception) {
-                Logger.e("Error during FTS search: ${e.message}", throwable = e)
+                Logger.Companion.e("Error during FTS search: ${e.message}", throwable = e)
                 _error.value = "Search failed: ${e.message}"
                 _searchResults.value = emptyList() // Clear results on error
             } finally {
@@ -75,10 +78,22 @@ class SearchViewModel(
         }
     }
 
-    // --- FTS Query Logic ---
+    fun onSearchResultClicked(result: SearchResult) {
+        _selectedSearchResult.value = result
+    }
+
+    fun clearState() {
+        Logger.d { "[SearchViewModel] Clearing state." }
+        _searchQuery.value = ""
+        _searchResults.value = emptyList()
+        _selectedSearchResult.value = null
+        _isLoading.value = false
+        _error.value = null
+    }
+
     private suspend fun searchFtsTables(searchTerm: String): List<SearchResult> {
         val combinedResults = mutableListOf<SearchResult>()
-        val ftsSearchTerm = "$searchTerm*" // Add wildcard for prefix matching
+        val ftsSearchTerm = "$searchTerm*"
 
         db.readTransaction { tx: PowerSyncTransaction ->
             // 1. Search FTS tables to get IDs
@@ -86,15 +101,14 @@ class SearchViewModel(
                 "SELECT id FROM fts_$LISTS_TABLE WHERE fts_$LISTS_TABLE MATCH ?",
                 listOf(ftsSearchTerm),
             ) { cursor -> cursor.getString(0) as String }
-
+            Logger.Companion.d { "[SearchViewModel] Found ${listIds.size} listIds." }
             val todoIds = tx.getAll(
                 "SELECT id FROM fts_$TODOS_TABLE WHERE fts_$TODOS_TABLE MATCH ?",
                 listOf(ftsSearchTerm),
             ) { cursor -> cursor.getString(0) as String }
-
+            Logger.Companion.d { "[SearchViewModel] Found ${todoIds.size} todoIds." }
             // 2. Fetch full objects from main tables using the IDs (Handle empty ID lists)
             if (listIds.isNotEmpty()) {
-                // Construct query like: SELECT * FROM lists WHERE id IN (?, ?, ...)
                 val placeholders = listIds.joinToString(",") { "?" }
                 val listItems = tx.getAll(
                     "SELECT * FROM $TODOS_TABLE WHERE id IN ($placeholders)", listIds

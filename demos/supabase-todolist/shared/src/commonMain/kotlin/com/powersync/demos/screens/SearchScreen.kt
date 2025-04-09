@@ -1,6 +1,5 @@
 package com.powersync.demos.screens
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,14 +13,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import co.touchlab.kermit.Logger
 import com.powersync.demos.NavController
-import com.powersync.demos.search.SearchResult
-import com.powersync.demos.search.SearchViewModel
-import org.koin.compose.koinInject // Use koinInject or specific platform injection
+import com.powersync.demos.Screen
+import com.powersync.demos.components.SearchResultItem
+import com.powersync.demos.powersync.SearchResult
+import com.powersync.demos.powersync.SearchViewModel
+import org.koin.compose.koinInject
 
 @Composable
 fun SearchScreen(
-    navController: NavController, // Inject or pass NavController
-    viewModel: SearchViewModel = koinInject() // Inject the ViewModel
+    navController: NavController,
+    viewModel: SearchViewModel = koinInject(),
 ) {
     val searchQuery by viewModel.searchQuery.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
@@ -33,7 +34,10 @@ fun SearchScreen(
             TopAppBar(
                 title = { Text("Search Lists & Todos") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.navigateBack() }) { // Or specific back navigation
+                    IconButton(onClick = {
+                        viewModel.clearState()
+                        navController.navigateBack()
+                    }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 }
@@ -86,61 +90,24 @@ fun SearchScreen(
                             modifier = Modifier.fillMaxSize(),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(searchResults, key = { result -> // Provide stable keys
+                            items(searchResults, key = { result ->
                                 when (result) {
                                     is SearchResult.ListResult -> "list_${result.item.id}"
                                     is SearchResult.TodoResult -> "todo_${result.item.id}"
                                 }
                             }) { result ->
                                 SearchResultItem(result) { clickedResult ->
-                                    // --- Handle Click ---
-                                    // Example: Navigate to the list containing the todo or the list itself
+
                                     val listId = when (clickedResult) {
                                         is SearchResult.ListResult -> clickedResult.item.id
                                         is SearchResult.TodoResult -> clickedResult.item.listId
                                     }
                                     Logger.i { "Search item clicked, listId: $listId" }
-                                    // navController.navigateTo(Screen.TodoList(listId)) // Adapt to your navigation
+                                    viewModel.onSearchResultClicked(clickedResult)
+                                    navController.navigate(Screen.Todos)
                                 }
                             }
                         }
-                    }
-                    // Implicit else: Initial state (empty query, no results, not loading) - show nothing or a prompt
-                }
-            }
-        }
-    }
-}
-
-// --- Composable for a single search result item ---
-@Composable
-fun SearchResultItem(
-    result: SearchResult,
-    onClick: (SearchResult) -> Unit
-) {
-    // Basic card implementation - customize as needed
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick(result) },
-        elevation = 2.dp
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Example Icon - could be different per type
-            // Icon(...)
-            // Spacer(modifier = Modifier.width(8.dp))
-            Column {
-                when (result) {
-                    is SearchResult.ListResult -> {
-                        Text(result.item.name, style = MaterialTheme.typography.h6)
-                        Text("List", style = MaterialTheme.typography.caption)
-                    }
-                    is SearchResult.TodoResult -> {
-                        Text(result.item.description, style = MaterialTheme.typography.body1)
-                        Text("Todo Item", style = MaterialTheme.typography.caption)
                     }
                 }
             }
