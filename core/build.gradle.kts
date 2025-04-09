@@ -1,3 +1,4 @@
+import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING
 import com.powersync.plugins.sonatype.setupGithubRepository
 import de.undercouch.gradle.tasks.download.Download
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
@@ -21,6 +22,7 @@ plugins {
     id("com.powersync.plugins.sonatype")
     alias(libs.plugins.mokkery)
     alias(libs.plugins.kotlin.atomicfu)
+    alias(libs.plugins.buildKonfig)
 }
 
 val binariesFolder = project.layout.buildDirectory.dir("binaries/desktop")
@@ -316,8 +318,19 @@ android {
 }
 
 androidComponents.onVariants {
-        tasks.named("preBuild") {
-            dependsOn(moveJDBCJNIFiles)
+    tasks.named("preBuild") {
+        dependsOn(moveJDBCJNIFiles)
+    }
+}
+
+buildkonfig {
+    packageName = "com.powersync.core"
+    defaultConfigs {
+        buildConfigField(STRING, "LIBRARY_VERSION", version.toString())
+
+        // TODO: Swift SDK relies on this too.
+        // Find out how to add a build flag to toggle between "powersync-kotlin" and "powersync-swift".
+        buildConfigField(STRING, "LIBRARY_NAME", "powersync-kotlin")
     }
 }
 
@@ -351,4 +364,13 @@ tasks.withType<KotlinTest> {
         showStackTraces = true
     }
 }
+
+tasks.formatKotlinCommonMain {
+    exclude { it.file.name == "BuildKonfig.kt" }
+}
+
+tasks.lintKotlinCommonMain {
+    exclude { it.file.name == "BuildKonfig.kt" }
+}
+
 setupGithubRepository()
