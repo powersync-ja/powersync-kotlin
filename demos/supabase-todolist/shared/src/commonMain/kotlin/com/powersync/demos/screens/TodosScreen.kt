@@ -47,7 +47,7 @@ internal fun TodosScreen(
                 )
             },
             navigationIcon = {
-                IconButton(onClick = { navController.navigate(Screen.Home) }) {
+                IconButton(onClick = { navController.navigateBack() }) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Go back")
                 }
             },
