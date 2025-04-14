@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import com.powersync.PowerSyncDatabase
 import com.powersync.bucket.BucketPriority
 import com.powersync.compose.composeState
+import com.powersync.sync.SyncStatusData
 import org.koin.compose.koinInject
 
 /**
@@ -30,7 +31,7 @@ fun GuardBySync(
     priority: BucketPriority? = null,
     content: @Composable () -> Unit
 ) {
-    val state by db.currentStatus.composeState()
+    val state: SyncStatusData by db.currentStatus.composeState()
 
     if (state.hasSynced == true) {
         content()
@@ -55,7 +56,7 @@ fun GuardBySync(
 
         val progress = state.downloadProgress?.let {
             if (priority == null) {
-                it.untilCompletion
+                it
             } else {
                 it.untilPriority(priority)
             }
@@ -66,10 +67,10 @@ fun GuardBySync(
                 progress = progress.fraction,
             )
 
-            if (progress.total == progress.completed) {
+            if (progress.downloadedOperations == progress.totalOperations) {
                 Text("Applying server-side changes...")
             } else {
-                Text("Downloaded ${progress.completed} out of ${progress.total}.")
+                Text("Downloaded ${progress.downloadedOperations} out of ${progress.totalOperations}.")
             }
         } else {
             LinearProgressIndicator(

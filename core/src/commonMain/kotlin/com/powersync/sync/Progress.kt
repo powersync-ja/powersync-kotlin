@@ -7,30 +7,47 @@ import com.powersync.bucket.LocalOperationCounters
 /**
  * Information about a progressing download.
  *
- * This reports the [total] amount of operations to download, how many of them have already been [completed] and finally
- * a [fraction] indicating relative progress.
+ * This reports the [totalOperations] amount of operations to download, how many of them have already been
+ * [downloadedOperations] and finally a [fraction] indicating relative progress.
  *
  * To obtain a [ProgressWithOperations] instance, use a method on [SyncDownloadProgress] which in turn is available
  * on [SyncStatusData].
  */
-public data class ProgressWithOperations(
-    val completed: Int,
-    val total: Int,
-) {
+public interface ProgressWithOperations {
     /**
-     * The relative amount of [total] items that have been [completed], as a number between `0.0` and `1.0`.
+     * How many operations need to be downloaded in total for the current download to complete.
+     */
+    public val totalOperations: Int
+
+    /**
+     * How many operations, out of [totalOperations], have already been downloaded.
+    */
+    public val downloadedOperations: Int
+
+    /**
+     * The relative amount of [totalOperations] to items in [downloadedOperations], as a number between `0.0` and `1.0`.
      */
     public val fraction: Float get() {
-        if (completed == 0) {
+        if (totalOperations == 0) {
             return 0.0f
         }
 
-        return completed.toFloat() / total.toFloat()
+        return downloadedOperations.toFloat() / totalOperations.toFloat()
     }
 }
 
+internal data class ProgressInfo(
+    override val downloadedOperations: Int,
+    override val totalOperations: Int,
+): ProgressWithOperations
+
 /**
  * Provides realtime progress on how PowerSync is downloading rows.
+ *
+ * This type reports progress by implementing [ProgressWithOperations], meaning that the [totalOperations],
+ * [downloadedOperations] and [fraction] getters are available on this instance.
+ * Additionally, it's possible to obtain the progress towards a specific priority only (instead of tracking progress for
+ * the entire download) by using [untilPriority].
  *
  * The reported progress always reflects the status towards the end of a sync iteration (after which a consistent
  * snapshot of all buckets is available locally).
@@ -46,7 +63,17 @@ public data class ProgressWithOperations(
 @ConsistentCopyVisibility
 public data class SyncDownloadProgress private constructor(
     private val buckets: Map<String, BucketProgress>,
-) {
+): ProgressWithOperations {
+
+    override val downloadedOperations: Int
+    override val totalOperations: Int
+
+    init {
+        val (target, completed) = targetAndCompletedCounts(BucketPriority.FULL_SYNC_PRIORITY)
+        totalOperations = target
+        downloadedOperations = completed
+    }
+
     /**
      * Creates download progress information from the local progress counters since the last full sync and the target
      * checkpoint.
@@ -70,14 +97,6 @@ public data class SyncDownloadProgress private constructor(
     )
 
     /**
-     * Download progress towards a complete checkpoint being received.
-     *
-     * The returned [ProgressWithOperations] instance tracks the target amount of operations that need to be downloaded
-     * in total and how many of them have already been received.
-     */
-    public val untilCompletion: ProgressWithOperations get() = untilPriority(BucketPriority.FULL_SYNC_PRIORITY)
-
-    /**
      * Returns download progress towards all data up until the specified [priority] being received.
      *
      * The returned [ProgressWithOperations] instance tracks the target amount of operations that need to be downloaded
@@ -85,7 +104,7 @@ public data class SyncDownloadProgress private constructor(
      */
     public fun untilPriority(priority: BucketPriority): ProgressWithOperations {
         val (total, completed) = targetAndCompletedCounts(priority)
-        return ProgressWithOperations(completed = completed, total = total)
+        return ProgressInfo(totalOperations = total, downloadedOperations = completed)
     }
 
     internal fun incrementDownloaded(batch: SyncDataBatch): SyncDownloadProgress =

@@ -82,14 +82,14 @@ class SyncProgressTest : BaseInMemorySyncTest() {
         val progress = item.downloadProgress ?: error("Expected download progress on $item")
 
         assertTrue { item.downloading }
-        assertEquals(total.first, progress.untilCompletion.completed)
-        assertEquals(total.second, progress.untilCompletion.total)
+        assertEquals(total.first, progress.downloadedOperations)
+        assertEquals(total.second, progress.totalOperations)
 
         priorities.forEach { (priority, expected) ->
             val (expectedDownloaded, expectedTotal) = expected
             val progress = progress.untilPriority(priority)
-            assertEquals(expectedDownloaded, progress.completed)
-            assertEquals(expectedTotal, progress.total)
+            assertEquals(expectedDownloaded, progress.downloadedOperations)
+            assertEquals(expectedTotal, progress.totalOperations)
         }
     }
 
