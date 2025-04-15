@@ -24,6 +24,8 @@ import com.powersync.utils.JsonParam
 import com.powersync.utils.JsonUtil
 import com.powersync.utils.throttle
 import com.powersync.utils.toJsonObject
+import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
@@ -61,6 +63,7 @@ internal class PowerSyncDatabaseImpl(
     private val dbFilename: String,
     private val dbDirectory: String? = null,
     val logger: Logger = Logger,
+    private val createClient: (HttpClientConfig<*>.() -> Unit) -> HttpClient,
 ) : PowerSyncDatabase {
     companion object {
         internal val streamConflictMessage =
@@ -148,22 +151,25 @@ internal class PowerSyncDatabaseImpl(
         crudThrottleMs: Long,
         retryDelayMs: Long,
         params: Map<String, JsonParam?>,
-    ) = mutex.withLock {
+    ) {
         waitReady()
-        disconnectInternal()
+        mutex.withLock {
+            disconnectInternal()
 
-        connectInternal(
-            SyncStream(
-                bucketStorage = bucketStorage,
-                connector = connector,
-                uploadCrud = suspend { connector.uploadData(this) },
-                retryDelayMs = retryDelayMs,
-                logger = logger,
-                params = params.toJsonObject(),
-                scope = scope,
-            ),
-            crudThrottleMs,
-        )
+            connectInternal(
+                SyncStream(
+                    bucketStorage = bucketStorage,
+                    connector = connector,
+                    uploadCrud = suspend { connector.uploadData(this) },
+                    retryDelayMs = retryDelayMs,
+                    logger = logger,
+                    params = params.toJsonObject(),
+                    scope = scope,
+                    createClient = createClient,
+                ),
+                crudThrottleMs,
+            )
+        }
     }
 
     @OptIn(FlowPreview::class)
