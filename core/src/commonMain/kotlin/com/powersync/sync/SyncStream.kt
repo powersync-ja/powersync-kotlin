@@ -13,7 +13,6 @@ import com.powersync.utils.JsonUtil
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.call.body
-import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.timeout
@@ -48,7 +47,7 @@ internal class SyncStream(
     private val logger: Logger,
     private val params: JsonObject,
     private val scope: CoroutineScope,
-    httpEngine: HttpClientEngine? = null,
+    createClient: (HttpClientConfig<*>.() -> Unit) -> HttpClient,
 ) {
     private var isUploadingCrud = AtomicReference<PendingCrudUpload?>(null)
 
@@ -59,25 +58,11 @@ internal class SyncStream(
 
     private var clientId: String? = null
 
-    private val httpClient: HttpClient
-
-    init {
-        fun HttpClientConfig<*>.configureClient() {
+    private val httpClient: HttpClient =
+        createClient {
             install(HttpTimeout)
             install(ContentNegotiation)
         }
-
-        httpClient =
-            if (httpEngine == null) {
-                HttpClient {
-                    configureClient()
-                }
-            } else {
-                HttpClient(httpEngine) {
-                    configureClient()
-                }
-            }
-    }
 
     fun invalidateCredentials() {
         connector.invalidateCredentials()
@@ -483,6 +468,13 @@ internal class SyncStream(
         // Don't await the upload job, we can keep receiving sync lines
         triggerCrudUploadAsync()
         return state
+    }
+
+    internal companion object {
+        fun defaultHttpClient(config: HttpClientConfig<*>.() -> Unit) =
+            HttpClient {
+                config(this)
+            }
     }
 }
 
