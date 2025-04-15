@@ -20,6 +20,7 @@ plugins {
     id("com.powersync.plugins.sonatype")
     alias(libs.plugins.mokkery)
     alias(libs.plugins.kotlin.atomicfu)
+    id("org.jetbrains.dokka")
 }
 
 val binariesFolder = project.layout.buildDirectory.dir("binaries/desktop")
@@ -317,8 +318,8 @@ android {
 }
 
 androidComponents.onVariants {
-        tasks.named("preBuild") {
-            dependsOn(moveJDBCJNIFiles)
+    tasks.named("preBuild") {
+        dependsOn(moveJDBCJNIFiles)
     }
 }
 
