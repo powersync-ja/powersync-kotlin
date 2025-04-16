@@ -44,6 +44,7 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.serialization.encodeToString
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * A PowerSync managed database.
@@ -231,7 +232,7 @@ internal class PowerSyncDatabaseImpl(
                 internalDb
                     .updatesOnTables()
                     .filter { it.contains(InternalTable.CRUD.toString()) }
-                    .throttle(crudThrottleMs)
+                    .throttle(crudThrottleMs.milliseconds)
                     .collect {
                         stream.triggerCrudUploadAsync().join()
                     }

@@ -72,7 +72,7 @@ public class SyncingService(
                                 // while we are processing. We will always process on the trailing edge.
                                 // This buffer operation should automatically be applied to all merged sources.
                                 .buffer(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-                                .throttle(syncThrottle.inWholeMilliseconds)
+                                .throttle(syncThrottle)
                                 .collect {
                                     attachmentsService.withLock { context ->
                                         /**
