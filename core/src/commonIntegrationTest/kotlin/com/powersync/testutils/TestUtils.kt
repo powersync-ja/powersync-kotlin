@@ -7,23 +7,23 @@ import co.touchlab.kermit.Severity
 import co.touchlab.kermit.TestConfig
 import co.touchlab.kermit.TestLogWriter
 import com.powersync.DatabaseDriverFactory
-import com.powersync.PowerSyncDatabase
 import com.powersync.bucket.WriteCheckpointData
 import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.connectors.PowerSyncCredentials
+import com.powersync.createPowerSyncDatabaseImpl
 import com.powersync.db.PowerSyncDatabaseImpl
 import com.powersync.db.schema.Schema
 import com.powersync.sync.SyncLine
-import com.powersync.sync.SyncStream
 import dev.mokkery.answering.returns
 import dev.mokkery.everySuspend
 import dev.mokkery.mock
+import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.files.Path
-import kotlinx.serialization.json.JsonObject
 
 expect val factory: DatabaseDriverFactory
 
@@ -45,18 +45,22 @@ fun generatePrintLogWriter() =
         }
     }
 
-internal fun databaseTest(testBody: suspend ActiveDatabaseTest.() -> Unit) =
-    runTest {
-        val running = ActiveDatabaseTest(this)
+internal fun databaseTest(
+    createInitialDatabase: Boolean = true,
+    testBody: suspend ActiveDatabaseTest.() -> Unit,
+) = runTest {
+    val running = ActiveDatabaseTest(this)
+    if (createInitialDatabase) {
         // Make sure the database is initialized, we're using internal APIs that expect initialization.
         running.database = running.openDatabaseAndInitialize()
-
-        try {
-            running.testBody()
-        } finally {
-            running.cleanup()
-        }
     }
+
+    try {
+        running.testBody()
+    } finally {
+        running.cleanup()
+    }
+}
 
 @OptIn(ExperimentalKermitApi::class)
 internal class ActiveDatabaseTest(
@@ -106,32 +110,27 @@ internal class ActiveDatabaseTest(
     fun openDatabase(): PowerSyncDatabaseImpl {
         logger.d { "Opening database $databaseName in directory $testDirectory" }
         val db =
-            PowerSyncDatabase(
+            createPowerSyncDatabaseImpl(
                 factory = factory,
                 schema = Schema(UserRow.table),
                 dbFilename = databaseName,
                 dbDirectory = testDirectory,
                 logger = logger,
                 scope = scope,
+                createClient = ::createClient,
             )
         doOnCleanup { db.close() }
-        return db as PowerSyncDatabaseImpl
+        return db
     }
 
     suspend fun openDatabaseAndInitialize(): PowerSyncDatabaseImpl = openDatabase().also { it.readLock { } }
 
-    fun PowerSyncDatabase.syncStream(): SyncStream {
-        val client = MockSyncService(syncLines) { checkpointResponse() }
-        return SyncStream(
-            bucketStorage = database.bucketStorage,
-            connector = connector,
-            httpEngine = client,
-            uploadCrud = { connector.uploadData(this) },
-            retryDelayMs = 10,
-            logger = logger,
-            params = JsonObject(emptyMap()),
-            scope = scope,
-        )
+    private fun createClient(config: HttpClientConfig<*>.() -> Unit): HttpClient {
+        val engine = MockSyncService(syncLines) { checkpointResponse() }
+
+        return HttpClient(engine) {
+            config()
+        }
     }
 
     fun doOnCleanup(action: suspend () -> Unit) {

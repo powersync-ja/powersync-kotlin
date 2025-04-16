@@ -29,6 +29,7 @@ import dev.mokkery.verify
 import dev.mokkery.verify.VerifyMode.Companion.order
 import dev.mokkery.verifyNoMoreCalls
 import dev.mokkery.verifySuspend
+import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -103,7 +104,7 @@ class SyncStreamTest {
                 SyncStream(
                     bucketStorage = bucketStorage,
                     connector = connector,
-                    httpEngine = assertNoHttpEngine,
+                    createClient = { config -> HttpClient(assertNoHttpEngine, config) },
                     uploadCrud = {},
                     logger = logger,
                     params = JsonObject(emptyMap()),
@@ -139,7 +140,7 @@ class SyncStreamTest {
                 SyncStream(
                     bucketStorage = bucketStorage,
                     connector = connector,
-                    httpEngine = assertNoHttpEngine,
+                    createClient = { config -> HttpClient(assertNoHttpEngine, config) },
                     uploadCrud = { },
                     retryDelayMs = 10,
                     logger = logger,
@@ -179,7 +180,7 @@ class SyncStreamTest {
                 SyncStream(
                     bucketStorage = bucketStorage,
                     connector = connector,
-                    httpEngine = assertNoHttpEngine,
+                    createClient = { config -> HttpClient(assertNoHttpEngine, config) },
                     uploadCrud = { },
                     retryDelayMs = 10,
                     logger = logger,
@@ -220,7 +221,7 @@ class SyncStreamTest {
                 SyncStream(
                     bucketStorage = bucketStorage,
                     connector = connector,
-                    httpEngine = client,
+                    createClient = { config -> HttpClient(client, config) },
                     uploadCrud = { },
                     retryDelayMs = 10,
                     logger = logger,

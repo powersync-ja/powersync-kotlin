@@ -1,9 +1,8 @@
 import com.powersync.plugins.sonatype.setupGithubRepository
+import com.powersync.plugins.utils.powersyncTargets
 import de.undercouch.gradle.tasks.download.Download
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.internal.os.OperatingSystem
-import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest
 import org.jetbrains.kotlin.gradle.tasks.KotlinTest
@@ -126,26 +125,7 @@ val moveJDBCJNIFiles by tasks.registering(Copy::class) {
 }
 
 kotlin {
-    androidTarget {
-        publishLibraryVariants("release", "debug")
-
-        @OptIn(ExperimentalKotlinGradlePluginApi::class)
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_17)
-        }
-    }
-    jvm {
-        @OptIn(ExperimentalKotlinGradlePluginApi::class)
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_1_8)
-            // https://jakewharton.com/kotlins-jdk-release-compatibility-flag/
-            freeCompilerArgs.add("-Xjdk-release=8")
-        }
-    }
-
-    iosX64()
-    iosArm64()
-    iosSimulatorArm64()
+    powersyncTargets()
 
     targets.withType<KotlinNativeTarget> {
         compilations.named("main") {
@@ -215,8 +195,8 @@ kotlin {
             }
         }
 
-        iosMain.dependencies {
-            implementation(libs.ktor.client.ios)
+        appleMain.dependencies {
+            implementation(libs.ktor.client.darwin)
         }
 
         commonTest.dependencies {
@@ -233,8 +213,9 @@ kotlin {
         // tests.
         jvmTest.get().dependsOn(commonIntegrationTest)
 
-        // We're linking the xcframework for the simulator tests, so they can use integration tests too
-        iosSimulatorArm64Test.orNull?.dependsOn(commonIntegrationTest)
+        // We have special setup in this build configuration to make these tests link the PowerSync extension, so they
+        // can run integration tests along with the executable for unit testing.
+        appleTest.orNull?.dependsOn(commonIntegrationTest)
     }
 }
 
