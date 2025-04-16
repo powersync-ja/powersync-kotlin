@@ -182,7 +182,7 @@ public open class AttachmentContextImpl(
                 updatedRecord.localUri,
                 updatedRecord.mediaType,
                 updatedRecord.size,
-                updatedRecord.state,
+                updatedRecord.state.ordinal,
                 updatedRecord.hasSynced,
             ),
         )

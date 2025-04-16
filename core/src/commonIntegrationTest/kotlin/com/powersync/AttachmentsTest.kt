@@ -132,12 +132,12 @@ class AttachmentsTest {
                  * We should assert that the download happens eventually.
                  */
 
-                if (attachmentRecord.state == AttachmentState.QUEUED_DOWNLOAD.ordinal) {
+                if (attachmentRecord.state == AttachmentState.QUEUED_DOWNLOAD) {
                     // Wait for the download to be triggered
                     attachmentRecord = attachmentQuery.awaitItem().first()
                 }
 
-                attachmentRecord.state shouldBe AttachmentState.SYNCED.ordinal
+                attachmentRecord.state shouldBe AttachmentState.SYNCED
 
                 // A download should have been attempted for this file
                 verifySuspend { remote.downloadFile(attachmentMatcher(attachmentRecord)) }
@@ -164,7 +164,7 @@ class AttachmentsTest {
                  * The file should be deleted eventually
                  */
                 var nextRecord: Attachment? = attachmentQuery.awaitItem().first()
-                if (nextRecord?.state == AttachmentState.ARCHIVED.ordinal) {
+                if (nextRecord?.state == AttachmentState.ARCHIVED) {
                     nextRecord = attachmentQuery.awaitItem().getOrNull(0)
                 }
 
@@ -245,12 +245,12 @@ class AttachmentsTest {
                 var attachmentRecord = attachmentQuery.awaitItem().first()
                 attachmentRecord shouldNotBe null
 
-                if (attachmentRecord.state == AttachmentState.QUEUED_UPLOAD.ordinal) {
+                if (attachmentRecord.state == AttachmentState.QUEUED_UPLOAD) {
                     // Wait for it to be synced
                     attachmentRecord = attachmentQuery.awaitItem().first()
                 }
 
-                attachmentRecord.state shouldBe AttachmentState.SYNCED.ordinal
+                attachmentRecord.state shouldBe AttachmentState.SYNCED
 
                 // A download should have been attempted for this file
                 verifySuspend {
@@ -276,7 +276,7 @@ class AttachmentsTest {
                 )
 
                 var nextRecord: Attachment? = attachmentQuery.awaitItem().first()
-                if (nextRecord?.state == AttachmentState.ARCHIVED.ordinal) {
+                if (nextRecord?.state == AttachmentState.ARCHIVED) {
                     nextRecord = attachmentQuery.awaitItem().getOrNull(0)
                 }
 
@@ -351,7 +351,7 @@ class AttachmentsTest {
                 waitFor {
                     val record = attachmentQuery.awaitItem().first()
                     record shouldNotBe null
-                    record.state shouldBe AttachmentState.SYNCED.ordinal
+                    record.state shouldBe AttachmentState.SYNCED
                 }
 
                 queue.deleteFile(
@@ -452,12 +452,12 @@ class AttachmentsTest {
                  * We should assert that the download happens eventually.
                  */
 
-                if (attachmentRecord.state == AttachmentState.QUEUED_DOWNLOAD.ordinal) {
+                if (attachmentRecord.state == AttachmentState.QUEUED_DOWNLOAD) {
                     // Wait for the download to be triggered
                     attachmentRecord = attachmentQuery.awaitItem().first()
                 }
 
-                attachmentRecord.state shouldBe AttachmentState.SYNCED.ordinal
+                attachmentRecord.state shouldBe AttachmentState.SYNCED
 
                 // A download should have been attempted for this file
                 verifySuspend { remote.downloadFile(attachmentMatcher(attachmentRecord)) }
@@ -478,7 +478,7 @@ class AttachmentsTest {
                 )
 
                 attachmentRecord = attachmentQuery.awaitItem().first()
-                attachmentRecord.state shouldBe AttachmentState.ARCHIVED.ordinal
+                attachmentRecord.state shouldBe AttachmentState.ARCHIVED
 
                 // Now if we set the photo_id, the archived record should be restored
                 database.execute(
@@ -493,7 +493,7 @@ class AttachmentsTest {
                 )
 
                 attachmentRecord = attachmentQuery.awaitItem().first()
-                attachmentRecord.state shouldBe AttachmentState.SYNCED.ordinal
+                attachmentRecord.state shouldBe AttachmentState.SYNCED
 
                 attachmentQuery.cancel()
             }
@@ -570,12 +570,12 @@ class AttachmentsTest {
                 var attachmentRecord = attachmentQuery.awaitItem().first()
                 attachmentRecord shouldNotBe null
 
-                attachmentRecord.state shouldBe AttachmentState.QUEUED_DOWNLOAD.ordinal
+                attachmentRecord.state shouldBe AttachmentState.QUEUED_DOWNLOAD
 
                 // The download should fail. We don't specify a retry. The record should be archived.
                 attachmentRecord = attachmentQuery.awaitItem().first()
 
-                attachmentRecord.state shouldBe AttachmentState.ARCHIVED.ordinal
+                attachmentRecord.state shouldBe AttachmentState.ARCHIVED
 
                 attachmentQuery.cancel()
             }
