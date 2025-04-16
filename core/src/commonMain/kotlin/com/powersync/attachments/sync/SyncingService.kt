@@ -258,7 +258,7 @@ public class SyncingService(
     private suspend fun deleteAttachment(attachment: Attachment): Attachment {
         try {
             remoteStorage.deleteFile(attachment)
-            if (attachment.localUri != null) {
+            if (attachment.localUri != null && localStorage.fileExists(attachment.localUri)) {
                 localStorage.deleteFile(attachment.localUri)
             }
             return attachment.copy(state = AttachmentState.ARCHIVED.ordinal)
