@@ -157,20 +157,23 @@ public class SyncingService(
         try {
             for (attachment in attachments) {
                 when (attachment.state) {
-                    AttachmentState.QUEUED_DOWNLOAD.ordinal -> {
+                    AttachmentState.QUEUED_DOWNLOAD -> {
                         logger.i("Downloading ${attachment.filename}")
                         updatedAttachments.add(downloadAttachment(attachment))
                     }
 
-                    AttachmentState.QUEUED_UPLOAD.ordinal -> {
+                    AttachmentState.QUEUED_UPLOAD -> {
                         logger.i("Uploading ${attachment.filename}")
                         updatedAttachments.add(uploadAttachment(attachment))
                     }
 
-                    AttachmentState.QUEUED_DELETE.ordinal -> {
+                    AttachmentState.QUEUED_DELETE -> {
                         logger.i("Deleting ${attachment.filename}")
                         updatedAttachments.add(deleteAttachment(attachment))
                     }
+
+                    AttachmentState.SYNCED -> {}
+                    AttachmentState.ARCHIVED -> {}
                 }
             }
 
@@ -199,14 +202,14 @@ public class SyncingService(
                 attachment,
             )
             logger.i("Uploaded attachment \"${attachment.id}\" to Cloud Storage")
-            return attachment.copy(state = AttachmentState.SYNCED.ordinal, hasSynced = 1)
+            return attachment.copy(state = AttachmentState.SYNCED, hasSynced = 1)
         } catch (e: Exception) {
             logger.e("Upload attachment error for attachment $attachment: ${e.message}")
             if (errorHandler != null) {
                 val shouldRetry = errorHandler.onUploadError(attachment, e)
                 if (!shouldRetry) {
                     logger.i("Attachment with ID ${attachment.id} has been archived")
-                    return attachment.copy(state = AttachmentState.ARCHIVED.ordinal)
+                    return attachment.copy(state = AttachmentState.ARCHIVED)
                 }
             }
 
@@ -234,7 +237,7 @@ public class SyncingService(
             // The attachment has been downloaded locally
             return attachment.copy(
                 localUri = attachmentPath,
-                state = AttachmentState.SYNCED.ordinal,
+                state = AttachmentState.SYNCED,
                 hasSynced = 1,
             )
         } catch (e: Exception) {
@@ -242,7 +245,7 @@ public class SyncingService(
                 val shouldRetry = errorHandler.onDownloadError(attachment, e)
                 if (!shouldRetry) {
                     logger.i("Attachment with ID ${attachment.id} has been archived")
-                    return attachment.copy(state = AttachmentState.ARCHIVED.ordinal)
+                    return attachment.copy(state = AttachmentState.ARCHIVED)
                 }
             }
 
@@ -261,13 +264,13 @@ public class SyncingService(
             if (attachment.localUri != null && localStorage.fileExists(attachment.localUri)) {
                 localStorage.deleteFile(attachment.localUri)
             }
-            return attachment.copy(state = AttachmentState.ARCHIVED.ordinal)
+            return attachment.copy(state = AttachmentState.ARCHIVED)
         } catch (e: Exception) {
             if (errorHandler != null) {
                 val shouldRetry = errorHandler.onDeleteError(attachment, e)
                 if (!shouldRetry) {
                     logger.i("Attachment with ID ${attachment.id} has been archived")
-                    return attachment.copy(state = AttachmentState.ARCHIVED.ordinal)
+                    return attachment.copy(state = AttachmentState.ARCHIVED)
                 }
             }
             // We'll retry this

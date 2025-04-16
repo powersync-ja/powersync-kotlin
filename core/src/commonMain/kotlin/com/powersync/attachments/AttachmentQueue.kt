@@ -323,18 +323,18 @@ public open class AttachmentQueue(
                             Attachment(
                                 id = item.id,
                                 filename = filename,
-                                state = AttachmentState.QUEUED_DOWNLOAD.ordinal,
+                                state = AttachmentState.QUEUED_DOWNLOAD,
                                 metaData = item.metaData,
                             ),
                         )
                     } else if
-                        (existingQueueItem.state == AttachmentState.ARCHIVED.ordinal) {
+                        (existingQueueItem.state == AttachmentState.ARCHIVED) {
                         // The attachment is present again. Need to queue it for sync.
                         // We might be able to optimize this in future
                         if (existingQueueItem.hasSynced == 1) {
                             // No remote action required, we can restore the record (avoids deletion)
                             attachmentUpdates.add(
-                                existingQueueItem.copy(state = AttachmentState.SYNCED.ordinal),
+                                existingQueueItem.copy(state = AttachmentState.SYNCED),
                             )
                         } else {
                             /**
@@ -346,9 +346,9 @@ public open class AttachmentQueue(
                                 existingQueueItem.copy(
                                     state =
                                         if (existingQueueItem.localUri == null) {
-                                            AttachmentState.QUEUED_DOWNLOAD.ordinal
+                                            AttachmentState.QUEUED_DOWNLOAD
                                         } else {
-                                            AttachmentState.QUEUED_UPLOAD.ordinal
+                                            AttachmentState.QUEUED_UPLOAD
                                         },
                                 ),
                             )
@@ -361,10 +361,10 @@ public open class AttachmentQueue(
                  */
                 currentAttachments
                     .filter {
-                        it.state != AttachmentState.QUEUED_DELETE.ordinal &&
+                        it.state != AttachmentState.QUEUED_DELETE &&
                             null == items.find { update -> update.id == it.id }
                     }.forEach {
-                        attachmentUpdates.add(it.copy(state = AttachmentState.ARCHIVED.ordinal))
+                        attachmentUpdates.add(it.copy(state = AttachmentState.ARCHIVED))
                     }
 
                 attachmentsContext.saveAttachments(attachmentUpdates)
@@ -412,7 +412,7 @@ public open class AttachmentQueue(
                             filename = filename,
                             size = fileSize,
                             mediaType = mediaType,
-                            state = AttachmentState.QUEUED_UPLOAD.ordinal,
+                            state = AttachmentState.QUEUED_UPLOAD,
                             localUri = localUri,
                             metaData = metaData,
                         )
@@ -451,7 +451,7 @@ public open class AttachmentQueue(
                 db.writeTransaction { tx ->
                     updateHook.invoke(tx, attachment)
                     return@writeTransaction attachmentContext.upsertAttachment(
-                        attachment.copy(state = AttachmentState.QUEUED_DELETE.ordinal),
+                        attachment.copy(state = AttachmentState.QUEUED_DELETE),
                         tx,
                     )
                 }
