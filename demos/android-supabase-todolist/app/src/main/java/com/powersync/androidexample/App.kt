@@ -12,7 +12,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import com.powersync.PowerSyncDatabase
-import com.powersync.androidexample.BuildConfig
 import com.powersync.androidexample.ui.CameraService
 import com.powersync.attachments.AttachmentQueue
 import com.powersync.attachments.WatchedAttachmentItem
@@ -30,6 +29,7 @@ import com.powersync.demos.screens.SignInScreen
 import com.powersync.demos.screens.SignUpScreen
 import com.powersync.demos.screens.TodosScreen
 import kotlinx.coroutines.runBlocking
+import com.powersync.androidexample.BuildConfig
 
 @Composable
 fun App(
