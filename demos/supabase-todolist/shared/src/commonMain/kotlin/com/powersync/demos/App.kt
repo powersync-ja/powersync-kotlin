@@ -11,20 +11,27 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import co.touchlab.kermit.Logger
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
 import com.powersync.bucket.BucketPriority
 import com.powersync.connector.supabase.SupabaseConnector
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.demos.components.EditDialog
+import com.powersync.demos.fts.configureFts
 import com.powersync.demos.powersync.ListContent
 import com.powersync.demos.powersync.ListItem
+import com.powersync.demos.powersync.SearchResult
+import com.powersync.demos.powersync.SearchResult.ListResult
+import com.powersync.demos.powersync.SearchResult.TodoResult
 import com.powersync.demos.powersync.Todo
 import com.powersync.demos.powersync.schema
 import com.powersync.demos.screens.HomeScreen
 import com.powersync.demos.screens.SignInScreen
 import com.powersync.demos.screens.SignUpScreen
 import com.powersync.demos.screens.TodosScreen
+import com.powersync.demos.screens.SearchScreen
+import com.powersync.demos.powersync.SearchViewModel
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.runBlocking
 import org.koin.compose.KoinApplication
@@ -50,6 +57,7 @@ val sharedAppModule = module {
 
     single { NavController(Screen.Home) }
     viewModelOf(::AuthViewModel)
+    viewModelOf(::SearchViewModel)
 }
 
 @Composable
@@ -71,6 +79,12 @@ fun AppContent(
     db: PowerSyncDatabase = koinInject(),
     modifier: Modifier = Modifier,
 ) {
+    LaunchedEffect(Unit) {
+        // Ensure db and appSchema are valid before calling
+        Logger.i { "AppContent LaunchedEffect: Triggering FTS configuration." }
+        configureFts(db, schema)
+    }
+
     // Debouncing the status flow prevents flicker
     val status by db.currentStatus
         .asFlow()
@@ -86,6 +100,7 @@ fun AppContent(
     }
 
     val authViewModel = koinViewModel<AuthViewModel>()
+    val searchViewModel = koinViewModel<SearchViewModel>()
     val navController = koinInject<NavController>()
     val authState by authViewModel.authState.collectAsState()
     val currentScreen by navController.currentScreen.collectAsState()
@@ -107,6 +122,8 @@ fun AppContent(
     val todoItems by todos.value.watchItems(selectedListId).collectAsState(initial = emptyList())
     val editingItem by todos.value.editingItem.collectAsState()
     val todosInputText by todos.value.inputText.collectAsState()
+
+    val selectedSearchResult = searchViewModel.selectedSearchResult.collectAsState()
 
     fun handleSignOut() {
         runBlocking {
@@ -139,8 +156,15 @@ fun AppContent(
         }
 
         is Screen.Todos -> {
+
+            val listId = when (selectedSearchResult) {
+                is ListResult -> selectedSearchResult.item.id
+                is TodoResult -> selectedSearchResult.item.listId
+                else -> selectedListId
+            }
+
             val handleOnAddItemClicked = {
-                todos.value.onAddItemClicked(userId, selectedListId)
+                todos.value.onAddItemClicked(userId, listId)
             }
 
             TodosScreen(
@@ -164,6 +188,14 @@ fun AppContent(
                     onDoneChanged = todos.value::onEditorDoneChanged,
                 )
             }
+        }
+
+        is Screen.Search -> {
+
+            SearchScreen(
+                navController,
+                searchViewModel ,
+            )
         }
 
         is Screen.SignIn -> {
