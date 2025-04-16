@@ -12,7 +12,6 @@ idea = "243.22562.218" # Meerkat | 2024.3.1 (see https://plugins.jetbrains.com/d
 kermit = "2.0.5"
 kotlin = "2.1.10"
 coroutines = "1.8.1"
-kotlinGradlePlugin = "1.9.22"
 kotlinx-datetime = "0.6.2"
 kotlinx-io = "0.5.4"
 ktor = "3.0.1"
@@ -60,7 +59,7 @@ configuration-annotations = { module = "co.touchlab.skie:configuration-annotatio
 gradle-download-task = { module = "de.undercouch:gradle-download-task", version.ref = "gradleDownloadTask" }
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 kermit-test = { module = "co.touchlab:kermit-test", version.ref = "kermit" }
-kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlinGradlePlugin" }
+kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 powersync-sqlite-core-android = { module = "co.powersync:powersync-sqlite-core", version.ref = "powersync-core" }
 mavenPublishPlugin = { module = "com.vanniktech:gradle-maven-publish-plugin", version.ref = "maven-publish" }
 
