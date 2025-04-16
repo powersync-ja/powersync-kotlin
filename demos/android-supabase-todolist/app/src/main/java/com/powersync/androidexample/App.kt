@@ -47,7 +47,7 @@ fun App(
             )
         }
 
-    val db = remember { PowerSyncDatabase(driverFactory, schema, dbFilename = "333.sqlite") }
+    val db = remember { PowerSyncDatabase(driverFactory, schema) }
     val attachments =
         remember {
             if (BuildConfig.SUPABASE_ATTACHMENT_BUCKET != "null") {
