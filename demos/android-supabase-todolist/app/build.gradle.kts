@@ -46,8 +46,8 @@ android {
         )
         buildConfigField(
             "String",
-            "SUPABASE_ATTACHMENT_BUCKET",
-            "\"${getLocalProperty("SUPABASE_ATTACHMENT_BUCKET", "null")}\"",
+            "SUPABASE_STORAGE_BUCKET",
+            "\"${getLocalProperty("SUPABASE_STORAGE_BUCKET", "null")}\"",
         )
         buildConfigField("String", "POWERSYNC_URL", "\"${getLocalProperty("POWERSYNC_URL", "")}\"")
     }

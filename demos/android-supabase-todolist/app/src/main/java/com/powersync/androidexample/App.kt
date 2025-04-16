@@ -43,14 +43,14 @@ fun App(
                 powerSyncEndpoint = BuildConfig.POWERSYNC_URL,
                 supabaseUrl = BuildConfig.SUPABASE_URL,
                 supabaseKey = BuildConfig.SUPABASE_ANON_KEY,
-                storageBucket = BuildConfig.SUPABASE_ATTACHMENT_BUCKET,
+                storageBucket = BuildConfig.SUPABASE_STORAGE_BUCKET,
             )
         }
 
     val db = remember { PowerSyncDatabase(driverFactory, schema) }
     val attachments =
         remember {
-            if (BuildConfig.SUPABASE_ATTACHMENT_BUCKET != "null") {
+            if (BuildConfig.SUPABASE_STORAGE_BUCKET != "null") {
                 AttachmentQueue(
                     db = db,
                     remoteStorage = SupabaseRemoteStorage(supabase),
