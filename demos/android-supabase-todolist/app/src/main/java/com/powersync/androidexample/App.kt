@@ -13,12 +13,12 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import com.powersync.PowerSyncDatabase
 import com.powersync.androidexample.BuildConfig
-import com.powersync.androidexample.SupabaseRemoteStorage
 import com.powersync.androidexample.ui.CameraService
 import com.powersync.attachments.AttachmentQueue
 import com.powersync.attachments.WatchedAttachmentItem
 import com.powersync.compose.rememberDatabaseDriverFactory
 import com.powersync.connector.supabase.SupabaseConnector
+import com.powersync.connector.supabase.SupabaseRemoteStorage
 import com.powersync.db.getString
 import com.powersync.demos.components.EditDialog
 import com.powersync.demos.powersync.ListContent
