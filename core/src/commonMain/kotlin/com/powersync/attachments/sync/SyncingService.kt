@@ -101,8 +101,10 @@ public class SyncingService(
                     val periodicJob =
                         launch {
                             logger.i("Periodically syncing attachments")
-                            syncTriggerFlow.emit(Unit)
-                            delay(period)
+                            while(true) {
+                                syncTriggerFlow.emit(Unit)
+                                delay(period)
+                            }
                         }
 
                     watchJob.join()
