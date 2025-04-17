@@ -393,7 +393,6 @@ public open class AttachmentQueue
                                 it.state != AttachmentState.QUEUED_UPLOAD &&
                                 null == items.find { update -> update.id == it.id }
                         }.forEach {
-                            println("Archiving attachment ${it.id}")
                             attachmentUpdates.add(it.copy(state = AttachmentState.ARCHIVED))
                         }
 

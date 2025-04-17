@@ -5,10 +5,10 @@ import com.powersync.PowerSyncDatabase
 import com.powersync.attachments.AttachmentContext
 import com.powersync.attachments.AttachmentService
 import com.powersync.attachments.AttachmentState
-import com.powersync.attachments.FIFOLock
 import com.powersync.db.getString
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
@@ -26,7 +26,7 @@ public open class AttachmentServiceImpl(
     private val table: String
         get() = tableName
 
-    private val mutex = FIFOLock()
+    private val mutex = Mutex()
 
     private val context: AttachmentContext =
         AttachmentContextImpl(

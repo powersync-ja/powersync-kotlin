@@ -243,18 +243,14 @@ class AttachmentsTest {
                         )
                     }
 
-                println("Record: $record")
-
                 var attachmentRecord = attachmentQuery.awaitItem().first()
                 attachmentRecord shouldNotBe null
 
                 if (attachmentRecord.state == AttachmentState.QUEUED_UPLOAD) {
                     // Wait for it to be synced
-                    println(attachmentRecord)
                     attachmentRecord = attachmentQuery.awaitItem().first()
                 }
 
-                println(attachmentRecord)
                 attachmentRecord.state shouldBe AttachmentState.SYNCED
 
                 // A download should have been attempted for this file
