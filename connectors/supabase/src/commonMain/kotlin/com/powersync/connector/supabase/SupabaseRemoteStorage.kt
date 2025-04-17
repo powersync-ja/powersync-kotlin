@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.flowOf
 public class SupabaseRemoteStorage(
     public val connector: SupabaseConnector,
 ) : RemoteStorage {
-
     /**
      * Uploads a file to the Supabase storage bucket.
      *
@@ -25,7 +24,8 @@ public class SupabaseRemoteStorage(
         fileData: Flow<ByteArray>,
         attachment: Attachment,
     ) {
-        val byteSize = attachment.size?.toInt() ?: error("Cannot upload a file with no byte size specified")
+        val byteSize =
+            attachment.size?.toInt() ?: error("Cannot upload a file with no byte size specified")
         // Supabase wants a single ByteArray
         val buffer = ByteArray(byteSize)
         var position = 0

@@ -33,7 +33,9 @@ public enum class AttachmentState {
     /**
      * The attachment is archived and no longer actively synchronized.
      */
-    ARCHIVED;
+    ARCHIVED,
+
+    ;
 
     public companion object {
         /**
@@ -43,10 +45,9 @@ public enum class AttachmentState {
          * @return The corresponding [AttachmentState].
          * @throws IllegalArgumentException If the value does not match any [AttachmentState].
          */
-        public fun fromLong(value: Long): AttachmentState {
-            return entries.getOrNull(value.toInt())
+        public fun fromLong(value: Long): AttachmentState =
+            entries.getOrNull(value.toInt())
                 ?: throw IllegalArgumentException("Invalid value for AttachmentState: $value")
-        }
     }
 }
 
