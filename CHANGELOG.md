@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0-BETA31
+
+* Added helpers for Attachment syncing.
+
 ## 1.0.0-BETA30
 
 * Fix a deadlock when calling `connect()` immediately after opening a database.
