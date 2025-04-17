@@ -224,32 +224,37 @@ class AttachmentsTest {
                  * Creates an attachment given a flow of bytes (the file data) then assigns this to
                  * a newly created user.
                  */
-                queue.saveFile(
-                    data = flowOf(ByteArray(1)),
-                    mediaType = "image/jpg",
-                    fileExtension = "jpg",
-                ) { tx, attachment ->
-                    // Set the photo_id of a new user to the attachment id
-                    tx.execute(
-                        // language=SQL
-                        """
-                                INSERT INTO
-                                    users (id, name, email, photo_id)
-                                VALUES
-                                    (uuid(), "steven", "steven@steven.com", ?)
+                val record =
+                    queue.saveFile(
+                        data = flowOf(ByteArray(1)),
+                        mediaType = "image/jpg",
+                        fileExtension = "jpg",
+                    ) { tx, attachment ->
+                        // Set the photo_id of a new user to the attachment id
+                        tx.execute(
+                            // language=SQL
+                            """
+                            INSERT INTO
+                                users (id, name, email, photo_id)
+                            VALUES
+                                (uuid(), "steven", "steven@steven.com", ?)
                             """,
-                        listOf(attachment.id),
-                    )
-                }
+                            listOf(attachment.id),
+                        )
+                    }
+
+                println("Record: $record")
 
                 var attachmentRecord = attachmentQuery.awaitItem().first()
                 attachmentRecord shouldNotBe null
 
                 if (attachmentRecord.state == AttachmentState.QUEUED_UPLOAD) {
                     // Wait for it to be synced
+                    println(attachmentRecord)
                     attachmentRecord = attachmentQuery.awaitItem().first()
                 }
 
+                println(attachmentRecord)
                 attachmentRecord.state shouldBe AttachmentState.SYNCED
 
                 // A download should have been attempted for this file
