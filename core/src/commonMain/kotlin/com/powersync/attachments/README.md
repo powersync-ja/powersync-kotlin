@@ -4,9 +4,7 @@ A [PowerSync](https://powersync.com) library to manage attachments (such as imag
 
 This package is included in the PowerSync Core module.
 
-A concrete example implementation of these attachment helpers is available in the [Android Supabase Demo](/demos/android-supabase-todolist/README.md) app.
-
-## Alpha Release
+### Alpha Release
 
 Attachment helpers are currently in an alpha state, intended strictly for testing. Expect breaking changes and instability as development continues.
 
@@ -14,7 +12,7 @@ Do not rely on this package for production use.
 
 ## Usage
 
-An `AttachmentQueue` is used to manage and sync attachments in your app. The attachments' state are
+An `AttachmentQueue` is used to manage and sync attachments in your app. The attachments' state is
 stored in a local-only attachments table.
 
 ### Key Assumptions
@@ -22,12 +20,13 @@ stored in a local-only attachments table.
 - Each attachment is identified by a unique ID
 - Attachments are immutable once created
 - Relational data should reference attachments using a foreign key column
-- Relational data should reflect the holistic state of attachments at any given time. An existing
-  local attachment will deleted locally if no relational data references it.
+- Relational data should reflect the holistic state of attachments at any given time. An existing local attachment will deleted locally if no relational data references it.
 
 ### Example Implementation
 
-In this example, the user captures photos when checklist items are completed as part of an
+See the [Android Supabase Demo](/demos/android-supabase-todolist/README.md) for a basic example of attachment syncing.
+
+In the example below, the user captures photos when checklist items are completed as part of an
 inspection workflow.
 
 1. First, define your schema including the `checklist` table and the local-only attachments table:
