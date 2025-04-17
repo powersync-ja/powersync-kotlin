@@ -6,6 +6,7 @@ import com.powersync.PowerSyncException
 import com.powersync.attachments.implementation.AttachmentServiceImpl
 import com.powersync.attachments.storage.IOLocalStorageAdapter
 import com.powersync.attachments.sync.SyncingService
+import com.powersync.db.getString
 import com.powersync.db.internal.ConnectionContext
 import com.powersync.db.runWrappedSuspending
 import kotlinx.coroutines.CoroutineScope
@@ -262,6 +263,7 @@ public open class AttachmentQueue
                 }
 
                 syncStatusJob?.cancelAndJoin()
+                syncStatusJob = null
                 syncingService.stopSync()
             }
 
@@ -390,6 +392,7 @@ public open class AttachmentQueue
                             it.state != AttachmentState.QUEUED_DELETE &&
                                 null == items.find { update -> update.id == it.id }
                         }.forEach {
+                            println("Archiving attachment ${it.id}")
                             attachmentUpdates.add(it.copy(state = AttachmentState.ARCHIVED))
                         }
 
@@ -418,7 +421,7 @@ public open class AttachmentQueue
             updateHook: (context: ConnectionContext, attachment: Attachment) -> Unit,
         ): Attachment =
             runWrappedSuspending {
-                val id = db.get("SELECT uuid()") { it.getString(0)!! }
+                val id = db.get("SELECT uuid() as id") { it.getString("id") }
                 val filename =
                     resolveNewAttachmentFilename(attachmentId = id, fileExtension = fileExtension)
                 val localUri = getLocalUri(filename)

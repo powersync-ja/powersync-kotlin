@@ -96,8 +96,8 @@ class AttachmentsTest {
                     )
 
                 doOnCleanup {
-                    queue.stopSyncing()
                     attachmentQuery.cancel()
+                    queue.stopSyncing()
                     queue.clearQueue()
                     queue.close()
                 }
@@ -207,10 +207,10 @@ class AttachmentsTest {
                     )
 
                 doOnCleanup {
+                    attachmentQuery.cancel()
                     queue.stopSyncing()
                     queue.clearQueue()
                     queue.close()
-                    attachmentQuery.cancel()
                 }
 
                 queue.startSync()
