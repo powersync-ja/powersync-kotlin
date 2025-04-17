@@ -136,6 +136,10 @@ public open class AttachmentQueue
          * Logging interface used for all log operations
          */
         public val logger: Logger = Logger,
+        /**
+         * Optional scope to launch syncing jobs in.
+         */
+        private val coroutineScope: CoroutineScope? = null,
     ) {
         public companion object {
             public const val DEFAULT_TABLE_NAME: String = "attachments"
@@ -156,8 +160,8 @@ public open class AttachmentQueue
                 maxArchivedCount = archivedCacheLimit,
             )
 
-        private val supervisorJob = SupervisorJob()
-        private val syncScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        private val syncScope = coroutineScope ?: CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
         private var syncStatusJob: Job? = null
         private val mutex = Mutex()
 
@@ -193,6 +197,9 @@ public open class AttachmentQueue
                     if (closed) {
                         throw Exception("Attachment queue has been closed")
                     }
+
+                    stopSyncingInternal()
+
                     // Ensure the directory where attachments are downloaded, exists
                     localStorage.makeDir(attachmentsDirectory)
 
@@ -230,15 +237,18 @@ public open class AttachmentQueue
          */
         @Throws(PowerSyncException::class, CancellationException::class)
         public suspend fun stopSyncing(): Unit =
-            runWrappedSuspending {
-                mutex.withLock {
-                    if (closed) {
-                        return@runWrappedSuspending
-                    }
+            mutex.withLock {
+                stopSyncingInternal()
+            }
 
-                    syncStatusJob?.cancelAndJoin()
-                    syncingService.stopSync()
+        private suspend fun stopSyncingInternal(): Unit =
+            runWrappedSuspending {
+                if (closed) {
+                    return@runWrappedSuspending
                 }
+
+                syncStatusJob?.cancelAndJoin()
+                syncingService.stopSync()
             }
 
         /**
@@ -256,7 +266,10 @@ public open class AttachmentQueue
 
                     syncStatusJob?.cancelAndJoin()
                     syncingService.close()
-                    supervisorJob.cancelAndJoin()
+                    if (coroutineScope == null) {
+                        // Only cancel the internal scope if we created it
+                        syncScope.coroutineContext[Job]?.cancelAndJoin()
+                    }
                     closed = true
                 }
             }
