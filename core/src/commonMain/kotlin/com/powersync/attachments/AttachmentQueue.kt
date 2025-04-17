@@ -390,6 +390,7 @@ public open class AttachmentQueue
                     currentAttachments
                         .filter {
                             it.state != AttachmentState.QUEUED_DELETE &&
+                                it.state != AttachmentState.QUEUED_UPLOAD &&
                                 null == items.find { update -> update.id == it.id }
                         }.forEach {
                             println("Archiving attachment ${it.id}")
