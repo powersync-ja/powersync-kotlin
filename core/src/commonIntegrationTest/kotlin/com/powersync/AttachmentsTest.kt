@@ -198,7 +198,7 @@ class AttachmentsTest {
                         db = database,
                         remoteStorage = remote,
                         attachmentsDirectory = getAttachmentsDir(),
-                        watchAttachments =  { watchAttachments(database) },
+                        watchAttachments = { watchAttachments(database) },
                         /**
                          * Sets the cache limit to zero for this test. Archived records will
                          * immediately be deleted.
@@ -407,7 +407,7 @@ class AttachmentsTest {
                         db = database,
                         remoteStorage = remote,
                         attachmentsDirectory = getAttachmentsDir(),
-                        watchAttachments =  { watchAttachments(database) },
+                        watchAttachments = { watchAttachments(database) },
                         /**
                          * Keep some items in the cache
                          */
