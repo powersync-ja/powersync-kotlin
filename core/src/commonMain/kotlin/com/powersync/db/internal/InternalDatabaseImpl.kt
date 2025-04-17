@@ -23,6 +23,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(FlowPreview::class)
 internal class InternalDatabaseImpl(
@@ -55,7 +56,7 @@ internal class InternalDatabaseImpl(
     private val dbContext = Dispatchers.IO
 
     companion object {
-        const val DEFAULT_WATCH_THROTTLE_MS = 30L
+        val DEFAULT_WATCH_THROTTLE = 30.milliseconds
     }
 
     override suspend fun execute(
@@ -133,7 +134,7 @@ internal class InternalDatabaseImpl(
                 // still trigger a trailing edge update.
                 // Backpressure is avoided on the throttling and consumer level by buffering the last upstream value.
                 // Note that the buffered upstream "value" only serves to trigger the getAll query. We don't buffer watch results.
-                .throttle(throttleMs ?: DEFAULT_WATCH_THROTTLE_MS)
+                .throttle(throttleMs?.milliseconds ?: DEFAULT_WATCH_THROTTLE)
                 .collect {
                     send(getAll(sql, parameters = parameters, mapper = mapper))
                 }
@@ -281,6 +282,7 @@ internal fun getBindersFromParams(parameters: List<Any?>?): (SqlPreparedStatemen
                 is Boolean -> bindBoolean(index, parameter)
                 is String -> bindString(index, parameter)
                 is Long -> bindLong(index, parameter)
+                is Int -> bindLong(index, parameter.toLong())
                 is Double -> bindDouble(index, parameter)
                 is ByteArray -> bindBytes(index, parameter)
                 else -> {

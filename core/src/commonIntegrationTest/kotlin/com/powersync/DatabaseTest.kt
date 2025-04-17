@@ -7,6 +7,7 @@ import com.powersync.db.schema.Schema
 import com.powersync.testutils.UserRow
 import com.powersync.testutils.databaseTest
 import com.powersync.testutils.getTempDir
+import com.powersync.testutils.isIOS
 import com.powersync.testutils.waitFor
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveSize
@@ -231,9 +232,16 @@ class DatabaseTest {
     fun openDBWithDirectory() =
         databaseTest {
             val tempDir =
-                getTempDir()
-                    ?: // SQLiteR, which is used on iOS, does not support opening dbs from directories
-                    return@databaseTest
+                if (isIOS()) {
+                    null
+                } else {
+                    getTempDir()
+                }
+
+            if (tempDir == null) {
+                // SQLiteR, which is used on iOS, does not support opening dbs from directories
+                return@databaseTest
+            }
 
             // On platforms that support it, openDatabase() from our test utils should use a temporary
             // location.

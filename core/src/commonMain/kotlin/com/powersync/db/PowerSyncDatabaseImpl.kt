@@ -46,6 +46,7 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.serialization.encodeToString
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * A PowerSync managed database.
@@ -237,7 +238,7 @@ internal class PowerSyncDatabaseImpl(
                 internalDb
                     .updatesOnTables()
                     .filter { it.contains(InternalTable.CRUD.toString()) }
-                    .throttle(crudThrottleMs)
+                    .throttle(crudThrottleMs.milliseconds)
                     .collect {
                         stream.triggerCrudUploadAsync().join()
                     }
@@ -509,15 +510,17 @@ internal class PowerSyncDatabaseImpl(
     }
 
     override suspend fun close() =
-        mutex.withLock {
-            if (closed) {
-                return@withLock
+        runWrappedSuspending {
+            mutex.withLock {
+                if (closed) {
+                    return@withLock
+                }
+                initializeJob.cancelAndJoin()
+                disconnectInternal()
+                internalDb.close()
+                resource.dispose()
+                closed = true
             }
-            initializeJob.cancelAndJoin()
-            disconnectInternal()
-            internalDb.close()
-            resource.dispose()
-            closed = true
         }
 
     /**

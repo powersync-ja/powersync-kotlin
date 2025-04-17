@@ -29,7 +29,9 @@ expect val factory: DatabaseDriverFactory
 
 expect fun cleanup(path: String)
 
-expect fun getTempDir(): String?
+expect fun getTempDir(): String
+
+expect fun isIOS(): Boolean
 
 fun generatePrintLogWriter() =
     object : LogWriter() {
@@ -136,6 +138,8 @@ internal class ActiveDatabaseTest(
     }
 
     suspend fun cleanup() {
+        // Execute in reverse order
+        cleanupItems.reverse()
         for (item in cleanupItems) {
             item()
         }
