@@ -5,6 +5,7 @@ import com.powersync.PowerSyncDatabase
 import com.powersync.attachments.Attachment
 import com.powersync.attachments.AttachmentContext
 import com.powersync.attachments.AttachmentState
+import com.powersync.db.getString
 import com.powersync.db.internal.ConnectionContext
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
@@ -70,7 +71,7 @@ public open class AttachmentContextImpl(
     public override suspend fun getAttachmentIds(): List<String> =
         db.getAll(
             "SELECT id FROM $table WHERE id IS NOT NULL",
-        ) { it.getString(0)!! }
+        ) { it.getString("name") }
 
     public override suspend fun getAttachments(): List<Attachment> =
         db.getAll(
@@ -92,16 +93,16 @@ public open class AttachmentContextImpl(
     public override suspend fun getActiveAttachments(): List<Attachment> =
         db.getAll(
             """
-                    SELECT 
-                        *
-                    FROM
-                        $table 
-                    WHERE 
-                        state = ?
-                        OR state = ?
-                        OR state = ?
-                    ORDER BY 
-                        timestamp ASC
+                SELECT 
+                    *
+                FROM
+                    $table 
+                WHERE 
+                    state = ?
+                    OR state = ?
+                    OR state = ?
+                ORDER BY 
+                    timestamp ASC
                 """,
             listOf(
                 AttachmentState.QUEUED_UPLOAD.ordinal,
@@ -130,15 +131,15 @@ public open class AttachmentContextImpl(
         val attachments =
             db.getAll(
                 """
-                        SELECT
-                            * 
-                        FROM 
-                            $table
-                        WHERE 
-                            state = ?
-                        ORDER BY
-                            timestamp DESC
-                        LIMIT ? OFFSET ?
+                    SELECT
+                        * 
+                    FROM 
+                        $table
+                    WHERE 
+                        state = ?
+                    ORDER BY
+                        timestamp DESC
+                    LIMIT ? OFFSET ?
                     """,
                 listOf(
                     AttachmentState.ARCHIVED.ordinal,
@@ -171,9 +172,9 @@ public open class AttachmentContextImpl(
         context.execute(
             """
                 INSERT OR REPLACE INTO 
-                    $table (id, timestamp, filename, local_uri, media_type, size, state, has_synced) 
+                    $table (id, timestamp, filename, local_uri, media_type, size, state, has_synced, meta_data) 
                 VALUES
-                    (?, ?, ?, ?, ?, ?, ?, ?)
+                    (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             listOf(
                 updatedRecord.id,
@@ -184,6 +185,7 @@ public open class AttachmentContextImpl(
                 updatedRecord.size,
                 updatedRecord.state.ordinal,
                 updatedRecord.hasSynced,
+                updatedRecord.metaData,
             ),
         )
 

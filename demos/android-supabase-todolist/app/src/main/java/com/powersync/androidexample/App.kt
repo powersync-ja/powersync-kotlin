@@ -55,7 +55,7 @@ fun App(
                     db = db,
                     remoteStorage = SupabaseRemoteStorage(supabase),
                     attachmentsDirectory = attachmentDirectory,
-                    watchedAttachments =
+                    watchAttachments = {
                         db.watch(
                             "SELECT photo_id from todos WHERE photo_id IS NOT NULL",
                         ) {
@@ -63,7 +63,8 @@ fun App(
                                 id = it.getString("photo_id"),
                                 fileExtension = "jpg",
                             )
-                        },
+                        } 
+                        }
                 )
             } else {
                 null

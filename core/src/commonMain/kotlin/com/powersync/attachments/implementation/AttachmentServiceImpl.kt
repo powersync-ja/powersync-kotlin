@@ -5,6 +5,7 @@ import com.powersync.PowerSyncDatabase
 import com.powersync.attachments.AttachmentContext
 import com.powersync.attachments.AttachmentService
 import com.powersync.attachments.AttachmentState
+import com.powersync.db.getString
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
@@ -35,7 +36,7 @@ public open class AttachmentServiceImpl(
             maxArchivedCount = maxArchivedCount,
         )
 
-    public override suspend fun <R> withLock(action: suspend (AttachmentContext) -> R): R = mutex.withLock { action(context) }
+    public override suspend fun <R> withContext(action: suspend (AttachmentContext) -> R): R = mutex.withLock { action(context) }
 
     /**
      * Watcher for changes to attachments table.
@@ -62,7 +63,7 @@ public open class AttachmentServiceImpl(
                     AttachmentState.QUEUED_DOWNLOAD.ordinal,
                     AttachmentState.QUEUED_DELETE.ordinal,
                 ),
-            ) { it.getString(0)!! }
+            ) { it.getString("id") }
             // We only use changes here to trigger a sync consolidation
             .map { Unit }
     }

@@ -58,14 +58,16 @@ val queue = AttachmentQueue(
     db = db,
     attachmentsDirectory = attachmentsDirectory,
     remoteStorage = SupabaseRemoteStorage(supabase),
-    watchedAttachments = db.watch(
-        sql = """
-            SELECT photo_id
-            FROM checklists
-            WHERE photo_id IS NOT NULL
-        """,
-    ) {
-        WatchedAttachmentItem(id = it.getString("photo_id"), fileExtension = "jpg")
+    watchAttachments = { 
+        db.watch(
+            sql = """
+                SELECT photo_id
+                FROM checklists
+                WHERE photo_id IS NOT NULL
+            """,
+        ) {
+            WatchedAttachmentItem(id = it.getString("photo_id"), fileExtension = "jpg")
+        }
     }
 )
 ```
@@ -173,7 +175,7 @@ The `AttachmentQueue` implements a sync process with these components:
 
 2. **Periodic Sync**: By default, the queue triggers a sync every 30 seconds to retry failed uploads/downloads, in particular after the app was offline. This interval can be configured by setting `syncInterval` in the `AttachmentQueue` constructor options, or disabled by setting the interval to `0`.
 
-3. **Watching State**: The `watchedAttachments` flow in the `AttachmentQueue` constructor is used to maintain consistency between local and remote states:
+3. **Watching State**: The `watchAttachments` flow generator in the `AttachmentQueue` constructor is used to maintain consistency between local and remote states:
    - New items trigger downloads - see the Download Process below.
    - Missing items trigger archiving - see Cache Management below.
 
@@ -190,7 +192,7 @@ The `saveFile` method handles attachment creation and upload:
 
 ### Download Process
 
-Attachments are scheduled for download when the `watchedAttachments` flow emits a new item that is not present locally:
+Attachments are scheduled for download when the flow from `watchAttachments` emits a new item that is not present locally:
 
 1. An `AttachmentRecord` is created with `QUEUED_DOWNLOAD` state
 2. The `RemoteStorage` `downloadFile` function is called
@@ -211,7 +213,7 @@ The `deleteFile` method deletes attachments from both local and remote storage:
 
 The `AttachmentQueue` implements a caching system for archived attachments:
 
-1. Local attachments are marked as `ARCHIVED` if the `watchedAttachments` flow no longer references them
+1. Local attachments are marked as `ARCHIVED` if the flow from `watchAttachments` no longer references them
 2. Archived attachments are kept in the cache for potential future restoration
 3. The cache size is controlled by the `archivedCacheLimit` parameter in the `AttachmentQueue` constructor
 4. By default, the queue keeps the last 100 archived attachment records

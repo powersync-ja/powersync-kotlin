@@ -7,7 +7,10 @@ import kotlinx.coroutines.flow.Flow
  */
 public interface RemoteStorage {
     /**
-     * Upload a file to remote storage
+     * Uploads a file to remote storage.
+     *
+     * @param fileData The file data as a flow of byte arrays.
+     * @param attachment The attachment record associated with the file.
      */
     public suspend fun uploadFile(
         fileData: Flow<ByteArray>,
@@ -15,12 +18,17 @@ public interface RemoteStorage {
     ): Unit
 
     /**
-     * Download a file from remote storage
+     * Downloads a file from remote storage.
+     *
+     * @param attachment The attachment record associated with the file.
+     * @return A flow of byte arrays representing the file data.
      */
     public suspend fun downloadFile(attachment: Attachment): Flow<ByteArray>
 
     /**
-     * Delete a file from remote storage
+     * Deletes a file from remote storage.
+     *
+     * @param attachment The attachment record associated with the file.
      */
     public suspend fun deleteFile(attachment: Attachment)
 }

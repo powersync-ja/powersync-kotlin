@@ -84,5 +84,5 @@ public interface AttachmentService {
      * Executes a callback with an exclusive lock on all attachment operations.
      * This helps prevent race conditions between different updates.
      */
-    public suspend fun <R> withLock(action: suspend (context: AttachmentContext) -> R): R
+    public suspend fun <R> withContext(action: suspend (context: AttachmentContext) -> R): R
 }

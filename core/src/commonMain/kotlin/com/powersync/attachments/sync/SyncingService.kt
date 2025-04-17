@@ -89,7 +89,7 @@ public class SyncingService
                                 .buffer(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
                                 .throttle(syncThrottle)
                                 .collect {
-                                    attachmentsService.withLock { context ->
+                                    attachmentsService.withContext { context ->
                                         /**
                                          * Gets and performs the operations for active attachments which are
                                          * pending download, upload, or delete.

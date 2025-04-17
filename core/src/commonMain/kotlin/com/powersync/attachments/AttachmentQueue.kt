@@ -30,19 +30,19 @@ import kotlin.time.Duration.Companion.seconds
  */
 public data class WatchedAttachmentItem(
     /**
-     * Id for the attachment record
+     * Id for the attachment record.
      */
     public val id: String,
     /**
-     * File extension used to determine an internal filename for storage if no [filename] is provided
+     * File extension used to determine an internal filename for storage if no [filename] is provided.
      */
     public val fileExtension: String? = null,
     /**
-     * Filename to store the attachment with
+     * Filename to store the attachment with.
      */
     public val filename: String? = null,
     /**
-     * Optional meta data for the attachment record
+     * Optional metadata for the attachment record.
      */
     public val metaData: String? = null,
 ) {
@@ -54,86 +54,89 @@ public data class WatchedAttachmentItem(
 }
 
 /**
- * Class used to implement the attachment queue
+ * Class used to implement the attachment queue.
  * Requires a PowerSyncDatabase, an implementation of
- * AbstractRemoteStorageAdapter and an attachment directory name which will
+ * AbstractRemoteStorageAdapter, and an attachment directory name which will
  * determine which folder attachments are stored into.
  */
 public open class AttachmentQueue
     @OptIn(DelicateCoroutinesApi::class)
     constructor(
         /**
-         * PowerSync database client
+         * PowerSync database client.
          */
         public val db: PowerSyncDatabase,
         /**
-         * Adapter which interfaces with the remote storage backend
+         * Adapter which interfaces with the remote storage backend.
          */
         public val remoteStorage: RemoteStorage,
         /**
          * Directory name where attachment files will be written to disk.
-         * This will be created if it does not exist
+         * This will be created if it does not exist.
          */
         private val attachmentsDirectory: String,
         /**
-         * A flow for the current state of local attachments
+         * A flow generator for the current state of local attachments.
+         * Example:
          * ```kotlin
-         *     watchedAttachment = db.watch(
-         *             sql =
-         *                 """
-         *                 SELECT
-         *                     photo_id as id
-         *                 FROM
-         *                     checklists
-         *                 WHERE
-         *                     photo_id IS NOT NULL
-         *                 """,
-         *         ) { cursor ->
-         *             WatchedAttachmentItem(
-         *                 id = cursor.getString("id"),
-         *                 fileExtension = "jpg",
-         *             )
-         *         }
+         * watchAttachments = {
+         *     db.watch(
+         *         sql = """
+         *             SELECT
+         *                 photo_id as id,
+         *                 'jpg' as fileExtension
+         *             FROM
+         *                 checklists
+         *             WHERE
+         *                 photo_id IS NOT NULL
+         *         """,
+         *     ) { cursor ->
+         *         WatchedAttachmentItem(
+         *             id = cursor.getString("id"),
+         *             fileExtension = "jpg",
+         *         )
+         *     }
+         * }
          * ```
          */
-        private val watchedAttachments: Flow<List<WatchedAttachmentItem>>,
+        private val watchAttachments: () -> Flow<List<WatchedAttachmentItem>>,
         /**
-         * Provides access to local filesystem storage methods
+         * Provides access to local filesystem storage methods.
          */
         public val localStorage: LocalStorage = IOLocalStorageAdapter(),
         /**
-         * SQLite table where attachment state will be recorded
+         * SQLite table where attachment state will be recorded.
          */
         private val attachmentsQueueTableName: String = DEFAULT_TABLE_NAME,
         /**
-         * Attachment operation error handler. This specified if failed attachment operations
+         * Attachment operation error handler. Specifies if failed attachment operations
          * should be retried.
          */
         private val errorHandler: SyncErrorHandler? = null,
         /**
-         * Periodic interval to trigger attachment sync operations
+         * Periodic interval to trigger attachment sync operations.
          */
         private val syncInterval: Duration = 30.seconds,
         /**
-         * Archived attachments can be used as a cache which can be restored if an attachment id
+         * Archived attachments can be used as a cache which can be restored if an attachment ID
          * reappears after being removed. This parameter defines how many archived records are retained.
          * Records are deleted once the number of items exceeds this value.
          */
         private val archivedCacheLimit: Long = 100,
         /**
-         * Throttles remote sync operations triggering
+         * Throttles remote sync operations triggering.
          */
         private val syncThrottleDuration: Duration = 1.seconds,
         /**
-         * Creates a list of subdirectories in the {attachmentDirectoryName} directory
+         * Creates a list of subdirectories in the [attachmentsDirectory] directory.
          */
         private val subdirectories: List<String>? = null,
         /**
-         * Should attachments be downloaded
+         * Should attachments be downloaded.
          */
         private val downloadAttachments: Boolean = true,
         /**
-         * Logging interface used for all log operations
+         * Logging interface used for all log operations.
          */
         public val logger: Logger = Logger,
         /**
@@ -142,15 +145,22 @@ public open class AttachmentQueue
         private val coroutineScope: CoroutineScope? = null,
     ) {
         public companion object {
+            /**
+             * Default table name for attachments.
+             */
             public const val DEFAULT_TABLE_NAME: String = "attachments"
+
+            /**
+             * Default directory name for attachments.
+             */
             public const val DEFAULT_ATTACHMENTS_DIRECTORY_NAME: String = "attachments"
         }
 
         /**
          * Service which provides access to attachment records.
          * Use this to:
-         *  - Query all current attachment records
-         *  - Create new attachment records for upload/download
+         *  - Query all current attachment records.
+         *  - Create new attachment records for upload/download.
          */
         public val attachmentsService: AttachmentService =
             AttachmentServiceImpl(
@@ -167,7 +177,7 @@ public open class AttachmentQueue
 
         /**
          * Syncing service for this attachment queue.
-         * This processes attachment records and performs relevant upload, download and delete
+         * This processes attachment records and performs relevant upload, download, and delete
          * operations.
          */
         private val syncingService =
@@ -185,10 +195,10 @@ public open class AttachmentQueue
         public var closed: Boolean = false
 
         /**
-         * Initialize the attachment queue by
-         * 1. Creating attachments directory
-         * 2. Adding watches for uploads, downloads, and deletes
-         * 3. Adding trigger to run uploads, downloads, and deletes when device is online after being offline
+         * Initialize the attachment queue by:
+         * 1. Creating the attachments directory.
+         * 2. Adding watches for uploads, downloads, and deletes.
+         * 3. Adding a trigger to run uploads, downloads, and deletes when the device is online after being offline.
          */
         @Throws(PowerSyncException::class, CancellationException::class)
         public suspend fun startSync(): Unit =
@@ -200,16 +210,20 @@ public open class AttachmentQueue
 
                     stopSyncingInternal()
 
-                    // Ensure the directory where attachments are downloaded, exists
+                    // Ensure the directory where attachments are downloaded exists.
                     localStorage.makeDir(attachmentsDirectory)
 
                     subdirectories?.forEach { subdirectory ->
                         localStorage.makeDir(Path(attachmentsDirectory, subdirectory).toString())
                     }
 
+                    attachmentsService.withContext { context ->
+                        verifyAttachments(context)
+                    }
+
                     syncingService.startSync(syncInterval)
 
-                    // Listen for connectivity changes
+                    // Listen for connectivity changes.
                     syncStatusJob =
                         syncScope.launch {
                             launch {
@@ -223,8 +237,8 @@ public open class AttachmentQueue
                             }
 
                             launch {
-                                // Watch local attachment relationships and sync the attachment records
-                                watchedAttachments.collect { items ->
+                                // Watch local attachment relationships and sync the attachment records.
+                                watchAttachments().collect { items ->
                                     processWatchedAttachments(items)
                                 }
                             }
@@ -267,7 +281,7 @@ public open class AttachmentQueue
                     syncStatusJob?.cancelAndJoin()
                     syncingService.close()
                     if (coroutineScope == null) {
-                        // Only cancel the internal scope if we created it
+                        // Only cancel the internal scope if we created it.
                         syncScope.coroutineContext[Job]?.cancelAndJoin()
                     }
                     closed = true
@@ -277,8 +291,8 @@ public open class AttachmentQueue
         /**
          * Resolves the filename for new attachment items.
          * A new attachment from [watchAttachments] might not include a filename.
-         * Concatenates the attachment ID an extension by default.
-         * This method can be overriden for custom behaviour.
+         * Concatenates the attachment ID and extension by default.
+         * This method can be overridden for custom behavior.
          */
         @Throws(PowerSyncException::class, CancellationException::class)
         public open suspend fun resolveNewAttachmentFilename(
@@ -288,7 +302,7 @@ public open class AttachmentQueue
 
         /**
          * Processes attachment items returned from [watchAttachments].
-         * The default implementation assets the items returned from [watchAttachments] as the definitive
+         * The default implementation asserts the items returned from [watchAttachments] as the definitive
          * state for local attachments.
          *
          * Records currently in the attachment queue which are not present in the items are deleted from
@@ -298,15 +312,15 @@ public open class AttachmentQueue
          * download. This requires that locally created attachments should be created with [saveFile]
          * before assigning the attachment ID to the relevant watched tables.
          *
-         * This method can be overriden for custom behaviour.
+         * This method can be overridden for custom behavior.
          */
         @Throws(PowerSyncException::class, CancellationException::class)
         public open suspend fun processWatchedAttachments(items: List<WatchedAttachmentItem>): Unit =
             runWrappedSuspending {
                 /**
-                 * Use a lock here to prevent conflicting state updates
+                 * Use a lock here to prevent conflicting state updates.
                  */
-                attachmentsService.withLock { attachmentsContext ->
+                attachmentsService.withContext { attachmentsContext ->
                     /**
                      * Need to get all the attachments which are tracked in the DB.
                      * We might need to restore an archived attachment.
@@ -321,8 +335,8 @@ public open class AttachmentQueue
                             if (!downloadAttachments) {
                                 continue
                             }
-                            // This item should be added to the queue
-                            // This item is assumed to be coming from an upstream sync
+                            // This item should be added to the queue.
+                            // This item is assumed to be coming from an upstream sync.
                             // Locally created new items should be persisted using [saveFile] before
                             // this point.
                             val filename =
@@ -342,9 +356,9 @@ public open class AttachmentQueue
                         } else if
                             (existingQueueItem.state == AttachmentState.ARCHIVED) {
                             // The attachment is present again. Need to queue it for sync.
-                            // We might be able to optimize this in future
+                            // We might be able to optimize this in future.
                             if (existingQueueItem.hasSynced == 1) {
-                                // No remote action required, we can restore the record (avoids deletion)
+                                // No remote action required, we can restore the record (avoids deletion).
                                 attachmentUpdates.add(
                                     existingQueueItem.copy(state = AttachmentState.SYNCED),
                                 )
@@ -352,7 +366,7 @@ public open class AttachmentQueue
                                 /**
                                  * The localURI should be set if the record was meant to be downloaded
                                  * and has been synced. If it's missing and hasSynced is false then
-                                 * it must be an upload operation
+                                 * it must be an upload operation.
                                  */
                                 attachmentUpdates.add(
                                     existingQueueItem.copy(
@@ -390,10 +404,10 @@ public open class AttachmentQueue
          * The filename is resolved using [resolveNewAttachmentFilename].
          *
          * A [updateHook] is provided which should be used when assigning relationships to the newly
-         * created attachment. This hook is executed in the same writeTransaction which creates the
+         * created attachment. This hook is executed in the same write transaction which creates the
          * attachment record.
          *
-         * This method can be overriden for custom behaviour.
+         * This method can be overridden for custom behavior.
          */
         @Throws(PowerSyncException::class, CancellationException::class)
         public open suspend fun saveFile(
@@ -409,14 +423,14 @@ public open class AttachmentQueue
                     resolveNewAttachmentFilename(attachmentId = id, fileExtension = fileExtension)
                 val localUri = getLocalUri(filename)
 
-                // write the file to the filesystem
+                // Write the file to the filesystem.
                 val fileSize = localStorage.saveFile(localUri, data)
 
                 /**
                  * Starts a write transaction. The attachment record and relevant local relationship
                  * assignment should happen in the same transaction.
                  */
-                attachmentsService.withLock { attachmentContext ->
+                attachmentsService.withContext { attachmentContext ->
                     db.writeTransaction { tx ->
                         val attachment =
                             Attachment(
@@ -430,7 +444,7 @@ public open class AttachmentQueue
                             )
 
                         /**
-                         * Allow consumers to set relationships to this attachment id
+                         * Allow consumers to set relationships to this attachment ID.
                          */
                         updateHook.invoke(tx, attachment)
 
@@ -447,7 +461,7 @@ public open class AttachmentQueue
          * for delete.
          * The default implementation assumes the attachment record already exists locally. An exception
          * is thrown if the record does not exist locally.
-         * This method can be overriden for custom behaviour.
+         * This method can be overridden for custom behavior.
          */
         @Throws(PowerSyncException::class, CancellationException::class)
         public open suspend fun deleteFile(
@@ -455,7 +469,7 @@ public open class AttachmentQueue
             updateHook: (context: ConnectionContext, attachment: Attachment) -> Unit,
         ): Attachment =
             runWrappedSuspending {
-                attachmentsService.withLock { attachmentContext ->
+                attachmentsService.withContext { attachmentContext ->
                     val attachment =
                         attachmentContext.getAttachment(attachmentId)
                             ?: throw error("Attachment record with id $attachmentId was not found.")
@@ -471,17 +485,17 @@ public open class AttachmentQueue
             }
 
         /**
-         * Return users storage directory with the attachmentPath use to load the file.
-         * Example: filePath: "attachment-1.jpg" returns "/data/user/0/com.yourdomain.app/files/attachments/attachment-1.jpg"
+         * Returns the user's storage directory with the attachment path used to load the file.
+         * Example: filePath: "attachment-1.jpg" returns "/data/user/0/com.yourdomain.app/files/attachments/attachment-1.jpg".
          */
         public open fun getLocalUri(filename: String): String = Path(attachmentsDirectory, filename).toString()
 
         /**
-         * Removes all archived items
+         * Removes all archived items.
          */
         public suspend fun expireCache() {
             var done: Boolean
-            attachmentsService.withLock { context ->
+            attachmentsService.withContext { context ->
                 do {
                     done = syncingService.deleteArchivedAttachments(context)
                 } while (!done)
@@ -489,13 +503,40 @@ public open class AttachmentQueue
         }
 
         /**
-         * Clears the attachment queue and deletes all attachment files
+         * Clears the attachment queue and deletes all attachment files.
          */
         public suspend fun clearQueue() {
-            attachmentsService.withLock {
+            attachmentsService.withContext {
                 it.clearQueue()
             }
-            // Remove the attachments directory
+            // Remove the attachments directory.
             localStorage.rmDir(attachmentsDirectory)
+        }
+
+        /**
+         * Cleans up stale attachments.
+         */
+        private suspend fun verifyAttachments(context: AttachmentContext) {
+            val attachments = context.getActiveAttachments()
+            val updates = mutableListOf<Attachment>()
+
+            for (attachment in attachments) {
+                if (attachment.localUri == null) {
+                    continue
+                }
+                val exists = localStorage.fileExists(attachment.localUri)
+                if (
+                    attachment.state == AttachmentState.SYNCED || attachment.state == AttachmentState.QUEUED_UPLOAD && !exists
+                ) {
+                    updates.add(
+                        attachment.copy(
+                            state = AttachmentState.ARCHIVED,
+                            localUri = null,
+                        ),
+                    )
+                }
+            }
+
+            context.saveAttachments(updates)
         }
     }

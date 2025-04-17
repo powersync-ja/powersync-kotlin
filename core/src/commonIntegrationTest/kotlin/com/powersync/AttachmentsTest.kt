@@ -87,7 +87,7 @@ class AttachmentsTest {
                         db = database,
                         remoteStorage = remote,
                         attachmentsDirectory = getAttachmentsDir(),
-                        watchedAttachments = watchAttachments(database),
+                        watchAttachments = { watchAttachments(database) },
                         /**
                          * Sets the cache limit to zero for this test. Archived records will
                          * immediately be deleted.
@@ -198,7 +198,7 @@ class AttachmentsTest {
                         db = database,
                         remoteStorage = remote,
                         attachmentsDirectory = getAttachmentsDir(),
-                        watchedAttachments = watchAttachments(database),
+                        watchAttachments =  { watchAttachments(database) },
                         /**
                          * Sets the cache limit to zero for this test. Archived records will
                          * immediately be deleted.
@@ -260,7 +260,6 @@ class AttachmentsTest {
                     )
                 }
 
-                // A file should now exist
                 val localUri = attachmentRecord.localUri!!
                 queue.localStorage.fileExists(localUri) shouldBe true
 
@@ -309,7 +308,7 @@ class AttachmentsTest {
                         db = database,
                         remoteStorage = remote,
                         attachmentsDirectory = getAttachmentsDir(),
-                        watchedAttachments = watchAttachments(database),
+                        watchAttachments = { watchAttachments(database) },
                         /**
                          * Sets the cache limit to zero for this test. Archived records will
                          * immediately be deleted.
@@ -408,7 +407,7 @@ class AttachmentsTest {
                         db = database,
                         remoteStorage = remote,
                         attachmentsDirectory = getAttachmentsDir(),
-                        watchedAttachments = watchAttachments(database),
+                        watchAttachments =  { watchAttachments(database) },
                         /**
                          * Keep some items in the cache
                          */
@@ -521,7 +520,7 @@ class AttachmentsTest {
                         db = database,
                         remoteStorage = remote,
                         attachmentsDirectory = getAttachmentsDir(),
-                        watchedAttachments = watchAttachments(database),
+                        watchAttachments = { watchAttachments(database) },
                         archivedCacheLimit = 0,
                         errorHandler =
                             object : SyncErrorHandler {
