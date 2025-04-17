@@ -2,7 +2,6 @@ package com.powersync.attachments.storage
 
 import com.powersync.attachments.LocalStorage
 import com.powersync.db.runWrappedSuspending
-import io.ktor.utils.io.core.readBytes
 import io.ktor.utils.io.core.remaining
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -15,6 +14,7 @@ import kotlinx.io.buffered
 import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
+import kotlinx.io.readByteArray
 
 /**
  * Storage adapter for local storage using the KotlinX IO library
@@ -58,7 +58,7 @@ public class IOLocalStorageAdapter : LocalStorage {
                     do {
                         bufferedSource.request(bufferSize)
                         remaining = bufferedSource.remaining
-                        emit(bufferedSource.readBytes(remaining.toInt()))
+                        emit(bufferedSource.readByteArray(remaining.toInt()))
                     } while (remaining > 0)
                 }
             }
