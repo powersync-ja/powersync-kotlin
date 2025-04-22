@@ -85,16 +85,17 @@ dokka {
     }
 }
 
+// Merges individual module docs into a single HTML output
 dependencies {
     dokka(project(":core:"))
     dokka(project(":connectors:supabase"))
 }
 
 tasks.register("serveDokka") {
-    dependsOn("dokkaHtml")
+    dependsOn("dokkaGenerate")
     doLast {
         val server = HttpServer.create(InetSocketAddress(0), 0)
-        val root = file("core/build/dokka/html")
+        val root = file("build/dokka/html")
 
         val handler =
             com.sun.net.httpserver.HttpHandler { exchange: HttpExchange ->
