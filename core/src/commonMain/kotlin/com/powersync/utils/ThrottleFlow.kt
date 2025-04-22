@@ -5,6 +5,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.flow
+import kotlin.time.Duration
 
 /**
  * Throttles a flow with emissions on the leading and trailing edge.
@@ -13,7 +14,7 @@ import kotlinx.coroutines.flow.flow
  * This throttle method acts as a slow consumer, but backpressure is not a concern
  * due to the conflated buffer dropping events during the throttle window.
  */
-internal fun <T> Flow<T>.throttle(windowMs: Long): Flow<T> =
+internal fun <T> Flow<T>.throttle(window: Duration): Flow<T> =
     flow {
         // Use a buffer before throttle (ensure only the latest event is kept)
         val bufferedFlow = this@throttle.buffer(Channel.CONFLATED)
@@ -23,7 +24,7 @@ internal fun <T> Flow<T>.throttle(windowMs: Long): Flow<T> =
             emit(value)
 
             // Delay for the throttle window to avoid emitting too frequently
-            delay(windowMs)
+            delay(window)
 
             // The next incoming event will be provided from the buffer.
             // The next collect will emit the trailing edge
