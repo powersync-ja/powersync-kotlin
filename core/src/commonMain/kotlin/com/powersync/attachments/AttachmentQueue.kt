@@ -10,7 +10,6 @@ import com.powersync.db.getString
 import com.powersync.db.internal.ConnectionContext
 import com.powersync.db.runWrappedSuspending
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
@@ -61,7 +60,6 @@ public data class WatchedAttachmentItem(
  * determine which folder attachments are stored into.
  */
 public open class AttachmentQueue
-    @OptIn(DelicateCoroutinesApi::class)
     constructor(
         /**
          * PowerSync database client.
@@ -171,7 +169,14 @@ public open class AttachmentQueue
                 maxArchivedCount = archivedCacheLimit,
             )
 
-        private val syncScope = coroutineScope ?: CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        // The syncScope is used to manage coroutines for syncing operations.
+        // If a coroutineScope is provided, it reuses its context and adds Dispatchers.IO for IO-bound tasks,
+        // ensuring proper cancellation propagation. If no coroutineScope is provided, a new CoroutineScope
+        // is created with a SupervisorJob to isolate failures and Dispatchers.IO for efficient IO operations.
+        private val syncScope =
+            coroutineScope?.let {
+                CoroutineScope(it.coroutineContext + Dispatchers.IO)
+            } ?: CoroutineScope(CoroutineScope(Dispatchers.IO).coroutineContext + SupervisorJob())
 
         private var syncStatusJob: Job? = null
         private val mutex = Mutex()
@@ -284,7 +289,7 @@ public open class AttachmentQueue
                     syncingService.close()
                     if (coroutineScope == null) {
                         // Only cancel the internal scope if we created it.
-                        syncScope.coroutineContext[Job]?.cancelAndJoin()
+                        syncScope.coroutineContext[Job]?.takeIf { it.isActive }?.cancelAndJoin()
                     }
                     closed = true
                 }
