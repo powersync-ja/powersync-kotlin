@@ -275,13 +275,11 @@ class AttachmentsTest {
                          """,
                 )
 
-                var nextRecord: Attachment? = attachmentQuery.awaitItem().first()
-                if (nextRecord?.state == AttachmentState.ARCHIVED) {
-                    nextRecord = attachmentQuery.awaitItem().getOrNull(0)
+                waitFor {
+                    var nextRecord: Attachment? = attachmentQuery.awaitItem().firstOrNull()
+                    // The record should have been deleted
+                    nextRecord shouldBe null
                 }
-
-                // The record should have been deleted
-                nextRecord shouldBe null
 
                 // The file should have been deleted from storage
                 queue.localStorage.fileExists(localUri) shouldBe false
@@ -522,7 +520,6 @@ class AttachmentsTest {
                         remoteStorage = remote,
                         attachmentsDirectory = getAttachmentsDir(),
                         watchAttachments = { watchAttachments(database) },
-                        archivedCacheLimit = 0,
                         errorHandler =
                             object : SyncErrorHandler {
                                 override suspend fun onDownloadError(

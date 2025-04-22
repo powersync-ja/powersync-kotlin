@@ -363,7 +363,7 @@ public open class AttachmentQueue(
                         (existingQueueItem.state == AttachmentState.ARCHIVED) {
                         // The attachment is present again. Need to queue it for sync.
                         // We might be able to optimize this in future.
-                        if (existingQueueItem.hasSynced == 1) {
+                        if (existingQueueItem.hasSynced) {
                             // No remote action required, we can restore the record (avoids deletion).
                             attachmentUpdates.add(
                                 existingQueueItem.copy(state = AttachmentState.SYNCED),
@@ -389,13 +389,25 @@ public open class AttachmentQueue(
                 }
 
                 /**
-                 * Archive any items not specified in the watched items except for items pending delete.
+                 * Archive any items not specified in the watched items.
+                 * For QUEUED_DELETE or QUEUED_UPLOAD states, archive only if hasSynced is true.
+                 * For other states, archive if the record is not found in the items.
                  */
                 currentAttachments
-                    .filter {
-                        it.state != AttachmentState.QUEUED_DELETE &&
-                            it.state != AttachmentState.QUEUED_UPLOAD &&
-                            null == items.find { update -> update.id == it.id }
+                    .filter { attachment ->
+                        val notInWatchedItems =
+                            items.find { update -> update.id == attachment.id } == null
+                        if (notInWatchedItems) {
+                            when (attachment.state) {
+                                // Archive these record if they have synced
+                                AttachmentState.QUEUED_DELETE, AttachmentState.QUEUED_UPLOAD -> attachment.hasSynced
+                                // Other states, such as QUEUED_DOWNLOAD can be archived if they are not present in watched items
+                                else -> true
+                            }
+                        } else {
+                            // The record is present in watched items, no need to archive it
+                            false
+                        }
                     }.forEach {
                         attachmentUpdates.add(it.copy(state = AttachmentState.ARCHIVED))
                     }
@@ -484,7 +496,10 @@ public open class AttachmentQueue(
                 db.writeTransaction { tx ->
                     updateHook.invoke(tx, attachment)
                     return@writeTransaction attachmentContext.upsertAttachment(
-                        attachment.copy(state = AttachmentState.QUEUED_DELETE),
+                        attachment.copy(
+                            state = AttachmentState.QUEUED_DELETE,
+                            hasSynced = false,
+                        ),
                         tx,
                     )
                 }

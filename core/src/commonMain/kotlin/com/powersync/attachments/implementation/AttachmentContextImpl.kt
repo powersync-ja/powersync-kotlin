@@ -191,7 +191,7 @@ public open class AttachmentContextImpl(
                 updatedRecord.mediaType,
                 updatedRecord.size,
                 updatedRecord.state.ordinal,
-                updatedRecord.hasSynced,
+                if (updatedRecord.hasSynced) 1 else 0,
                 updatedRecord.metaData,
             ),
         )

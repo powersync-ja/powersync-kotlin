@@ -208,7 +208,7 @@ public open class SyncingService(
                 attachment,
             )
             logger.i("Uploaded attachment \"${attachment.id}\" to Cloud Storage")
-            return attachment.copy(state = AttachmentState.SYNCED, hasSynced = 1)
+            return attachment.copy(state = AttachmentState.SYNCED, hasSynced = true)
         } catch (e: Exception) {
             logger.e("Upload attachment error for attachment $attachment: ${e.message}")
             if (errorHandler != null) {
@@ -246,7 +246,7 @@ public open class SyncingService(
             return attachment.copy(
                 localUri = attachmentPath,
                 state = AttachmentState.SYNCED,
-                hasSynced = 1,
+                hasSynced = true,
             )
         } catch (e: Exception) {
             if (errorHandler != null) {

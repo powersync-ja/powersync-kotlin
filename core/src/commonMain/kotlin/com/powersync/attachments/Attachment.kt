@@ -72,7 +72,7 @@ public data class Attachment(
     val localUri: String? = null,
     val mediaType: String? = null,
     val size: Long? = null,
-    val hasSynced: Int = 0,
+    val hasSynced: Boolean = false,
     val metaData: String? = null,
 ) {
     public companion object {
@@ -91,7 +91,7 @@ public data class Attachment(
                 mediaType = cursor.getStringOptional(name = "media_type"),
                 size = cursor.getLongOptional("size"),
                 state = AttachmentState.fromLong(cursor.getLong("state")),
-                hasSynced = cursor.getLong("has_synced").toInt(),
+                hasSynced = cursor.getLong("has_synced").toInt() > 0,
                 metaData = cursor.getStringOptional("meta_data"),
             )
     }
