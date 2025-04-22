@@ -19,9 +19,9 @@ import kotlinx.io.readByteArray
 /**
  * Storage adapter for local storage using the KotlinX IO library
  */
-public class IOLocalStorageAdapter : LocalStorage {
-    private val fileSystem: FileSystem = SystemFileSystem
-
+public open class IOLocalStorageAdapter(
+    private val fileSystem: FileSystem = SystemFileSystem,
+) : LocalStorage {
     public override suspend fun saveFile(
         filePath: String,
         data: Flow<ByteArray>,

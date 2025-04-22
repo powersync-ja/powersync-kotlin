@@ -12,7 +12,10 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * Service for interacting with the local attachment records.
+ * Default implementation of [AttachmentService].
+ *
+ * This class provides the standard logic for interacting with local attachment records.
+ * Users can extend this class to customize the behavior for their specific use cases.
  */
 public open class AttachmentServiceImpl(
     private val db: PowerSyncDatabase,

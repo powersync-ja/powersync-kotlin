@@ -11,6 +11,13 @@ import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+/**
+ * Default implementation of [AttachmentContext].
+ *
+ * This class provides the standard logic for managing attachments in a SQLite table.
+ * Users can override this class if they need custom logic for handling columns or other
+ * database operations related to attachments.
+ */
 public open class AttachmentContextImpl(
     public val db: PowerSyncDatabase,
     public val table: String,
