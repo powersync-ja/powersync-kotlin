@@ -61,8 +61,33 @@ subprojects {
     version = LIBRARY_VERSION
 }
 
-tasks.register<Delete>("clean") {
+tasks.getByName<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
+}
+
+buildscript {
+    dependencies {
+        classpath("org.jetbrains.dokka:dokka-base:2.0.0")
+    }
+}
+
+dokka {
+    pluginsConfiguration.html {
+        customAssets.from("./docs/assets/powersync-logo.png")
+        customAssets.from("./docs/assets/discord.svg")
+        customAssets.from("./docs/assets/github.svg")
+        customAssets.from("./docs/assets/web.svg")
+        customAssets.from("./docs/assets/x.svg")
+        customAssets.from("./docs/assets/youtube.svg")
+        customAssets.from("./docs/assets/linkedin.svg")
+        customStyleSheets.from("./docs/assets/doc-styles.css")
+        templatesDir = file("./docs/assets/dokka-templates")
+    }
+}
+
+dependencies {
+    dokka(project(":core:"))
+    dokka(project(":connectors:supabase"))
 }
 
 tasks.register("serveDokka") {

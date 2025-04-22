@@ -8,7 +8,7 @@ plugins {
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.kotlinter)
     id("com.powersync.plugins.sonatype")
-    id("org.jetbrains.dokka")
+    id("org.jetbrains.dokka") version "2.0.0"
 }
 
 kotlin {
