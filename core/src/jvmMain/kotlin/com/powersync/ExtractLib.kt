@@ -1,6 +1,10 @@
 package com.powersync
 
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.Path
+import kotlin.io.path.Path
+import kotlin.io.path.absolutePathString
 
 private class R
 
@@ -21,14 +25,20 @@ internal fun extractLib(fileName: String): String {
             else -> error("Unsupported architecture: $sysArch")
         }
 
-    val path = "/$prefix${fileName}_$arch.$extension"
+    val path = Files.createTempFile(Path(System.getProperty("java.io.tmpdir")), prefix, extension)
+    val file = path.toFile().apply {
+        setReadable(true)
+        setWritable(true)
+        setExecutable(true)
 
-    val resourceURI =
-        (R::class.java.getResource(path) ?: error("Resource $path not found"))
+        deleteOnExit()
+    }
 
-    // Wrapping the above in a File handle resolves the URI to a path usable by SQLite.
-    // This is particularly relevant on Windows.
-    // On Windows [resourceURI.path] starts with a `/`, e.g. `/c:/...`. SQLite does not load this path correctly.
-    // The wrapping here transforms the path to `c:/...` which does load correctly.
-    return File(resourceURI.path).path.toString()
+    val resourcePath = "/$prefix${fileName}_$arch.$extension"
+
+    (R::class.java.getResourceAsStream(resourcePath) ?: error("Resource $path not found")).use { input ->
+        file.outputStream().use { output -> input.copyTo(output) }
+    }
+
+    return path.absolutePathString()
 }
