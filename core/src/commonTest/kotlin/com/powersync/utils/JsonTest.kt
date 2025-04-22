@@ -23,6 +23,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
 
 class JsonTest {
     @Test
@@ -53,7 +54,7 @@ class JsonTest {
                     emit(3)
                     delay(100)
                     emit(4)
-                }.throttle(100)
+                }.throttle(100.milliseconds)
                     .map {
                         // Adding a delay here to simulate a slow consumer
                         delay(1000)

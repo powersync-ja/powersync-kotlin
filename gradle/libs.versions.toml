@@ -4,6 +4,7 @@ android-minSdk = "24"
 android-targetSdk = "35"
 android-compileSdk = "35"
 configurationAnnotations = "0.9.5"
+gradleDownloadTask = "5.5.0"
 java = "17"
 idea = "243.22562.218" # Meerkat | 2024.3.1 (see https://plugins.jetbrains.com/docs/intellij/android-studio-releases-list.html)
 
@@ -55,11 +56,12 @@ junitVersion = "1.2.1"
 
 [libraries]
 configuration-annotations = { module = "co.touchlab.skie:configuration-annotations", version.ref = "configurationAnnotations" }
+gradle-download-task = { module = "de.undercouch:gradle-download-task", version.ref = "gradleDownloadTask" }
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 kermit-test = { module = "co.touchlab:kermit-test", version.ref = "kermit" }
+kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 powersync-sqlite-core-android = { module = "co.powersync:powersync-sqlite-core", version.ref = "powersync-core" }
 mavenPublishPlugin = { module = "com.vanniktech:gradle-maven-publish-plugin", version.ref = "maven-publish" }
-kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 
 test-junit = { group = "junit", name = "junit", version.ref = "junit" }
 test-android-runner = { module = "androidx.test:runner", version.ref = "androidx-test-runner" }
@@ -99,7 +101,7 @@ sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite-jdbc" }
 stately-concurrency = { module = "co.touchlab:stately-concurrency", version.ref = "stately" }
 supabase-client = { module = "io.github.jan-tennert.supabase:postgrest-kt", version.ref = "supabase" }
 supabase-auth = { module = "io.github.jan-tennert.supabase:auth-kt", version.ref = "supabase" }
-
+supabase-storage = { module = "io.github.jan-tennert.supabase:storage-kt", version.ref = "supabase" }
 androidx-sqliteFramework = { module = "androidx.sqlite:sqlite-framework", version.ref = "androidxSqlite" }
 
 # Sample - Android
