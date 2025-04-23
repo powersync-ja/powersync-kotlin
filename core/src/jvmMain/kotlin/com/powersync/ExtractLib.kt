@@ -1,12 +1,7 @@
 package com.powersync
 
 import java.io.File
-import java.nio.file.Files
-import java.nio.file.Path
 import java.util.UUID
-import kotlin.io.path.Path
-import kotlin.io.path.absolutePathString
-import kotlin.uuid.Uuid
 
 private class R
 
