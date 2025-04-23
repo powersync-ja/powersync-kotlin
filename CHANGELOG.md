@@ -3,6 +3,7 @@
 ## 1.0.0-BETA31
 
 * Added helpers for Attachment syncing.
+* Fix `getNextCrudTransaction()` only returning a single item.
 
 ## 1.0.0-BETA30
 

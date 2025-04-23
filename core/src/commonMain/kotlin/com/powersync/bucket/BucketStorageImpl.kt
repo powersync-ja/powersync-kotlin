@@ -41,13 +41,24 @@ internal class BucketStorageImpl(
         return id ?: throw IllegalStateException("Client ID not found")
     }
 
-    override suspend fun nextCrudItem(): CrudEntry? = db.getOptional(sql = nextCrudQuery, mapper = nextCrudMapper)
+    override suspend fun nextCrudItem(): CrudEntry? = db.getOptional(sql = nextCrudQuery, mapper = crudEntryMapper)
 
     override fun nextCrudItem(transaction: PowerSyncTransaction): CrudEntry? =
-        transaction.getOptional(sql = nextCrudQuery, mapper = nextCrudMapper)
+        transaction.getOptional(sql = nextCrudQuery, mapper = crudEntryMapper)
+
+    override fun getCrudItemsByTransactionId(
+        transactionId: Int,
+        transaction: PowerSyncTransaction,
+    ): List<CrudEntry> =
+        transaction.getAll(
+            sql = transactionCrudQuery,
+            parameters = listOf(transactionId),
+            mapper = crudEntryMapper,
+        )
 
     private val nextCrudQuery = "SELECT id, tx_id, data FROM ${InternalTable.CRUD} ORDER BY id ASC LIMIT 1"
-    private val nextCrudMapper: (SqlCursor) -> CrudEntry = { cursor ->
+    private val transactionCrudQuery = "SELECT id, tx_id, data FROM ${InternalTable.CRUD} WHERE tx_id = ? ORDER BY id ASC"
+    private val crudEntryMapper: (SqlCursor) -> CrudEntry = { cursor ->
         CrudEntry.fromRow(
             CrudRow(
                 id = cursor.getString(0)!!,

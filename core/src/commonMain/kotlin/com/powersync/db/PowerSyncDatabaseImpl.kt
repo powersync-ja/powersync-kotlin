@@ -298,15 +298,10 @@ internal class PowerSyncDatabaseImpl(
                 if (txId == null) {
                     listOf(entry)
                 } else {
-                    transaction.getAll("SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC LIMIT 1") {
-                        CrudEntry.fromRow(
-                            CrudRow(
-                                id = it.getString("id"),
-                                data = it.getString("data"),
-                                txId = it.getLongOptional("tx_id")?.toInt(),
-                            ),
-                        )
-                    }
+                    bucketStorage.getCrudItemsByTransactionId(
+                        transactionId = txId,
+                        transaction = transaction,
+                    )
                 }
 
             return@readTransaction CrudTransaction(
