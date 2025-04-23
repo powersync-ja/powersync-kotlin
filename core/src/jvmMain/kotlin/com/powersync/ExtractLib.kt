@@ -23,14 +23,14 @@ internal fun extractLib(fileName: String): String {
         }
 
     val suffix = UUID.randomUUID().toString()
-    val file = File(System.getProperty("java.io.tmpdir"), "$prefix$fileName-$suffix.$extension").apply {
-        setReadable(true)
-        setWritable(true)
-        setExecutable(true)
+    val file =
+        File(System.getProperty("java.io.tmpdir"), "$prefix$fileName-$suffix.$extension").apply {
+            setReadable(true)
+            setWritable(true)
+            setExecutable(true)
 
-        deleteOnExit()
-    }
-
+            deleteOnExit()
+        }
 
     val resourcePath = "/$prefix${fileName}_$arch.$extension"
 
