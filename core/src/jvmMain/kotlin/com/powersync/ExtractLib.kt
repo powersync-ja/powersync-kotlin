@@ -1,6 +1,5 @@
 package com.powersync
 
-import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.Path
@@ -26,13 +25,14 @@ internal fun extractLib(fileName: String): String {
         }
 
     val path = Files.createTempFile(Path(System.getProperty("java.io.tmpdir")), prefix, extension)
-    val file = path.toFile().apply {
-        setReadable(true)
-        setWritable(true)
-        setExecutable(true)
+    val file =
+        path.toFile().apply {
+            setReadable(true)
+            setWritable(true)
+            setExecutable(true)
 
-        deleteOnExit()
-    }
+            deleteOnExit()
+        }
 
     val resourcePath = "/$prefix${fileName}_$arch.$extension"
 
