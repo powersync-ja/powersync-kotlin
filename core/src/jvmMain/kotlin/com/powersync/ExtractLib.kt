@@ -24,7 +24,7 @@ internal fun extractLib(fileName: String): String {
             else -> error("Unsupported architecture: $sysArch")
         }
 
-    val path = Files.createTempFile(Path(System.getProperty("java.io.tmpdir")), prefix, extension)
+    val path = Files.createTempFile(Path(System.getProperty("java.io.tmpdir")), "$prefix$fileName", extension)
     val file =
         path.toFile().apply {
             setReadable(true)
