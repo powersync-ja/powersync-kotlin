@@ -1,21 +1,21 @@
 <#macro display>
+<@template_cmd name="pathToRoot">
 <div style="margin-top:auto">
-
 <div class="footer-container">
   <div class="footer-column">
     <strong class="footer-title">Community</strong>
     <div class="footer-icon-row">
       <a href="https://discord.gg/powersync" target="_blank">
-        <img src="/images/discord.svg" loading="lazy" alt="Discord" height="24">
+        <img src="${pathToRoot}/images/discord.svg" loading="lazy" alt="Discord" height="24">
       </a>
       <a href="https://twitter.com/powersync_" target="_blank">
-        <img src="/images/x.svg" loading="lazy" alt="Twitter" height="20">
+        <img src="${pathToRoot}/images/x.svg" loading="lazy" alt="Twitter" height="20">
       </a>
       <a href="https://www.youtube.com/@powersync_" target="_blank">
-        <img src="/images/youtube.svg" loading="lazy" alt="YouTube" width="32" height="28">
+        <img src="${pathToRoot}/images/youtube.svg" loading="lazy" alt="YouTube" width="32" height="28">
       </a>
       <a href="https://www.linkedin.com/showcase/journeyapps-powersync/" target="_blank">
-        <img src="/images/linkedin.svg" loading="lazy" alt="LinkedIn" height="24">
+        <img src="${pathToRoot}/images/linkedin.svg" loading="lazy" alt="LinkedIn" height="24">
       </a>
     </div>
   </div>
@@ -24,10 +24,10 @@
     <strong class="footer-title">More</strong>
     <div class="footer-icon-row">
       <a href="https://github.com/powersync-ja" target="_blank">
-        <img src="/images/github.svg" loading="lazy" alt="GitHub" height="24">
+        <img src="${pathToRoot}/images/github.svg" loading="lazy" alt="GitHub" height="24">
       </a>
       <a href="https://www.powersync.com/" target="_blank">
-        <img src="/images/web.svg" loading="lazy" alt="Website" height="30">
+        <img src="${pathToRoot}/images/web.svg" loading="lazy" alt="Website" height="30">
       </a>
     </div>
   </div>
@@ -44,4 +44,5 @@
 </div>
 
 </div>
+</@template_cmd>
 </#macro>
