@@ -27,9 +27,11 @@ jobs:
           distribution: 'temurin'
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-      - name: Gradle publish
+      - name: Build Docs
         run: |
-          ./gradlew dokkaGenerate
+          ./gradlew \
+           -PGITHUB_PUBLISH_TOKEN=${{ secrets.GITHUB_TOKEN }} \
+          dokkaGenerate
         shell: bash
       - name: Upload static files as artifact
         id: deployment
