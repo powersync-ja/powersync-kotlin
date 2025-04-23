@@ -23,6 +23,7 @@ plugins {
     alias(libs.plugins.keeper) apply false
     alias(libs.plugins.kotlin.atomicfu) apply false
     id("org.jetbrains.dokka") version "2.0.0"
+    id("dokka-convention")
 }
 
 allprojects {
@@ -65,32 +66,18 @@ tasks.getByName<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
 
-buildscript {
-    dependencies {
-        classpath("org.jetbrains.dokka:dokka-base:2.0.0")
-    }
-}
-
-dokka {
-    pluginsConfiguration.html {
-        customAssets.from("./docs/assets/powersync-logo.png")
-        customAssets.from("./docs/assets/discord.svg")
-        customAssets.from("./docs/assets/github.svg")
-        customAssets.from("./docs/assets/web.svg")
-        customAssets.from("./docs/assets/x.svg")
-        customAssets.from("./docs/assets/youtube.svg")
-        customAssets.from("./docs/assets/linkedin.svg")
-        customStyleSheets.from("./docs/assets/doc-styles.css")
-        templatesDir = file("./docs/assets/dokka-templates")
-    }
-}
-
 // Merges individual module docs into a single HTML output
 dependencies {
     dokka(project(":core:"))
     dokka(project(":connectors:supabase"))
 }
 
+dokka {
+    moduleName.set("PowerSync Kotlin")
+}
+
+// Serve the generated Dokka documentation using a simple HTTP server
+// File changes are not watched here
 tasks.register("serveDokka") {
     dependsOn("dokkaGenerate")
     doLast {

@@ -19,7 +19,7 @@ plugins {
     id("com.powersync.plugins.sharedbuild")
     alias(libs.plugins.mokkery)
     alias(libs.plugins.kotlin.atomicfu)
-    id("org.jetbrains.dokka") version "2.0.0"
+    id("dokka-convention")
 }
 
 val binariesFolder = project.layout.buildDirectory.dir("binaries/desktop")
@@ -298,15 +298,5 @@ tasks.withType<KotlinTest> {
 setupGithubRepository()
 
 dokka {
-    pluginsConfiguration.html {
-        customAssets.from("../docs/assets/powersync-logo.png")
-        customAssets.from("../docs/assets/discord.svg")
-        customAssets.from("../docs/assets/github.svg")
-        customAssets.from("../docs/assets/web.svg")
-        customAssets.from("../docs/assets/x.svg")
-        customAssets.from("../docs/assets/youtube.svg")
-        customAssets.from("../docs/assets/linkedin.svg")
-        customStyleSheets.from("../docs/assets/doc-styles.css")
-        templatesDir = file("../docs/assets/dokka-templates")
-    }
+    moduleName.set("PowerSync Core")
 }
