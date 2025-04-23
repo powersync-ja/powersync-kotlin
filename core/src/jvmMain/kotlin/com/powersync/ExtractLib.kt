@@ -1,9 +1,12 @@
 package com.powersync
 
+import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.UUID
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
+import kotlin.uuid.Uuid
 
 private class R
 
@@ -24,21 +27,22 @@ internal fun extractLib(fileName: String): String {
             else -> error("Unsupported architecture: $sysArch")
         }
 
-    val path = Files.createTempFile(Path(System.getProperty("java.io.tmpdir")), "$prefix$fileName", extension)
-    val file =
-        path.toFile().apply {
-            setReadable(true)
-            setWritable(true)
-            setExecutable(true)
+    val suffix = UUID.randomUUID().toString()
+    val file = File(System.getProperty("java.io.tmpdir"), "$prefix$fileName-$suffix.$extension").apply {
+        setReadable(true)
+        setWritable(true)
+        setExecutable(true)
 
-            deleteOnExit()
-        }
+        deleteOnExit()
+    }
+
 
     val resourcePath = "/$prefix${fileName}_$arch.$extension"
 
-    (R::class.java.getResourceAsStream(resourcePath) ?: error("Resource $path not found")).use { input ->
+    (R::class.java.getResourceAsStream(resourcePath) ?: error("Resource $resourcePath not found")).use { input ->
         file.outputStream().use { output -> input.copyTo(output) }
     }
 
-    return path.absolutePathString()
+    println("PowerSync loadable should be at $file")
+    return file.absolutePath
 }
