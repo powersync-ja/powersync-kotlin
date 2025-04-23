@@ -14,6 +14,11 @@ internal interface BucketStorage {
 
     fun nextCrudItem(transaction: PowerSyncTransaction): CrudEntry?
 
+    fun getCrudItemsByTransactionId(
+        transactionId: Int,
+        transaction: PowerSyncTransaction,
+    ): List<CrudEntry>
+
     suspend fun hasCrud(): Boolean
 
     fun hasCrud(transaction: PowerSyncTransaction): Boolean
