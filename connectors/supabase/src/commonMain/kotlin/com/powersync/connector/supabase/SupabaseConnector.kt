@@ -168,7 +168,6 @@ public class SupabaseConnector(
             PowerSyncCredentials(
                 endpoint = powerSyncEndpoint,
                 token = session.accessToken, // Use the access token to authenticate against PowerSync
-                userId = session.user!!.id,
             )
         }
 

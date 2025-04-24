@@ -24,7 +24,7 @@ public data class PowerSyncCredentials(
         level = DeprecationLevel.WARNING,
     )
     @SerialName("user_id")
-    val userId: String?,
+    val userId: String? = null,
 ) {
     override fun toString(): String = "PowerSyncCredentials<endpoint: $endpoint userId: $userId>"
 
