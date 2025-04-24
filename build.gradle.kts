@@ -22,7 +22,7 @@ plugins {
     alias(libs.plugins.kotlinter) apply false
     alias(libs.plugins.keeper) apply false
     alias(libs.plugins.kotlin.atomicfu) apply false
-    id("org.jetbrains.dokka") version "2.0.0"
+    id("org.jetbrains.dokka") version libs.versions.dokkaBase
     id("dokka-convention")
 }
 
