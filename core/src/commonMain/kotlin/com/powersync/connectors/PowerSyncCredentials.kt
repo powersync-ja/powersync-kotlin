@@ -20,8 +20,7 @@ public data class PowerSyncCredentials(
      * User ID.
      */
     @Deprecated(
-        message = "This property is no longer used.",
-        replaceWith = ReplaceWith(""),
+        message = "This property is no longer used and should be removed.",
         level = DeprecationLevel.WARNING,
     )
     @SerialName("user_id")
