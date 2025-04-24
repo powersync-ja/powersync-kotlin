@@ -57,7 +57,6 @@ junitVersion = "1.2.1"
 
 [libraries]
 configuration-annotations = { module = "co.touchlab.skie:configuration-annotations", version.ref = "configurationAnnotations" }
-dokka-base = { module = "org.jetbrains.dokka:dokka-base", version.ref = "dokkaBase" }
 dokka-gradle-plugin = { module = "org.jetbrains.dokka:dokka-gradle-plugin", version.ref = "dokkaBase" }
 gradle-download-task = { module = "de.undercouch:gradle-download-task", version.ref = "gradleDownloadTask" }
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
