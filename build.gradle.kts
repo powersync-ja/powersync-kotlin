@@ -70,6 +70,7 @@ tasks.getByName<Delete>("clean") {
 dependencies {
     dokka(project(":core:"))
     dokka(project(":connectors:supabase"))
+    dokka(project(":compose:"))
 }
 
 dokka {
@@ -79,6 +80,7 @@ dokka {
 // Serve the generated Dokka documentation using a simple HTTP server
 // File changes are not watched here
 tasks.register("serveDokka") {
+    group = "dokka"
     dependsOn("dokkaGenerate")
     doLast {
         val server = HttpServer.create(InetSocketAddress(0), 0)
