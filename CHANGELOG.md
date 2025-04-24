@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0-BETA32
+
+* Added `onChange` method to the PowerSync client. This allows for observing table changes.
+
 ## 1.0.0-BETA31
 
 * Added helpers for Attachment syncing.
