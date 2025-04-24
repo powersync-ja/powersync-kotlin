@@ -5,6 +5,8 @@ import com.powersync.db.internal.ConnectionContext
 import com.powersync.db.internal.PowerSyncTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
 public fun interface ThrowableTransactionCallback<R> {
     @Throws(PowerSyncException::class, kotlinx.coroutines.CancellationException::class)
@@ -17,6 +19,13 @@ public fun interface ThrowableLockCallback<R> {
 }
 
 public interface Queries {
+    public companion object {
+        /**
+         * The default throttle duration for  [onChange] and [watch] operations.
+         */
+        public val DEFAULT_THROTTLE: Duration = 30.milliseconds
+    }
+
     /**
      * Executes a write query (INSERT, UPDATE, DELETE).
      *
@@ -87,7 +96,7 @@ public interface Queries {
      * Returns a [Flow] that emits whenever the source tables are modified.
      *
      * @param tables The set of tables to monitor for changes.
-     * @param throttleMs The minimum interval, in milliseconds, between queries. Defaults to null.
+     * @param throttleMs The minimum interval, in milliseconds, between emissions. Defaults to [DEFAULT_THROTTLE]. Table changes are accumulated while throttling is active. The accumulated set of tables will be emitted on the trailing edge of the throttle.
      * @return A [Flow] emitting the set of modified tables.
      * @throws PowerSyncException If a database error occurs.
      * @throws CancellationException If the operation is cancelled.
@@ -95,7 +104,7 @@ public interface Queries {
     @Throws(PowerSyncException::class, CancellationException::class)
     public fun onChange(
         tables: Set<String>,
-        throttleMs: Long? = null,
+        throttleMs: Long = DEFAULT_THROTTLE.inWholeMilliseconds,
     ): Flow<Set<String>>
 
     /**
@@ -103,7 +112,7 @@ public interface Queries {
      *
      * @param sql The SQL query to execute.
      * @param parameters The parameters for the query, or an empty list if none.
-     * @param throttleMs The minimum interval, in milliseconds, between queries. Defaults to null.
+     * @param throttleMs The minimum interval, in milliseconds, between queries. Defaults to [DEFAULT_THROTTLE].
      * @param mapper A function to map the result set to the desired type.
      * @return A [Flow] emitting lists of results.
      * @throws PowerSyncException If a database error occurs.
@@ -113,7 +122,7 @@ public interface Queries {
     public fun <RowType : Any> watch(
         sql: String,
         parameters: List<Any?>? = listOf(),
-        throttleMs: Long? = null,
+        throttleMs: Long = DEFAULT_THROTTLE.inWholeMilliseconds,
         mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>>
 

@@ -8,6 +8,7 @@ import com.powersync.db.ThrowableLockCallback
 import com.powersync.db.ThrowableTransactionCallback
 import com.powersync.db.runWrapped
 import com.powersync.db.runWrappedSuspending
+import com.powersync.utils.AtomicMutableSet
 import com.powersync.utils.JsonUtil
 import com.powersync.utils.throttle
 import kotlinx.coroutines.CoroutineScope
@@ -55,10 +56,6 @@ internal class InternalDatabaseImpl(
 
     // Could be scope.coroutineContext, but the default is GlobalScope, which seems like a bad idea. To discuss.
     private val dbContext = Dispatchers.IO
-
-    companion object {
-        val DEFAULT_WATCH_THROTTLE = 30.milliseconds
-    }
 
     override suspend fun execute(
         sql: String,
@@ -108,36 +105,42 @@ internal class InternalDatabaseImpl(
 
     override fun onChange(
         tables: Set<String>,
-        throttleMs: Long?,
+        throttleMs: Long,
     ): Flow<Set<String>> =
         channelFlow {
             // Match all possible internal table combinations
             val watchedTables =
                 tables.flatMap { listOf(it, "ps_data__$it", "ps_data_local__$it") }.toSet()
 
+            // Accumulate updates between throttles
+            val batchedUpdates = AtomicMutableSet<String>()
+
             updatesOnTables()
                 .transform { updates ->
                     val intersection = updates.intersect(watchedTables)
                     if (intersection.isNotEmpty()) {
                         // Transform table names using friendlyTableName
-                        emit(intersection.map { friendlyTableName(it) }.toSet())
+                        val friendlyTableNames = intersection.map { friendlyTableName(it) }.toSet()
+                        batchedUpdates.addAll(friendlyTableNames)
+                        emit(Unit)
                     }
                 }
                 // Throttling here is a feature which prevents watch queries from spamming updates.
                 // Throttling by design discards and delays events within the throttle window. Discarded events
                 // still trigger a trailing edge update.
                 // Backpressure is avoided on the throttling and consumer level by buffering the last upstream value.
-                .throttle(throttleMs?.milliseconds ?: DEFAULT_WATCH_THROTTLE)
+                .throttle(throttleMs.milliseconds)
                 .collect {
                     // Emit the transformed tables which have changed
-                    send(it)
+                    val copy = batchedUpdates.toSetAndClear()
+                    send(copy)
                 }
         }
 
     override fun <RowType : Any> watch(
         sql: String,
         parameters: List<Any?>?,
-        throttleMs: Long?,
+        throttleMs: Long,
         mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>> =
         // Use a channel flow here since we throttle (buffer used under the hood)
@@ -163,7 +166,7 @@ internal class InternalDatabaseImpl(
                 // still trigger a trailing edge update.
                 // Backpressure is avoided on the throttling and consumer level by buffering the last upstream value.
                 // Note that the buffered upstream "value" only serves to trigger the getAll query. We don't buffer watch results.
-                .throttle(throttleMs?.milliseconds ?: DEFAULT_WATCH_THROTTLE)
+                .throttle(throttleMs.milliseconds)
                 .collect {
                     send(getAll(sql, parameters = parameters, mapper = mapper))
                 }

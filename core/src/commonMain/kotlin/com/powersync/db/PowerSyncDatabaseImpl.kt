@@ -350,7 +350,7 @@ internal class PowerSyncDatabaseImpl(
 
     override fun onChange(
         tables: Set<String>,
-        throttleMs: Long?,
+        throttleMs: Long,
     ): Flow<Set<String>> =
         flow {
             waitReady()
@@ -362,7 +362,7 @@ internal class PowerSyncDatabaseImpl(
     override fun <RowType : Any> watch(
         sql: String,
         parameters: List<Any?>?,
-        throttleMs: Long?,
+        throttleMs: Long,
         mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>> =
         flow {
