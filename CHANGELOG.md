@@ -1,9 +1,14 @@
 # Changelog
 
+## 1.0.0-BETA32
+
+* Added `onChange` method to the PowerSync client. This allows for observing table changes.
+* Fix loading native PowerSync extension for Java targets.
+
 ## 1.0.0-BETA31
 
 * Added helpers for Attachment syncing.
-* Fix loading native PowerSync extension for Java targets.
+* Fix `getNextCrudTransaction()` only returning a single item.
 
 ## 1.0.0-BETA30
 

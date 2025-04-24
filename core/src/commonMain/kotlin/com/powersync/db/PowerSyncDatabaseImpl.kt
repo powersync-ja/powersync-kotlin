@@ -298,15 +298,10 @@ internal class PowerSyncDatabaseImpl(
                 if (txId == null) {
                     listOf(entry)
                 } else {
-                    transaction.getAll("SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC LIMIT 1") {
-                        CrudEntry.fromRow(
-                            CrudRow(
-                                id = it.getString("id"),
-                                data = it.getString("data"),
-                                txId = it.getLongOptional("tx_id")?.toInt(),
-                            ),
-                        )
-                    }
+                    bucketStorage.getCrudItemsByTransactionId(
+                        transactionId = txId,
+                        transaction = transaction,
+                    )
                 }
 
             return@readTransaction CrudTransaction(
@@ -353,10 +348,21 @@ internal class PowerSyncDatabaseImpl(
         return internalDb.getOptional(sql, parameters, mapper)
     }
 
+    override fun onChange(
+        tables: Set<String>,
+        throttleMs: Long,
+    ): Flow<Set<String>> =
+        flow {
+            waitReady()
+            emitAll(
+                internalDb.onChange(tables, throttleMs),
+            )
+        }
+
     override fun <RowType : Any> watch(
         sql: String,
         parameters: List<Any?>?,
-        throttleMs: Long?,
+        throttleMs: Long,
         mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>> =
         flow {

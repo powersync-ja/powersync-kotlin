@@ -184,6 +184,25 @@ class DatabaseTest {
         }
 
     @Test
+    fun testTableChangesUpdates() =
+        databaseTest {
+            turbineScope {
+                val query = database.onChange(tables = setOf("users")).testIn(this)
+
+                database.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf("Test", "test@example.org"),
+                )
+
+                val changeSet = query.awaitItem()
+                changeSet.count() shouldBe 1
+                changeSet.contains("users") shouldBe true
+
+                query.cancel()
+            }
+        }
+
+    @Test
     fun testClosingReadPool() =
         databaseTest {
             val pausedLock = CompletableDeferred<Unit>()
@@ -368,5 +387,35 @@ class DatabaseTest {
 
             val count = database.get("SELECT COUNT(*) from people") { it.getLong(0)!! }
             count shouldBe 1
+        }
+
+    @Test
+    fun testCrudTransaction() =
+        databaseTest {
+            database.execute(
+                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                listOf("a", "a@example.org"),
+            )
+
+            database.writeTransaction {
+                it.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf("b", "b@example.org"),
+                )
+                it.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf("c", "c@example.org"),
+                )
+            }
+
+            var transaction = database.getNextCrudTransaction()
+            transaction!!.crud shouldHaveSize 1
+            transaction.complete(null)
+
+            transaction = database.getNextCrudTransaction()
+            transaction!!.crud shouldHaveSize 2
+            transaction.complete(null)
+
+            database.getNextCrudTransaction() shouldBe null
         }
 }
