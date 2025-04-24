@@ -184,6 +184,25 @@ class DatabaseTest {
         }
 
     @Test
+    fun testTableChangesUpdates() =
+        databaseTest {
+            turbineScope {
+                val query = database.onChange(tables = setOf("users")).testIn(this)
+
+                database.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf("Test", "test@example.org"),
+                )
+
+                val changeSet = query.awaitItem()
+                changeSet.count() shouldBe 1
+                changeSet.contains("users") shouldBe true
+
+                query.cancel()
+            }
+        }
+
+    @Test
     fun testClosingReadPool() =
         databaseTest {
             val pausedLock = CompletableDeferred<Unit>()
@@ -373,11 +392,20 @@ class DatabaseTest {
     @Test
     fun testCrudTransaction() =
         databaseTest {
-            database.execute("INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)", listOf("a", "a@example.org"))
+            database.execute(
+                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                listOf("a", "a@example.org"),
+            )
 
             database.writeTransaction {
-                it.execute("INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)", listOf("b", "b@example.org"))
-                it.execute("INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)", listOf("c", "c@example.org"))
+                it.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf("b", "b@example.org"),
+                )
+                it.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf("c", "c@example.org"),
+                )
             }
 
             var transaction = database.getNextCrudTransaction()

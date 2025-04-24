@@ -59,6 +59,18 @@ public interface Queries {
     ): RowType?
 
     /**
+     * @returns a [Flow] which emits whenever the source tables are modified.
+     */
+    @Throws(PowerSyncException::class, CancellationException::class)
+    public fun onChange(
+        tables: Set<String>,
+        /**
+         * Specify the minimum interval, in milliseconds, between queries.
+         */
+        throttleMs: Long? = null,
+    ): Flow<Set<String>>
+
+    /**
      * Execute a read-only (SELECT) query every time the source tables are modified and return the results as a List in [Flow].
      */
     @Throws(PowerSyncException::class, CancellationException::class)

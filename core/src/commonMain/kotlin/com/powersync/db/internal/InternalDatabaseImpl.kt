@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.onSubscription
+import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -104,6 +105,34 @@ internal class InternalDatabaseImpl(
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType,
     ): RowType? = readLock { connection -> connection.getOptional(sql, parameters, mapper) }
+
+    override fun onChange(
+        tables: Set<String>,
+        throttleMs: Long?,
+    ): Flow<Set<String>> =
+        channelFlow {
+            // Match all possible internal table combinations
+            val watchedTables =
+                tables.flatMap { listOf(it, "ps_data__$it", "ps_data_local__$it") }.toSet()
+
+            updatesOnTables()
+                .transform { updates ->
+                    val intersection = updates.intersect(watchedTables)
+                    if (intersection.isNotEmpty()) {
+                        // Transform table names using friendlyTableName
+                        emit(intersection.map { friendlyTableName(it) }.toSet())
+                    }
+                }
+                // Throttling here is a feature which prevents watch queries from spamming updates.
+                // Throttling by design discards and delays events within the throttle window. Discarded events
+                // still trigger a trailing edge update.
+                // Backpressure is avoided on the throttling and consumer level by buffering the last upstream value.
+                .throttle(throttleMs?.milliseconds ?: DEFAULT_WATCH_THROTTLE)
+                .collect {
+                    // Emit the transformed tables which have changed
+                    send(it)
+                }
+        }
 
     override fun <RowType : Any> watch(
         sql: String,
@@ -270,6 +299,18 @@ internal class InternalDatabaseImpl(
         val p2: Long,
         val p3: Long,
     )
+}
+
+/**
+ * Converts internal table names (e.g., prefixed with "ps_data__" or "ps_data_local__")
+ * to their original friendly names by removing the prefixes. If no prefix matches,
+ * the original table name is returned.
+ */
+private fun friendlyTableName(table: String): String {
+    val re = Regex("^ps_data__(.+)$")
+    val re2 = Regex("^ps_data_local__(.+)$")
+    val match = re.matchEntire(table) ?: re2.matchEntire(table)
+    return match?.groupValues?.get(1) ?: table
 }
 
 internal fun getBindersFromParams(parameters: List<Any?>?): (SqlPreparedStatement.() -> Unit)? {
