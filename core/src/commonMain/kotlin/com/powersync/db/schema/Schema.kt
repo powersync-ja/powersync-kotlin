@@ -2,6 +2,12 @@ package com.powersync.db.schema
 
 import kotlinx.serialization.Serializable
 
+/**
+ * The schema used by the database.
+ *
+ * The implementation uses the schema as a "VIEW" on top of JSON data.
+ * No migrations are required on the client.
+ */
 public data class Schema(
     val tables: List<Table>,
 ) {
@@ -9,8 +15,17 @@ public data class Schema(
         validate()
     }
 
+    /**
+     * Secondary constructor to create a schema with a variable number of tables.
+     */
     public constructor(vararg tables: Table) : this(tables.asList())
 
+    /**
+     * Validates the schema by ensuring there are no duplicate table names
+     * and that each table is valid.
+     *
+     * @throws AssertionError if duplicate table names are found.
+     */
     public fun validate() {
         val tableNames = mutableSetOf<String>()
         tables.forEach { table ->

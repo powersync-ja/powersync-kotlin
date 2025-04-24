@@ -2,7 +2,7 @@ plugins {
     id("org.jetbrains.dokka")
 }
 
-// Shared Dokka config
+// Shared Dokka config for additional assets
 dokka {
     pluginsConfiguration.html {
         val docsAssetsDir = rootProject.file("docs/assets")
