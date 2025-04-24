@@ -164,7 +164,6 @@ public class SupabaseConnector(
 
             check(session.user != null) { "No user data" }
 
-            // userId is for debugging purposes only
             PowerSyncCredentials(
                 endpoint = powerSyncEndpoint,
                 token = session.accessToken, // Use the access token to authenticate against PowerSync
