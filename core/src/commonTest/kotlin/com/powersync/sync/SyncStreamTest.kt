@@ -11,6 +11,8 @@ import com.powersync.bucket.BucketStorage
 import com.powersync.bucket.Checkpoint
 import com.powersync.bucket.OpType
 import com.powersync.bucket.OplogEntry
+import com.powersync.bucket.WriteCheckpointData
+import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.db.crud.CrudEntry
@@ -27,9 +29,11 @@ import dev.mokkery.verify
 import dev.mokkery.verify.VerifyMode.Companion.order
 import dev.mokkery.verifyNoMoreCalls
 import dev.mokkery.verifySuspend
+import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
@@ -102,10 +106,11 @@ class SyncStreamTest {
                 SyncStream(
                     bucketStorage = bucketStorage,
                     connector = connector,
-                    httpEngine = assertNoHttpEngine,
+                    createClient = { config -> HttpClient(assertNoHttpEngine, config) },
                     uploadCrud = {},
                     logger = logger,
                     params = JsonObject(emptyMap()),
+                    scope = this,
                 )
 
             syncStream.invalidateCredentials()
@@ -137,15 +142,16 @@ class SyncStreamTest {
                 SyncStream(
                     bucketStorage = bucketStorage,
                     connector = connector,
-                    httpEngine = assertNoHttpEngine,
+                    createClient = { config -> HttpClient(assertNoHttpEngine, config) },
                     uploadCrud = { },
                     retryDelayMs = 10,
                     logger = logger,
                     params = JsonObject(emptyMap()),
+                    scope = this,
                 )
 
             syncStream.status.update { copy(connected = true) }
-            syncStream.triggerCrudUpload()
+            syncStream.triggerCrudUploadAsync().join()
 
             testLogWriter.assertCount(2)
 
@@ -176,11 +182,12 @@ class SyncStreamTest {
                 SyncStream(
                     bucketStorage = bucketStorage,
                     connector = connector,
-                    httpEngine = assertNoHttpEngine,
+                    createClient = { config -> HttpClient(assertNoHttpEngine, config) },
                     uploadCrud = { },
                     retryDelayMs = 10,
                     logger = logger,
                     params = JsonObject(emptyMap()),
+                    scope = this,
                 )
 
             // Launch streaming sync in a coroutine that we'll cancel after verification
@@ -210,17 +217,18 @@ class SyncStreamTest {
             // TODO: It would be neat if we could use in-memory sqlite instances instead of mocking everything
             // Revisit https://github.com/powersync-ja/powersync-kotlin/pull/117/files at some point
             val syncLines = Channel<SyncLine>()
-            val client = MockSyncService(syncLines)
+            val client = MockSyncService(syncLines, { WriteCheckpointResponse(WriteCheckpointData("1000")) })
 
             syncStream =
                 SyncStream(
                     bucketStorage = bucketStorage,
                     connector = connector,
-                    httpEngine = client,
+                    createClient = { config -> HttpClient(client, config) },
                     uploadCrud = { },
                     retryDelayMs = 10,
                     logger = logger,
                     params = JsonObject(emptyMap()),
+                    scope = this,
                 )
 
             val job = launch { syncStream.streamingSync() }

@@ -17,6 +17,9 @@ import io.github.jan.supabase.auth.user.UserSession
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.storage.BucketApi
+import io.github.jan.supabase.storage.Storage
+import io.github.jan.supabase.storage.storage
 import io.ktor.client.plugins.HttpSend
 import io.ktor.client.plugins.plugin
 import io.ktor.client.statement.bodyAsText
@@ -31,6 +34,7 @@ import kotlinx.serialization.json.Json
 public class SupabaseConnector(
     public val supabaseClient: SupabaseClient,
     public val powerSyncEndpoint: String,
+    private val storageBucket: String? = null,
 ) : PowerSyncBackendConnector() {
     private var errorCode: String? = null
 
@@ -52,17 +56,29 @@ public class SupabaseConnector(
             }
     }
 
+    public fun storageBucket(): BucketApi {
+        if (storageBucket == null) {
+            throw Exception("No bucket has been specified")
+        }
+        return supabaseClient.storage[storageBucket]
+    }
+
     public constructor(
         supabaseUrl: String,
         supabaseKey: String,
         powerSyncEndpoint: String,
+        storageBucket: String? = null,
     ) : this(
         supabaseClient =
             createSupabaseClient(supabaseUrl, supabaseKey) {
                 install(Auth)
                 install(Postgrest)
+                if (storageBucket != null) {
+                    install(Storage)
+                }
             },
         powerSyncEndpoint = powerSyncEndpoint,
+        storageBucket = storageBucket,
     )
 
     init {
@@ -81,7 +97,10 @@ public class SupabaseConnector(
                 val responseText = response.bodyAsText()
 
                 try {
-                    val error = Json { coerceInputValues = true }.decodeFromString<Map<String, String?>>(responseText)
+                    val error =
+                        Json { coerceInputValues = true }.decodeFromString<Map<String, String?>>(
+                            responseText,
+                        )
                     errorCode = error["code"]
                 } catch (e: Exception) {
                     Logger.e("Failed to parse error response: $e")
@@ -139,7 +158,9 @@ public class SupabaseConnector(
             check(supabaseClient.auth.sessionStatus.value is SessionStatus.Authenticated) { "Supabase client is not authenticated" }
 
             // Use Supabase token for PowerSync
-            val session = supabaseClient.auth.currentSessionOrNull() ?: error("Could not fetch Supabase credentials")
+            val session =
+                supabaseClient.auth.currentSessionOrNull()
+                    ?: error("Could not fetch Supabase credentials")
 
             check(session.user != null) { "No user data" }
 

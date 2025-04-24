@@ -24,8 +24,14 @@ structure:
 ## Note on SQLDelight
 
 The PowerSync core module, internally makes use
-of [SQLDelight](https://sqldelight.github.io/sqldelight/latest/) for it database API and typesafe database
+of [SQLDelight](https://sqldelight.github.io/sqldelight/latest/) for it database API and typesafe
+database
 query generation.
 
 The PowerSync core module does not currently support integrating with SQLDelight from client
 applications.
+
+## Attachment Helpers
+
+This module contains attachment helpers under the `com.powersync.attachments` package. See
+the [Attachment Helpers README](./src/commonMain/kotlin/com/powersync/attachments/README.md)

@@ -1,22 +1,45 @@
 # Changelog
 
-## 1.0.0-BETA29 (unreleased)
+## 1.0.0-BETA31
+
+* Added helpers for Attachment syncing.
+* Fix `getNextCrudTransaction()` only returning a single item.
+
+## 1.0.0-BETA30
+
+* Fix a deadlock when calling `connect()` immediately after opening a database.
+  The issue has been introduced in version `1.0.0-BETA29`.
+
+## 1.0.0-BETA29
 
 * Fix potential race condition between jobs in `connect()` and `disconnect()`.
-* Report real-time progress information about downloads through `SyncStatus.downloadProgress`.
-* Compose: Add `composeState()` extension method on `SyncStatus`.
+* [JVM Windows] Fixed PowerSync Extension temporary file deletion error on process shutdown.
+* [iOS] Fixed issue where automatic driver migrations would fail with the error:
+
+```
+Sqlite operation failure database is locked attempted to run migration and failed. closing connection
+```
+
+* Fix race condition causing data received during uploads not to be applied.
 
 ## 1.0.0-BETA28
 
 * Update PowerSync SQLite core extension to 0.3.12.
-* Added queing protection and warnings when connecting multiple PowerSync clients to the same database file.
-* Improved concurrent SQLite connection support accross various platforms. All platforms now use a single write connection and multiple read connections for concurrent read queries.
-* Added the ability to open a SQLite database given a custom `dbDirectory` path. This is currently not supported on iOS due to internal driver restrictions.
+* Added queing protection and warnings when connecting multiple PowerSync clients to the same
+  database file.
+* Improved concurrent SQLite connection support accross various platforms. All platforms now use a
+  single write connection and multiple read connections for concurrent read queries.
+* Added the ability to open a SQLite database given a custom `dbDirectory` path. This is currently
+  not supported on iOS due to internal driver restrictions.
 * Internaly improved the linking of SQLite for iOS.
 * Enabled Full Text Search on iOS platforms.
 * Added the ability to update the schema for existing PowerSync clients.
-* Fixed bug where local only, insert only and view name overrides were not applied for schema tables.
-* The Android SQLite driver now uses the [Xerial JDBC library](https://github.com/xerial/sqlite-jdbc). This removes the requirement for users to add the jitpack Maven repository to their projects.
+* Fixed bug where local only, insert only and view name overrides were not applied for schema
+  tables.
+* The Android SQLite driver now uses
+  the [Xerial JDBC library](https://github.com/xerial/sqlite-jdbc). This removes the requirement for
+  users to add the jitpack Maven repository to their projects.
+
 ```diff
 // settings.gradle.kts example
     repositories {
@@ -44,8 +67,10 @@
 
 ## 1.0.0-BETA24
 
-* Improve internal handling of watch queries to avoid issues where updates are not being received due to transaction commits occurring after the query is run.
-* Fix issue in JVM build where `columnNames` was throwing an error due to the index of the JDBC driver starting at 1 instead of 0 as in the other drivers/
+* Improve internal handling of watch queries to avoid issues where updates are not being received
+  due to transaction commits occurring after the query is run.
+* Fix issue in JVM build where `columnNames` was throwing an error due to the index of the JDBC
+  driver starting at 1 instead of 0 as in the other drivers/
 * Throw and not just catch `CancellationExceptions` in `runWrappedSuspending`
 
 ## 1.0.0-BETA23
@@ -63,14 +88,18 @@
 
 ## 1.0.0-BETA20
 
-* Add cursor optional functions: `getStringOptional`, `getLongOptional`, `getDoubleOptional`, `getBooleanOptional` and `getBytesOptional` when using the column name which allow for optional return types
+* Add cursor optional functions: `getStringOptional`, `getLongOptional`, `getDoubleOptional`,
+  `getBooleanOptional` and `getBytesOptional` when using the column name which allow for optional
+  return types
 * Throw errors for invalid column on all cursor functions
-* `getString`, `getLong`, `getBytes`, `getDouble` and `getBoolean` used with the column name will now throw an error for non-null values and expect a non optional return type
+* `getString`, `getLong`, `getBytes`, `getDouble` and `getBoolean` used with the column name will
+  now throw an error for non-null values and expect a non optional return type
 
 ## 1.0.0-BETA19
 
 * Allow cursor to get values by column name e.g. `getStringOptional("id")`
-* BREAKING CHANGE: If you were using `SqlCursor` from SqlDelight previously for your own custom mapper then you must now change to `SqlCursor` exported by the PowerSync module.
+* BREAKING CHANGE: If you were using `SqlCursor` from SqlDelight previously for your own custom
+  mapper then you must now change to `SqlCursor` exported by the PowerSync module.
 
   Previously you would import it like this:
 
@@ -86,7 +115,8 @@
 
 ## 1.0.0-BETA18
 
-* BREAKING CHANGE: Move from async sqldelight calls to synchronous calls. This will only affect `readTransaction` and `writeTransaction`where the callback function is no longer asynchronous.
+* BREAKING CHANGE: Move from async sqldelight calls to synchronous calls. This will only affect
+  `readTransaction` and `writeTransaction`where the callback function is no longer asynchronous.
 
 ## 1.0.0-BETA17
 
@@ -95,7 +125,8 @@
 ## 1.0.0-BETA16
 
 * Add `close` method to database methods
-* Throw when error is a `CancellationError` and remove invalidation for all errors in `streamingSync` catch.
+* Throw when error is a `CancellationError` and remove invalidation for all errors in
+  `streamingSync` catch.
 
 ## 1.0.0-BETA15
 
@@ -109,7 +140,8 @@
 
 ## 1.0.0-BETA13
 
-* Move iOS database driver to use IO dispatcher which should avoid race conditions and improve performance.
+* Move iOS database driver to use IO dispatcher which should avoid race conditions and improve
+  performance.
 
 ## 1.0.0-BETA12
 
@@ -126,7 +158,8 @@
 ## 1.0.0-BETA9
 
 * Re-enable SKIE `SuspendInterop`
-* Move transaction functions out of `PowerSyncTransactionFactory` to avoid threading issues in Swift SDK
+* Move transaction functions out of `PowerSyncTransactionFactory` to avoid threading issues in Swift
+  SDK
 
 ## 1.0.0-BETA8
 
@@ -155,23 +188,27 @@
 * Add `waitForFirstSync` function - which resolves after the initial sync is completed
 * Upgrade to Kotlin 2.0.20 - should not cause any issues with users who are still on Kotlin 1.9
 * Upgrade `powersync-sqlite-core` to 0.3.0 - improves incremental sync performance
-* Add client sync parameters - which allows you specify sync parameters from the client https://docs.powersync.com/usage/sync-rules/advanced-topics/client-parameters-beta
+* Add client sync parameters - which allows you specify sync parameters from the
+  client https://docs.powersync.com/usage/sync-rules/advanced-topics/client-parameters-beta
+
 ```kotlin
 val params = JsonParam.Map(
-  mapOf(
-    "name" to JsonParam.String("John Doe"),
-    "age" to JsonParam.Number(30),
-    "isStudent" to JsonParam.Boolean(false)
-  )
+    mapOf(
+        "name" to JsonParam.String("John Doe"),
+        "age" to JsonParam.Number(30),
+        "isStudent" to JsonParam.Boolean(false)
+    )
 )
 
 connect(
-...
-  params = params
+    ...
+params = params
 )
 ```
+
 * Add schema validation when schema is generated
-* Add warning message if there is a crudItem in the queue that has not yet been synced and after a delay rerun the upload
+* Add warning message if there is a crudItem in the queue that has not yet been synced and after a
+  delay rerun the upload
 
 ## 1.0.0-BETA2
 
@@ -179,13 +216,15 @@ connect(
 
 ## 1.0.0-BETA1
 
-* Improve API by changing from Builder pattern to simply instantiating the database `PowerSyncDatabase`
+* Improve API by changing from Builder pattern to simply instantiating the database
+  `PowerSyncDatabase`
   E.g. `val db = PowerSyncDatabase(factory, schema)`
 * Use callback context in transactions
   E.g. `db.writeTransaction{ ctx -> ctx.execute(...) }`
 * Removed unnecessary expiredAt field
 * Added table max column validation as there is a hard limit of 63 columns
 * Moved SQLDelight models to a separate module to reduce export size
-* Replaced default Logger with [Kermit Logger](https://kermit.touchlab.co/) which allows users to more easily use and/or change Logger settings
+* Replaced default Logger with [Kermit Logger](https://kermit.touchlab.co/) which allows users to
+  more easily use and/or change Logger settings
 * Add `retryDelay` and `crudThrottle` options when setting up database connection
 * Changed `_viewNameOverride` to `viewNameOverride`

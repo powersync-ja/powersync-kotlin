@@ -1,5 +1,6 @@
 package com.powersync.demos.powersync
 
+import com.powersync.attachments.createAttachmentsTable
 import com.powersync.db.schema.Column
 import com.powersync.db.schema.Index
 import com.powersync.db.schema.IndexedColumn
@@ -43,6 +44,7 @@ val schema: Schema = Schema(
     listOf(
         todos,
         lists,
+        createAttachmentsTable("attachments")
     )
 )
 
@@ -57,6 +59,7 @@ data class TodoItem(
     val id: String,
     val listId: String,
     val photoId: String?,
+    val photoURI: String?,
     val createdAt: String?,
     val completedAt: String?,
     val description: String,

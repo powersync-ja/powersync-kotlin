@@ -11,10 +11,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import com.powersync.androidexample.BuildConfig
 import com.powersync.PowerSyncDatabase
+import com.powersync.androidexample.BuildConfig
+import com.powersync.androidexample.ui.CameraService
+import com.powersync.attachments.AttachmentQueue
+import com.powersync.attachments.WatchedAttachmentItem
 import com.powersync.compose.rememberDatabaseDriverFactory
 import com.powersync.connector.supabase.SupabaseConnector
+import com.powersync.connector.supabase.SupabaseRemoteStorage
+import com.powersync.db.getString
 import com.powersync.demos.components.EditDialog
 import com.powersync.demos.powersync.ListContent
 import com.powersync.demos.powersync.ListItem
@@ -26,25 +31,58 @@ import com.powersync.demos.screens.SignUpScreen
 import com.powersync.demos.screens.TodosScreen
 import kotlinx.coroutines.runBlocking
 
-
 @Composable
-fun App() {
+fun App(
+    cameraService: CameraService,
+    attachmentDirectory: String,
+) {
     val driverFactory = rememberDatabaseDriverFactory()
-    val supabase = remember {
-        SupabaseConnector(
-            powerSyncEndpoint = BuildConfig.POWERSYNC_URL,
-            supabaseUrl = BuildConfig.SUPABASE_URL,
-            supabaseKey = BuildConfig.SUPABASE_ANON_KEY
-        )
-    }
+    val supabase =
+        remember {
+            SupabaseConnector(
+                powerSyncEndpoint = BuildConfig.POWERSYNC_URL,
+                supabaseUrl = BuildConfig.SUPABASE_URL,
+                supabaseKey = BuildConfig.SUPABASE_ANON_KEY,
+                storageBucket = BuildConfig.SUPABASE_STORAGE_BUCKET,
+            )
+        }
+
     val db = remember { PowerSyncDatabase(driverFactory, schema) }
+    val attachments =
+        remember {
+            if (BuildConfig.SUPABASE_STORAGE_BUCKET != "null") {
+                AttachmentQueue(
+                    db = db,
+                    remoteStorage = SupabaseRemoteStorage(supabase),
+                    attachmentsDirectory = attachmentDirectory,
+                    watchAttachments = {
+                        db.watch(
+                            "SELECT photo_id from todos WHERE photo_id IS NOT NULL",
+                        ) {
+                            WatchedAttachmentItem(
+                                id = it.getString("photo_id"),
+                                fileExtension = "jpg",
+                            )
+                        }
+                    },
+                )
+            } else {
+                null
+            }
+        }
+
     val syncStatus = db.currentStatus
     val status by syncStatus.asFlow().collectAsState(syncStatus)
 
-    val navController = remember { NavController(Screen.Home) }
-    val authViewModel = remember {
-        AuthViewModel(supabase, db, navController)
-    }
+    val navController =
+        remember {
+            NavController(Screen.Home)
+        }
+
+    val authViewModel =
+        remember {
+            AuthViewModel(supabase, db, navController, attachments)
+        }
 
     val authState by authViewModel.authState.collectAsState()
     val currentScreen by navController.currentScreen.collectAsState()
@@ -59,9 +97,9 @@ fun App() {
     val items by lists.value.watchItems().collectAsState(initial = emptyList())
     val listsInputText by lists.value.inputText.collectAsState()
 
-    val todos = remember { mutableStateOf(Todo(db, userId)) }
+    val todos = remember { mutableStateOf(Todo(db, attachments, userId)) }
     LaunchedEffect(currentUserId.value) {
-        todos.value = Todo(db, currentUserId.value)
+        todos.value = Todo(db, attachments, currentUserId.value)
     }
     val todoItems by todos.value.watchItems(selectedListId).collectAsState(initial = emptyList())
     val editingItem by todos.value.editingItem.collectAsState()
@@ -75,7 +113,7 @@ fun App() {
 
     when (currentScreen) {
         is Screen.Home -> {
-            if(authState == AuthState.SignedOut) {
+            if (authState == AuthState.SignedOut) {
                 navController.navigate(Screen.SignIn)
             }
 
@@ -121,29 +159,32 @@ fun App() {
                     onCloseClicked = todos.value::onEditorCloseClicked,
                     onTextChanged = todos.value::onEditorTextChanged,
                     onDoneChanged = todos.value::onEditorDoneChanged,
+                    onPhotoClear = todos.value::onPhotoDelete,
+                    onPhotoCapture = { todos.value::onPhotoCapture.invoke(cameraService) },
+                    attachmentsSupported = attachments != null,
                 )
             }
         }
 
         is Screen.SignIn -> {
-            if(authState == AuthState.SignedIn) {
+            if (authState == AuthState.SignedIn) {
                 navController.navigate(Screen.Home)
             }
 
             SignInScreen(
                 navController,
-                authViewModel
+                authViewModel,
             )
         }
 
         is Screen.SignUp -> {
-            if(authState == AuthState.SignedIn) {
+            if (authState == AuthState.SignedIn) {
                 navController.navigate(Screen.Home)
             }
 
             SignUpScreen(
                 navController,
-                authViewModel
+                authViewModel,
             )
         }
     }

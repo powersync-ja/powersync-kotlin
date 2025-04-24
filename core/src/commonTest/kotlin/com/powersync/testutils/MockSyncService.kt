@@ -1,6 +1,7 @@
 package com.powersync.testutils
 
 import app.cash.turbine.ReceiveTurbine
+import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.sync.SyncLine
 import com.powersync.sync.SyncStatusData
 import com.powersync.utils.JsonUtil
@@ -33,6 +34,7 @@ import kotlinx.serialization.encodeToString
  */
 internal class MockSyncService(
     private val lines: ReceiveChannel<SyncLine>,
+    private val generateCheckpoint: () -> WriteCheckpointResponse,
 ) : HttpClientEngineBase("sync-service") {
     override val config: HttpClientEngineConfig
         get() = Config
@@ -68,6 +70,15 @@ internal class MockSyncService(
                 headersOf(),
                 HttpProtocolVersion.HTTP_1_1,
                 job.channel,
+                context,
+            )
+        } else if (data.url.encodedPath == "/write-checkpoint2.json") {
+            HttpResponseData(
+                HttpStatusCode.OK,
+                GMTDate(),
+                headersOf(),
+                HttpProtocolVersion.HTTP_1_1,
+                JsonUtil.json.encodeToString(generateCheckpoint()),
                 context,
             )
         } else {

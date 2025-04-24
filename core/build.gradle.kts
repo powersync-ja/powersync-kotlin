@@ -1,14 +1,11 @@
 import com.powersync.plugins.sonatype.setupGithubRepository
+import com.powersync.plugins.utils.powersyncTargets
 import de.undercouch.gradle.tasks.download.Download
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.internal.os.OperatingSystem
-import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
-import org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable
 import org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest
 import org.jetbrains.kotlin.gradle.tasks.KotlinTest
-import org.jetbrains.kotlin.konan.target.Family
 
 
 plugins {
@@ -19,6 +16,7 @@ plugins {
     alias(libs.plugins.downloadPlugin)
     alias(libs.plugins.kotlinter)
     id("com.powersync.plugins.sonatype")
+    id("com.powersync.plugins.sharedbuild")
     alias(libs.plugins.mokkery)
     alias(libs.plugins.kotlin.atomicfu)
 }
@@ -70,29 +68,6 @@ val downloadPowersyncDesktopBinaries by tasks.registering(Download::class) {
     }
     dest(binariesFolder.map { it.dir("powersync") })
     onlyIfModified(true)
-}
-
-val downloadPowersyncFramework by tasks.registering(Download::class) {
-    val coreVersion =
-        libs.versions.powersync.core
-            .get()
-    val framework =
-        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/powersync-sqlite-core.xcframework.zip"
-
-    src(framework)
-    dest(binariesFolder.map { it.file("framework/powersync-sqlite-core.xcframework.zip") })
-    onlyIfModified(true)
-}
-
-val unzipPowersyncFramework by tasks.registering(Copy::class) {
-    dependsOn(downloadPowersyncFramework)
-
-    from(
-        zipTree(downloadPowersyncFramework.get().dest).matching {
-            include("powersync-sqlite-core.xcframework/**")
-        },
-    )
-    into(binariesFolder.map { it.dir("framework") })
 }
 
 val sqliteJDBCFolder =
@@ -150,26 +125,7 @@ val moveJDBCJNIFiles by tasks.registering(Copy::class) {
 }
 
 kotlin {
-    androidTarget {
-        publishLibraryVariants("release", "debug")
-
-        @OptIn(ExperimentalKotlinGradlePluginApi::class)
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_17)
-        }
-    }
-    jvm {
-        @OptIn(ExperimentalKotlinGradlePluginApi::class)
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_1_8)
-            // https://jakewharton.com/kotlins-jdk-release-compatibility-flag/
-            freeCompilerArgs.add("-Xjdk-release=8")
-        }
-    }
-
-    iosX64()
-    iosArm64()
-    iosSimulatorArm64()
+    powersyncTargets()
 
     targets.withType<KotlinNativeTarget> {
         compilations.named("main") {
@@ -178,20 +134,6 @@ kotlin {
             }
         }
 
-        if (konanTarget.family == Family.IOS && konanTarget.name.contains("simulator")) {
-            binaries.withType<TestExecutable>().configureEach {
-                linkTaskProvider.configure { dependsOn(unzipPowersyncFramework) }
-                linkerOpts("-framework", "powersync-sqlite-core")
-                val frameworkRoot =
-                    binariesFolder
-                        .map { it.dir("framework/powersync-sqlite-core.xcframework/ios-arm64_x86_64-simulator") }
-                        .get()
-                        .asFile.path
-
-                linkerOpts("-F", frameworkRoot)
-                linkerOpts("-rpath", frameworkRoot)
-            }
-        }
         /*
         If we ever need macOS support:
         {
@@ -253,14 +195,15 @@ kotlin {
             }
         }
 
-        iosMain.dependencies {
-            implementation(libs.ktor.client.ios)
+        appleMain.dependencies {
+            implementation(libs.ktor.client.darwin)
         }
 
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.test.coroutines)
             implementation(libs.test.turbine)
+            implementation(libs.test.kotest.assertions)
             implementation(libs.kermit.test)
             implementation(libs.ktor.client.mock)
             implementation(libs.test.turbine)
@@ -270,8 +213,9 @@ kotlin {
         // tests.
         jvmTest.get().dependsOn(commonIntegrationTest)
 
-        // We're linking the xcframework for the simulator tests, so they can use integration tests too
-        iosSimulatorArm64Test.orNull?.dependsOn(commonIntegrationTest)
+        // We have special setup in this build configuration to make these tests link the PowerSync extension, so they
+        // can run integration tests along with the executable for unit testing.
+        appleTest.orNull?.dependsOn(commonIntegrationTest)
     }
 }
 
@@ -315,8 +259,8 @@ android {
 }
 
 androidComponents.onVariants {
-        tasks.named("preBuild") {
-            dependsOn(moveJDBCJNIFiles)
+    tasks.named("preBuild") {
+        dependsOn(moveJDBCJNIFiles)
     }
 }
 
@@ -348,6 +292,7 @@ tasks.withType<KotlinTest> {
     testLogging {
         events("PASSED", "FAILED", "SKIPPED")
         exceptionFormat = TestExceptionFormat.FULL
+        showCauses = true
         showStandardStreams = true
         showStackTraces = true
     }

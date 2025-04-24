@@ -13,9 +13,10 @@ if (localPropertiesFile.exists()) {
     localPropertiesFile.inputStream().use { localProperties.load(it) }
 }
 
-fun getLocalProperty(key: String, defaultValue: String): String {
-    return localProperties.getProperty(key, defaultValue)
-}
+fun getLocalProperty(
+    key: String,
+    defaultValue: String,
+): String = localProperties.getProperty(key, defaultValue)
 
 android {
     namespace = "com.powersync.androidexample"
@@ -38,7 +39,16 @@ android {
         }
 
         buildConfigField("String", "SUPABASE_URL", "\"${getLocalProperty("SUPABASE_URL", "")}\"")
-        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${getLocalProperty("SUPABASE_ANON_KEY", "")}\"")
+        buildConfigField(
+            "String",
+            "SUPABASE_ANON_KEY",
+            "\"${getLocalProperty("SUPABASE_ANON_KEY", "")}\"",
+        )
+        buildConfigField(
+            "String",
+            "SUPABASE_STORAGE_BUCKET",
+            "\"${getLocalProperty("SUPABASE_STORAGE_BUCKET", "null")}\"",
+        )
         buildConfigField("String", "POWERSYNC_URL", "\"${getLocalProperty("POWERSYNC_URL", "")}\"")
     }
 
@@ -47,7 +57,7 @@ android {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
         }
     }
@@ -96,4 +106,5 @@ dependencies {
     implementation(libs.uuid)
     implementation(libs.kermit)
     implementation(libs.androidx.material.icons.extended)
+    implementation("androidx.activity:activity-ktx:1.9.0")
 }

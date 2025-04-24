@@ -23,3 +23,4 @@ dependencyResolutionManagement {
 rootProject.name = "plugins"
 
 include(":sonatype")
+include(":build-plugin")

@@ -25,17 +25,21 @@ import com.powersync.utils.JsonParam
 import com.powersync.utils.JsonUtil
 import com.powersync.utils.throttle
 import com.powersync.utils.toJsonObject
+import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Instant
@@ -43,6 +47,7 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.serialization.encodeToString
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * A PowerSync managed database.
@@ -60,6 +65,7 @@ internal class PowerSyncDatabaseImpl(
     private val dbFilename: String,
     private val dbDirectory: String? = null,
     val logger: Logger = Logger,
+    private val createClient: (HttpClientConfig<*>.() -> Unit) -> HttpClient,
 ) : PowerSyncDatabase {
     companion object {
         internal val streamConflictMessage =
@@ -99,61 +105,73 @@ internal class PowerSyncDatabaseImpl(
     private val mutex = Mutex()
     private var syncSupervisorJob: Job? = null
 
-    // This is set in the init
+    // This is set before the initialization job completes
     private lateinit var powerSyncVersion: String
+    private val initializeJob = scope.launch { initialize() }
 
-    init {
-        runBlocking {
-            val sqliteVersion = internalDb.get("SELECT sqlite_version()") { it.getString(0)!! }
-            logger.d { "SQLiteVersion: $sqliteVersion" }
-            powerSyncVersion =
-                internalDb.get("SELECT powersync_rs_version()") { it.getString(0)!! }
-            checkVersion(powerSyncVersion)
-            logger.d { "PowerSyncVersion: ${getPowerSyncVersion()}" }
+    private suspend fun initialize() {
+        val sqliteVersion = internalDb.get("SELECT sqlite_version()") { it.getString(0)!! }
+        logger.d { "SQLiteVersion: $sqliteVersion" }
+        powerSyncVersion = internalDb.get("SELECT powersync_rs_version()") { it.getString(0)!! }
+        checkVersion(powerSyncVersion)
+        logger.d { "PowerSyncVersion: $powerSyncVersion" }
 
-            internalDb.writeTransaction { tx ->
-                tx.getOptional("SELECT powersync_init()") {}
-            }
-
-            updateSchema(schema)
-            updateHasSynced()
+        internalDb.writeTransaction { tx ->
+            tx.getOptional("SELECT powersync_init()") {}
         }
+
+        updateSchemaInternal(schema)
+        updateHasSynced()
+    }
+
+    private suspend fun waitReady() {
+        initializeJob.join()
     }
 
     override suspend fun updateSchema(schema: Schema) =
         runWrappedSuspending {
-            mutex.withLock {
-                if (this.syncSupervisorJob != null) {
-                    throw PowerSyncException(
-                        "Cannot update schema while connected",
-                        cause = Exception("PowerSync client is already connected"),
-                    )
-                }
-                val schemaJson = JsonUtil.json.encodeToString(schema.toSerializable())
-                internalDb.updateSchema(schemaJson)
-                this.schema = schema
-            }
+            waitReady()
+            updateSchemaInternal(schema)
         }
+
+    private suspend fun updateSchemaInternal(schema: Schema) {
+        mutex.withLock {
+            if (this.syncSupervisorJob != null) {
+                throw PowerSyncException(
+                    "Cannot update schema while connected",
+                    cause = Exception("PowerSync client is already connected"),
+                )
+            }
+            val schemaJson = JsonUtil.json.encodeToString(schema.toSerializable())
+            internalDb.updateSchema(schemaJson)
+            this.schema = schema
+        }
+    }
 
     override suspend fun connect(
         connector: PowerSyncBackendConnector,
         crudThrottleMs: Long,
         retryDelayMs: Long,
         params: Map<String, JsonParam?>,
-    ) = mutex.withLock {
-        disconnectInternal()
+    ) {
+        waitReady()
+        mutex.withLock {
+            disconnectInternal()
 
-        connectInternal(
-            SyncStream(
-                bucketStorage = bucketStorage,
-                connector = connector,
-                uploadCrud = suspend { connector.uploadData(this) },
-                retryDelayMs = retryDelayMs,
-                logger = logger,
-                params = params.toJsonObject(),
-            ),
-            crudThrottleMs,
-        )
+            connectInternal(
+                SyncStream(
+                    bucketStorage = bucketStorage,
+                    connector = connector,
+                    uploadCrud = suspend { connector.uploadData(this) },
+                    retryDelayMs = retryDelayMs,
+                    logger = logger,
+                    params = params.toJsonObject(),
+                    scope = scope,
+                    createClient = createClient,
+                ),
+                crudThrottleMs,
+            )
+        }
     }
 
     @OptIn(FlowPreview::class)
@@ -207,9 +225,9 @@ internal class PowerSyncDatabaseImpl(
                 internalDb
                     .updatesOnTables()
                     .filter { it.contains(InternalTable.CRUD.toString()) }
-                    .throttle(crudThrottleMs)
+                    .throttle(crudThrottleMs.milliseconds)
                     .collect {
-                        stream.triggerCrudUpload()
+                        stream.triggerCrudUploadAsync().join()
                     }
             }
         }
@@ -222,6 +240,7 @@ internal class PowerSyncDatabaseImpl(
     }
 
     override suspend fun getCrudBatch(limit: Int): CrudBatch? {
+        waitReady()
         if (!bucketStorage.hasCrud()) {
             return null
         }
@@ -255,6 +274,7 @@ internal class PowerSyncDatabaseImpl(
     }
 
     override suspend fun getNextCrudTransaction(): CrudTransaction? {
+        waitReady()
         return internalDb.readTransaction { transaction ->
             val entry =
                 bucketStorage.nextCrudItem(transaction)
@@ -265,15 +285,10 @@ internal class PowerSyncDatabaseImpl(
                 if (txId == null) {
                     listOf(entry)
                 } else {
-                    transaction.getAll("SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC LIMIT 1") {
-                        CrudEntry.fromRow(
-                            CrudRow(
-                                id = it.getString("id"),
-                                data = it.getString("data"),
-                                txId = it.getLongOptional("tx_id")?.toInt(),
-                            ),
-                        )
-                    }
+                    bucketStorage.getCrudItemsByTransactionId(
+                        transactionId = txId,
+                        transaction = transaction,
+                    )
                 }
 
             return@readTransaction CrudTransaction(
@@ -287,46 +302,77 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 
-    // The initialization sets powerSyncVersion. We currently run the init as a blocking operation
-    override suspend fun getPowerSyncVersion(): String = powerSyncVersion
+    override suspend fun getPowerSyncVersion(): String {
+        // The initialization sets powerSyncVersion.
+        waitReady()
+        return powerSyncVersion
+    }
 
     override suspend fun <RowType : Any> get(
         sql: String,
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType,
-    ): RowType = internalDb.get(sql, parameters, mapper)
+    ): RowType {
+        waitReady()
+        return internalDb.get(sql, parameters, mapper)
+    }
 
     override suspend fun <RowType : Any> getAll(
         sql: String,
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType,
-    ): List<RowType> = internalDb.getAll(sql, parameters, mapper)
+    ): List<RowType> {
+        waitReady()
+        return internalDb.getAll(sql, parameters, mapper)
+    }
 
     override suspend fun <RowType : Any> getOptional(
         sql: String,
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType,
-    ): RowType? = internalDb.getOptional(sql, parameters, mapper)
+    ): RowType? {
+        waitReady()
+        return internalDb.getOptional(sql, parameters, mapper)
+    }
 
     override fun <RowType : Any> watch(
         sql: String,
         parameters: List<Any?>?,
         throttleMs: Long?,
         mapper: (SqlCursor) -> RowType,
-    ): Flow<List<RowType>> = internalDb.watch(sql, parameters, throttleMs, mapper)
+    ): Flow<List<RowType>> =
+        flow {
+            waitReady()
+            emitAll(internalDb.watch(sql, parameters, throttleMs, mapper))
+        }
 
-    override suspend fun <R> readLock(callback: ThrowableLockCallback<R>): R = internalDb.readLock(callback)
+    override suspend fun <R> readLock(callback: ThrowableLockCallback<R>): R {
+        waitReady()
+        return internalDb.readLock(callback)
+    }
 
-    override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R = internalDb.writeTransaction(callback)
+    override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R {
+        waitReady()
+        return internalDb.writeTransaction(callback)
+    }
 
-    override suspend fun <R> writeLock(callback: ThrowableLockCallback<R>): R = internalDb.writeLock(callback)
+    override suspend fun <R> writeLock(callback: ThrowableLockCallback<R>): R {
+        waitReady()
+        return internalDb.writeLock(callback)
+    }
 
-    override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R = internalDb.writeTransaction(callback)
+    override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R {
+        waitReady()
+        return internalDb.writeTransaction(callback)
+    }
 
     override suspend fun execute(
         sql: String,
         parameters: List<Any?>?,
-    ): Long = internalDb.execute(sql, parameters)
+    ): Long {
+        waitReady()
+        return internalDb.execute(sql, parameters)
+    }
 
     private suspend fun handleWriteCheckpoint(
         lastTransactionId: Int,
@@ -352,7 +398,10 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 
-    override suspend fun disconnect() = mutex.withLock { disconnectInternal() }
+    override suspend fun disconnect() {
+        waitReady()
+        mutex.withLock { disconnectInternal() }
+    }
 
     private suspend fun disconnectInternal() {
         val syncJob = syncSupervisorJob
@@ -448,14 +497,17 @@ internal class PowerSyncDatabaseImpl(
     }
 
     override suspend fun close() =
-        mutex.withLock {
-            if (closed) {
-                return@withLock
+        runWrappedSuspending {
+            mutex.withLock {
+                if (closed) {
+                    return@withLock
+                }
+                initializeJob.cancelAndJoin()
+                disconnectInternal()
+                internalDb.close()
+                resource.dispose()
+                closed = true
             }
-            disconnectInternal()
-            internalDb.close()
-            resource.dispose()
-            closed = true
         }
 
     /**

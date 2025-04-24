@@ -1,4 +1,5 @@
 import com.powersync.plugins.sonatype.setupGithubRepository
+import com.powersync.plugins.utils.powersyncTargets
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 
 plugins {
@@ -10,12 +11,7 @@ plugins {
 }
 
 kotlin {
-    androidTarget {
-        publishLibraryVariants("release", "debug")
-    }
-
-    jvm()
-
+    powersyncTargets()
     targets.withType<KotlinNativeTarget> {
         compilations.named("main") {
             compileTaskProvider {
@@ -23,10 +19,6 @@ kotlin {
             }
         }
     }
-
-    iosX64()
-    iosArm64()
-    iosSimulatorArm64()
 
     explicitApi()
 
@@ -36,6 +28,7 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.supabase.client)
             api(libs.supabase.auth)
+            api(libs.supabase.storage)
         }
     }
 }

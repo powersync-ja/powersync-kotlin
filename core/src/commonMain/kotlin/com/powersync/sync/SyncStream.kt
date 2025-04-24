@@ -1,7 +1,7 @@
 package com.powersync.sync
 
 import co.touchlab.kermit.Logger
-import co.touchlab.stately.concurrency.AtomicBoolean
+import co.touchlab.stately.concurrency.AtomicReference
 import com.powersync.bucket.BucketChecksum
 import com.powersync.bucket.BucketRequest
 import com.powersync.bucket.BucketStorage
@@ -13,7 +13,6 @@ import com.powersync.utils.JsonUtil
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.call.body
-import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.timeout
@@ -29,9 +28,13 @@ import io.ktor.http.contentType
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.readUTF8Line
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonObject
@@ -43,9 +46,10 @@ internal class SyncStream(
     private val retryDelayMs: Long = 5000L,
     private val logger: Logger,
     private val params: JsonObject,
-    httpEngine: HttpClientEngine? = null,
+    private val scope: CoroutineScope,
+    createClient: (HttpClientConfig<*>.() -> Unit) -> HttpClient,
 ) {
-    private var isUploadingCrud = AtomicBoolean(false)
+    private var isUploadingCrud = AtomicReference<PendingCrudUpload?>(null)
 
     /**
      * The current sync status. This instance is updated as changes occur
@@ -54,25 +58,11 @@ internal class SyncStream(
 
     private var clientId: String? = null
 
-    private val httpClient: HttpClient
-
-    init {
-        fun HttpClientConfig<*>.configureClient() {
+    private val httpClient: HttpClient =
+        createClient {
             install(HttpTimeout)
             install(ContentNegotiation)
         }
-
-        httpClient =
-            if (httpEngine == null) {
-                HttpClient {
-                    configureClient()
-                }
-            } else {
-                HttpClient(httpEngine) {
-                    configureClient()
-                }
-            }
-    }
 
     fun invalidateCredentials() {
         connector.invalidateCredentials()
@@ -91,11 +81,6 @@ internal class SyncStream(
                     invalidCredentials = false
                 }
                 streamingSyncIteration()
-//                val state = streamingSyncIteration()
-//                TODO: We currently always retry
-//                if (!state.retry) {
-//                    break;
-//                }
             } catch (e: Exception) {
                 if (e is CancellationException) {
                     throw e
@@ -110,14 +95,26 @@ internal class SyncStream(
         }
     }
 
-    suspend fun triggerCrudUpload() {
-        if (!status.connected || isUploadingCrud.value) {
-            return
+    fun triggerCrudUploadAsync(): Job =
+        scope.launch {
+            val thisIteration = PendingCrudUpload(CompletableDeferred())
+            var holdingUploadLock = false
+
+            try {
+                if (!status.connected || !isUploadingCrud.compareAndSet(null, thisIteration)) {
+                    return@launch
+                }
+
+                holdingUploadLock = true
+                uploadAllCrud()
+            } finally {
+                if (holdingUploadLock) {
+                    isUploadingCrud.set(null)
+                }
+
+                thisIteration.done.complete(Unit)
+            }
         }
-        isUploadingCrud.value = true
-        uploadAllCrud()
-        isUploadingCrud.value = false
-    }
 
     private suspend fun uploadAllCrud() {
         var checkedCrudItem: CrudEntry? = null
@@ -147,8 +144,13 @@ internal class SyncStream(
                     break
                 }
             } catch (e: Exception) {
-                logger.e { "Error uploading crud: ${e.message}" }
                 status.update { copy(uploading = false, uploadError = e) }
+
+                if (e is CancellationException) {
+                    throw e
+                }
+
+                logger.e { "Error uploading crud: ${e.message}" }
                 delay(retryDelayMs)
                 break
             }
@@ -231,7 +233,6 @@ internal class SyncStream(
                 validatedCheckpoint = null,
                 appliedCheckpoint = null,
                 bucketSet = initialBuckets.keys.toMutableSet(),
-                retry = false,
             )
 
         bucketEntries.forEach { entry ->
@@ -247,7 +248,12 @@ internal class SyncStream(
 
         streamingSyncRequest(req).collect { value ->
             val line = JsonUtil.json.decodeFromString<SyncLine>(value)
+
             state = handleInstruction(line, value, state)
+
+            if (state.abortIteration) {
+                return@collect
+            }
         }
 
         status.update { abortedDownload() }
@@ -322,25 +328,35 @@ internal class SyncStream(
     }
 
     private suspend fun handleStreamingSyncCheckpointComplete(state: SyncStreamState): SyncStreamState {
-        val result = bucketStorage.syncLocalDatabase(state.targetCheckpoint!!)
+        val checkpoint = state.targetCheckpoint!!
+        var result = bucketStorage.syncLocalDatabase(checkpoint)
+        val pending = isUploadingCrud.get()
+
         if (!result.checkpointValid) {
             // This means checksums failed. Start again with a new checkpoint.
             // TODO: better back-off
             delay(50)
-            state.retry = true
+            state.abortIteration = true
             // TODO handle retries
             return state
-        } else if (!result.ready) {
-            // Checksums valid, but need more data for a consistent checkpoint.
-            // Continue waiting.
-            // landing here the whole time
-        } else {
-            state.appliedCheckpoint = state.targetCheckpoint!!.clone()
-            logger.i { "validated checkpoint ${state.appliedCheckpoint}" }
+        } else if (!result.ready && pending != null) {
+            // We have pending entries in the local upload queue or are waiting to confirm a write checkpoint, which
+            // prevented this checkpoint from applying. Wait for that to complete and try again.
+            logger.d { "Could not apply checkpoint due to local data. Waiting for in-progress upload before retrying." }
+            pending.done.await()
+
+            result = bucketStorage.syncLocalDatabase(checkpoint)
         }
 
-        state.validatedCheckpoint = state.targetCheckpoint
-        status.update { copyWithCompletedDownload() }
+        if (result.checkpointValid && result.ready) {
+            state.appliedCheckpoint = checkpoint.clone()
+            logger.i { "validated checkpoint ${state.appliedCheckpoint}" }
+
+            state.validatedCheckpoint = state.targetCheckpoint
+            status.update { copyWithCompletedDownload() }
+        } else {
+            logger.d { "Could not apply checkpoint. Waiting for next sync complete line" }
+        }
 
         return state
     }
@@ -355,12 +371,12 @@ internal class SyncStream(
             // This means checksums failed. Start again with a new checkpoint.
             // TODO: better back-off
             delay(50)
-            state.retry = true
+            state.abortIteration = true
             // TODO handle retries
             return state
         } else if (!result.ready) {
-            // Checksums valid, but need more data for a consistent checkpoint.
-            // Continue waiting.
+            // Checkpoint is valid, but we have local data preventing this to be published. We'll try to resolve this
+            // once we have a complete checkpoint if the problem persists.
         } else {
             logger.i { "validated partial checkpoint ${state.appliedCheckpoint} up to priority of $priority" }
         }
@@ -423,7 +439,7 @@ internal class SyncStream(
     ): SyncStreamState {
         val batch = SyncDataBatch(listOf(data))
         status.update { copy(downloading = true, downloadProgress = downloadProgress?.incrementDownloaded(batch)) }
-        bucketStorage.saveSyncData(SyncDataBatch(listOf(data)))
+        bucketStorage.saveSyncData(batch)
         return state
     }
 
@@ -437,11 +453,19 @@ internal class SyncStream(
             // Connection would be closed automatically right after this
             logger.i { "Token expiring reconnect" }
             connector.invalidateCredentials()
-            state.retry = true
+            state.abortIteration = true
             return state
         }
-        triggerCrudUpload()
+        // Don't await the upload job, we can keep receiving sync lines
+        triggerCrudUploadAsync()
         return state
+    }
+
+    internal companion object {
+        fun defaultHttpClient(config: HttpClientConfig<*>.() -> Unit) =
+            HttpClient {
+                config(this)
+            }
     }
 }
 
@@ -450,5 +474,9 @@ internal data class SyncStreamState(
     var validatedCheckpoint: Checkpoint?,
     var appliedCheckpoint: Checkpoint?,
     var bucketSet: MutableSet<String>?,
-    var retry: Boolean,
+    var abortIteration: Boolean = false,
+)
+
+private class PendingCrudUpload(
+    val done: CompletableDeferred<Unit>,
 )
