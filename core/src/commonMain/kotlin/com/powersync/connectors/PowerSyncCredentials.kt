@@ -22,7 +22,7 @@ public data class PowerSyncCredentials(
     @Deprecated(
         message = "This property is no longer used.",
         replaceWith = ReplaceWith(""),
-        level = DeprecationLevel.WARNING
+        level = DeprecationLevel.WARNING,
     )
     @SerialName("user_id")
     val userId: String?,
