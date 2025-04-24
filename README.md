@@ -47,9 +47,6 @@ Current limitations:
 
 - Integration with SQLDelight schema and API generation (ORM) is not yet supported.
 
-Future work/ideas:
-- Attachments helper package.
-
 ## Installation
 
 Add the PowerSync Kotlin Multiplatform SDK to your project by adding the following to your `build.gradle.kts` file:

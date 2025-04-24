@@ -18,6 +18,7 @@ public data class PowerSyncCredentials(
     val token: String,
     /**
      * User ID.
+     * @deprecated This is no longer used.
      */
     @SerialName("user_id") val userId: String?,
 ) {

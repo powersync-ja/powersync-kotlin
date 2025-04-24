@@ -3,6 +3,7 @@
 ## 1.0.0-BETA32
 
 * Added `onChange` method to the PowerSync client. This allows for observing table changes.
+* Removed unnecessary `User-Id` header from internal PowerSync service requests.
 
 ## 1.0.0-BETA31
 
