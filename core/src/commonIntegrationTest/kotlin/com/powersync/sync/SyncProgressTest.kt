@@ -7,6 +7,8 @@ import com.powersync.bucket.BucketPriority
 import com.powersync.bucket.Checkpoint
 import com.powersync.bucket.OpType
 import com.powersync.bucket.OplogEntry
+import com.powersync.testutils.ActiveDatabaseTest
+import com.powersync.testutils.databaseTest
 import com.powersync.testutils.waitFor
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.test.runTest
@@ -17,7 +19,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-class SyncProgressTest : BaseInMemorySyncTest() {
+class SyncProgressTest {
     private var lastOpId = 0
 
     @BeforeTest
@@ -37,7 +39,7 @@ class SyncProgressTest : BaseInMemorySyncTest() {
             count = count,
         )
 
-    private suspend fun addDataLine(
+    private suspend fun ActiveDatabaseTest.addDataLine(
         bucket: String,
         amount: Int,
     ) {
@@ -61,7 +63,7 @@ class SyncProgressTest : BaseInMemorySyncTest() {
         )
     }
 
-    private suspend fun addCheckpointComplete(priority: BucketPriority? = null) {
+    private suspend fun ActiveDatabaseTest.addCheckpointComplete(priority: BucketPriority? = null) {
         if (priority != null) {
             syncLines.send(
                 SyncLine.CheckpointPartiallyComplete(
@@ -102,9 +104,8 @@ class SyncProgressTest : BaseInMemorySyncTest() {
 
     @Test
     fun withoutPriorities() =
-        runTest {
-            val syncStream = syncStream()
-            database.connectInternal(syncStream, 1000L)
+        databaseTest {
+            database.connect(connector)
 
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -152,9 +153,8 @@ class SyncProgressTest : BaseInMemorySyncTest() {
 
     @Test
     fun interruptedSync() =
-        runTest {
-            var syncStream = syncStream()
-            database.connectInternal(syncStream, 1000L)
+        databaseTest {
+            database.connect(connector)
 
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -182,10 +182,9 @@ class SyncProgressTest : BaseInMemorySyncTest() {
             syncLines.close()
 
             // And reconnecting
-            database = openDb()
+            database = openDatabase()
             syncLines = Channel()
-            syncStream = syncStream()
-            database.connectInternal(syncStream, 1000L)
+            database.connect(connector)
 
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -218,9 +217,8 @@ class SyncProgressTest : BaseInMemorySyncTest() {
 
     @Test
     fun interruptedSyncWithNewCheckpoint() =
-        runTest {
-            var syncStream = syncStream()
-            database.connectInternal(syncStream, 1000L)
+        databaseTest {
+            database.connect(connector)
 
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -244,10 +242,9 @@ class SyncProgressTest : BaseInMemorySyncTest() {
             // Close and re-connect
             database.close()
             syncLines.close()
-            database = openDb()
+            database = openDatabase()
             syncLines = Channel()
-            syncStream = syncStream()
-            database.connectInternal(syncStream, 1000L)
+            database.connect(connector)
 
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -279,9 +276,8 @@ class SyncProgressTest : BaseInMemorySyncTest() {
 
     @Test
     fun differentPriorities() =
-        runTest {
-            val syncStream = syncStream()
-            database.connectInternal(syncStream, 1000L)
+        databaseTest {
+            database.connect(connector)
 
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)

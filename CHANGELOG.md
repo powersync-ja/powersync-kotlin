@@ -1,5 +1,10 @@
 # Changelog
 
+## unreleased
+
+* Report real-time progress information about downloads through `SyncStatus.downloadProgress`.
+* Compose: Add `composeState()` extension method on `SyncStatus`.
+
 ## 1.0.0-BETA31
 
 * Added helpers for Attachment syncing.
