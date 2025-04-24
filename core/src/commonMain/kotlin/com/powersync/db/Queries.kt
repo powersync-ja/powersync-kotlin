@@ -122,6 +122,8 @@ public interface Queries {
      *
      * This lock ensures that only one write transaction can execute against the database at a time, even across separate database instances for the same file.
      *
+     * In most cases, [writeTransaction] should be used instead.
+     *
      * @param callback The callback to execute while holding the lock.
      * @return The result of the callback.
      * @throws PowerSyncException If a database error occurs.
@@ -134,6 +136,8 @@ public interface Queries {
      * Opens a read-write transaction.
      *
      * This takes a global lock, ensuring that only one write transaction can execute against the database at a time, even across separate database instances for the same file.
+     *
+     * Statements within the transaction must be done on the provided [PowerSyncTransaction] - attempting statements on the database instance will error cause a dead-lock.
      *
      * @param callback The callback to execute within the transaction.
      * @return The result of the callback.
@@ -158,6 +162,8 @@ public interface Queries {
 
     /**
      * Opens a read-only transaction.
+     *
+     * Statements within the transaction must be done on the provided [PowerSyncTransaction] - executing statements on the database level will be executed on separate connections.
      *
      * @param callback The callback to execute within the transaction.
      * @return The result of the callback.
