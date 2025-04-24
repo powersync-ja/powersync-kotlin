@@ -8,14 +8,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.TopAppBar
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.powersync.demos.NavController
 import com.powersync.demos.Screen
 import com.powersync.demos.components.Input
 import com.powersync.demos.components.ListContent
@@ -23,12 +28,14 @@ import com.powersync.demos.components.Menu
 import com.powersync.demos.components.WifiIcon
 import com.powersync.demos.powersync.ListItem
 import com.powersync.sync.SyncStatusData
+import org.koin.compose.koinInject
 
 @Composable
 internal fun HomeScreen(
     modifier: Modifier = Modifier,
     items: List<ListItem>,
     inputText: String,
+    navController: NavController = koinInject(),
     syncStatus: SyncStatusData,
     onSignOutSelected: () -> Unit,
     onItemClicked: (item: ListItem) -> Unit,
@@ -54,6 +61,9 @@ internal fun HomeScreen(
             actions = {
                 WifiIcon(syncStatus)
                 Spacer(modifier = Modifier.width(16.dp))
+                IconButton(onClick = { navController.navigate(Screen.Search) }) {
+                    Icon(Icons.Filled.Search, contentDescription = "Search Lists and Todos")
+                }
             },
         )
 

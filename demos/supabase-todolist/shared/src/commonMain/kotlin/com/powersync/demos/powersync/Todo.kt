@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import com.powersync.PowerSyncDatabase
 import com.powersync.db.getBoolean
+import com.powersync.db.getBooleanOptional
 import com.powersync.db.getString
 import com.powersync.db.getStringOptional
 import kotlinx.coroutines.flow.Flow
@@ -40,9 +41,9 @@ internal class Todo(
                 description = cursor.getString("description"),
                 createdBy = cursor.getStringOptional("created_by"),
                 completedBy = cursor.getStringOptional("completed_by"),
-                completed = cursor.getBoolean( "completed"),
-                listId = cursor.getString("list_id"),
-                photoId = cursor.getStringOptional("photo_id"),
+                completed = cursor.getBooleanOptional( "completed") == true,
+                listId = cursor.getStringOptional("list_id") as String,
+                photoId = cursor.getStringOptional("photo_id") ?: "",
             )
         }
     }

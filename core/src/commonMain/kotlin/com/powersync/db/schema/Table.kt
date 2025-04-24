@@ -97,7 +97,7 @@ public data class Table constructor(
      *
      * Name of the table that stores the underlying data.
      */
-    internal val internalName: String
+    val internalName: String
         get() = if (localOnly) "ps_data_local__$name" else "ps_data__$name"
 
     public operator fun get(columnName: String): Column = columns.first { it.name == columnName }

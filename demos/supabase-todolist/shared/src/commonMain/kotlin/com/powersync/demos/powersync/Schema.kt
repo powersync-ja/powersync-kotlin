@@ -1,5 +1,8 @@
 package com.powersync.demos.powersync
 
+import com.powersync.db.SqlCursor
+import com.powersync.db.getBoolean
+import com.powersync.db.getStringOptional
 import com.powersync.db.schema.Column
 import com.powersync.db.schema.Index
 import com.powersync.db.schema.IndexedColumn
@@ -51,7 +54,26 @@ data class ListItem(
     val name: String,
     val createdAt: String,
     val ownerId: String
-)
+) {
+    companion object {
+        /**
+         * Creates a ListItem instance from a database row represented as a SqlCursor.
+         * Handles necessary type casting. Assumes non-null fields based on schema.
+         *
+         * @param row A SqlCursor representing a row, typically from PowerSync's getAll.
+         * @return A ListItem instance.
+         * @throws ClassCastException if expected fields are missing or have wrong types.
+         */
+        fun fromRow(cursor: SqlCursor): ListItem {
+            return ListItem(
+                id = cursor.getStringOptional("id") as String,
+                name = cursor.getStringOptional("name") as String,
+                createdAt = cursor.getStringOptional("created_at") as String,
+                ownerId = cursor.getStringOptional("owner_id") as String
+            )
+        }
+    }
+}
 
 data class TodoItem(
     val id: String,
@@ -63,4 +85,34 @@ data class TodoItem(
     val createdBy: String?,
     val completedBy: String?,
     val completed: Boolean = false
-)
+) {
+    companion object {
+        /**
+         * Creates a TodoItem instance from a database row represented as a SqlCursor.
+         * Handles necessary type casting. Assumes non-null fields based on schema.
+         *
+         * @param row A SqlCursor representing a row, typically from PowerSync's getAll.
+         * @return A TodoItem instance.
+         * @throws ClassCastException if expected fields are missing or have wrong types.
+         */
+        fun fromRow(cursor: SqlCursor): TodoItem {
+            return TodoItem(
+                id = cursor.getStringOptional("id") as String,
+                listId = cursor.getStringOptional("list_id") as String,
+                description = cursor.getStringOptional("description") as String,
+                completed = cursor.getBoolean("completed"),
+                photoId = cursor.getStringOptional("photo_id"),
+                createdAt = cursor.getStringOptional("created_at"),
+                completedAt = cursor.getStringOptional("completed_at"),
+                createdBy = cursor.getStringOptional("created_by"),
+                completedBy = cursor.getStringOptional("completed_by")
+            )
+        }
+    }
+}
+
+// Represents a unified search result item
+sealed class SearchResult {
+    data class ListResult(val item: ListItem) : SearchResult()
+    data class TodoResult(val item: TodoItem) : SearchResult()
+}
