@@ -338,7 +338,7 @@ internal class BucketStorageImpl(
                 tx.execute(
                     """
                     UPDATE ps_buckets SET count_since_last = 0, count_at_last = ?1->name
-                      WHERE ?1->name IS NOT NULL
+                      WHERE name != '${'$'}local' AND ?1->name IS NOT NULL
                     """.trimIndent(),
                     listOf(
                         JsonUtil.json.encodeToString(

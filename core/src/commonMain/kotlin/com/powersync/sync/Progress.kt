@@ -25,7 +25,11 @@ public interface ProgressWithOperations {
     public val downloadedOperations: Int
 
     /**
-     * The relative amount of [totalOperations] to items in [downloadedOperations], as a number between `0.0` and `1.0`.
+     * The relative amount of [totalOperations] to items in [downloadedOperations], as a number between `0.0` and `1.0` (inclusive).
+     *
+     * When this number reaches `1.0`, all changes have been received from the sync service.
+     * Actually applying these changes happens before the [SyncStatusData.downloadProgress] field is
+     * cleared though, so progress can stay at `1.0` for a short while before completing.
      */
     public val fraction: Float get() {
         if (totalOperations == 0) {

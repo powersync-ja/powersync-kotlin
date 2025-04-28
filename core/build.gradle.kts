@@ -266,10 +266,7 @@ androidComponents.onVariants {
 }
 
 tasks.named<ProcessResources>(kotlin.jvm().compilations["main"].processResourcesTaskName) {
-    //from(downloadPowersyncDesktopBinaries)
-    from("/Users/simon/src/powersync-sqlite-core/target/debug/libpowersync.dylib") {
-        rename { "libpowersync_aarch64.dylib" }
-    }
+    from(downloadPowersyncDesktopBinaries)
 }
 
 // We want to build with recent JDKs, but need to make sure we support Java 8. https://jakewharton.com/build-on-latest-java-test-through-lowest-java/
