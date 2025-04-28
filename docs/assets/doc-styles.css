@@ -1,0 +1,34 @@
+:root {
+    --dokka-logo-image-url: url('../images/powersync-logo.png');
+}
+
+.footer-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: auto;
+    box-sizing: border-box;
+    background-color: var(--footer-background);
+    color: var(--footer-font-color);
+}
+
+.footer-title {
+    margin-bottom: 8px;
+}
+
+.footer-column {
+    flex: 1 1 0; 
+    align-items: center;
+    text-align: center;
+    min-width: 300px; 
+    padding: 8px;
+}
+
+.footer-icon-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }

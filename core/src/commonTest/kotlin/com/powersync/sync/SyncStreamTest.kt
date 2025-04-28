@@ -88,7 +88,6 @@ class SyncStreamTest {
                 everySuspend { getCredentialsCached() } returns
                     PowerSyncCredentials(
                         token = "test-token",
-                        userId = "test-user",
                         endpoint = "https://test.com",
                     )
             }

@@ -19,6 +19,7 @@ plugins {
     id("com.powersync.plugins.sharedbuild")
     alias(libs.plugins.mokkery)
     alias(libs.plugins.kotlin.atomicfu)
+    id("dokka-convention")
 }
 
 val binariesFolder = project.layout.buildDirectory.dir("binaries/desktop")
@@ -298,3 +299,7 @@ tasks.withType<KotlinTest> {
     }
 }
 setupGithubRepository()
+
+dokka {
+    moduleName.set("PowerSync Core")
+}

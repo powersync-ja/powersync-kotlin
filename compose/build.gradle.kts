@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.kotlinter)
     id("com.powersync.plugins.sonatype")
+    id("dokka-convention")
 }
 
 kotlin {
@@ -45,3 +46,7 @@ android {
 }
 
 setupGithubRepository()
+
+dokka {
+    moduleName.set("PowerSync Compose")
+}

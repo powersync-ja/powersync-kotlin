@@ -5,6 +5,12 @@
 * Report real-time progress information about downloads through `SyncStatus.downloadProgress`.
 * Compose: Add `composeState()` extension method on `SyncStatus`.
 
+## 1.0.0-BETA32
+
+* Added `onChange` method to the PowerSync client. This allows for observing table changes.
+* Removed unnecessary `User-Id` header from internal PowerSync service requests.
+* Fix loading native PowerSync extension for Java targets.
+
 ## 1.0.0-BETA31
 
 * Added helpers for Attachment syncing.

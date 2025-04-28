@@ -7,7 +7,6 @@ class TestConnector : PowerSyncBackendConnector() {
     var fetchCredentialsCallback: suspend () -> PowerSyncCredentials? = {
         PowerSyncCredentials(
             token = "test-token",
-            userId = "test-user",
             endpoint = "https://test.com",
         )
     }
