@@ -37,6 +37,7 @@ public data class CrudEntry(
      * This may change in the future.
      */
     val transactionId: Int?,
+    val metadata: String? = null,
     /**
      * Data associated with the change.
      *
@@ -47,6 +48,7 @@ public data class CrudEntry(
      * For DELETE, this is null.
      */
     val opData: Map<String, String?>?,
+    val oldData: Map<String, String?>? = null,
 ) {
     public companion object {
         public fun fromRow(row: CrudRow): CrudEntry {
@@ -61,6 +63,10 @@ public data class CrudEntry(
                     },
                 table = data["type"]!!.jsonPrimitive.content,
                 transactionId = row.txId,
+                metadata = data["metadata"]?.jsonPrimitive?.content,
+                oldData = data["old"]?.jsonObject?.mapValues { (_, value) ->
+                    value.jsonPrimitive.contentOrNull
+                }
             )
         }
     }
