@@ -3,7 +3,6 @@ package com.powersync.db.schema
 import com.powersync.utils.JsonUtil
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.encodeToJsonElement
@@ -209,9 +208,8 @@ class TableTest {
 
     @Test
     fun handlesOptions() {
-        fun serialize(table: Table): JsonObject {
-            return JsonUtil.json.encodeToJsonElement(serializer<SerializableTable>(), table.toSerializable()) as JsonObject
-        }
+        fun serialize(table: Table): JsonObject =
+            JsonUtil.json.encodeToJsonElement(serializer<SerializableTable>(), table.toSerializable()) as JsonObject
 
         serialize(Table("foo", emptyList(), includeMetadata = true))["include_metadata"]!!.jsonPrimitive.boolean shouldBe true
         serialize(Table("foo", emptyList(), ignoreEmptyUpdate = true))["ignore_empty_update"]!!.jsonPrimitive.boolean shouldBe true

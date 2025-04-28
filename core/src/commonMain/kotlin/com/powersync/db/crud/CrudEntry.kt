@@ -64,9 +64,10 @@ public data class CrudEntry(
                 table = data["type"]!!.jsonPrimitive.content,
                 transactionId = row.txId,
                 metadata = data["metadata"]?.jsonPrimitive?.content,
-                oldData = data["old"]?.jsonObject?.mapValues { (_, value) ->
-                    value.jsonPrimitive.contentOrNull
-                }
+                oldData =
+                    data["old"]?.jsonObject?.mapValues { (_, value) ->
+                        value.jsonPrimitive.contentOrNull
+                    },
             )
         }
     }

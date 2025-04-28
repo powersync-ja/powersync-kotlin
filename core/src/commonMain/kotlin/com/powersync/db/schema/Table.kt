@@ -7,13 +7,12 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 
-
 private const val MAX_AMOUNT_OF_COLUMNS = 1999
 
 /**
  * A single table in the schema.
  */
-public data class Table (
+public data class Table(
     /**
      * The synced table name, matching sync rules.
      */
@@ -115,7 +114,7 @@ public data class Table (
                 viewNameOverride = viewName,
                 ignoreEmptyUpdate = ignoreEmptyUpdate,
                 includeMetadata = includeMetadata,
-                includeOld = includeOld
+                includeOld = includeOld,
             )
     }
 
@@ -257,31 +256,32 @@ internal data class SerializableTable(
     @SerialName("include_old")
     val includeOld: JsonElement = JsonPrimitive(false),
     @SerialName("include_old_only_when_changed")
-    val includeOldOnlyWhenChanged: Boolean = false
+    val includeOldOnlyWhenChanged: Boolean = false,
 )
 
 internal fun Table.toSerializable(): SerializableTable =
     with(this) {
         SerializableTable(
-            name=name,
-            columns=columns.map { it.toSerializable() },
-            indexes=indexes.map { it.toSerializable() },
-            localOnly=localOnly,
-            insertOnly=insertOnly,
-            viewName=viewName,
+            name = name,
+            columns = columns.map { it.toSerializable() },
+            indexes = indexes.map { it.toSerializable() },
+            localOnly = localOnly,
+            insertOnly = insertOnly,
+            viewName = viewName,
             ignoreEmptyUpdate = ignoreEmptyUpdate,
             includeMetadata = includeMetadata,
-            includeOld = includeOld?.let {
-                if (it.columnFilter != null) {
-                    buildJsonArray {
-                        for (column in it.columnFilter) {
-                            add(JsonPrimitive(column))
+            includeOld =
+                includeOld?.let {
+                    if (it.columnFilter != null) {
+                        buildJsonArray {
+                            for (column in it.columnFilter) {
+                                add(JsonPrimitive(column))
+                            }
                         }
+                    } else {
+                        JsonPrimitive(true)
                     }
-                } else {
-                    JsonPrimitive(true)
-                }
-            } ?: JsonPrimitive(false),
-            includeOldOnlyWhenChanged = includeOld?.onlyWhenChanged ?: false
+                } ?: JsonPrimitive(false),
+            includeOldOnlyWhenChanged = includeOld?.onlyWhenChanged ?: false,
         )
     }
