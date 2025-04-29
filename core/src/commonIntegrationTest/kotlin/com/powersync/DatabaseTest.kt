@@ -187,14 +187,22 @@ class DatabaseTest {
     fun testTableChangesUpdates() =
         databaseTest {
             turbineScope {
-                val query = database.onChange(tables = setOf("users")).testIn(this)
+                val query =
+                    database
+                        .onChange(
+                            tables = setOf("users"),
+                        ).testIn(this)
 
                 database.execute(
                     "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
                     listOf("Test", "test@example.org"),
                 )
 
-                val changeSet = query.awaitItem()
+                var changeSet = query.awaitItem()
+                // The initial result
+                changeSet.count() shouldBe 0
+
+                changeSet = query.awaitItem()
                 changeSet.count() shouldBe 1
                 changeSet.contains("users") shouldBe true
 

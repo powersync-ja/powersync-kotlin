@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.0-BETA33
+## unreleased
 
 * Fixed `CrudBatch` `hasMore` always returning false.
 * Added `triggerImmediately` to `onChange` method.
