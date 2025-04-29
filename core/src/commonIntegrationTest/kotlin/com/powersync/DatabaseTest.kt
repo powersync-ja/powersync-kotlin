@@ -454,6 +454,7 @@ class DatabaseTest {
 
             batch = database.getCrudBatch(1000) ?: error("Batch should not be null")
             batch.crud shouldHaveSize 1
+            batch.hasMore shouldBe false
             batch.complete(null)
 
             database.getCrudBatch() shouldBe null
