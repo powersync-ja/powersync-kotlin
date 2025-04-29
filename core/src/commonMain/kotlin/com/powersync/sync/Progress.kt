@@ -21,7 +21,7 @@ public interface ProgressWithOperations {
 
     /**
      * How many operations, out of [totalOperations], have already been downloaded.
-    */
+     */
     public val downloadedOperations: Int
 
     /**
@@ -43,7 +43,7 @@ public interface ProgressWithOperations {
 internal data class ProgressInfo(
     override val downloadedOperations: Int,
     override val totalOperations: Int,
-): ProgressWithOperations
+) : ProgressWithOperations
 
 /**
  * Provides realtime progress on how PowerSync is downloading rows.
@@ -67,8 +67,7 @@ internal data class ProgressInfo(
 @ConsistentCopyVisibility
 public data class SyncDownloadProgress private constructor(
     private val buckets: Map<String, BucketProgress>,
-): ProgressWithOperations {
-
+) : ProgressWithOperations {
     override val downloadedOperations: Int
     override val totalOperations: Int
 
