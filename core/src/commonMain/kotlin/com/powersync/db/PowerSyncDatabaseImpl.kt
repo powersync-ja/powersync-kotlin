@@ -258,10 +258,10 @@ internal class PowerSyncDatabaseImpl(
             return null
         }
 
-        val entries =
+        var entries =
             internalDb.getAll(
                 "SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC LIMIT ?",
-                listOf(limit.toLong()),
+                listOf(limit.toLong() + 1),
             ) {
                 CrudEntry.fromRow(
                     CrudRow(
@@ -278,7 +278,7 @@ internal class PowerSyncDatabaseImpl(
 
         val hasMore = entries.size > limit
         if (hasMore) {
-            entries.dropLast(entries.size - limit)
+            entries = entries.dropLast(1)
         }
 
         return CrudBatch(entries, hasMore, complete = { writeCheckpoint ->
@@ -351,11 +351,12 @@ internal class PowerSyncDatabaseImpl(
     override fun onChange(
         tables: Set<String>,
         throttleMs: Long,
+        triggerImmediately: Boolean,
     ): Flow<Set<String>> =
         flow {
             waitReady()
             emitAll(
-                internalDb.onChange(tables, throttleMs),
+                internalDb.onChange(tables, throttleMs, triggerImmediately),
             )
         }
 

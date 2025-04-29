@@ -97,6 +97,7 @@ public interface Queries {
      *
      * @param tables The set of tables to monitor for changes.
      * @param throttleMs The minimum interval, in milliseconds, between emissions. Defaults to [DEFAULT_THROTTLE]. Table changes are accumulated while throttling is active. The accumulated set of tables will be emitted on the trailing edge of the throttle.
+     * @param triggerImmediately If true (default), the flow will immediately emit an empty set of tables when the flow is first collected. This can be useful for ensuring that the flow emits at least once, even if no changes occur to the monitored tables.
      * @return A [Flow] emitting the set of modified tables.
      * @throws PowerSyncException If a database error occurs.
      * @throws CancellationException If the operation is cancelled.
@@ -105,6 +106,7 @@ public interface Queries {
     public fun onChange(
         tables: Set<String>,
         throttleMs: Long = DEFAULT_THROTTLE.inWholeMilliseconds,
+        triggerImmediately: Boolean = true,
     ): Flow<Set<String>>
 
     /**
