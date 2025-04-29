@@ -16,7 +16,7 @@ internal data class PowerSyncVersion(val major: Int, val minor: Int, val patch: 
     }
 
     companion object {
-        val MINIMUM: PowerSyncVersion = PowerSyncVersion(0, 3, 13)
+        val MINIMUM: PowerSyncVersion = PowerSyncVersion(0, 3, 14)
 
         fun parse(from: String): PowerSyncVersion {
             val versionInts: List<Int> =
