@@ -100,6 +100,7 @@ class SyncStreamTest {
                     logger = logger,
                     params = JsonObject(emptyMap()),
                     scope = this,
+                    options = SyncOptions(),
                 )
 
             syncStream.invalidateCredentials()
@@ -137,6 +138,7 @@ class SyncStreamTest {
                     logger = logger,
                     params = JsonObject(emptyMap()),
                     scope = this,
+                    options = SyncOptions(),
                 )
 
             syncStream.status.update { copy(connected = true) }
@@ -176,6 +178,7 @@ class SyncStreamTest {
                     logger = logger,
                     params = JsonObject(emptyMap()),
                     scope = this,
+                    options = SyncOptions()
                 )
 
             // Launch streaming sync in a coroutine that we'll cancel after verification

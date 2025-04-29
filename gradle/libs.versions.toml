@@ -14,7 +14,8 @@ kotlin = "2.1.10"
 coroutines = "1.8.1"
 kotlinx-datetime = "0.6.2"
 kotlinx-io = "0.5.4"
-ktor = "3.0.1"
+ktor = "3.1.0"
+rsocket = "0.20.0"
 uuid = "0.8.2"
 powersync-core = "0.3.12"
 sqlite-jdbc = "3.49.1.0"
@@ -85,6 +86,7 @@ ktor-client-contentnegotiation = { module = "io.ktor:ktor-client-content-negotia
 ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 ktor-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+rsocket-client = { module = "io.rsocket.kotlin:ktor-client-rsocket", version.ref = "rsocket" }
 
 sqldelight-driver-native = { module = "app.cash.sqldelight:native-driver", version.ref = "sqlDelight" }
 sqliter = { module = "co.touchlab:sqliter-driver", version.ref = "sqliter" }

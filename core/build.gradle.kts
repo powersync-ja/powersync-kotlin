@@ -174,6 +174,7 @@ kotlin {
             implementation(libs.ktor.client.contentnegotiation)
             implementation(libs.ktor.serialization.json)
             implementation(libs.kotlinx.io)
+            implementation(libs.rsocket.client)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
             implementation(libs.stately.concurrency)

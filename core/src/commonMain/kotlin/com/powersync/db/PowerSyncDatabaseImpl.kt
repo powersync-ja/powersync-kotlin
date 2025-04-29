@@ -18,6 +18,7 @@ import com.powersync.db.internal.PowerSyncVersion
 import com.powersync.db.schema.Schema
 import com.powersync.db.schema.toSerializable
 import com.powersync.sync.PriorityStatusEntry
+import com.powersync.sync.SyncOptions
 import com.powersync.sync.SyncStatus
 import com.powersync.sync.SyncStatusData
 import com.powersync.sync.SyncStream
@@ -153,6 +154,7 @@ internal class PowerSyncDatabaseImpl(
         crudThrottleMs: Long,
         retryDelayMs: Long,
         params: Map<String, JsonParam?>,
+        options: SyncOptions
     ) {
         waitReady()
         mutex.withLock {
@@ -168,13 +170,13 @@ internal class PowerSyncDatabaseImpl(
                     params = params.toJsonObject(),
                     scope = scope,
                     createClient = createClient,
+                    options = options,
                 ),
                 crudThrottleMs,
             )
         }
     }
 
-    @OptIn(FlowPreview::class)
     internal fun connectInternal(
         stream: SyncStream,
         crudThrottleMs: Long,

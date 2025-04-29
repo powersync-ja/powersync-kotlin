@@ -6,6 +6,7 @@ import com.powersync.db.Queries
 import com.powersync.db.crud.CrudBatch
 import com.powersync.db.crud.CrudTransaction
 import com.powersync.db.schema.Schema
+import com.powersync.sync.SyncOptions
 import com.powersync.sync.SyncStatus
 import com.powersync.utils.JsonParam
 import kotlin.coroutines.cancellation.CancellationException
@@ -94,6 +95,7 @@ public interface PowerSyncDatabase : Queries {
         crudThrottleMs: Long = 1000L,
         retryDelayMs: Long = 5000L,
         params: Map<String, JsonParam?> = emptyMap(),
+        options: SyncOptions = SyncOptions()
     )
 
     /**
