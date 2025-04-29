@@ -5,7 +5,6 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -13,7 +12,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
-import com.powersync.bucket.BucketPriority
 import com.powersync.compose.composeState
 import com.powersync.connector.supabase.SupabaseConnector
 import com.powersync.connectors.PowerSyncBackendConnector
@@ -35,7 +33,6 @@ import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.core.module.dsl.withOptions
 import org.koin.dsl.module
-import kotlin.time.Duration.Companion.milliseconds
 
 val sharedAppModule = module {
     // This is overridden by the androidBackgroundSync example
@@ -72,7 +69,8 @@ fun AppContent(
     db: PowerSyncDatabase = koinInject(),
     modifier: Modifier = Modifier,
 ) {
-    val status by db.currentStatus.composeState(debounce = 200.0.milliseconds)
+
+    val status by db.currentStatus.composeState()
 
     val authViewModel = koinViewModel<AuthViewModel>()
     val navController = koinInject<NavController>()
