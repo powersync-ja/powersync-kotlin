@@ -1,5 +1,10 @@
 # Changelog
 
+## unreleased
+
+* Fixed `CrudBatch` `hasMore` always returning false.
+* Added `triggerImmediately` to `onChange` method.
+
 ## 1.0.0-BETA32
 
 * Added `onChange` method to the PowerSync client. This allows for observing table changes.

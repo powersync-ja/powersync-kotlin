@@ -106,6 +106,7 @@ internal class InternalDatabaseImpl(
     override fun onChange(
         tables: Set<String>,
         throttleMs: Long,
+        triggerImmediately: Boolean,
     ): Flow<Set<String>> =
         channelFlow {
             // Match all possible internal table combinations
@@ -116,7 +117,12 @@ internal class InternalDatabaseImpl(
             val batchedUpdates = AtomicMutableSet<String>()
 
             updatesOnTables()
-                .transform { updates ->
+                .onSubscription {
+                    if (triggerImmediately) {
+                        // Emit an initial event (if requested). No changes would be detected at this point
+                        send(setOf())
+                    }
+                }.transform { updates ->
                     val intersection = updates.intersect(watchedTables)
                     if (intersection.isNotEmpty()) {
                         // Transform table names using friendlyTableName
