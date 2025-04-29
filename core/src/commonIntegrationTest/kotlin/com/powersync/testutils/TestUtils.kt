@@ -77,7 +77,7 @@ internal class ActiveDatabaseTest(
     val logger =
         Logger(
             TestConfig(
-                minSeverity = Severity.Debug,
+                minSeverity = Severity.Verbose,
                 logWriterList = listOf(logWriter, generatePrintLogWriter()),
             ),
         )

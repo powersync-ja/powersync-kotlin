@@ -127,20 +127,23 @@ internal data class SyncStatusDataContainer(
     override val anyError
         get() = downloadError ?: uploadError
 
-    internal fun abortedDownload() =
-        copy(
-            downloading = false,
-            downloadProgress = null,
-        )
+    internal fun applyCoreChanges(status: CoreSyncStatus): SyncStatusDataContainer {
+        val completeSync = status.priorityStatus.firstOrNull { it.priority == BucketPriority.FULL_SYNC_PRIORITY }
 
-    internal fun copyWithCompletedDownload() =
-        copy(
-            lastSyncedAt = Clock.System.now(),
-            downloading = false,
-            downloadProgress = null,
-            hasSynced = true,
-            downloadError = null,
+        return copy(
+            connected = status.connected,
+            connecting = status.connecting,
+            downloading = status.downloading != null,
+            downloadProgress = status.downloading?.let { SyncDownloadProgress(it.buckets) },
+            lastSyncedAt = completeSync?.lastSyncedAt,
+            hasSynced = completeSync != null,
+            priorityStatusEntries = status.priorityStatus.map { PriorityStatusEntry(
+                priority = it.priority,
+                lastSyncedAt = it.lastSyncedAt,
+                hasSynced = it.hasSynced,
+            ) }
         )
+    }
 }
 
 @ConsistentCopyVisibility

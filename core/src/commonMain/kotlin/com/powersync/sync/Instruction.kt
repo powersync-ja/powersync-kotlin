@@ -1,7 +1,13 @@
 package com.powersync.sync
 
+import com.powersync.bucket.BucketPriority
+import kotlinx.datetime.Instant
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.encoding.CompositeDecoder
 import kotlinx.serialization.encoding.Decoder
@@ -21,24 +27,36 @@ internal sealed interface Instruction {
     @Serializable
     data class EstablishSyncStream(val request: JsonObject): Instruction
 
-    object FlushSileSystem: Instruction
-    object CloseSyncStream: Instruction
-    object UnknownInstruction: Instruction
+    @Serializable
+    data class FetchCredentials(
+        @SerialName("did_expire")
+        val didExpire: Boolean
+    ): Instruction
+
+    data object FlushSileSystem: Instruction
+    data object CloseSyncStream: Instruction
+    data object DidCompleteSync: Instruction
+
+    data object UnknownInstruction: Instruction
 
     class Serializer : KSerializer<Instruction> {
         private val logLine = serializer<LogLine>()
         private val updateSyncStatus = serializer<UpdateSyncStatus>()
         private val establishSyncStream = serializer<EstablishSyncStream>()
-        private val flushFileSystem = buildClassSerialDescriptor(FlushSileSystem::class.qualifiedName!!) {}
-        private val closeSyncStream = buildClassSerialDescriptor(CloseSyncStream::class.qualifiedName!!) {}
+        private val fetchCredentials = serializer<FetchCredentials>()
+        private val flushFileSystem = serializer<JsonObject>()
+        private val closeSyncStream = serializer<JsonObject>()
+        private val didCompleteSync = serializer<JsonObject>()
 
         override val descriptor =
             buildClassSerialDescriptor(SyncLine::class.qualifiedName!!) {
                 element("LogLine", logLine.descriptor, isOptional = true)
                 element("UpdateSyncStatus", updateSyncStatus.descriptor, isOptional = true)
                 element("EstablishSyncStream", establishSyncStream.descriptor, isOptional = true)
-                element("FlushFileSystem", flushFileSystem, isOptional = true)
-                element("CloseSyncStream", closeSyncStream, isOptional = true)
+                element("FetchCredentials", fetchCredentials.descriptor, isOptional = true)
+                element("FlushFileSystem", flushFileSystem.descriptor, isOptional = true)
+                element("CloseSyncStream", closeSyncStream.descriptor, isOptional = true)
+                element("DidCompleteSync", didCompleteSync.descriptor, isOptional = true)
             }
 
         override fun deserialize(decoder: Decoder): Instruction =
@@ -48,8 +66,19 @@ internal sealed interface Instruction {
                         0 -> decodeSerializableElement(descriptor, 0, logLine)
                         1 -> decodeSerializableElement(descriptor, 1, updateSyncStatus)
                         2 -> decodeSerializableElement(descriptor, 2, establishSyncStream)
-                        3 -> FlushSileSystem
-                        4 -> CloseSyncStream
+                        3 -> decodeSerializableElement(descriptor, 3, fetchCredentials)
+                        4 -> {
+                            decodeSerializableElement(descriptor, 3, flushFileSystem)
+                            FlushSileSystem
+                        }
+                        5 -> {
+                            decodeSerializableElement(descriptor, 4, closeSyncStream)
+                            CloseSyncStream
+                        }
+                        6 -> {
+                            decodeSerializableElement(descriptor, 4, didCompleteSync)
+                            DidCompleteSync
+                        }
                         CompositeDecoder.UNKNOWN_NAME, CompositeDecoder.DECODE_DONE -> UnknownInstruction
                         else -> error("Unexpected index: $index")
                     }
@@ -70,4 +99,49 @@ internal sealed interface Instruction {
 }
 
 @Serializable
-internal class CoreSyncStatus {}
+internal class CoreSyncStatus(
+    val connected: Boolean,
+    val connecting: Boolean,
+    val downloading: CoreDownloadProgress?,
+    @SerialName("priority_status")
+    val priorityStatus: List<CorePriorityStatus>,
+)
+
+@Serializable
+internal class CoreDownloadProgress(
+    val buckets: Map<String, CoreBucketProgress>
+)
+
+@Serializable
+internal class CoreBucketProgress(
+    val priority: BucketPriority,
+    @SerialName("at_last")
+    val atLast: Long,
+    @SerialName("since_last")
+    val sinceLast: Long,
+    @SerialName("target_count")
+    val targetCount: Long
+)
+
+@Serializable
+internal class CorePriorityStatus(
+    val priority: BucketPriority,
+    @SerialName("last_synced_at")
+    @Serializable(with = InstantTimestampSerializer::class)
+    val lastSyncedAt: Instant?,
+    @SerialName("has_synced")
+    val hasSynced: Boolean?
+)
+
+private object InstantTimestampSerializer : KSerializer<Instant> {
+    override val descriptor: SerialDescriptor
+        get() = PrimitiveSerialDescriptor("kotlinx.datetime.Instant", PrimitiveKind.LONG)
+
+    override fun deserialize(decoder: Decoder): Instant {
+        return Instant.fromEpochSeconds(decoder.decodeLong())
+    }
+
+    override fun serialize(encoder: Encoder, value: Instant) {
+        encoder.encodeLong(value.epochSeconds)
+    }
+}

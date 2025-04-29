@@ -2,6 +2,7 @@ package com.powersync.bucket
 
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.internal.PowerSyncTransaction
+import com.powersync.sync.Instruction
 import com.powersync.sync.SyncDataBatch
 import com.powersync.sync.SyncLocalDatabaseResult
 
@@ -25,20 +26,8 @@ internal interface BucketStorage {
 
     suspend fun updateLocalTarget(checkpointCallback: suspend () -> String): Boolean
 
-    suspend fun saveSyncData(syncDataBatch: SyncDataBatch)
-
-    suspend fun getBucketStates(): List<BucketState>
-
-    suspend fun getBucketOperationProgress(): Map<String, LocalOperationCounters>
-
-    suspend fun removeBuckets(bucketsToDelete: List<String>)
-
     suspend fun hasCompletedSync(): Boolean
 
-    suspend fun syncLocalDatabase(
-        targetCheckpoint: Checkpoint,
-        partialPriority: BucketPriority? = null,
-    ): SyncLocalDatabaseResult
-
-    fun setTargetCheckpoint(checkpoint: Checkpoint)
+    suspend fun control(op: String, payload: String?): List<Instruction>
+    suspend fun control(op: String, payload: ByteArray): List<Instruction>
 }

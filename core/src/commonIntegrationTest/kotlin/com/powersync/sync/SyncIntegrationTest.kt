@@ -440,8 +440,15 @@ class SyncIntegrationTest {
 
             // Trigger an upload (adding a keep-alive sync line because the execute could start before the database is fully
             // connected).
+            turbineScope {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                syncLines.send(SyncLine.KeepAlive(1234))
+                turbine.waitFor { it.connected }
+                turbine.cancelAndIgnoreRemainingEvents()
+            }
+
             database.execute("INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)", listOf("local", "local@example.org"))
-            syncLines.send(SyncLine.KeepAlive(1234))
+
             expectUserRows(1)
             uploadStarted.await()
 

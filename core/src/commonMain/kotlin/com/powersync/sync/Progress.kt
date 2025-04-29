@@ -61,8 +61,8 @@ internal data class ProgressInfo(
  * one-by-one.
  */
 @ConsistentCopyVisibility
-public data class SyncDownloadProgress private constructor(
-    private val buckets: Map<String, BucketProgress>,
+public data class SyncDownloadProgress internal constructor(
+    private val buckets: Map<String, CoreBucketProgress>,
 ): ProgressWithOperations {
 
     override val downloadedOperations: Int
@@ -75,28 +75,6 @@ public data class SyncDownloadProgress private constructor(
     }
 
     /**
-     * Creates download progress information from the local progress counters since the last full sync and the target
-     * checkpoint.
-     */
-    internal constructor(localProgress: Map<String, LocalOperationCounters>, target: Checkpoint) : this(
-        buildMap {
-            for (entry in target.checksums) {
-                val savedProgress = localProgress[entry.bucket]
-
-                put(
-                    entry.bucket,
-                    BucketProgress(
-                        priority = entry.priority,
-                        atLast = savedProgress?.atLast ?: 0,
-                        sinceLast = savedProgress?.sinceLast ?: 0,
-                        targetCount = entry.count ?: 0,
-                    ),
-                )
-            }
-        },
-    )
-
-    /**
      * Returns download progress towards all data up until the specified [priority] being received.
      *
      * The returned [ProgressWithOperations] instance tracks the target amount of operations that need to be downloaded
@@ -107,37 +85,12 @@ public data class SyncDownloadProgress private constructor(
         return ProgressInfo(totalOperations = total, downloadedOperations = completed)
     }
 
-    internal fun incrementDownloaded(batch: SyncDataBatch): SyncDownloadProgress =
-        SyncDownloadProgress(
-            buildMap {
-                putAll(this@SyncDownloadProgress.buckets)
-
-                for (bucket in batch.buckets) {
-                    val previous = get(bucket.bucket) ?: continue
-                    put(
-                        bucket.bucket,
-                        previous.copy(
-                            sinceLast = previous.sinceLast + bucket.data.size,
-                        ),
-                    )
-                }
-            },
-        )
-
     private fun targetAndCompletedCounts(priority: BucketPriority): Pair<Int, Int> =
         buckets.values
             .asSequence()
             .filter { it.priority >= priority }
-            .fold(0 to 0) { (prevTarget, prevCompleted), entry ->
-                (prevTarget + entry.total) to (prevCompleted + entry.sinceLast)
+            .fold(0L to 0L) { (prevTarget, prevCompleted), entry ->
+                (prevTarget + entry.targetCount) to (prevCompleted + entry.sinceLast)
             }
-}
-
-private data class BucketProgress(
-    val priority: BucketPriority,
-    val atLast: Int,
-    val sinceLast: Int,
-    val targetCount: Int,
-) {
-    val total get(): Int = targetCount - atLast
+            .let { it.first.toInt() to it.second.toInt() }
 }

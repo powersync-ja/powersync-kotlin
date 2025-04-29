@@ -148,27 +148,6 @@ class BucketStorageTest {
             assertTrue(result)
         }
 
-    @Test
-    fun testGetBucketStates() =
-        runTest {
-            val mockBucketStates = listOf(BucketState("bucket1", "op1"), BucketState("bucket2", "op2"))
-            mockDb =
-                mock<InternalDatabase> {
-                    everySuspend {
-                        getOptional<Long>(
-                            any(),
-                            any(),
-                            any(),
-                        )
-                    } returns 1L
-                    everySuspend { getAll<BucketState>(any(), any(), any()) } returns mockBucketStates
-                }
-            bucketStorage = BucketStorageImpl(mockDb, Logger)
-
-            val result = bucketStorage.getBucketStates()
-            assertEquals(mockBucketStates, result)
-        }
-
     // TODO: Add tests for removeBuckets, hasCompletedSync, syncLocalDatabase currently not covered because
     //       currently the internal methods are private and cannot be accessed from the test class
 }
