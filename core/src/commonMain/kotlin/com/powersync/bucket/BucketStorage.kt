@@ -29,6 +29,8 @@ internal interface BucketStorage {
 
     suspend fun getBucketStates(): List<BucketState>
 
+    suspend fun getBucketOperationProgress(): Map<String, LocalOperationCounters>
+
     suspend fun removeBuckets(bucketsToDelete: List<String>)
 
     suspend fun hasCompletedSync(): Boolean
