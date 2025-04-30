@@ -82,7 +82,7 @@ internal class ActiveDatabaseTest(
             ),
         )
 
-    val syncLines = Channel<SyncLine>()
+    var syncLines = Channel<SyncLine>()
     var checkpointResponse: () -> WriteCheckpointResponse = {
         WriteCheckpointResponse(WriteCheckpointData("1000"))
     }

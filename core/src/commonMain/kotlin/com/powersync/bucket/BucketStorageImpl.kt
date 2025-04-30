@@ -152,6 +152,22 @@ internal class BucketStorageImpl(
             },
         )
 
+    override suspend fun getBucketOperationProgress(): Map<String, LocalOperationCounters> =
+        buildMap {
+            val rows =
+                db.getAll("SELECT name, count_at_last, count_since_last FROM ps_buckets") { cursor ->
+                    cursor.getString(0)!! to
+                        LocalOperationCounters(
+                            atLast = cursor.getLong(1)!!.toInt(),
+                            sinceLast = cursor.getLong(2)!!.toInt(),
+                        )
+                }
+
+            for ((name, counters) in rows) {
+                put(name, counters)
+            }
+        }
+
     override suspend fun removeBuckets(bucketsToDelete: List<String>) {
         bucketsToDelete.forEach { bucketName ->
             deleteBucket(bucketName)
@@ -305,7 +321,6 @@ internal class BucketStorageImpl(
             }
 
         return db.writeTransaction { tx ->
-
             tx.execute(
                 "INSERT INTO powersync_operations(op, data) VALUES(?, ?)",
                 listOf("sync_local", args),
@@ -316,7 +331,28 @@ internal class BucketStorageImpl(
                     cursor.getLong(0)!!
                 }
 
-            return@writeTransaction res == 1L
+            val didApply = res == 1L
+            if (didApply && priority == null) {
+                // Reset progress counters. We only do this for a complete sync, as we want a download progress to
+                // always cover a complete checkpoint instead of resetting for partial completions.
+                tx.execute(
+                    """
+                    UPDATE ps_buckets SET count_since_last = 0, count_at_last = ?1->name
+                      WHERE name != '${'$'}local' AND ?1->name IS NOT NULL
+                    """.trimIndent(),
+                    listOf(
+                        JsonUtil.json.encodeToString(
+                            buildMap<String, Int> {
+                                for (bucket in checkpoint.checksums) {
+                                    bucket.count?.let { put(bucket.bucket, it) }
+                                }
+                            },
+                        ),
+                    ),
+                )
+            }
+
+            return@writeTransaction didApply
         }
     }
 
