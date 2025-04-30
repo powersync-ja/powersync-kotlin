@@ -4,6 +4,7 @@
 
 * Fixed `CrudBatch` `hasMore` always returning false.
 * Added `triggerImmediately` to `onChange` method.
+* [Internal] Added helper method for Swift `PowerSyncException` throwing.
 
 ## 1.0.0-BETA32
 
