@@ -192,7 +192,7 @@ class TableTest {
 
     @Test
     fun testValidationLocalOnlyWithMetadata() {
-        val table = Table("foo", listOf(Column.text("bar")), localOnly = true, includeMetadata = true)
+        val table = Table("foo", listOf(Column.text("bar")), localOnly = true, trackMetadata = true)
 
         val exception = shouldThrow<IllegalStateException> { table.validate() }
         exception.message shouldBe "Can't track metadata for local-only tables."
@@ -200,7 +200,7 @@ class TableTest {
 
     @Test
     fun testValidationLocalOnlyWithIncludeOld() {
-        val table = Table("foo", listOf(Column.text("bar")), localOnly = true, includeOld = IncludeOldOptions())
+        val table = Table("foo", listOf(Column.text("bar")), localOnly = true, trackPreviousValues = TrackPreviousValuesOptions())
 
         val exception = shouldThrow<IllegalStateException> { table.validate() }
         exception.message shouldBe "Can't track old values for local-only tables."
@@ -211,20 +211,20 @@ class TableTest {
         fun serialize(table: Table): JsonObject =
             JsonUtil.json.encodeToJsonElement(serializer<SerializableTable>(), table.toSerializable()) as JsonObject
 
-        serialize(Table("foo", emptyList(), includeMetadata = true))["include_metadata"]!!.jsonPrimitive.boolean shouldBe true
-        serialize(Table("foo", emptyList(), ignoreEmptyUpdate = true))["ignore_empty_update"]!!.jsonPrimitive.boolean shouldBe true
+        serialize(Table("foo", emptyList(), trackMetadata = true))["include_metadata"]!!.jsonPrimitive.boolean shouldBe true
+        serialize(Table("foo", emptyList(), ignoreEmptyUpdates = true))["ignore_empty_update"]!!.jsonPrimitive.boolean shouldBe true
 
-        serialize(Table("foo", emptyList(), includeOld = IncludeOldOptions())).let {
+        serialize(Table("foo", emptyList(), trackPreviousValues = TrackPreviousValuesOptions())).let {
             it["include_old"]!!.jsonPrimitive.boolean shouldBe true
             it["include_old_only_when_changed"]!!.jsonPrimitive.boolean shouldBe false
         }
 
-        serialize(Table("foo", emptyList(), includeOld = IncludeOldOptions(columnFilter = listOf("foo", "bar")))).let {
+        serialize(Table("foo", emptyList(), trackPreviousValues = TrackPreviousValuesOptions(columnFilter = listOf("foo", "bar")))).let {
             it["include_old"]!!.jsonArray.map { e -> e.jsonPrimitive.content } shouldBe listOf("foo", "bar")
             it["include_old_only_when_changed"]!!.jsonPrimitive.boolean shouldBe false
         }
 
-        serialize(Table("foo", emptyList(), includeOld = IncludeOldOptions(onlyWhenChanged = true))).let {
+        serialize(Table("foo", emptyList(), trackPreviousValues = TrackPreviousValuesOptions(onlyWhenChanged = true))).let {
             it["include_old"]!!.jsonPrimitive.boolean shouldBe true
             it["include_old_only_when_changed"]!!.jsonPrimitive.boolean shouldBe true
         }

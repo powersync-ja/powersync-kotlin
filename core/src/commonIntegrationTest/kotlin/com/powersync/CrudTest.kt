@@ -1,9 +1,9 @@
 package com.powersync
 
 import com.powersync.db.schema.Column
-import com.powersync.db.schema.IncludeOldOptions
 import com.powersync.db.schema.Schema
 import com.powersync.db.schema.Table
+import com.powersync.db.schema.TrackPreviousValuesOptions
 import com.powersync.testutils.databaseTest
 import io.kotest.matchers.shouldBe
 import kotlin.test.Test
@@ -12,7 +12,7 @@ class CrudTest {
     @Test
     fun includeMetadata() =
         databaseTest {
-            database.updateSchema(Schema(Table("lists", listOf(Column.text("name")), includeMetadata = true)))
+            database.updateSchema(Schema(Table("lists", listOf(Column.text("name")), trackMetadata = true)))
 
             database.execute("INSERT INTO lists (id, name, _metadata) VALUES (uuid(), ?, ?)", listOf("entry", "so meta"))
             val batch = database.getNextCrudTransaction()
@@ -23,7 +23,9 @@ class CrudTest {
     fun includeOldValues() =
         databaseTest {
             database.updateSchema(
-                Schema(Table("lists", listOf(Column.text("name"), Column.text("content")), includeOld = IncludeOldOptions())),
+                Schema(
+                    Table("lists", listOf(Column.text("name"), Column.text("content")), trackPreviousValues = TrackPreviousValuesOptions()),
+                ),
             )
 
             database.execute("INSERT INTO lists (id, name, content) VALUES (uuid(), ?, ?)", listOf("entry", "content"))
@@ -42,7 +44,7 @@ class CrudTest {
                     Table(
                         "lists",
                         listOf(Column.text("name"), Column.text("content")),
-                        includeOld = IncludeOldOptions(columnFilter = listOf("name")),
+                        trackPreviousValues = TrackPreviousValuesOptions(columnFilter = listOf("name")),
                     ),
                 ),
             )
@@ -63,7 +65,7 @@ class CrudTest {
                     Table(
                         "lists",
                         listOf(Column.text("name"), Column.text("content")),
-                        includeOld = IncludeOldOptions(onlyWhenChanged = true),
+                        trackPreviousValues = TrackPreviousValuesOptions(onlyWhenChanged = true),
                     ),
                 ),
             )
@@ -79,7 +81,7 @@ class CrudTest {
     @Test
     fun ignoreEmptyUpdate() =
         databaseTest {
-            database.updateSchema(Schema(Table("lists", listOf(Column.text("name"), Column.text("content")), ignoreEmptyUpdate = true)))
+            database.updateSchema(Schema(Table("lists", listOf(Column.text("name"), Column.text("content")), ignoreEmptyUpdates = true)))
 
             database.execute("INSERT INTO lists (id, name, content) VALUES (uuid(), ?, ?)", listOf("entry", "content"))
             database.execute("DELETE FROM ps_crud")

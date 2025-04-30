@@ -41,18 +41,18 @@ public data class Table(
      *  Whether to add a hidden `_metadata` column that will be enabled for updates to attach custom
      *  information about writes that will be reported through [CrudEntry.metadata].
      */
-    val includeMetadata: Boolean = false,
+    val trackMetadata: Boolean = false,
     /**
      * When set to a non-null value, track old values of columns for [CrudEntry.oldData].
      *
-     * See [IncludeOldOptions] for details.
+     * See [TrackPreviousValuesOptions] for details.
      */
-    val includeOld: IncludeOldOptions? = null,
+    val trackPreviousValues: TrackPreviousValuesOptions? = null,
     /**
      * Whether an `UPDATE` statement that doesn't change any values should be ignored when creating
      * CRUD entries.
      */
-    val ignoreEmptyUpdate: Boolean = false,
+    val ignoreEmptyUpdates: Boolean = false,
 ) {
     init {
         /**
@@ -101,9 +101,9 @@ public data class Table(
             name: String,
             columns: List<Column>,
             viewName: String? = null,
-            ignoreEmptyUpdate: Boolean = false,
-            includeMetadata: Boolean = false,
-            includeOld: IncludeOldOptions? = null,
+            ignoreEmptyUpdates: Boolean = false,
+            trackMetadata: Boolean = false,
+            trackPreviousValues: TrackPreviousValuesOptions? = null,
         ): Table =
             Table(
                 name,
@@ -112,9 +112,9 @@ public data class Table(
                 localOnly = false,
                 insertOnly = true,
                 viewNameOverride = viewName,
-                ignoreEmptyUpdate = ignoreEmptyUpdate,
-                includeMetadata = includeMetadata,
-                includeOld = includeOld,
+                ignoreEmptyUpdates = ignoreEmptyUpdates,
+                trackMetadata = trackMetadata,
+                trackPreviousValues = trackPreviousValues,
             )
     }
 
@@ -161,10 +161,10 @@ public data class Table(
             throw AssertionError("Invalid characters in view name: $viewNameOverride")
         }
 
-        check(!localOnly || !includeMetadata) {
+        check(!localOnly || !trackMetadata) {
             "Can't track metadata for local-only tables."
         }
-        check(!localOnly || includeOld == null) {
+        check(!localOnly || trackPreviousValues == null) {
             "Can't track old values for local-only tables."
         }
 
@@ -223,7 +223,7 @@ public data class Table(
  *
  * These options are enabled by passing them to a non-local [Table] constructor.
  */
-public data class IncludeOldOptions(
+public data class TrackPreviousValuesOptions(
     /**
      * A filter of column names for which updates should be tracked.
      *
@@ -268,10 +268,10 @@ internal fun Table.toSerializable(): SerializableTable =
             localOnly = localOnly,
             insertOnly = insertOnly,
             viewName = viewName,
-            ignoreEmptyUpdate = ignoreEmptyUpdate,
-            includeMetadata = includeMetadata,
+            ignoreEmptyUpdate = ignoreEmptyUpdates,
+            includeMetadata = trackMetadata,
             includeOld =
-                includeOld?.let {
+                trackPreviousValues?.let {
                     if (it.columnFilter != null) {
                         buildJsonArray {
                             for (column in it.columnFilter) {
@@ -282,6 +282,6 @@ internal fun Table.toSerializable(): SerializableTable =
                         JsonPrimitive(true)
                     }
                 } ?: JsonPrimitive(false),
-            includeOldOnlyWhenChanged = includeOld?.onlyWhenChanged ?: false,
+            includeOldOnlyWhenChanged = trackPreviousValues?.onlyWhenChanged ?: false,
         )
     }

@@ -1,5 +1,7 @@
 package com.powersync.db.crud
 
+import com.powersync.PowerSyncDatabase
+import com.powersync.db.schema.Table
 import com.powersync.utils.JsonUtil
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
@@ -37,6 +39,14 @@ public data class CrudEntry(
      * This may change in the future.
      */
     val transactionId: Int?,
+    /**
+     * User-defined metadata that can be attached to writes.
+     *
+     * This is the value the `_metadata` column had when the write to the database was made,
+     * allowing backend connectors to e.g. identify a write and treat it specially.
+     *
+     * Note that the `_metadata` column is only available when [Table.trackMetadata] is enabled.
+     */
     val metadata: String? = null,
     /**
      * Data associated with the change.
@@ -48,6 +58,12 @@ public data class CrudEntry(
      * For DELETE, this is null.
      */
     val opData: Map<String, String?>?,
+    /**
+     * Previous values before this change.
+     *
+     * These values can be tracked for `UPDATE` statements when [Table.trackPreviousValues] is
+     * enabled.
+     */
     val oldData: Map<String, String?>? = null,
 ) {
     public companion object {
