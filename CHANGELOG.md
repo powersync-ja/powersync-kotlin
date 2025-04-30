@@ -2,6 +2,10 @@
 
 ## unreleased
 
+* Fixed `CrudBatch` `hasMore` always returning false.
+* Added `triggerImmediately` to `onChange` method.
+* Report real-time progress information about downloads through `SyncStatus.downloadProgress`.
+* Compose: Add `composeState()` extension method on `SyncStatus`.
 * Add `includeOld` option on `Table` which sets `CrudEntry.oldData` to previous values on updates.
 * Add `includeMetadata` option on `Table` which adds a `_metadata` column that can be used for updates.
   The configured metadata is available through `CrudEntry.metadata`.
