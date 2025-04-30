@@ -1,7 +1,8 @@
 # Changelog
 
-## unreleased
+## 1.0.0
 
+* Bump SDK to V1/Stable feature status
 * Fixed `CrudBatch` `hasMore` always returning false.
 * Added `triggerImmediately` to `onChange` method.
 * Report real-time progress information about downloads through `SyncStatus.downloadProgress`.
