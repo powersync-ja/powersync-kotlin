@@ -4,6 +4,8 @@
 
 * Fixed `CrudBatch` `hasMore` always returning false.
 * Added `triggerImmediately` to `onChange` method.
+* Report real-time progress information about downloads through `SyncStatus.downloadProgress`.
+* Compose: Add `composeState()` extension method on `SyncStatus`.
 
 ## 1.0.0-BETA32
 

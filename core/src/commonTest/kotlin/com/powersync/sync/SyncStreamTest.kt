@@ -33,6 +33,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
@@ -80,6 +81,7 @@ class SyncStreamTest {
                         checkpointValid = true,
                         checkpointFailures = emptyList(),
                     )
+                everySuspend { getBucketOperationProgress() } returns mapOf()
             }
         connector =
             mock<PowerSyncBackendConnector> {
@@ -147,7 +149,7 @@ class SyncStreamTest {
                     scope = this,
                 )
 
-            syncStream.status.update(connected = true)
+            syncStream.status.update { copy(connected = true) }
             syncStream.triggerCrudUploadAsync().join()
 
             testLogWriter.assertCount(2)
@@ -295,6 +297,7 @@ class SyncStreamTest {
 
                     verifySuspend(order) {
                         if (priorityNo == 0) {
+                            bucketStorage.getBucketOperationProgress()
                             bucketStorage.removeBuckets(any())
                             bucketStorage.setTargetCheckpoint(any())
                         }
