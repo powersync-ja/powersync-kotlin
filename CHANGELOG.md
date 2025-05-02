@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1
+
+* [Internal] Version bump for broken Swift release pipeline
+
 ## 1.0.0
 
 * Bump SDK to V1/Stable feature status
