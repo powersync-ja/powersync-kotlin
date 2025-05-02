@@ -1,3 +1,4 @@
+import co.touchlab.faktory.KmmBridgeExtension
 import co.touchlab.faktory.artifactmanager.ArtifactManager
 import co.touchlab.faktory.capitalized
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
@@ -107,15 +108,34 @@ class SonatypePortalPublishArtifactManager(
         uploadTask: TaskProvider<Task>,
         kmmPublishTask: TaskProvider<Task>
     ) {
+        val zipXCFramework = project.tasks.named<Zip>("zipXCFramework")
+        zipXCFramework.configure {
+            // KMMBridge uses the Gradle Zip tasks to create XCFramework archives, but Gradle
+            // doesn't support symlinks. XCFrameworks for macOS need to use symlinks though, so we
+            // patch the task to generate zip files properly.
+            doLast {
+                val bridge = project.extensions.getByName<KmmBridgeExtension>("kmmbridge")
+                val source = project.layout.buildDirectory.map { it.dir("XCFrameworks/${bridge.buildType.get().name}") }.get().asFile
+
+                val out = archiveFile.get().asFile
+                out.delete()
+
+                providers.exec {
+                    executable = "zip"
+                    args("-r", "--symlinks", out.absolutePath, "PowerSyncKotlin.xcframework")
+                    workingDir(source)
+                }.result.get().assertNormalExitValue()
+            }
+        }
+
         project.extensions.getByType<PublishingExtension>().publications.create(
             publicationName,
             MavenPublication::class.java,
         ) {
             this.version = version
-            val archiveProvider =
-                project.tasks.named("zipXCFramework", Zip::class.java).flatMap {
-                    it.archiveFile
-                }
+            val archiveProvider = zipXCFramework.flatMap {
+                it.archiveFile
+            }
             artifact(archiveProvider) {
                 extension = "zip"
             }
