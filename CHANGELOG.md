@@ -2,14 +2,23 @@
 
 ## unreleased
 
-* Fixed `CrudBatch` `hasMore` always returning false.
-* Added `triggerImmediately` to `onChange` method.
-* Report real-time progress information about downloads through `SyncStatus.downloadProgress`.
-* Compose: Add `composeState()` extension method on `SyncStatus`.
 * Add `trackPreviousValues` option on `Table` which sets `CrudEntry.oldData` to previous values on updates.
 * Add `trackMetadata` option on `Table` which adds a `_metadata` column that can be used for updates.
   The configured metadata is available through `CrudEntry.metadata`.
 * Add `ignoreEmptyUpdates` option which skips creating CRUD entries for updates that don't change any values.
+
+## 1.0.1
+
+* [Internal] Version bump for broken Swift release pipeline
+
+## 1.0.0
+
+* Bump SDK to V1/Stable feature status
+* Fixed `CrudBatch` `hasMore` always returning false.
+* Added `triggerImmediately` to `onChange` method.
+* Report real-time progress information about downloads through `SyncStatus.downloadProgress`.
+* Compose: Add `composeState()` extension method on `SyncStatus`.
+* [Internal] Added helper method for Swift `PowerSyncException` throwing.
 
 ## 1.0.0-BETA32
 
