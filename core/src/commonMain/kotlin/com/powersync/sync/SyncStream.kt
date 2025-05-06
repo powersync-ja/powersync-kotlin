@@ -3,6 +3,7 @@ package com.powersync.sync
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import co.touchlab.stately.concurrency.AtomicBoolean
+import com.powersync.PowerSyncException
 import com.powersync.bucket.BucketStorage
 import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.connectors.PowerSyncBackendConnector
@@ -337,7 +338,9 @@ internal class SyncStream(
                 }
                 is Instruction.FetchCredentials -> TODO()
                 Instruction.DidCompleteSync -> status.update { copy(downloadError=null) }
-                Instruction.UnknownInstruction -> TODO()
+                is Instruction.UnknownInstruction -> {
+                    throw PowerSyncException("Unknown instruction received from core extension: ${instruction.raw}", null)
+                }
             }
         }
 

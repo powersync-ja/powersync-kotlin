@@ -184,18 +184,7 @@ internal class BucketStorageImpl(
     override suspend fun control(op: String, payload: ByteArray): List<Instruction> {
         return db.writeTransaction { tx ->
             logger.v { "powersync_control($op, binary payload)" }
-
-            try {
-                tx.get("SELECT powersync_control(?, ?) AS r", listOf(op, payload), ::handleControlResult)
-            } catch (e: Exception) {
-                println("Got control exception, writing")
-                SystemFileSystem.sink(Path("/Users/simon/failing_line.bin")).buffered().apply {
-                    write(payload)
-                    flush()
-                    close()
-                }
-                throw e
-            }
+            tx.get("SELECT powersync_control(?, ?) AS r", listOf(op, payload), ::handleControlResult)
         }
     }
 }

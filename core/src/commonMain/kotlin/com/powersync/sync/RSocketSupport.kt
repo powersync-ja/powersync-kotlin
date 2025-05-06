@@ -83,7 +83,7 @@ internal fun HttpClient.rSocketSyncStream(
 
     val rSocket = connector.connect(target)
     val syncStream = rSocket.requestStream(buildPayload {
-        data("{}")
+        data(JsonUtil.json.encodeToString(req))
         metadata(JsonUtil.json.encodeToString(RequestStreamMetadata("/sync/stream")))
     })
 

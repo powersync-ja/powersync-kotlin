@@ -13,6 +13,7 @@ import kotlinx.serialization.encoding.CompositeDecoder
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.encoding.decodeStructure
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.serializer
 
@@ -37,7 +38,7 @@ internal sealed interface Instruction {
     data object CloseSyncStream: Instruction
     data object DidCompleteSync: Instruction
 
-    data object UnknownInstruction: Instruction
+    data class UnknownInstruction(val raw: JsonElement?): Instruction
 
     class Serializer : KSerializer<Instruction> {
         private val logLine = serializer<LogLine>()
@@ -68,24 +69,25 @@ internal sealed interface Instruction {
                         2 -> decodeSerializableElement(descriptor, 2, establishSyncStream)
                         3 -> decodeSerializableElement(descriptor, 3, fetchCredentials)
                         4 -> {
-                            decodeSerializableElement(descriptor, 3, flushFileSystem)
+                            decodeSerializableElement(descriptor, 4, flushFileSystem)
                             FlushSileSystem
                         }
                         5 -> {
-                            decodeSerializableElement(descriptor, 4, closeSyncStream)
+                            decodeSerializableElement(descriptor, 5, closeSyncStream)
                             CloseSyncStream
                         }
                         6 -> {
-                            decodeSerializableElement(descriptor, 4, didCompleteSync)
+                            decodeSerializableElement(descriptor, 6, didCompleteSync)
                             DidCompleteSync
                         }
-                        CompositeDecoder.UNKNOWN_NAME, CompositeDecoder.DECODE_DONE -> UnknownInstruction
+                        CompositeDecoder.UNKNOWN_NAME,  -> UnknownInstruction(decodeSerializableElement(descriptor, index, serializer<JsonElement>()))
+                        CompositeDecoder.DECODE_DONE -> UnknownInstruction(null)
                         else -> error("Unexpected index: $index")
                     }
 
                 if (decodeElementIndex(descriptor) != CompositeDecoder.DECODE_DONE) {
                     // Sync lines are single-key objects, make sure there isn't another one.
-                    UnknownInstruction
+                    UnknownInstruction(null)
                 } else {
                     value
                 }
@@ -99,7 +101,7 @@ internal sealed interface Instruction {
 }
 
 @Serializable
-internal class CoreSyncStatus(
+internal data class CoreSyncStatus(
     val connected: Boolean,
     val connecting: Boolean,
     val downloading: CoreDownloadProgress?,
@@ -108,12 +110,12 @@ internal class CoreSyncStatus(
 )
 
 @Serializable
-internal class CoreDownloadProgress(
+internal data class CoreDownloadProgress(
     val buckets: Map<String, CoreBucketProgress>
 )
 
 @Serializable
-internal class CoreBucketProgress(
+internal data class CoreBucketProgress(
     val priority: BucketPriority,
     @SerialName("at_last")
     val atLast: Long,
@@ -124,7 +126,7 @@ internal class CoreBucketProgress(
 )
 
 @Serializable
-internal class CorePriorityStatus(
+internal data class CorePriorityStatus(
     val priority: BucketPriority,
     @SerialName("last_synced_at")
     @Serializable(with = InstantTimestampSerializer::class)
