@@ -43,7 +43,7 @@ public data class Table(
      */
     val trackMetadata: Boolean = false,
     /**
-     * When set to a non-null value, track old values of columns for [CrudEntry.oldData].
+     * When set to a non-null value, track old values of columns for [CrudEntry.previousValue].
      *
      * See [TrackPreviousValuesOptions] for details.
      */
@@ -219,7 +219,7 @@ public data class Table(
 }
 
 /**
- * Options to include old values in [CrudEntry.oldData] for update statements.
+ * Options to include old values in [CrudEntry.previousValue] for update statements.
  *
  * These options are enabled by passing them to a non-local [Table] constructor.
  */
@@ -228,7 +228,7 @@ public data class TrackPreviousValuesOptions(
      * A filter of column names for which updates should be tracked.
      *
      * When set to a non-null value, columns not included in this list will not appear in
-     * [CrudEntry.oldData]. By default, all columns are included.
+     * [CrudEntry.previousValues]. By default, all columns are included.
      */
     val columnFilter: List<String>? = null,
     /**

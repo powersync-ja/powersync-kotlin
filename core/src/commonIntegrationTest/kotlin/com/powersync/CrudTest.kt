@@ -33,7 +33,7 @@ class CrudTest {
             database.execute("UPDATE lists SET name = ?", listOf("new name"))
 
             val batch = database.getNextCrudTransaction()
-            batch!!.crud[0].oldData shouldBe mapOf("name" to "entry", "content" to "content")
+            batch!!.crud[0].previousValues shouldBe mapOf("name" to "entry", "content" to "content")
         }
 
     @Test
@@ -54,7 +54,7 @@ class CrudTest {
             database.execute("UPDATE lists SET name = ?, content = ?", listOf("new name", "new content"))
 
             val batch = database.getNextCrudTransaction()
-            batch!!.crud[0].oldData shouldBe mapOf("name" to "entry")
+            batch!!.crud[0].previousValues shouldBe mapOf("name" to "entry")
         }
 
     @Test
@@ -75,7 +75,7 @@ class CrudTest {
             database.execute("UPDATE lists SET name = ?", listOf("new name"))
 
             val batch = database.getNextCrudTransaction()
-            batch!!.crud[0].oldData shouldBe mapOf("name" to "entry")
+            batch!!.crud[0].previousValues shouldBe mapOf("name" to "entry")
         }
 
     @Test
