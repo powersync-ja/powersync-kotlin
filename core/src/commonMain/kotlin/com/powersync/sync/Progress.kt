@@ -90,7 +90,7 @@ public data class SyncDownloadProgress internal constructor(
             .asSequence()
             .filter { it.priority >= priority }
             .fold(0L to 0L) { (prevTarget, prevCompleted), entry ->
-                (prevTarget + entry.targetCount) to (prevCompleted + entry.sinceLast)
+                (prevTarget + entry.targetCount - entry.atLast) to (prevCompleted + entry.sinceLast)
             }
             .let { it.first.toInt() to it.second.toInt() }
 }

@@ -1,14 +1,9 @@
 package com.powersync.sync
 
-import BuildConfig
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import co.touchlab.stately.concurrency.AtomicBoolean
-import co.touchlab.stately.concurrency.AtomicReference
-import com.powersync.bucket.BucketChecksum
-import com.powersync.bucket.BucketRequest
 import com.powersync.bucket.BucketStorage
-import com.powersync.bucket.Checkpoint
 import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.crud.CrudEntry
@@ -16,10 +11,12 @@ import com.powersync.utils.JsonUtil
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.call.body
+import io.ktor.client.plugins.DefaultRequest
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.timeout
 import io.ktor.client.plugins.websocket.WebSockets
+import io.ktor.client.plugins.websocket.webSocketSession
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
 import io.ktor.client.request.preparePost
@@ -30,39 +27,36 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.URLBuilder
 import io.ktor.http.URLProtocol
-import io.ktor.http.Url
 import io.ktor.http.contentType
 import io.ktor.http.takeFrom
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.readUTF8Line
-import io.rsocket.kotlin.keepalive.KeepAlive
-import io.rsocket.kotlin.ktor.client.RSocketSupport
-import io.rsocket.kotlin.ktor.client.rSocket
-import io.rsocket.kotlin.payload.Payload
+import io.rsocket.kotlin.core.RSocketConnector
 import io.rsocket.kotlin.payload.PayloadMimeType
 import io.rsocket.kotlin.payload.buildPayload
-import io.rsocket.kotlin.payload.data
 import io.rsocket.kotlin.payload.metadata
+import io.rsocket.kotlin.transport.RSocketClientTarget
+import io.rsocket.kotlin.transport.RSocketConnection
+import io.rsocket.kotlin.transport.RSocketTransportApi
+import io.rsocket.kotlin.transport.ktor.websocket.internal.KtorWebSocketConnection
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Clock
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonObject
-import kotlin.time.Duration.Companion.seconds
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.coroutineContext
 
 internal class SyncStream(
     private val bucketStorage: BucketStorage,
@@ -89,37 +83,13 @@ internal class SyncStream(
         createClient {
             install(HttpTimeout)
             install(ContentNegotiation)
+            install(WebSockets)
 
-            (options.method as? ConnectionMethod.WebSocket)?.let {
-                install(WebSockets)
-                install(RSocketSupport) {
-                    connector {
-                        connectionConfig {
-                            payloadMimeType = PayloadMimeType(
-                                metadata = "application/json",
-                                data = "application/json"
-                            )
-
-                            setupPayload {
-                                buildPayload {
-                                    @Serializable
-                                    class ConnectionSetupMetadata(
-                                        // Kind of annoying to specify this here, https://github.com/rsocket/rsocket-kotlin/issues/311
-                                        val token: String = "TODO: token",
-                                        @SerialName("user_agent")
-                                        val userAgent: String = "Kotlin SDK"
-                                    )
-
-                                    metadata(JsonUtil.json.encodeToString(ConnectionSetupMetadata()))
-                                }
-                            }
-
-                            keepAlive = it.keepAlive
-                        }
-                    }
-}
+            install(DefaultRequest) {
+                headers {
+                    append("User-Agent", userAgent())
+                }
             }
-
         }
 
     fun invalidateCredentials() {
@@ -274,20 +244,14 @@ internal class SyncStream(
             }
         }
 
-    private fun connectViaWebSocket(req: JsonObject): Flow<ByteArray> = flow {
-        val credentials = connector.getCredentialsCached()
-        require(credentials != null) { "Not logged in" }
-        val uri = URLBuilder(credentials.endpointUri("sync/stream")).apply {
-            protocol = when (protocolOrNull) {
-                URLProtocol.HTTP -> URLProtocol.WS
-                else -> URLProtocol.WSS
-            }
-        }
+    private fun connectViaWebSocket(req: JsonObject, options: ConnectionMethod.WebSocket): Flow<ByteArray> = flow {
+        val credentials = requireNotNull(connector.getCredentialsCached()) { "Not logged in" }
 
-        val rSocket = httpClient.rSocket { url.takeFrom(uri) }
-        rSocket.requestStream(buildPayload {
-            metadata(JsonUtil.json.encodeToString(""))
-        })
+        emitAll(httpClient.rSocketSyncStream(
+            options = options,
+            req = req,
+            credentials = credentials
+        ))
     }
 
     private suspend fun streamingSyncIteration() {
@@ -318,6 +282,11 @@ internal class SyncStream(
         }
 
         private suspend fun control(op: String, payload: String? = null) {
+            val instructions = bucketStorage.control(op, payload)
+            handleInstructions(instructions)
+        }
+
+        private suspend fun control(op: String, payload: ByteArray) {
             val instructions = bucketStorage.control(op, payload)
             handleInstructions(instructions)
         }
@@ -373,11 +342,15 @@ internal class SyncStream(
         }
 
         private suspend fun connect(start: Instruction.EstablishSyncStream) {
-            connectViaHttp(start.request).collect { rawLine ->
-                control("line_text", rawLine)
+            when (val method = options.method) {
+                ConnectionMethod.Http -> connectViaHttp(start.request).collect { rawLine ->
+                    control("line_text", rawLine)
+                }
+                is ConnectionMethod.WebSocket -> connectViaWebSocket(start.request, method).collect { binaryLine ->
+                    control("line_binary", binaryLine)
+                }
             }
         }
-
     }
 
     internal companion object {

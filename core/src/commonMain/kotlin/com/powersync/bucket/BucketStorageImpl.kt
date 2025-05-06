@@ -12,6 +12,13 @@ import com.powersync.sync.Instruction
 import com.powersync.sync.SyncDataBatch
 import com.powersync.sync.SyncLocalDatabaseResult
 import com.powersync.utils.JsonUtil
+import io.ktor.utils.io.asByteWriteChannel
+import io.ktor.utils.io.writeByteArray
+import kotlinx.io.Buffer
+import kotlinx.io.buffered
+import kotlinx.io.files.FileSystem
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 
@@ -178,7 +185,17 @@ internal class BucketStorageImpl(
         return db.writeTransaction { tx ->
             logger.v { "powersync_control($op, binary payload)" }
 
-            tx.get("SELECT powersync_control(?, ?) AS r", listOf(op, payload), ::handleControlResult)
+            try {
+                tx.get("SELECT powersync_control(?, ?) AS r", listOf(op, payload), ::handleControlResult)
+            } catch (e: Exception) {
+                println("Got control exception, writing")
+                SystemFileSystem.sink(Path("/Users/simon/failing_line.bin")).buffered().apply {
+                    write(payload)
+                    flush()
+                    close()
+                }
+                throw e
+            }
         }
     }
 }
