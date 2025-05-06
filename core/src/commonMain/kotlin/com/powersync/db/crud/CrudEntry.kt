@@ -64,7 +64,7 @@ public data class CrudEntry(
      * These values can be tracked for `UPDATE` statements when [Table.trackPreviousValues] is
      * enabled.
      */
-    val oldData: Map<String, String?>? = null,
+    val previousValues: Map<String, String?>? = null,
 ) {
     public companion object {
         public fun fromRow(row: CrudRow): CrudEntry {
@@ -80,7 +80,7 @@ public data class CrudEntry(
                 table = data["type"]!!.jsonPrimitive.content,
                 transactionId = row.txId,
                 metadata = data["metadata"]?.jsonPrimitive?.content,
-                oldData =
+                previousValues =
                     data["old"]?.jsonObject?.mapValues { (_, value) ->
                         value.jsonPrimitive.contentOrNull
                     },
