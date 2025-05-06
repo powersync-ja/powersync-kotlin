@@ -47,6 +47,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
@@ -256,21 +257,25 @@ internal class SyncStream(
     }
 
     private suspend fun streamingSyncIteration() {
-        val iteration = ActiveIteration()
+        coroutineScope {
+            val iteration = ActiveIteration(this)
 
-        try {
-            iteration.start()
-        } finally {
-            // This can't be cancelled because we need to send a stop message, which is async, to
-            // clean up resources.
-            withContext(NonCancellable) {
-                iteration.stop()
+            try {
+                iteration.start()
+            } finally {
+                // This can't be cancelled because we need to send a stop message, which is async, to
+                // clean up resources.
+                withContext(NonCancellable) {
+                    iteration.stop()
+                }
             }
         }
     }
 
     private inner class ActiveIteration(
+        val scope: CoroutineScope,
         var fetchLinesJob: Job? = null,
+        var credentialsInvalidation: Job? = null,
     ) {
         suspend fun start() {
             control("start", JsonUtil.json.encodeToString(params))
@@ -336,7 +341,25 @@ internal class SyncStream(
                         applyCoreChanges(instruction.status)
                     }
                 }
-                is Instruction.FetchCredentials -> TODO()
+                is Instruction.FetchCredentials -> {
+                    if (instruction.didExpire) {
+                        connector.invalidateCredentials()
+                    } else {
+                        // Token expires soon - refresh it in the background
+                        if (credentialsInvalidation == null) {
+                            val job = scope.launch {
+                                connector.prefetchCredentials().join()
+
+                                // Token has been refreshed, start another iteration
+                                stop()
+                            }
+                            job.invokeOnCompletion {
+                                credentialsInvalidation = null
+                            }
+                            credentialsInvalidation = job
+                        }
+                    }
+                }
                 Instruction.DidCompleteSync -> status.update { copy(downloadError=null) }
                 is Instruction.UnknownInstruction -> {
                     throw PowerSyncException("Unknown instruction received from core extension: ${instruction.raw}", null)

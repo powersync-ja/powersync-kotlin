@@ -16,11 +16,17 @@ import com.powersync.testutils.UserRow
 import com.powersync.testutils.databaseTest
 import com.powersync.testutils.waitFor
 import com.powersync.utils.JsonUtil
+import dev.mokkery.answering.returns
+import dev.mokkery.every
+import dev.mokkery.everySuspend
 import dev.mokkery.verify
+import dev.mokkery.verifyNoMoreCalls
+import dev.mokkery.verifySuspend
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -525,5 +531,63 @@ class SyncIntegrationTest {
 
             // Meaning that the two rows are now visible
             database.expectUserCount(2)
+        }
+
+    @Test
+    fun testTokenExpired() =
+        databaseTest {
+            turbineScope(timeout = 10.0.seconds) {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+
+                database.connect(connector, 1000L, retryDelayMs = 5000)
+                turbine.waitFor { it.connecting }
+
+                syncLines.send(SyncLine.KeepAlive(tokenExpiresIn = 4000))
+                turbine.waitFor { it.connected }
+                verifySuspend { connector.getCredentialsCached() }
+                verifyNoMoreCalls(connector)
+
+                // Should invalidate credentials when token expires
+                syncLines.send(SyncLine.KeepAlive(tokenExpiresIn = 0))
+                turbine.waitFor { !it.connected }
+                verify { connector.invalidateCredentials() }
+
+                turbine.cancel()
+            }
+        }
+
+    @Test
+    fun testTokenPrefetch() =
+        databaseTest {
+            val prefetchCalled = CompletableDeferred<Unit>()
+            val completePrefetch = CompletableDeferred<Unit>()
+            every { connector.prefetchCredentials() } returns scope.launch {
+                prefetchCalled.complete(Unit)
+                completePrefetch.await()
+            }
+
+            turbineScope(timeout = 10.0.seconds) {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+
+                database.connect(connector, 1000L, retryDelayMs = 5000)
+                turbine.waitFor { it.connecting }
+
+                syncLines.send(SyncLine.KeepAlive(tokenExpiresIn = 4000))
+                turbine.waitFor { it.connected }
+                verifySuspend { connector.getCredentialsCached() }
+                verifyNoMoreCalls(connector)
+
+                syncLines.send(SyncLine.KeepAlive(tokenExpiresIn = 10))
+                prefetchCalled.complete(Unit)
+                // Should still be connected before prefetch completes
+                database.currentStatus.connected shouldBe true
+
+                // After the prefetch completes, we should reconnect
+                completePrefetch.complete(Unit)
+                turbine.waitFor { !it.connected }
+
+                turbine.waitFor { it.connected }
+                turbine.cancel()
+            }
         }
 }
