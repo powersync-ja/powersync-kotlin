@@ -10,6 +10,8 @@ on:
 
 jobs:
   draft_release:
+    permissions:
+      contents: write
     name: Create Draft Release on GitHub
     runs-on: ubuntu-latest
     outputs:
@@ -67,6 +69,8 @@ jobs:
           if-no-files-found: error
 
   add_assets:
+    permissions:
+      contents: write
     needs: [draft_release, build_xcframeworks]
     name: Add assets to pending release
     runs-on: ubuntu-latest
