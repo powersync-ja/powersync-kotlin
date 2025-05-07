@@ -5,4 +5,12 @@
 1. Update `LIBRARY_VERSION` in `gradle.properties` in the root.
 2. Add an entry to the `CHANGELOG.md`.
 3. Make a PR and merge it.
-4. Once the PR is merged and in the `main` branch then manually run the Github action `Deploy to Sonatype`. This will create a release to Maven Central and will also update the version of the `powersync-kotlin` SPM package used in the Swift SDK. If the release contains changes pertaining to the Swift SDK you will need to update the `powersync-kotlin` SPM package version in that repo and make a release there as well.
+4. Pull `main` (which now contains your merged PR) and create a tag matching the version, e.g.
+   `git tag v1.1.0`.
+5. Push that tag and manually trigger the GitHub action `Release` on that tag. This will:
+   - Create a release to Maven Central.
+   - Create a draft release on Github.
+   - Build and attach an `XCFramework` zip archive for the Swift SDK to the draft release.
+6. Copy relevant entries from the changelog into the draft release and make it public!
+7. To apply this release to the Swift SDK, update the `Package.swift` file to point at the framework
+   from that release. You can copy the SHA256 hashsum from the generated draft release notes.

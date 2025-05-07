@@ -11,7 +11,6 @@ import com.powersync.testutils.ActiveDatabaseTest
 import com.powersync.testutils.databaseTest
 import com.powersync.testutils.waitFor
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.test.runTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals

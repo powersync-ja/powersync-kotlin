@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.kotlinter)
     id("com.powersync.plugins.sonatype")
+    id("dokka-convention")
 }
 
 kotlin {
@@ -51,3 +52,7 @@ android {
 }
 
 setupGithubRepository()
+
+dokka {
+    moduleName.set("PowerSync Supabase Connector")
+}

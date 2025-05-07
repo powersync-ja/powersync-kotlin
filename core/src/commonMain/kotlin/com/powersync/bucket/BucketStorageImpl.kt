@@ -9,18 +9,7 @@ import com.powersync.db.internal.InternalDatabase
 import com.powersync.db.internal.InternalTable
 import com.powersync.db.internal.PowerSyncTransaction
 import com.powersync.sync.Instruction
-import com.powersync.sync.SyncDataBatch
-import com.powersync.sync.SyncLocalDatabaseResult
 import com.powersync.utils.JsonUtil
-import io.ktor.utils.io.asByteWriteChannel
-import io.ktor.utils.io.writeByteArray
-import kotlinx.io.Buffer
-import kotlinx.io.buffered
-import kotlinx.io.files.FileSystem
-import kotlinx.io.files.Path
-import kotlinx.io.files.SystemFileSystem
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 
 internal class BucketStorageImpl(
     private val db: InternalDatabase,

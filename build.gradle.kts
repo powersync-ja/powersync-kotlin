@@ -1,11 +1,15 @@
+import com.sun.net.httpserver.HttpExchange
+import com.sun.net.httpserver.HttpServer
+import java.net.InetSocketAddress
+import java.net.URLDecoder
+import java.nio.file.Files
+
 plugins {
     alias(libs.plugins.jetbrainsCompose) apply false
     alias(libs.plugins.compose.compiler) apply false
     alias(libs.plugins.androidApplication) apply false
     alias(libs.plugins.androidLibrary) apply false
     alias(libs.plugins.kotlinMultiplatform) apply false
-    alias(libs.plugins.cocoapods) apply false
-    alias(libs.plugins.kmmbridge) apply false
     alias(libs.plugins.skie) apply false
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.android) apply false
@@ -16,6 +20,8 @@ plugins {
     alias(libs.plugins.kotlinter) apply false
     alias(libs.plugins.keeper) apply false
     alias(libs.plugins.kotlin.atomicfu) apply false
+    id("org.jetbrains.dokka") version libs.versions.dokkaBase
+    id("dokka-convention")
 }
 
 allprojects {
@@ -54,6 +60,58 @@ subprojects {
     version = LIBRARY_VERSION
 }
 
-tasks.register<Delete>("clean") {
+tasks.getByName<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
+}
+
+// Merges individual module docs into a single HTML output
+dependencies {
+    dokka(project(":core:"))
+    dokka(project(":connectors:supabase"))
+    dokka(project(":compose:"))
+}
+
+dokka {
+    moduleName.set("PowerSync Kotlin")
+}
+
+// Serve the generated Dokka documentation using a simple HTTP server
+// File changes are not watched here
+tasks.register("serveDokka") {
+    group = "dokka"
+    dependsOn("dokkaGenerate")
+    doLast {
+        val server = HttpServer.create(InetSocketAddress(0), 0)
+        val root = file("build/dokka/html")
+
+        val handler =
+            com.sun.net.httpserver.HttpHandler { exchange: HttpExchange ->
+                val rawPath = exchange.requestURI.path
+                val cleanPath = URLDecoder.decode(rawPath.removePrefix("/"), "UTF-8")
+                val requestedFile = File(root, cleanPath)
+
+                val file =
+                    when {
+                        requestedFile.exists() && !requestedFile.isDirectory -> requestedFile
+                        else -> File(root, "index.html") // fallback
+                    }
+
+                val contentType =
+                    Files.probeContentType(file.toPath()) ?: "application/octet-stream"
+                val bytes = file.readBytes()
+                exchange.responseHeaders.add("Content-Type", contentType)
+                exchange.sendResponseHeaders(200, bytes.size.toLong())
+                exchange.responseBody.use { it.write(bytes) }
+            }
+
+        server.createContext("/", handler)
+        server.executor = null
+        server.start()
+
+        println("📘 Serving Dokka docs at http://localhost:${server.address.port}/")
+        println("Press Ctrl+C to stop.")
+
+        // Keep the task alive
+        Thread.currentThread().join()
+    }
 }

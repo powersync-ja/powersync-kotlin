@@ -4,6 +4,7 @@ android-minSdk = "24"
 android-targetSdk = "35"
 android-compileSdk = "35"
 configurationAnnotations = "0.9.5"
+dokkaBase = "2.0.0"
 gradleDownloadTask = "5.5.0"
 java = "17"
 idea = "243.22562.218" # Meerkat | 2024.3.1 (see https://plugins.jetbrains.com/docs/intellij/android-studio-releases-list.html)
@@ -17,7 +18,7 @@ kotlinx-io = "0.5.4"
 ktor = "3.1.0"
 rsocket = "0.20.0"
 uuid = "0.8.2"
-powersync-core = "0.3.12"
+powersync-core = "0.3.14"
 sqlite-jdbc = "3.49.1.0"
 sqliter = "1.3.1"
 turbine = "1.2.0"
@@ -34,7 +35,6 @@ androidxSqlite = "2.4.0"
 
 # plugins
 android-gradle-plugin = "8.9.0"
-kmmBridge = "0.5.7"
 skie = "0.10.1"
 maven-publish = "0.27.0"
 download-plugin = "5.5.0"
@@ -57,6 +57,7 @@ junitVersion = "1.2.1"
 
 [libraries]
 configuration-annotations = { module = "co.touchlab.skie:configuration-annotations", version.ref = "configurationAnnotations" }
+dokka-gradle-plugin = { module = "org.jetbrains.dokka:dokka-gradle-plugin", version.ref = "dokkaBase" }
 gradle-download-task = { module = "de.undercouch:gradle-download-task", version.ref = "gradleDownloadTask" }
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 kermit-test = { module = "co.touchlab:kermit-test", version.ref = "kermit" }
@@ -126,7 +127,6 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 skie = { id = "co.touchlab.skie", version.ref = "skie" }
-kmmbridge = { id = "co.touchlab.kmmbridge", version.ref = "kmmBridge" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqlDelight" }
 grammarKitComposer = { id = "com.alecstrong.grammar.kit.composer", version.ref = "grammarkit-composer" }
 mavenPublishPlugin = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }

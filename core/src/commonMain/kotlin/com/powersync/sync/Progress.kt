@@ -1,8 +1,6 @@
 package com.powersync.sync
 
 import com.powersync.bucket.BucketPriority
-import com.powersync.bucket.Checkpoint
-import com.powersync.bucket.LocalOperationCounters
 
 /**
  * Information about a progressing download.
@@ -21,11 +19,15 @@ public interface ProgressWithOperations {
 
     /**
      * How many operations, out of [totalOperations], have already been downloaded.
-    */
+     */
     public val downloadedOperations: Int
 
     /**
-     * The relative amount of [totalOperations] to items in [downloadedOperations], as a number between `0.0` and `1.0`.
+     * The relative amount of [totalOperations] to items in [downloadedOperations], as a number between `0.0` and `1.0` (inclusive).
+     *
+     * When this number reaches `1.0`, all changes have been received from the sync service.
+     * Actually applying these changes happens before the [SyncStatusData.downloadProgress] field is
+     * cleared though, so progress can stay at `1.0` for a short while before completing.
      */
     public val fraction: Float get() {
         if (totalOperations == 0) {
@@ -39,7 +41,7 @@ public interface ProgressWithOperations {
 internal data class ProgressInfo(
     override val downloadedOperations: Int,
     override val totalOperations: Int,
-): ProgressWithOperations
+) : ProgressWithOperations
 
 /**
  * Provides realtime progress on how PowerSync is downloading rows.

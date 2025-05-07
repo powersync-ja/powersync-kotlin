@@ -1,14 +1,18 @@
 package com.powersync.db.schema
 
+import com.powersync.db.crud.CrudEntry
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
 
 private const val MAX_AMOUNT_OF_COLUMNS = 1999
 
 /**
  * A single table in the schema.
  */
-public data class Table constructor(
+public data class Table(
     /**
      * The synced table name, matching sync rules.
      */
@@ -33,6 +37,22 @@ public data class Table constructor(
      * Override the name for the view
      */
     private val viewNameOverride: String? = null,
+    /**
+     *  Whether to add a hidden `_metadata` column that will be enabled for updates to attach custom
+     *  information about writes that will be reported through [CrudEntry.metadata].
+     */
+    val trackMetadata: Boolean = false,
+    /**
+     * When set to a non-null value, track old values of columns for [CrudEntry.previousValue].
+     *
+     * See [TrackPreviousValuesOptions] for details.
+     */
+    val trackPreviousValues: TrackPreviousValuesOptions? = null,
+    /**
+     * Whether an `UPDATE` statement that doesn't change any values should be ignored when creating
+     * CRUD entries.
+     */
+    val ignoreEmptyUpdates: Boolean = false,
 ) {
     init {
         /**
@@ -81,6 +101,9 @@ public data class Table constructor(
             name: String,
             columns: List<Column>,
             viewName: String? = null,
+            ignoreEmptyUpdates: Boolean = false,
+            trackMetadata: Boolean = false,
+            trackPreviousValues: TrackPreviousValuesOptions? = null,
         ): Table =
             Table(
                 name,
@@ -89,6 +112,9 @@ public data class Table constructor(
                 localOnly = false,
                 insertOnly = true,
                 viewNameOverride = viewName,
+                ignoreEmptyUpdates = ignoreEmptyUpdates,
+                trackMetadata = trackMetadata,
+                trackPreviousValues = trackPreviousValues,
             )
     }
 
@@ -133,6 +159,13 @@ public data class Table constructor(
             )
         ) {
             throw AssertionError("Invalid characters in view name: $viewNameOverride")
+        }
+
+        check(!localOnly || !trackMetadata) {
+            "Can't track metadata for local-only tables."
+        }
+        check(!localOnly || trackPreviousValues == null) {
+            "Can't track old values for local-only tables."
         }
 
         val columnNames = mutableSetOf("id")
@@ -185,6 +218,26 @@ public data class Table constructor(
         get() = viewNameOverride ?: name
 }
 
+/**
+ * Options to include old values in [CrudEntry.previousValue] for update statements.
+ *
+ * These options are enabled by passing them to a non-local [Table] constructor.
+ */
+public data class TrackPreviousValuesOptions(
+    /**
+     * A filter of column names for which updates should be tracked.
+     *
+     * When set to a non-null value, columns not included in this list will not appear in
+     * [CrudEntry.previousValues]. By default, all columns are included.
+     */
+    val columnFilter: List<String>? = null,
+    /**
+     * Whether to only include old values when they were changed by an update, instead of always
+     * including all old values,
+     */
+    val onlyWhenChanged: Boolean = false,
+)
+
 @Serializable
 internal data class SerializableTable(
     var name: String,
@@ -196,16 +249,39 @@ internal data class SerializableTable(
     val insertOnly: Boolean = false,
     @SerialName("view_name")
     val viewName: String? = null,
+    @SerialName("ignore_empty_update")
+    val ignoreEmptyUpdate: Boolean = false,
+    @SerialName("include_metadata")
+    val includeMetadata: Boolean = false,
+    @SerialName("include_old")
+    val includeOld: JsonElement = JsonPrimitive(false),
+    @SerialName("include_old_only_when_changed")
+    val includeOldOnlyWhenChanged: Boolean = false,
 )
 
 internal fun Table.toSerializable(): SerializableTable =
     with(this) {
         SerializableTable(
-            name,
-            columns.map { it.toSerializable() },
-            indexes.map { it.toSerializable() },
-            localOnly,
-            insertOnly,
-            viewName,
+            name = name,
+            columns = columns.map { it.toSerializable() },
+            indexes = indexes.map { it.toSerializable() },
+            localOnly = localOnly,
+            insertOnly = insertOnly,
+            viewName = viewName,
+            ignoreEmptyUpdate = ignoreEmptyUpdates,
+            includeMetadata = trackMetadata,
+            includeOld =
+                trackPreviousValues?.let {
+                    if (it.columnFilter != null) {
+                        buildJsonArray {
+                            for (column in it.columnFilter) {
+                                add(JsonPrimitive(column))
+                            }
+                        }
+                    } else {
+                        JsonPrimitive(true)
+                    }
+                } ?: JsonPrimitive(false),
+            includeOldOnlyWhenChanged = trackPreviousValues?.onlyWhenChanged ?: false,
         )
     }

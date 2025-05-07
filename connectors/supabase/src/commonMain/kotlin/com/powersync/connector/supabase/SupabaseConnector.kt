@@ -20,14 +20,11 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.storage.BucketApi
 import io.github.jan.supabase.storage.Storage
 import io.github.jan.supabase.storage.storage
-import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpSend
 import io.ktor.client.plugins.plugin
-import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.utils.io.InternalAPI
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 /**
@@ -165,18 +162,11 @@ public class SupabaseConnector(
                 supabaseClient.auth.currentSessionOrNull()
                     ?: error("Could not fetch Supabase credentials")
 
-            @Serializable
-            class TokenResponse(
-                val token: String
-            )
+            check(session.user != null) { "No user data" }
 
-            val src = supabaseClient.httpClient.httpClient.get("http://localhost:6060/api/auth/token").body<TokenResponse>()
-
-            // userId is for debugging purposes only
             PowerSyncCredentials(
-                endpoint = "http://localhost:8080", //powerSyncEndpoint,
-                token = src.token, //session.accessToken, // Use the access token to authenticate against PowerSync
-                userId = session.user!!.id,
+                endpoint = powerSyncEndpoint,
+                token = session.accessToken, // Use the access token to authenticate against PowerSync
             )
         }
 

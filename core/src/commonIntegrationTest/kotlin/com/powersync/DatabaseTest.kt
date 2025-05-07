@@ -184,6 +184,33 @@ class DatabaseTest {
         }
 
     @Test
+    fun testTableChangesUpdates() =
+        databaseTest {
+            turbineScope {
+                val query =
+                    database
+                        .onChange(
+                            tables = setOf("users"),
+                        ).testIn(this)
+
+                database.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf("Test", "test@example.org"),
+                )
+
+                var changeSet = query.awaitItem()
+                // The initial result
+                changeSet.count() shouldBe 0
+
+                changeSet = query.awaitItem()
+                changeSet.count() shouldBe 1
+                changeSet.contains("users") shouldBe true
+
+                query.cancel()
+            }
+        }
+
+    @Test
     fun testClosingReadPool() =
         databaseTest {
             val pausedLock = CompletableDeferred<Unit>()
@@ -373,11 +400,20 @@ class DatabaseTest {
     @Test
     fun testCrudTransaction() =
         databaseTest {
-            database.execute("INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)", listOf("a", "a@example.org"))
+            database.execute(
+                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                listOf("a", "a@example.org"),
+            )
 
             database.writeTransaction {
-                it.execute("INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)", listOf("b", "b@example.org"))
-                it.execute("INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)", listOf("c", "c@example.org"))
+                it.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf("b", "b@example.org"),
+                )
+                it.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf("c", "c@example.org"),
+                )
             }
 
             var transaction = database.getNextCrudTransaction()
@@ -389,5 +425,38 @@ class DatabaseTest {
             transaction.complete(null)
 
             database.getNextCrudTransaction() shouldBe null
+        }
+
+    @Test
+    fun testCrudBatch() =
+        databaseTest {
+            database.execute(
+                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                listOf("a", "a@example.org"),
+            )
+
+            database.writeTransaction {
+                it.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf("b", "b@example.org"),
+                )
+                it.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf("c", "c@example.org"),
+                )
+            }
+
+            // Purposely limit to less than the number of available ops
+            var batch = database.getCrudBatch(2) ?: error("Batch should not be null")
+            batch.hasMore shouldBe true
+            batch.crud shouldHaveSize 2
+            batch.complete(null)
+
+            batch = database.getCrudBatch(1000) ?: error("Batch should not be null")
+            batch.crud shouldHaveSize 1
+            batch.hasMore shouldBe false
+            batch.complete(null)
+
+            database.getCrudBatch() shouldBe null
         }
 }
