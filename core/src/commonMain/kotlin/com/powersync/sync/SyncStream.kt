@@ -17,7 +17,6 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.timeout
 import io.ktor.client.plugins.websocket.WebSockets
-import io.ktor.client.plugins.websocket.webSocketSession
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
 import io.ktor.client.request.preparePost
@@ -26,20 +25,9 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.URLBuilder
-import io.ktor.http.URLProtocol
 import io.ktor.http.contentType
-import io.ktor.http.takeFrom
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.readUTF8Line
-import io.rsocket.kotlin.core.RSocketConnector
-import io.rsocket.kotlin.payload.PayloadMimeType
-import io.rsocket.kotlin.payload.buildPayload
-import io.rsocket.kotlin.payload.metadata
-import io.rsocket.kotlin.transport.RSocketClientTarget
-import io.rsocket.kotlin.transport.RSocketConnection
-import io.rsocket.kotlin.transport.RSocketTransportApi
-import io.rsocket.kotlin.transport.ktor.websocket.internal.KtorWebSocketConnection
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -58,11 +46,7 @@ import kotlinx.io.Sink
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.coroutineContext
 
 internal class SyncStream(
     private val bucketStorage: BucketStorage,
@@ -384,6 +368,7 @@ internal class SyncStream(
                     control("line_text", rawLine)
                 }
                 is ConnectionMethod.WebSocket -> connectViaWebSocket(start.request, method).collect { binaryLine ->
+                    dumpSyncLines.write(binaryLine)
                     control("line_binary", binaryLine)
                 }
             }
