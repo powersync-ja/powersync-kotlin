@@ -1,6 +1,8 @@
-// swift-tools-version:5.3
-import PackageDescription
+// swift-tools-version: 5.7
 
+// NOTE! This is never released, we're only using this to support local Kotlin SDK builds for the
+// Swift SDK.
+import PackageDescription
 let packageName = "PowerSyncKotlin"
 
 let package = Package(
@@ -12,14 +14,12 @@ let package = Package(
     products: [
         .library(
             name: packageName,
-            targets: [packageName]
-        ),
+            targets: [packageName]),
     ],
     targets: [
         .binaryTarget(
             name: packageName,
-            path: "./PowerSyncKotlin/build/XCFrameworks/debug/\(packageName).xcframework"
+            path: "build/XCFrameworks/debug/PowerSyncKotlin.xcframework"
         )
-        ,
     ]
 )
