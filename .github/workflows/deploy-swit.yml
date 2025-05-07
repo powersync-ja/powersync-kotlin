@@ -90,6 +90,9 @@ jobs:
           gh release upload "${{ needs.draft_release.outputs.tag }}" PowersyncKotlinRelease.zip
 
       - name: "Update release description"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         shell: bash
         run: |
           checksums=$(sha256sum PowersyncKotlinRelease.zip)
