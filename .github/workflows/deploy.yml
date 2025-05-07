@@ -27,7 +27,7 @@ jobs:
         run: |
           tag="${{ steps.tag.outputs.tag }}"
           body="Pending release for XCFramework, $tag"
-          gh release create --draft "$tag" --title "$tag" --notes "$body"  
+          gh release create --draft "$tag" --title "$tag" --notes "$body"
 
   maven_publish:
     runs-on: macos-latest
