@@ -1,0 +1,96 @@
+name: Create Swift release
+
+on:
+  push:
+    # TODO Remove
+    branches:
+      - refactor-swift-release
+#    tags:
+#      - 'v[0-9]+.[0-9]+.[0-9]+SWIFT'
+
+jobs:
+  draft_release:
+    name: Create Draft Release on GitHub
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set tag name
+        id: tag
+        # TODO Remove, adding this for testing
+        run: |
+          tag="1.1.0+SWIFT"
+          echo "tag=$tag" >> $GITHUB_OUTPUT
+#        run: |
+#          tag=$(basename "${{ github.ref }}")
+#          echo "tag=$tag" >> $GITHUB_OUTPUT
+      - name: Create Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          tag="${{ steps.tag.outputs.tag }}"
+          body="Pending release for XCFramework, $tag"
+          gh release create --draft "$tag" --title "$tag" --notes "$body"
+  
+  build_xcframeworks:
+    name: Build XCFrameworks
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Gradle Wrapper
+        uses: gradle/wrapper-validation-action@v1
+      - uses: actions/cache@v3
+        with:
+          path: ~/.konan
+          key: ${{ runner.os }}-${{ hashFiles('**/.lock') }}
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Build frameworks
+        run: "./gradlew PowerSyncKotlin:buildRelease"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: XCFramework
+          retention-days: 1 # Only used temporarily
+          compression-level: 0 # We're already uploading a compressed file
+          path: PowerSyncKotlin/build/FrameworkArchives/PowersyncKotlinRelease.zip
+          if-no-files-found: error
+
+  add_assets:
+    needs: [draft_release, build_xcframeworks]
+    name: Add assets to pending release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+      - name: Upload XCFramework
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release upload "${{ needs.draft_release.outputs.tag }}" PowersyncKotlinRelease.zip
+
+      - name: "Update checksum"
+        shell: zsh
+        run: |
+          checksums=$(sha256sum PowersyncKotlinRelease.zip)
+          cat > RELEASE_NOTES <<- NOTES_END
+          File hashes:
+          \`\`\`
+          $checksums
+          \`\`\`
+          NOTES_END
+          
+          gh release edit "${{ needs.draft_release.outputs.tag }}" -F RELEASE_NOTES

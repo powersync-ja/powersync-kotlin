@@ -34,7 +34,6 @@ androidxSqlite = "2.4.0"
 
 # plugins
 android-gradle-plugin = "8.9.0"
-kmmBridge = "0.5.7"
 skie = "0.10.1"
 maven-publish = "0.27.0"
 download-plugin = "5.5.0"
@@ -125,7 +124,6 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 skie = { id = "co.touchlab.skie", version.ref = "skie" }
-kmmbridge = { id = "co.touchlab.kmmbridge", version.ref = "kmmBridge" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqlDelight" }
 grammarKitComposer = { id = "com.alecstrong.grammar.kit.composer", version.ref = "grammarkit-composer" }
 mavenPublishPlugin = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }

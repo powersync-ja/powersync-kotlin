@@ -10,8 +10,6 @@ plugins {
     alias(libs.plugins.androidApplication) apply false
     alias(libs.plugins.androidLibrary) apply false
     alias(libs.plugins.kotlinMultiplatform) apply false
-    alias(libs.plugins.cocoapods) apply false
-    alias(libs.plugins.kmmbridge) apply false
     alias(libs.plugins.skie) apply false
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.android) apply false
