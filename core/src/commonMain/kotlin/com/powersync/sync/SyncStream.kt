@@ -54,6 +54,10 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.io.Sink
+import kotlinx.io.buffered
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
@@ -258,7 +262,9 @@ internal class SyncStream(
 
     private suspend fun streamingSyncIteration() {
         coroutineScope {
-            val iteration = ActiveIteration(this)
+            val file = SystemFileSystem.sink(Path("/Users/simon/test.bin")).buffered()
+
+            val iteration = ActiveIteration(this, dumpSyncLines = file)
 
             try {
                 iteration.start()
@@ -267,6 +273,7 @@ internal class SyncStream(
                 // clean up resources.
                 withContext(NonCancellable) {
                     iteration.stop()
+                    file.close()
                 }
             }
         }
@@ -276,6 +283,7 @@ internal class SyncStream(
         val scope: CoroutineScope,
         var fetchLinesJob: Job? = null,
         var credentialsInvalidation: Job? = null,
+        var dumpSyncLines: Sink
     ) {
         suspend fun start() {
             control("start", JsonUtil.json.encodeToString(params))
@@ -360,7 +368,10 @@ internal class SyncStream(
                         }
                     }
                 }
-                Instruction.DidCompleteSync -> status.update { copy(downloadError=null) }
+                Instruction.DidCompleteSync -> {
+                    dumpSyncLines.flush()
+                    status.update { copy(downloadError=null) }
+                }
                 is Instruction.UnknownInstruction -> {
                     throw PowerSyncException("Unknown instruction received from core extension: ${instruction.raw}", null)
                 }
