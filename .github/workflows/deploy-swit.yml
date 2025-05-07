@@ -79,6 +79,9 @@ jobs:
         with:
           fetch-depth: 0
       - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - run: "ls -al"
       - name: Upload XCFramework
         env:
           GH_TOKEN: ${{ github.token }}
@@ -86,7 +89,7 @@ jobs:
         run: |
           gh release upload "${{ needs.draft_release.outputs.tag }}" PowersyncKotlinRelease.zip
 
-      - name: "Update checksum"
+      - name: "Update release description"
         shell: zsh
         run: |
           checksums=$(sha256sum PowersyncKotlinRelease.zip)
