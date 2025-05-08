@@ -1,5 +1,6 @@
 package com.powersync.sync
 
+import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.utils.JsonUtil
 import io.ktor.client.HttpClient
@@ -30,7 +31,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import kotlin.coroutines.CoroutineContext
 
-@OptIn(RSocketTransportApi::class)
+@OptIn(RSocketTransportApi::class, ExperimentalPowerSyncAPI::class)
 internal fun HttpClient.rSocketSyncStream(
     options: ConnectionMethod.WebSocket,
     req: JsonObject,

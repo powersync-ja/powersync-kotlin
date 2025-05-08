@@ -50,7 +50,7 @@ internal sealed interface Instruction {
         private val didCompleteSync = serializer<JsonObject>()
 
         override val descriptor =
-            buildClassSerialDescriptor(SyncLine::class.qualifiedName!!) {
+            buildClassSerialDescriptor(Instruction::class.qualifiedName!!) {
                 element("LogLine", logLine.descriptor, isOptional = true)
                 element("UpdateSyncStatus", updateSyncStatus.descriptor, isOptional = true)
                 element("EstablishSyncStream", establishSyncStream.descriptor, isOptional = true)

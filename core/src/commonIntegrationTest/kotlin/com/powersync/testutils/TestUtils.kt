@@ -1,3 +1,5 @@
+@file:OptIn(LegacySyncImplementation::class)
+
 package com.powersync.testutils
 
 import co.touchlab.kermit.ExperimentalKermitApi
@@ -7,6 +9,7 @@ import co.touchlab.kermit.Severity
 import co.touchlab.kermit.TestConfig
 import co.touchlab.kermit.TestLogWriter
 import com.powersync.DatabaseDriverFactory
+import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.bucket.WriteCheckpointData
 import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.connectors.PowerSyncBackendConnector
@@ -14,7 +17,9 @@ import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.createPowerSyncDatabaseImpl
 import com.powersync.db.PowerSyncDatabaseImpl
 import com.powersync.db.schema.Schema
+import com.powersync.sync.LegacySyncImplementation
 import com.powersync.sync.SyncLine
+import com.powersync.sync.SyncOptions
 import dev.mokkery.answering.returns
 import dev.mokkery.everySuspend
 import dev.mokkery.mock
@@ -82,6 +87,7 @@ internal class ActiveDatabaseTest(
             ),
         )
 
+    @OptIn(LegacySyncImplementation::class)
     var syncLines = Channel<SyncLine>()
     var checkpointResponse: () -> WriteCheckpointResponse = {
         WriteCheckpointResponse(WriteCheckpointData("1000"))
@@ -143,10 +149,7 @@ internal class ActiveDatabaseTest(
             item()
         }
 
-        var path = databaseName
-        testDirectory?.let {
-            path = Path(it, path).name
-        }
+        val path = Path(testDirectory, databaseName).name
         cleanup(path)
     }
 }

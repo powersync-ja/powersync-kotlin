@@ -1,51 +1,33 @@
 package com.powersync.sync
 
-import app.cash.turbine.turbineScope
+import co.touchlab.kermit.ExperimentalKermitApi
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import co.touchlab.kermit.TestConfig
 import co.touchlab.kermit.TestLogWriter
-import com.powersync.bucket.BucketChecksum
-import com.powersync.bucket.BucketPriority
+import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.bucket.BucketStorage
-import com.powersync.bucket.Checkpoint
-import com.powersync.bucket.OpType
-import com.powersync.bucket.OplogEntry
-import com.powersync.bucket.WriteCheckpointData
-import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.UpdateType
-import com.powersync.testutils.MockSyncService
-import com.powersync.testutils.waitFor
-import com.powersync.utils.JsonUtil
 import dev.mokkery.answering.returns
 import dev.mokkery.everySuspend
-import dev.mokkery.matcher.any
 import dev.mokkery.mock
-import dev.mokkery.resetCalls
 import dev.mokkery.verify
-import dev.mokkery.verify.VerifyMode.Companion.order
-import dev.mokkery.verifyNoMoreCalls
-import dev.mokkery.verifySuspend
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonObject
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
-import kotlin.time.Duration.Companion.seconds
 
-@OptIn(co.touchlab.kermit.ExperimentalKermitApi::class)
+@OptIn(ExperimentalKermitApi::class, ExperimentalPowerSyncAPI::class)
 class SyncStreamTest {
     private lateinit var bucketStorage: BucketStorage
     private lateinit var connector: PowerSyncBackendConnector
@@ -98,7 +80,7 @@ class SyncStreamTest {
                     uploadCrud = {},
                     logger = logger,
                     params = JsonObject(emptyMap()),
-                    scope = this,
+                    uploadScope = this,
                     options = SyncOptions(),
                 )
 
@@ -136,7 +118,7 @@ class SyncStreamTest {
                     retryDelayMs = 10,
                     logger = logger,
                     params = JsonObject(emptyMap()),
-                    scope = this,
+                    uploadScope = this,
                     options = SyncOptions(),
                 )
 
@@ -176,7 +158,7 @@ class SyncStreamTest {
                     retryDelayMs = 10,
                     logger = logger,
                     params = JsonObject(emptyMap()),
-                    scope = this,
+                    uploadScope = this,
                     options = SyncOptions()
                 )
 

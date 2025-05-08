@@ -1,7 +1,10 @@
-package com.powersync
+package com.powersync.sync
 
 import app.cash.turbine.turbineScope
 import co.touchlab.kermit.ExperimentalKermitApi
+import com.powersync.PowerSyncDatabase
+import com.powersync.PowerSyncException
+import com.powersync.TestConnector
 import com.powersync.bucket.BucketChecksum
 import com.powersync.bucket.BucketPriority
 import com.powersync.bucket.Checkpoint
@@ -11,14 +14,12 @@ import com.powersync.bucket.WriteCheckpointData
 import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.db.PowerSyncDatabaseImpl
 import com.powersync.db.schema.Schema
-import com.powersync.sync.SyncLine
 import com.powersync.testutils.UserRow
 import com.powersync.testutils.databaseTest
 import com.powersync.testutils.waitFor
 import com.powersync.utils.JsonUtil
 import dev.mokkery.answering.returns
 import dev.mokkery.every
-import dev.mokkery.everySuspend
 import dev.mokkery.verify
 import dev.mokkery.verifyNoMoreCalls
 import dev.mokkery.verifySuspend
@@ -27,26 +28,27 @@ import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.launch
-import kotlinx.serialization.encodeToString
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.time.Duration.Companion.seconds
 
-class SyncIntegrationTest {
+@OptIn(LegacySyncImplementation::class)
+abstract class BaseSyncIntegrationTest(useNewSyncImplementation: Boolean) : AbstractSyncTest(
+    useNewSyncImplementation
+) {
     private suspend fun PowerSyncDatabase.expectUserCount(amount: Int) {
         val users = getAll("SELECT * FROM users;") { UserRow.from(it) }
         users shouldHaveSize amount
     }
 
     @Test
-    @OptIn(DelicateCoroutinesApi::class)
     fun connectImmediately() =
         databaseTest(createInitialDatabase = false) {
             // Regression test for https://github.com/powersync-ja/powersync-kotlin/issues/169
             val database = openDatabase()
-            database.connect(connector)
+            database.connect(connector, options = options)
 
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -59,7 +61,7 @@ class SyncIntegrationTest {
     @OptIn(DelicateCoroutinesApi::class)
     fun closesResponseStreamOnDatabaseClose() =
         databaseTest {
-            database.connect(connector)
+            database.connect(connector, options = options)
 
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -78,7 +80,7 @@ class SyncIntegrationTest {
     @OptIn(DelicateCoroutinesApi::class)
     fun cleansResourcesOnDisconnect() =
         databaseTest {
-            database.connect(connector)
+            database.connect(connector, options = options)
 
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -99,7 +101,7 @@ class SyncIntegrationTest {
     @Test
     fun cannotUpdateSchemaWhileConnected() =
         databaseTest {
-            database.connect(connector)
+            database.connect(connector, options = options)
 
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -117,7 +119,7 @@ class SyncIntegrationTest {
     @Test
     fun testPartialSync() =
         databaseTest {
-            database.connect(connector)
+            database.connect(connector, options = options)
 
             val checksums =
                 buildList {
@@ -208,7 +210,7 @@ class SyncIntegrationTest {
     @Test
     fun testRemembersLastPartialSync() =
         databaseTest {
-            database.connect(connector)
+            database.connect(connector, options = options)
 
             syncLines.send(
                 SyncLine.FullCheckpoint(
@@ -244,7 +246,7 @@ class SyncIntegrationTest {
     @Test
     fun setsDownloadingState() =
         databaseTest {
-            database.connect(connector)
+            database.connect(connector, options = options)
 
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -278,7 +280,7 @@ class SyncIntegrationTest {
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
 
-                database.connect(connector)
+                database.connect(connector, options = options)
                 turbine.waitFor { it.connecting }
 
                 database.disconnect()
@@ -291,7 +293,7 @@ class SyncIntegrationTest {
     @Test
     fun testMultipleSyncsDoNotCreateMultipleStatusEntries() =
         databaseTest {
-            database.connect(connector)
+            database.connect(connector, options = options)
 
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -337,8 +339,8 @@ class SyncIntegrationTest {
 
             turbineScope(timeout = 10.0.seconds) {
                 // Connect the first database
-                database.connect(connector)
-                db2.connect(connector)
+                database.connect(connector, options = options)
+                db2.connect(connector, options = options)
 
                 waitFor {
                     assertNotNull(
@@ -363,10 +365,10 @@ class SyncIntegrationTest {
                 val turbine2 = db2.currentStatus.asFlow().testIn(this)
 
                 // Connect the first database
-                database.connect(connector)
+                database.connect(connector, options = options)
 
                 turbine1.waitFor { it.connecting }
-                db2.connect(connector)
+                db2.connect(connector, options = options)
 
                 // Should not be connecting yet
                 db2.currentStatus.connecting shouldBe false
@@ -390,13 +392,13 @@ class SyncIntegrationTest {
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
 
-                database.connect(connector, 1000L)
+                database.connect(connector, 1000L, options = options)
                 turbine.waitFor { it.connecting }
 
                 database.disconnect()
                 turbine.waitFor { !it.connecting }
 
-                database.connect(connector, 1000L)
+                database.connect(connector, 1000L, options = options)
                 turbine.waitFor { it.connecting }
                 database.disconnect()
                 turbine.waitFor { !it.connecting }
@@ -411,10 +413,10 @@ class SyncIntegrationTest {
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
 
-                database.connect(connector, 1000L, retryDelayMs = 5000)
+                database.connect(connector, 1000L, retryDelayMs = 5000, options = options)
                 turbine.waitFor { it.connecting }
 
-                database.connect(connector, 1000L, retryDelayMs = 5000)
+                database.connect(connector, 1000L, retryDelayMs = 5000, options = options)
                 turbine.waitFor { it.connecting }
 
                 turbine.cancel()
@@ -427,7 +429,7 @@ class SyncIntegrationTest {
         databaseTest {
             val testConnector = TestConnector()
             connector = testConnector
-            database.connect(testConnector)
+            database.connect(testConnector, options = options)
 
             suspend fun expectUserRows(amount: Int) {
                 val row = database.get("SELECT COUNT(*) FROM users") { it.getLong(0)!! }
@@ -521,6 +523,7 @@ class SyncIntegrationTest {
             }
             completeUpload.complete(Unit)
             requestedCheckpoint.await()
+            logger.d { "Did request checkpoint" }
 
             // This should apply the checkpoint
             turbineScope {
@@ -539,7 +542,7 @@ class SyncIntegrationTest {
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
 
-                database.connect(connector, 1000L, retryDelayMs = 5000)
+                database.connect(connector, 1000L, retryDelayMs = 5000, options = options)
                 turbine.waitFor { it.connecting }
 
                 syncLines.send(SyncLine.KeepAlive(tokenExpiresIn = 4000))
@@ -555,7 +558,14 @@ class SyncIntegrationTest {
                 turbine.cancel()
             }
         }
+}
 
+class LegacySyncIntegrationTest: BaseSyncIntegrationTest(false)
+
+class NewSyncIntegrationTest: BaseSyncIntegrationTest(true) {
+    // The legacy sync implementation doesn't prefetch credentials.
+
+    @OptIn(LegacySyncImplementation::class)
     @Test
     fun testTokenPrefetch() =
         databaseTest {
@@ -569,7 +579,7 @@ class SyncIntegrationTest {
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
 
-                database.connect(connector, 1000L, retryDelayMs = 5000)
+                database.connect(connector, 1000L, retryDelayMs = 5000, options = options)
                 turbine.waitFor { it.connecting }
 
                 syncLines.send(SyncLine.KeepAlive(tokenExpiresIn = 4000))

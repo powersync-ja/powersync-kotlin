@@ -16,6 +16,7 @@ import kotlinx.serialization.encoding.decodeStructure
 import kotlinx.serialization.encoding.encodeStructure
 import kotlinx.serialization.serializer
 
+@LegacySyncImplementation
 @Serializable(with = SyncLineSerializer::class)
 internal sealed interface SyncLine {
     data class FullCheckpoint(
@@ -57,6 +58,7 @@ internal sealed interface SyncLine {
     data object UnknownSyncLine : SyncLine
 }
 
+@LegacySyncImplementation
 private class SyncLineSerializer : KSerializer<SyncLine> {
     private val checkpoint = serializer<Checkpoint>()
     private val checkpointDiff = serializer<SyncLine.CheckpointDiff>()

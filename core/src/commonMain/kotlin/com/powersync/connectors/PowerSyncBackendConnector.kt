@@ -33,7 +33,7 @@ public abstract class PowerSyncBackendConnector {
     public open suspend fun getCredentialsCached(): PowerSyncCredentials? {
         return runWrappedSuspending {
             cachedCredentials?.let { return@runWrappedSuspending it }
-            prefetchCredentials()?.join()
+            prefetchCredentials().join()
             cachedCredentials
         }
     }

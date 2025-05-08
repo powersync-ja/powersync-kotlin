@@ -95,7 +95,7 @@ public interface PowerSyncDatabase : Queries {
         crudThrottleMs: Long = 1000L,
         retryDelayMs: Long = 5000L,
         params: Map<String, JsonParam?> = emptyMap(),
-        options: SyncOptions = SyncOptions()
+        options: SyncOptions = SyncOptions.defaults
     )
 
     /**

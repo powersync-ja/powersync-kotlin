@@ -2,6 +2,7 @@ package com.powersync.db
 
 import co.touchlab.kermit.Logger
 import com.powersync.DatabaseDriverFactory
+import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
 import com.powersync.PowerSyncException
 import com.powersync.bucket.BucketPriority
@@ -30,7 +31,6 @@ import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelAndJoin
@@ -47,7 +47,6 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
-import kotlinx.serialization.encodeToString
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
@@ -160,7 +159,7 @@ internal class PowerSyncDatabaseImpl(
         mutex.withLock {
             disconnectInternal()
 
-            connectInternal(
+            connectInternal(crudThrottleMs) { scope ->
                 SyncStream(
                     bucketStorage = bucketStorage,
                     connector = connector,
@@ -168,23 +167,29 @@ internal class PowerSyncDatabaseImpl(
                     retryDelayMs = retryDelayMs,
                     logger = logger,
                     params = params.toJsonObject(),
-                    scope = scope,
+                    uploadScope = scope,
                     createClient = createClient,
                     options = options,
-                ),
-                crudThrottleMs,
-            )
+                )
+            }
         }
     }
 
-    internal fun connectInternal(
-        stream: SyncStream,
+    private fun connectInternal(
         crudThrottleMs: Long,
+        createStream: (CoroutineScope) -> SyncStream,
     ) {
         val db = this
         val job = SupervisorJob(scope.coroutineContext[Job])
         syncSupervisorJob = job
+        var activeStream: SyncStream? = null
+
         scope.launch(job) {
+            // Create the stream in this scope so that everything launched by the stream is bound to
+            // this coroutine scope that can be cancelled independently.
+            val stream = createStream(this)
+            activeStream = stream
+
             launch {
                 // Get a global lock for checking mutex maps
                 val streamMutex = resource.group.syncMutex
@@ -236,7 +241,7 @@ internal class PowerSyncDatabaseImpl(
 
         job.invokeOnCompletion {
             if (it is DisconnectRequestedException) {
-                stream.invalidateCredentials()
+                activeStream?.invalidateCredentials()
             }
         }
     }

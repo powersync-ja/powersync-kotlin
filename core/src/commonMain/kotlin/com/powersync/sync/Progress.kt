@@ -1,6 +1,8 @@
 package com.powersync.sync
 
 import com.powersync.bucket.BucketPriority
+import com.powersync.bucket.Checkpoint
+import com.powersync.bucket.LocalOperationCounters
 
 /**
  * Information about a progressing download.
@@ -75,6 +77,42 @@ public data class SyncDownloadProgress internal constructor(
         totalOperations = target
         downloadedOperations = completed
     }
+
+    @LegacySyncImplementation
+    internal constructor(localProgress: Map<String, LocalOperationCounters>, target: Checkpoint): this(
+        buildMap {
+            for (entry in target.checksums) {
+                val savedProgress = localProgress[entry.bucket]
+
+                put(
+                    entry.bucket,
+                    CoreBucketProgress(
+                        priority = entry.priority,
+                        atLast = (savedProgress?.atLast ?: 0).toLong(),
+                        sinceLast = (savedProgress?.sinceLast ?: 0).toLong(),
+                        targetCount = (entry.count ?: 0).toLong(),
+                    ),
+                )
+            }
+        })
+
+    @LegacySyncImplementation
+    internal fun incrementDownloaded(batch: SyncDataBatch): SyncDownloadProgress =
+        SyncDownloadProgress(
+            buildMap {
+                putAll(this@SyncDownloadProgress.buckets)
+
+                for (bucket in batch.buckets) {
+                    val previous = get(bucket.bucket) ?: continue
+                    put(
+                        bucket.bucket,
+                        previous.copy(
+                            sinceLast = previous.sinceLast + bucket.data.size,
+                        ),
+                    )
+                }
+            },
+        )
 
     /**
      * Returns download progress towards all data up until the specified [priority] being received.
