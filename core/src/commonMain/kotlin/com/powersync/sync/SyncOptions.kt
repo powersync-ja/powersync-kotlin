@@ -17,9 +17,9 @@ public class SyncOptions @ExperimentalPowerSyncAPI constructor(
     public val newClientImplementation: Boolean = false,
     public val method: ConnectionMethod = ConnectionMethod.Http,
 ) {
-    internal companion object {
+    public companion object {
         @OptIn(ExperimentalPowerSyncAPI::class)
-        val defaults: SyncOptions = SyncOptions()
+        public val defaults: SyncOptions = SyncOptions()
     }
 }
 
