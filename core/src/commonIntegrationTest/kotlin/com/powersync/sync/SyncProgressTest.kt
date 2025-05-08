@@ -19,9 +19,11 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(LegacySyncImplementation::class)
-abstract class BaseSyncProgressTest(useNewSyncImplementation: Boolean) : AbstractSyncTest(
-    useNewSyncImplementation
-) {
+abstract class BaseSyncProgressTest(
+    useNewSyncImplementation: Boolean,
+) : AbstractSyncTest(
+        useNewSyncImplementation,
+    ) {
     private var lastOpId = 0
 
     @BeforeTest
@@ -345,5 +347,6 @@ abstract class BaseSyncProgressTest(useNewSyncImplementation: Boolean) : Abstrac
         }
 }
 
-class LegacySyncProgressTest: BaseSyncProgressTest(false)
-class NewSyncProgressTest: BaseSyncProgressTest(true)
+class LegacySyncProgressTest : BaseSyncProgressTest(false)
+
+class NewSyncProgressTest : BaseSyncProgressTest(true)

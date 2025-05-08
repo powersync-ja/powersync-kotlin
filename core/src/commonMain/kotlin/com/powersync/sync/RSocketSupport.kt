@@ -31,65 +31,84 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import kotlin.coroutines.CoroutineContext
 
+/**
+ * Connects to the RSocket endpoint for receiving sync lines.
+ *
+ * Note that we reconstruct the transport layer for RSocket by opening a WebSocket connection
+ * manually instead of using the high-level RSocket Ktor integration.
+ * The reason is that every request to the sync service needs its own metadata and data payload
+ * (e.g. to transmit the token), but the Ktor integration only supports setting a single payload for
+ * the entire client.
+ */
 @OptIn(RSocketTransportApi::class, ExperimentalPowerSyncAPI::class)
 internal fun HttpClient.rSocketSyncStream(
     options: ConnectionMethod.WebSocket,
     req: JsonObject,
     credentials: PowerSyncCredentials,
-): Flow<ByteArray> = flow {
-    val flowContext = currentCoroutineContext()
+): Flow<ByteArray> =
+    flow {
+        val flowContext = currentCoroutineContext()
 
-    val websocketUri = URLBuilder(credentials.endpointUri("sync/stream")).apply {
-        protocol = when (protocolOrNull) {
-            URLProtocol.HTTP -> URLProtocol.WS
-            else -> URLProtocol.WSS
-        }
-    }
-
-    // Note: We're using a custom connector here because we need to set options for each request
-    // without creating a new HTTP client each time. The recommended approach would be to add an
-    // RSocket extension to the HTTP client, but that only allows us to set the SETUP metadata for
-    // all connections (bad because we need a short-lived token in there).
-    // https://github.com/rsocket/rsocket-kotlin/issues/311
-    val target = object : RSocketClientTarget {
-        @RSocketTransportApi
-        override suspend fun connectClient(): RSocketConnection {
-            val ws = webSocketSession {
-                url.takeFrom(websocketUri)
+        val websocketUri =
+            URLBuilder(credentials.endpointUri("sync/stream")).apply {
+                protocol =
+                    when (protocolOrNull) {
+                        URLProtocol.HTTP -> URLProtocol.WS
+                        else -> URLProtocol.WSS
+                    }
             }
-            return KtorWebSocketConnection(ws)
-        }
 
-        override val coroutineContext: CoroutineContext
-            get() = flowContext
-    }
+        // Note: We're using a custom connector here because we need to set options for each request
+        // without creating a new HTTP client each time. The recommended approach would be to add an
+        // RSocket extension to the HTTP client, but that only allows us to set the SETUP metadata for
+        // all connections (bad because we need a short-lived token in there).
+        // https://github.com/rsocket/rsocket-kotlin/issues/311
+        val target =
+            object : RSocketClientTarget {
+                @RSocketTransportApi
+                override suspend fun connectClient(): RSocketConnection {
+                    val ws =
+                        webSocketSession {
+                            url.takeFrom(websocketUri)
+                        }
+                    return KtorWebSocketConnection(ws)
+                }
 
-    val connector = RSocketConnector {
-        connectionConfig {
-            payloadMimeType = PayloadMimeType(
-                metadata = "application/json",
-                data = "application/json"
-            )
+                override val coroutineContext: CoroutineContext
+                    get() = flowContext
+            }
 
-            setupPayload {
-                buildPayload {
-                    data("{}")
-                    metadata(JsonUtil.json.encodeToString(ConnectionSetupMetadata(token="Bearer ${credentials.token}")))
+        val connector =
+            RSocketConnector {
+                connectionConfig {
+                    payloadMimeType =
+                        PayloadMimeType(
+                            metadata = "application/json",
+                            data = "application/json",
+                        )
+
+                    setupPayload {
+                        buildPayload {
+                            data("{}")
+                            metadata(JsonUtil.json.encodeToString(ConnectionSetupMetadata(token = "Bearer ${credentials.token}")))
+                        }
+                    }
+
+                    keepAlive = options.keepAlive
                 }
             }
 
-            keepAlive = options.keepAlive
-        }
+        val rSocket = connector.connect(target)
+        val syncStream =
+            rSocket.requestStream(
+                buildPayload {
+                    data(JsonUtil.json.encodeToString(req))
+                    metadata(JsonUtil.json.encodeToString(RequestStreamMetadata("/sync/stream")))
+                },
+            )
+
+        emitAll(syncStream.map { it.data.readByteArray() }.flowOn(Dispatchers.IO))
     }
-
-    val rSocket = connector.connect(target)
-    val syncStream = rSocket.requestStream(buildPayload {
-        data(JsonUtil.json.encodeToString(req))
-        metadata(JsonUtil.json.encodeToString(RequestStreamMetadata("/sync/stream")))
-    })
-
-    emitAll(syncStream.map { it.data.readByteArray() }.flowOn(Dispatchers.IO))
-}
 
 /**
  * The metadata payload we need to use when connecting with RSocket.
@@ -100,7 +119,7 @@ internal fun HttpClient.rSocketSyncStream(
 private class ConnectionSetupMetadata(
     val token: String,
     @SerialName("user_agent")
-    val userAgent: String = userAgent()
+    val userAgent: String = userAgent(),
 )
 
 /**
@@ -108,5 +127,5 @@ private class ConnectionSetupMetadata(
  */
 @Serializable
 private class RequestStreamMetadata(
-    val path: String
+    val path: String,
 )

@@ -2,7 +2,6 @@ package com.powersync.db
 
 import co.touchlab.kermit.Logger
 import com.powersync.DatabaseDriverFactory
-import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
 import com.powersync.PowerSyncException
 import com.powersync.bucket.BucketPriority
@@ -153,7 +152,7 @@ internal class PowerSyncDatabaseImpl(
         crudThrottleMs: Long,
         retryDelayMs: Long,
         params: Map<String, JsonParam?>,
-        options: SyncOptions
+        options: SyncOptions,
     ) {
         waitReady()
         mutex.withLock {

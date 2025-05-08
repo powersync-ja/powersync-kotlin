@@ -35,9 +35,11 @@ import kotlin.test.assertNotNull
 import kotlin.time.Duration.Companion.seconds
 
 @OptIn(LegacySyncImplementation::class)
-abstract class BaseSyncIntegrationTest(useNewSyncImplementation: Boolean) : AbstractSyncTest(
-    useNewSyncImplementation
-) {
+abstract class BaseSyncIntegrationTest(
+    useNewSyncImplementation: Boolean,
+) : AbstractSyncTest(
+        useNewSyncImplementation,
+    ) {
     private suspend fun PowerSyncDatabase.expectUserCount(amount: Int) {
         val users = getAll("SELECT * FROM users;") { UserRow.from(it) }
         users shouldHaveSize amount
@@ -560,9 +562,9 @@ abstract class BaseSyncIntegrationTest(useNewSyncImplementation: Boolean) : Abst
         }
 }
 
-class LegacySyncIntegrationTest: BaseSyncIntegrationTest(false)
+class LegacySyncIntegrationTest : BaseSyncIntegrationTest(false)
 
-class NewSyncIntegrationTest: BaseSyncIntegrationTest(true) {
+class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
     // The legacy sync implementation doesn't prefetch credentials.
 
     @OptIn(LegacySyncImplementation::class)
@@ -571,10 +573,11 @@ class NewSyncIntegrationTest: BaseSyncIntegrationTest(true) {
         databaseTest {
             val prefetchCalled = CompletableDeferred<Unit>()
             val completePrefetch = CompletableDeferred<Unit>()
-            every { connector.prefetchCredentials() } returns scope.launch {
-                prefetchCalled.complete(Unit)
-                completePrefetch.await()
-            }
+            every { connector.prefetchCredentials() } returns
+                scope.launch {
+                    prefetchCalled.complete(Unit)
+                    completePrefetch.await()
+                }
 
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)

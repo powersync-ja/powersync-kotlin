@@ -67,8 +67,7 @@ internal data class ProgressInfo(
 @ConsistentCopyVisibility
 public data class SyncDownloadProgress internal constructor(
     private val buckets: Map<String, CoreBucketProgress>,
-): ProgressWithOperations {
-
+) : ProgressWithOperations {
     override val downloadedOperations: Int
     override val totalOperations: Int
 
@@ -79,7 +78,7 @@ public data class SyncDownloadProgress internal constructor(
     }
 
     @LegacySyncImplementation
-    internal constructor(localProgress: Map<String, LocalOperationCounters>, target: Checkpoint): this(
+    internal constructor(localProgress: Map<String, LocalOperationCounters>, target: Checkpoint) : this(
         buildMap {
             for (entry in target.checksums) {
                 val savedProgress = localProgress[entry.bucket]
@@ -94,7 +93,19 @@ public data class SyncDownloadProgress internal constructor(
                     ),
                 )
             }
-        })
+        },
+    )
+
+    /**
+     * Returns download progress towards all data up until the specified [priority] being received.
+     *
+     * The returned [ProgressWithOperations] instance tracks the target amount of operations that need to be downloaded
+     * in total and how many of them have already been received.
+     */
+    public fun untilPriority(priority: BucketPriority): ProgressWithOperations {
+        val (total, completed) = targetAndCompletedCounts(priority)
+        return ProgressInfo(totalOperations = total, downloadedOperations = completed)
+    }
 
     @LegacySyncImplementation
     internal fun incrementDownloaded(batch: SyncDataBatch): SyncDownloadProgress =
@@ -114,23 +125,11 @@ public data class SyncDownloadProgress internal constructor(
             },
         )
 
-    /**
-     * Returns download progress towards all data up until the specified [priority] being received.
-     *
-     * The returned [ProgressWithOperations] instance tracks the target amount of operations that need to be downloaded
-     * in total and how many of them have already been received.
-     */
-    public fun untilPriority(priority: BucketPriority): ProgressWithOperations {
-        val (total, completed) = targetAndCompletedCounts(priority)
-        return ProgressInfo(totalOperations = total, downloadedOperations = completed)
-    }
-
     private fun targetAndCompletedCounts(priority: BucketPriority): Pair<Int, Int> =
         buckets.values
             .asSequence()
             .filter { it.priority >= priority }
             .fold(0L to 0L) { (prevTarget, prevCompleted), entry ->
                 (prevTarget + entry.targetCount - entry.atLast) to (prevCompleted + entry.sinceLast)
-            }
-            .let { it.first.toInt() to it.second.toInt() }
+            }.let { it.first.toInt() to it.second.toInt() }
 }

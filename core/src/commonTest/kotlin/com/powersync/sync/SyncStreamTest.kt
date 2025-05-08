@@ -159,7 +159,7 @@ class SyncStreamTest {
                     logger = logger,
                     params = JsonObject(emptyMap()),
                     uploadScope = this,
-                    options = SyncOptions()
+                    options = SyncOptions(),
                 )
 
             // Launch streaming sync in a coroutine that we'll cancel after verification

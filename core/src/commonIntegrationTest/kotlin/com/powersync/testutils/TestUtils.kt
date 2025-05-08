@@ -9,7 +9,6 @@ import co.touchlab.kermit.Severity
 import co.touchlab.kermit.TestConfig
 import co.touchlab.kermit.TestLogWriter
 import com.powersync.DatabaseDriverFactory
-import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.bucket.WriteCheckpointData
 import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.connectors.PowerSyncBackendConnector
@@ -19,7 +18,6 @@ import com.powersync.db.PowerSyncDatabaseImpl
 import com.powersync.db.schema.Schema
 import com.powersync.sync.LegacySyncImplementation
 import com.powersync.sync.SyncLine
-import com.powersync.sync.SyncOptions
 import dev.mokkery.answering.returns
 import dev.mokkery.everySuspend
 import dev.mokkery.mock

@@ -153,10 +153,10 @@ internal class BucketStorageImpl(
             val rows =
                 db.getAll("SELECT name, count_at_last, count_since_last FROM ps_buckets") { cursor ->
                     cursor.getString(0)!! to
-                            LocalOperationCounters(
-                                atLast = cursor.getLong(1)!!.toInt(),
-                                sinceLast = cursor.getLong(2)!!.toInt(),
-                            )
+                        LocalOperationCounters(
+                            atLast = cursor.getLong(1)!!.toInt(),
+                            sinceLast = cursor.getLong(2)!!.toInt(),
+                        )
                 }
 
             for ((name, counters) in rows) {
@@ -365,18 +365,22 @@ internal class BucketStorageImpl(
         return JsonUtil.json.decodeFromString<List<Instruction>>(result)
     }
 
-    override suspend fun control(op: String, payload: String?): List<Instruction> {
-        return db.writeTransaction { tx ->
+    override suspend fun control(
+        op: String,
+        payload: String?,
+    ): List<Instruction> =
+        db.writeTransaction { tx ->
             logger.v { "powersync_control($op, $payload)" }
 
             tx.get("SELECT powersync_control(?, ?) AS r", listOf(op, payload), ::handleControlResult)
         }
-    }
 
-    override suspend fun control(op: String, payload: ByteArray): List<Instruction> {
-        return db.writeTransaction { tx ->
+    override suspend fun control(
+        op: String,
+        payload: ByteArray,
+    ): List<Instruction> =
+        db.writeTransaction { tx ->
             logger.v { "powersync_control($op, binary payload)" }
             tx.get("SELECT powersync_control(?, ?) AS r", listOf(op, payload), ::handleControlResult)
         }
-    }
 }

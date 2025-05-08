@@ -59,7 +59,7 @@ public abstract class PowerSyncBackendConnector {
     public open fun prefetchCredentials(): Job {
         fetchRequest?.takeIf { it.isActive }?.let { return it }
 
-        val request  =
+        val request =
             scope.launch {
                 fetchCredentials().also { value ->
                     cachedCredentials = value

@@ -2,7 +2,6 @@ package com.powersync.sync
 
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
-import co.touchlab.stately.concurrency.AtomicBoolean
 import co.touchlab.stately.concurrency.AtomicReference
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncException
@@ -49,10 +48,6 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
-import kotlinx.io.Sink
-import kotlinx.io.buffered
-import kotlinx.io.files.Path
-import kotlinx.io.files.SystemFileSystem
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
@@ -250,15 +245,21 @@ internal class SyncStream(
             }
         }
 
-    private fun connectViaWebSocket(req: JsonObject, options: ConnectionMethod.WebSocket): Flow<ByteArray> = flow {
-        val credentials = requireNotNull(connector.getCredentialsCached()) { "Not logged in" }
+    private fun connectViaWebSocket(
+        req: JsonObject,
+        options: ConnectionMethod.WebSocket,
+    ): Flow<ByteArray> =
+        flow {
+            val credentials = requireNotNull(connector.getCredentialsCached()) { "Not logged in" }
 
-        emitAll(httpClient.rSocketSyncStream(
-            options = options,
-            req = req,
-            credentials = credentials
-        ))
-    }
+            emitAll(
+                httpClient.rSocketSyncStream(
+                    options = options,
+                    req = req,
+                    credentials = credentials,
+                ),
+            )
+        }
 
     private suspend fun streamingSyncIteration() {
         coroutineScope {
@@ -307,12 +308,18 @@ internal class SyncStream(
             fetchLinesJob?.join()
         }
 
-        private suspend fun control(op: String, payload: String? = null) {
+        private suspend fun control(
+            op: String,
+            payload: String? = null,
+        ) {
             val instructions = bucketStorage.control(op, payload)
             handleInstructions(instructions)
         }
 
-        private suspend fun control(op: String, payload: ByteArray) {
+        private suspend fun control(
+            op: String,
+            payload: ByteArray,
+        ) {
             val instructions = bucketStorage.control(op, payload)
             handleInstructions(instructions)
         }
@@ -325,17 +332,18 @@ internal class SyncStream(
             when (instruction) {
                 is Instruction.EstablishSyncStream -> {
                     fetchLinesJob?.cancelAndJoin()
-                    fetchLinesJob = scope.launch {
-                        launch {
-                            for (completion in completedCrudUploads) {
-                                control("completed_upload")
+                    fetchLinesJob =
+                        scope.launch {
+                            launch {
+                                for (completion in completedCrudUploads) {
+                                    control("completed_upload")
+                                }
+                            }
+
+                            launch {
+                                connect(instruction)
                             }
                         }
-
-                        launch {
-                            connect(instruction)
-                        }
-                    }
                 }
                 Instruction.CloseSyncStream -> {
                     fetchLinesJob!!.cancelAndJoin()
@@ -346,11 +354,12 @@ internal class SyncStream(
                 }
                 is Instruction.LogLine -> {
                     logger.log(
-                        severity = when(instruction.severity) {
-                            "DEBUG" -> Severity.Debug
-                            "INFO" -> Severity.Debug
-                            else -> Severity.Warn
-                        },
+                        severity =
+                            when (instruction.severity) {
+                                "DEBUG" -> Severity.Debug
+                                "INFO" -> Severity.Debug
+                                else -> Severity.Warn
+                            },
                         message = instruction.line,
                         tag = logger.tag,
                         throwable = null,
@@ -367,12 +376,13 @@ internal class SyncStream(
                     } else {
                         // Token expires soon - refresh it in the background
                         if (credentialsInvalidation == null) {
-                            val job = scope.launch {
-                                connector.prefetchCredentials().join()
+                            val job =
+                                scope.launch {
+                                    connector.prefetchCredentials().join()
 
-                                // Token has been refreshed, start another iteration
-                                stop()
-                            }
+                                    // Token has been refreshed, start another iteration
+                                    stop()
+                                }
                             job.invokeOnCompletion {
                                 credentialsInvalidation = null
                             }
@@ -381,7 +391,7 @@ internal class SyncStream(
                     }
                 }
                 Instruction.DidCompleteSync -> {
-                    status.update { copy(downloadError=null) }
+                    status.update { copy(downloadError = null) }
                 }
                 is Instruction.UnknownInstruction -> {
                     throw PowerSyncException("Unknown instruction received from core extension: ${instruction.raw}", null)
@@ -391,18 +401,22 @@ internal class SyncStream(
 
         private suspend fun connect(start: Instruction.EstablishSyncStream) {
             when (val method = options.method) {
-                ConnectionMethod.Http -> connectViaHttp(start.request).collect { rawLine ->
-                    control("line_text", rawLine)
-                }
-                is ConnectionMethod.WebSocket -> connectViaWebSocket(start.request, method).collect { binaryLine ->
-                    control("line_binary", binaryLine)
-                }
+                ConnectionMethod.Http ->
+                    connectViaHttp(start.request).collect { rawLine ->
+                        control("line_text", rawLine)
+                    }
+                is ConnectionMethod.WebSocket ->
+                    connectViaWebSocket(start.request, method).collect { binaryLine ->
+                        control("line_binary", binaryLine)
+                    }
             }
         }
     }
 
     @LegacySyncImplementation
-    private inner class LegacyIteration(val scope: CoroutineScope) {
+    private inner class LegacyIteration(
+        val scope: CoroutineScope,
+    ) {
         suspend fun streamingSyncIteration() {
             val bucketEntries = bucketStorage.getBucketStates()
             val initialBuckets = mutableMapOf<String, String>()
@@ -427,17 +441,18 @@ internal class SyncStream(
                 )
 
             lateinit var receiveLines: Job
-            receiveLines = scope.launch {
-                connectViaHttp(JsonUtil.json.encodeToJsonElement(req)).collect { value ->
-                    val line = JsonUtil.json.decodeFromString<SyncLine>(value)
+            receiveLines =
+                scope.launch {
+                    connectViaHttp(JsonUtil.json.encodeToJsonElement(req)).collect { value ->
+                        val line = JsonUtil.json.decodeFromString<SyncLine>(value)
 
-                    state = handleInstruction(line, value, state)
+                        state = handleInstruction(line, value, state)
 
-                    if (state.abortIteration) {
-                        receiveLines.cancel()
+                        if (state.abortIteration) {
+                            receiveLines.cancel()
+                        }
                     }
                 }
-            }
 
             receiveLines.join()
             status.update { abortedDownload() }

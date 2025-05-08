@@ -17,28 +17,42 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.serializer
 
+/**
+ * An instruction sent to this SDK by the core extension to implement sync behavior.
+ */
 @Serializable(with = Instruction.Serializer::class)
 internal sealed interface Instruction {
     @Serializable
-    data class LogLine(val severity: String, val line: String): Instruction
+    data class LogLine(
+        val severity: String,
+        val line: String,
+    ) : Instruction
 
     @Serializable
-    data class UpdateSyncStatus(val status: CoreSyncStatus): Instruction
+    data class UpdateSyncStatus(
+        val status: CoreSyncStatus,
+    ) : Instruction
 
     @Serializable
-    data class EstablishSyncStream(val request: JsonObject): Instruction
+    data class EstablishSyncStream(
+        val request: JsonObject,
+    ) : Instruction
 
     @Serializable
     data class FetchCredentials(
         @SerialName("did_expire")
-        val didExpire: Boolean
-    ): Instruction
+        val didExpire: Boolean,
+    ) : Instruction
 
-    data object FlushSileSystem: Instruction
-    data object CloseSyncStream: Instruction
-    data object DidCompleteSync: Instruction
+    data object FlushSileSystem : Instruction
 
-    data class UnknownInstruction(val raw: JsonElement?): Instruction
+    data object CloseSyncStream : Instruction
+
+    data object DidCompleteSync : Instruction
+
+    data class UnknownInstruction(
+        val raw: JsonElement?,
+    ) : Instruction
 
     class Serializer : KSerializer<Instruction> {
         private val logLine = serializer<LogLine>()
@@ -80,7 +94,10 @@ internal sealed interface Instruction {
                             decodeSerializableElement(descriptor, 6, didCompleteSync)
                             DidCompleteSync
                         }
-                        CompositeDecoder.UNKNOWN_NAME,  -> UnknownInstruction(decodeSerializableElement(descriptor, index, serializer<JsonElement>()))
+                        CompositeDecoder.UNKNOWN_NAME ->
+                            UnknownInstruction(
+                                decodeSerializableElement(descriptor, index, serializer<JsonElement>()),
+                            )
                         CompositeDecoder.DECODE_DONE -> UnknownInstruction(null)
                         else -> error("Unexpected index: $index")
                     }
@@ -93,7 +110,10 @@ internal sealed interface Instruction {
                 }
             }
 
-        override fun serialize(encoder: Encoder, value: Instruction) {
+        override fun serialize(
+            encoder: Encoder,
+            value: Instruction,
+        ) {
             // We don't need this functionality, so...
             throw UnsupportedOperationException("Serializing instructions")
         }
@@ -111,7 +131,7 @@ internal data class CoreSyncStatus(
 
 @Serializable
 internal data class CoreDownloadProgress(
-    val buckets: Map<String, CoreBucketProgress>
+    val buckets: Map<String, CoreBucketProgress>,
 )
 
 @Serializable
@@ -122,7 +142,7 @@ internal data class CoreBucketProgress(
     @SerialName("since_last")
     val sinceLast: Long,
     @SerialName("target_count")
-    val targetCount: Long
+    val targetCount: Long,
 )
 
 @Serializable
@@ -132,18 +152,19 @@ internal data class CorePriorityStatus(
     @Serializable(with = InstantTimestampSerializer::class)
     val lastSyncedAt: Instant?,
     @SerialName("has_synced")
-    val hasSynced: Boolean?
+    val hasSynced: Boolean?,
 )
 
 private object InstantTimestampSerializer : KSerializer<Instant> {
     override val descriptor: SerialDescriptor
         get() = PrimitiveSerialDescriptor("kotlinx.datetime.Instant", PrimitiveKind.LONG)
 
-    override fun deserialize(decoder: Decoder): Instant {
-        return Instant.fromEpochSeconds(decoder.decodeLong())
-    }
+    override fun deserialize(decoder: Decoder): Instant = Instant.fromEpochSeconds(decoder.decodeLong())
 
-    override fun serialize(encoder: Encoder, value: Instant) {
+    override fun serialize(
+        encoder: Encoder,
+        value: Instant,
+    ) {
         encoder.encodeLong(value.epochSeconds)
     }
 }

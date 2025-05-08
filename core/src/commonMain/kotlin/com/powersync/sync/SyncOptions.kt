@@ -1,7 +1,7 @@
 package com.powersync.sync
 
-import com.powersync.PowerSyncDatabase
 import com.powersync.ExperimentalPowerSyncAPI
+import com.powersync.PowerSyncDatabase
 import io.rsocket.kotlin.keepalive.KeepAlive
 import kotlin.time.Duration.Companion.seconds
 
@@ -13,15 +13,19 @@ import kotlin.time.Duration.Companion.seconds
  * the future. At the moment, the implementation is not covered by the stability guarantees we offer
  * for the rest of the SDK though.
  */
-public class SyncOptions @ExperimentalPowerSyncAPI constructor(
-    public val newClientImplementation: Boolean = false,
-    public val method: ConnectionMethod = ConnectionMethod.Http,
-) {
-    public companion object {
-        @OptIn(ExperimentalPowerSyncAPI::class)
-        public val defaults: SyncOptions = SyncOptions()
+public class SyncOptions
+    @ExperimentalPowerSyncAPI
+    constructor(
+        @property:ExperimentalPowerSyncAPI
+        public val newClientImplementation: Boolean = false,
+        @property:ExperimentalPowerSyncAPI
+        public val method: ConnectionMethod = ConnectionMethod.Http,
+    ) {
+        public companion object {
+            @OptIn(ExperimentalPowerSyncAPI::class)
+            public val defaults: SyncOptions = SyncOptions()
+        }
     }
-}
 
 /**
  * The connection method to use when the SDK connects to the sync service.
@@ -37,7 +41,7 @@ public sealed interface ConnectionMethod {
      * This is currently the default, but this will be changed once [WebSocket] support is stable.
      */
     @ExperimentalPowerSyncAPI
-    public data object Http: ConnectionMethod
+    public data object Http : ConnectionMethod
 
     /**
      * Receive binary sync lines via RSocket over a WebSocket connection.
@@ -47,13 +51,14 @@ public sealed interface ConnectionMethod {
      */
     @ExperimentalPowerSyncAPI
     public data class WebSocket(
-        val keepAlive: KeepAlive = DefaultKeepAlive
-    ): ConnectionMethod {
+        val keepAlive: KeepAlive = DefaultKeepAlive,
+    ) : ConnectionMethod {
         private companion object {
-            val DefaultKeepAlive = KeepAlive(
-                interval = 20.0.seconds,
-                maxLifetime = 30.0.seconds,
-            )
+            val DefaultKeepAlive =
+                KeepAlive(
+                    interval = 20.0.seconds,
+                    maxLifetime = 30.0.seconds,
+                )
         }
     }
 }

@@ -1,5 +1,4 @@
 import co.touchlab.kermit.Logger
-import com.powersync.bucket.BucketState
 import com.powersync.bucket.BucketStorageImpl
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.UpdateType

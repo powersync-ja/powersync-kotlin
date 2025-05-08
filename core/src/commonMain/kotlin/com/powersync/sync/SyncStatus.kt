@@ -137,11 +137,14 @@ internal data class SyncStatusDataContainer(
             downloadProgress = status.downloading?.let { SyncDownloadProgress(it.buckets) },
             lastSyncedAt = completeSync?.lastSyncedAt,
             hasSynced = completeSync != null,
-            priorityStatusEntries = status.priorityStatus.map { PriorityStatusEntry(
-                priority = it.priority,
-                lastSyncedAt = it.lastSyncedAt,
-                hasSynced = it.hasSynced,
-            ) }
+            priorityStatusEntries =
+                status.priorityStatus.map {
+                    PriorityStatusEntry(
+                        priority = it.priority,
+                        lastSyncedAt = it.lastSyncedAt,
+                        hasSynced = it.hasSynced,
+                    )
+                },
         )
     }
 
