@@ -32,8 +32,9 @@ public actual class DatabaseDriverFactory {
 
         migrateDriver(driver, schema)
 
+        // TODO Revert
         driver.loadExtensions(
-            powersyncExtension to "sqlite3_powersync_init",
+            "/Users/simon/src/powersync-sqlite-core/target/debug/libpowersync.dylib" to "sqlite3_powersync_init",
         )
 
         val mappedDriver = PsSqlDriver(driver = driver)

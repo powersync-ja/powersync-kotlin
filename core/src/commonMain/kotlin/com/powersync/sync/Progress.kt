@@ -65,8 +65,8 @@ internal data class ProgressInfo(
  * one-by-one.
  */
 @ConsistentCopyVisibility
-public data class SyncDownloadProgress private constructor(
-    private val buckets: Map<String, BucketProgress>,
+public data class SyncDownloadProgress internal constructor(
+    private val buckets: Map<String, CoreBucketProgress>,
 ) : ProgressWithOperations {
     override val downloadedOperations: Int
     override val totalOperations: Int
@@ -77,10 +77,7 @@ public data class SyncDownloadProgress private constructor(
         downloadedOperations = completed
     }
 
-    /**
-     * Creates download progress information from the local progress counters since the last full sync and the target
-     * checkpoint.
-     */
+    @LegacySyncImplementation
     internal constructor(localProgress: Map<String, LocalOperationCounters>, target: Checkpoint) : this(
         buildMap {
             for (entry in target.checksums) {
@@ -88,11 +85,11 @@ public data class SyncDownloadProgress private constructor(
 
                 put(
                     entry.bucket,
-                    BucketProgress(
+                    CoreBucketProgress(
                         priority = entry.priority,
-                        atLast = savedProgress?.atLast ?: 0,
-                        sinceLast = savedProgress?.sinceLast ?: 0,
-                        targetCount = entry.count ?: 0,
+                        atLast = (savedProgress?.atLast ?: 0).toLong(),
+                        sinceLast = (savedProgress?.sinceLast ?: 0).toLong(),
+                        targetCount = (entry.count ?: 0).toLong(),
                     ),
                 )
             }
@@ -110,6 +107,7 @@ public data class SyncDownloadProgress private constructor(
         return ProgressInfo(totalOperations = total, downloadedOperations = completed)
     }
 
+    @LegacySyncImplementation
     internal fun incrementDownloaded(batch: SyncDataBatch): SyncDownloadProgress =
         SyncDownloadProgress(
             buildMap {
@@ -131,16 +129,7 @@ public data class SyncDownloadProgress private constructor(
         buckets.values
             .asSequence()
             .filter { it.priority >= priority }
-            .fold(0 to 0) { (prevTarget, prevCompleted), entry ->
-                (prevTarget + entry.total) to (prevCompleted + entry.sinceLast)
-            }
-}
-
-private data class BucketProgress(
-    val priority: BucketPriority,
-    val atLast: Int,
-    val sinceLast: Int,
-    val targetCount: Int,
-) {
-    val total get(): Int = targetCount - atLast
+            .fold(0L to 0L) { (prevTarget, prevCompleted), entry ->
+                (prevTarget + entry.targetCount - entry.atLast) to (prevCompleted + entry.sinceLast)
+            }.let { it.first.toInt() to it.second.toInt() }
 }

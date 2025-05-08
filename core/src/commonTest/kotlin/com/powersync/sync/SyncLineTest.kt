@@ -7,6 +7,7 @@ import com.powersync.utils.JsonUtil
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
+@OptIn(LegacySyncImplementation::class)
 class SyncLineTest {
     private fun checkDeserializing(
         expected: SyncLine,
