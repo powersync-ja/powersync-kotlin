@@ -72,12 +72,20 @@ fun compileSqlite(target: KotlinNativeTarget): TaskProvider<Task> {
         }
 
         doLast {
+            val watchOSSdk = "/Applications/Xcode.app/Contents/Developer/Platforms/WatchOS.platform/Developer/SDKs/WatchOS.sdk"
+            val watchOSSimulator = "/Applications/Xcode.app/Contents/Developer/Platforms/WatchSimulator.platform/Developer/SDKs/WatchSimulator.sdk/"
+
             val (llvmTarget, sysRoot) = when (target.konanTarget) {
                 KonanTarget.IOS_X64 -> "x86_64-apple-ios12.0-simulator" to "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk"
                 KonanTarget.IOS_ARM64 -> "arm64-apple-ios12.0" to "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk"
                 KonanTarget.IOS_SIMULATOR_ARM64 -> "arm64-apple-ios14.0-simulator" to "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk"
                 KonanTarget.MACOS_ARM64 -> "aarch64-apple-macos" to "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/"
                 KonanTarget.MACOS_X64 -> "x86_64-apple-macos" to "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/"
+                KonanTarget.WATCHOS_DEVICE_ARM64 -> "aarch64-apple-watchos" to watchOSSdk
+                KonanTarget.WATCHOS_ARM32 -> "armv7k-apple-watchos" to watchOSSdk
+                KonanTarget.WATCHOS_ARM64 -> "arm64_32-apple-watchos" to watchOSSdk
+                KonanTarget.WATCHOS_SIMULATOR_ARM64 -> "aarch64-apple-watchos-simulator" to watchOSSimulator
+                KonanTarget.WATCHOS_X64 -> "x86_64-apple-watchos-simulator" to watchOSSimulator
                 else -> error("Unexpected target $target")
             }
 
