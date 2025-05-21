@@ -83,14 +83,19 @@ class SyncProgressTest {
         val progress = item.downloadProgress ?: error("Expected download progress on $item")
 
         assertTrue { item.downloading }
-        assertEquals(total.first, progress.downloadedOperations)
-        assertEquals(total.second, progress.totalOperations)
+        run {
+            val message = "Expected total progress to be ${total.first}/${total.second}, but it is ${progress.downloadedOperations}/${progress.totalOperations}"
+            assertEquals(total.first, progress.downloadedOperations, message)
+            assertEquals(total.second, progress.totalOperations, message)
+        }
 
         priorities.forEach { (priority, expected) ->
             val (expectedDownloaded, expectedTotal) = expected
-            val progress = progress.untilPriority(priority)
-            assertEquals(expectedDownloaded, progress.downloadedOperations)
-            assertEquals(expectedTotal, progress.totalOperations)
+            val actualProgress = progress.untilPriority(priority)
+            val message = "Expected progress at prio $priority to be ${expectedDownloaded}/${expectedTotal}, but it is ${actualProgress.downloadedOperations}/${actualProgress.totalOperations}"
+
+            assertEquals(expectedDownloaded, actualProgress.downloadedOperations, message)
+            assertEquals(expectedTotal, actualProgress.totalOperations, message)
         }
     }
 
