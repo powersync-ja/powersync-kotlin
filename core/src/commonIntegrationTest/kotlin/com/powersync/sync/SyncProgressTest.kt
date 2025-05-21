@@ -10,10 +10,11 @@ import com.powersync.bucket.OplogEntry
 import com.powersync.testutils.ActiveDatabaseTest
 import com.powersync.testutils.databaseTest
 import com.powersync.testutils.waitFor
+import io.kotest.assertions.withClue
+import io.kotest.matchers.properties.shouldHaveValue
 import kotlinx.coroutines.channels.Channel
 import kotlin.test.BeforeTest
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -75,6 +76,16 @@ class SyncProgressTest {
         }
     }
 
+    private fun ProgressWithOperations.shouldBe(
+        downloaded: Int,
+        total: Int,
+    ) {
+        withClue("progress $downloadedOperations/$totalOperations should be $downloaded/$total") {
+            this::downloadedOperations shouldHaveValue downloaded
+            this::totalOperations shouldHaveValue total
+        }
+    }
+
     private suspend fun ReceiveTurbine<SyncStatusData>.expectProgress(
         total: Pair<Int, Int>,
         priorities: Map<BucketPriority, Pair<Int, Int>> = emptyMap(),
@@ -83,19 +94,12 @@ class SyncProgressTest {
         val progress = item.downloadProgress ?: error("Expected download progress on $item")
 
         assertTrue { item.downloading }
-        run {
-            val message = "Expected total progress to be ${total.first}/${total.second}, but it is ${progress.downloadedOperations}/${progress.totalOperations}"
-            assertEquals(total.first, progress.downloadedOperations, message)
-            assertEquals(total.second, progress.totalOperations, message)
-        }
+        progress.shouldBe(total.first, total.second)
 
         priorities.forEach { (priority, expected) ->
             val (expectedDownloaded, expectedTotal) = expected
             val actualProgress = progress.untilPriority(priority)
-            val message = "Expected progress at prio $priority to be ${expectedDownloaded}/${expectedTotal}, but it is ${actualProgress.downloadedOperations}/${actualProgress.totalOperations}"
-
-            assertEquals(expectedDownloaded, actualProgress.downloadedOperations, message)
-            assertEquals(expectedTotal, actualProgress.totalOperations, message)
+            actualProgress.shouldBe(expectedDownloaded, expectedTotal)
         }
     }
 
