@@ -28,18 +28,13 @@ val downloadSQLiteSources by tasks.registering(Download::class) {
 }
 
 val unzipSQLiteSources by tasks.registering(UnzipSqlite::class) {
-    from(
-        zipTree(downloadSQLiteSources.map { it.outputs.files.singleFile }).matching {
-            include("*/sqlite3.*")
-            exclude {
-                it.isDirectory
-            }
-            eachFile {
-                this.path = this.name
-            }
-        },
+    val zip = downloadSQLiteSources.map { it.outputs.files.singleFile }
+    inputs.file(zip)
+
+    unzipSqlite(
+        src = zipTree(zip),
+        dir = layout.buildDirectory.dir("downloads/sqlite3")
     )
-    intoDirectory(layout.buildDirectory.dir("downloads/sqlite3"))
 }
 
 // Obtain host and platform manager from Kotlin multiplatform plugin. They're supposed to be
