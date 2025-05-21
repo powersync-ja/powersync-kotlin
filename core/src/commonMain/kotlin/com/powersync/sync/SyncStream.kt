@@ -436,8 +436,8 @@ internal class SyncStream(
         state: SyncStreamState,
     ): SyncStreamState {
         val batch = SyncDataBatch(listOf(data))
-        status.update { copy(downloading = true, downloadProgress = downloadProgress?.incrementDownloaded(batch)) }
         bucketStorage.saveSyncData(batch)
+        status.update { copy(downloading = true, downloadProgress = downloadProgress?.incrementDownloaded(batch)) }
         return state
     }
 
