@@ -26,7 +26,7 @@ public data class Table(
      */
     var indexes: List<Index> = listOf(),
     /**
-     * Whether the table only exists only.
+     * Whether the table only exists locally.
      */
     val localOnly: Boolean = false,
     /**
