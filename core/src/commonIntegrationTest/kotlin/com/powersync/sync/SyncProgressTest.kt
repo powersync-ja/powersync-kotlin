@@ -283,6 +283,61 @@ class SyncProgressTest {
         }
 
     @Test
+    fun interruptedWithDefrag() =
+        databaseTest {
+            database.connect(connector)
+
+            turbineScope {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                turbine.waitFor { it.connected && !it.downloading }
+                syncLines.send(
+                    SyncLine.FullCheckpoint(
+                        Checkpoint(
+                            lastOpId = "10",
+                            checksums = listOf(bucket("a", 10)),
+                        ),
+                    ),
+                )
+                turbine.expectProgress(0 to 10)
+
+                addDataLine("a", 5)
+                turbine.expectProgress(5 to 10)
+
+                turbine.cancel()
+            }
+
+            // Close and re-connect
+            database.close()
+            syncLines.close()
+            database = openDatabase()
+            syncLines = Channel()
+            database.connect(connector)
+
+            turbineScope {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                turbine.waitFor { it.connected && !it.downloading }
+
+                // A sync rule deploy could reset buckets, making the new bucket smaller than the
+                // existing one.
+                syncLines.send(
+                    SyncLine.FullCheckpoint(
+                        Checkpoint(
+                            lastOpId = "14",
+                            checksums = listOf(bucket("a", 4)),
+                        ),
+                    ),
+                )
+
+                // In this special case, don't report 5/4 as progress
+                turbine.expectProgress(0 to 4)
+                turbine.cancel()
+            }
+
+            database.close()
+            syncLines.close()
+        }
+
+    @Test
     fun differentPriorities() =
         databaseTest {
             database.connect(connector)
