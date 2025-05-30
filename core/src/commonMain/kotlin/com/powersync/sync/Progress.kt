@@ -3,6 +3,7 @@ package com.powersync.sync
 import com.powersync.bucket.BucketPriority
 import com.powersync.bucket.Checkpoint
 import com.powersync.bucket.LocalOperationCounters
+import kotlin.math.min
 
 /**
  * Information about a progressing download.
@@ -83,18 +84,38 @@ public data class SyncDownloadProgress private constructor(
      */
     internal constructor(localProgress: Map<String, LocalOperationCounters>, target: Checkpoint) : this(
         buildMap {
+            var invalidated = false
+
             for (entry in target.checksums) {
                 val savedProgress = localProgress[entry.bucket]
+                val atLast = savedProgress?.atLast ?: 0
+                val sinceLast = savedProgress?.sinceLast ?: 0
 
                 put(
                     entry.bucket,
                     BucketProgress(
                         priority = entry.priority,
-                        atLast = savedProgress?.atLast ?: 0,
-                        sinceLast = savedProgress?.sinceLast ?: 0,
                         targetCount = entry.count ?: 0,
+                        atLast = atLast,
+                        sinceLast = sinceLast,
                     ),
                 )
+
+                entry.count?.let { knownCount ->
+                    if (knownCount < atLast + sinceLast) {
+                        // Either due to a defrag / sync rule deploy or a compaction operation, the
+                        // size of the bucket shrank so much that the local ops exceed the ops in
+                        // the updated bucket. We can't possibly report progress in this case (it
+                        // would overshoot 100%).
+                        invalidated = true
+                    }
+                }
+            }
+
+            if (invalidated) {
+                for ((key, value) in entries) {
+                    put(key, value.copy(sinceLast = 0, atLast = 0))
+                }
             }
         },
     )
@@ -120,7 +141,7 @@ public data class SyncDownloadProgress private constructor(
                     put(
                         bucket.bucket,
                         previous.copy(
-                            sinceLast = previous.sinceLast + bucket.data.size,
+                            sinceLast = min(previous.sinceLast + bucket.data.size, previous.total),
                         ),
                     )
                 }
