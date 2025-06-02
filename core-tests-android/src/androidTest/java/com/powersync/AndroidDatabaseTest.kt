@@ -224,11 +224,12 @@ class AndroidDatabaseTest {
         }
 
     @Test
-    fun canCreateTemporaryTable() = runTest {
+    fun canUseTempStore() = runTest {
         database.execute("PRAGMA temp_store = 1;") // Store temporary data as files
-        database.execute("CREATE TEMP TABLE my_tbl (content ANY) STRICT;")
-        for (i in 0..128) {
-            database.execute("INSERT INTO my_tbl VALUES (randomblob(1024 * 1024))")
+        database.execute("CREATE TEMP TABLE foo (bar TEXT);")
+        val data = "new row".repeat(100);
+        for (i in 0..10000) {
+            database.execute("INSERT INTO foo VALUES (?)", parameters = listOf(data))
         }
     }
 }
