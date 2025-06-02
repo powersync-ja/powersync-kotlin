@@ -11,12 +11,16 @@ public data class Index(
      * List of columns used for the index.
      */
     val columns: List<IndexedColumn>,
+    /**
+     * Whether this index enforces a unique constraint.
+     */
+    val unique: Boolean = false,
 ) {
     /**
      * @param name Descriptive name of the index.
      * @param columns List of columns used for the index.
      */
-    public constructor(name: String, vararg columns: IndexedColumn) : this(name, columns.asList())
+    public constructor(name: String, vararg columns: IndexedColumn) : this(name, columns.asList(), false)
 
     /**
      * Construct a new index with the specified column names.
@@ -25,7 +29,23 @@ public data class Index(
         public fun ascending(
             name: String,
             columns: List<String>,
-        ): Index = Index(name, columns.map { IndexedColumn.ascending(it) })
+        ): Index = Index(name, columns.map { IndexedColumn.ascending(it) }, unique = false)
+        
+        /**
+         * Create a unique index with the specified column names.
+         */
+        public fun unique(
+            name: String,
+            columns: List<String>,
+        ): Index = Index(name, columns.map { IndexedColumn.ascending(it) }, unique = true)
+        
+        /**
+         * Create a unique index with a single column.
+         */
+        public fun unique(
+            name: String,
+            column: String,
+        ): Index = unique(name, listOf(column))
     }
 
     /**
@@ -40,7 +60,8 @@ public data class Index(
      */
     internal fun toSqlDefinition(table: Table): String {
         val fields = columns.joinToString(", ") { it.toSql(table) }
-        return """CREATE INDEX "${fullName(table)}" ON "${table.internalName}"($fields)"""
+        val indexType = if (unique) "UNIQUE INDEX" else "INDEX"
+        return """CREATE $indexType "${fullName(table)}" ON "${table.internalName}"($fields)"""
     }
 }
 
@@ -48,6 +69,7 @@ public data class Index(
 internal data class SerializableIndex(
     val name: String,
     val columns: List<SerializableIndexColumn>,
+    val unique: Boolean = false,
 )
 
 internal fun Index.toSerializable(): SerializableIndex =
@@ -55,5 +77,6 @@ internal fun Index.toSerializable(): SerializableIndex =
         SerializableIndex(
             name,
             columns.map { it.toSerializable() },
+            unique,
         )
     }
