@@ -8,6 +8,7 @@ public fun KotlinTargetContainerWithPresetFunctions.powersyncTargets(
     native: Boolean = true,
     jvm: Boolean = true,
     includeTargetsWithoutComposeSupport: Boolean = true,
+    watchOS: Boolean = true,
 ) {
     if (jvm) {
         androidTarget {
@@ -37,6 +38,15 @@ public fun KotlinTargetContainerWithPresetFunctions.powersyncTargets(
         if (includeTargetsWithoutComposeSupport) {
             macosX64()
             macosArm64()
+
+            if (watchOS) {
+                watchosDeviceArm64() // aarch64-apple-watchos
+                watchosArm32() // armv7k-apple-watchos
+                watchosArm64() // arm64_32-apple-watchos
+
+                watchosSimulatorArm64() // aarch64-apple-watchos-simulator
+                watchosX64() // x86_64-apple-watchos-simulator
+            }
         }
     }
 }
