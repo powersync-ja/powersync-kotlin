@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.2 (pending)
+
+* [Android, JVM] Use version `0.4.0` of `powersync-sqlite-core`.
+
 ## 1.1.1
 
 * Fix reported progress around compactions / defrags on the sync service.
