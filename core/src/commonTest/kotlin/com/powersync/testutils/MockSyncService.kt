@@ -37,6 +37,7 @@ import kotlinx.serialization.encodeToString
 internal class MockSyncService(
     private val lines: ReceiveChannel<SyncLine>,
     private val generateCheckpoint: () -> WriteCheckpointResponse,
+    private val trackSyncRequest: suspend (HttpRequestData) -> Unit,
 ) : HttpClientEngineBase("sync-service") {
     override val config: HttpClientEngineConfig
         get() = Config
@@ -52,6 +53,7 @@ internal class MockSyncService(
         val scope = CoroutineScope(context)
 
         return if (data.url.encodedPath == "/sync/stream") {
+            trackSyncRequest(data)
             val job =
                 scope.writer {
                     lines.consume {

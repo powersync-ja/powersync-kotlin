@@ -48,6 +48,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -300,7 +301,12 @@ internal class SyncStream(
         var credentialsInvalidation: Job? = null,
     ) {
         suspend fun start() {
-            control("start", JsonUtil.json.encodeToString(params))
+            @Serializable
+            class StartParameters(
+                val parameters: JsonObject,
+            )
+
+            control("start", JsonUtil.json.encodeToString(StartParameters(params)))
             fetchLinesJob?.join()
         }
 

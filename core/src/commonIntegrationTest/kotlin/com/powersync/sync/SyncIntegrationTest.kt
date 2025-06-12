@@ -17,18 +17,22 @@ import com.powersync.db.schema.Schema
 import com.powersync.testutils.UserRow
 import com.powersync.testutils.databaseTest
 import com.powersync.testutils.waitFor
+import com.powersync.utils.JsonParam
 import com.powersync.utils.JsonUtil
 import dev.mokkery.answering.returns
 import dev.mokkery.every
 import dev.mokkery.verify
 import dev.mokkery.verifyNoMoreCalls
 import dev.mokkery.verifySuspend
+import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -57,6 +61,26 @@ abstract class BaseSyncIntegrationTest(
                 val turbine = database.currentStatus.asFlow().testIn(this)
                 turbine.waitFor { it.connected }
                 turbine.cancel()
+            }
+        }
+
+    @Test
+    fun useParameters() =
+        databaseTest {
+            database.connect(connector, options = options, params = mapOf("foo" to JsonParam.String("bar")))
+            turbineScope(timeout = 10.0.seconds) {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                turbine.waitFor { it.connected }
+                turbine.cancel()
+            }
+
+            requestedSyncStreams shouldHaveSingleElement {
+                val params = it.jsonObject["parameters"]!!.jsonObject
+                params.keys shouldHaveSingleElement "foo"
+                params.values
+                    .first()
+                    .jsonPrimitive.content shouldBe "bar"
+                true
             }
         }
 
