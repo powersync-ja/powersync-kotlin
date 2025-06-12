@@ -127,12 +127,35 @@ internal data class SyncStatusDataContainer(
     override val anyError
         get() = downloadError ?: uploadError
 
+    internal fun applyCoreChanges(status: CoreSyncStatus): SyncStatusDataContainer {
+        val completeSync = status.priorityStatus.firstOrNull { it.priority == BucketPriority.FULL_SYNC_PRIORITY }
+
+        return copy(
+            connected = status.connected,
+            connecting = status.connecting,
+            downloading = status.downloading != null,
+            downloadProgress = status.downloading?.let { SyncDownloadProgress(it.buckets) },
+            lastSyncedAt = completeSync?.lastSyncedAt,
+            hasSynced = completeSync != null,
+            priorityStatusEntries =
+                status.priorityStatus.map {
+                    PriorityStatusEntry(
+                        priority = it.priority,
+                        lastSyncedAt = it.lastSyncedAt,
+                        hasSynced = it.hasSynced,
+                    )
+                },
+        )
+    }
+
+    @LegacySyncImplementation
     internal fun abortedDownload() =
         copy(
             downloading = false,
             downloadProgress = null,
         )
 
+    @LegacySyncImplementation
     internal fun copyWithCompletedDownload() =
         copy(
             lastSyncedAt = Clock.System.now(),

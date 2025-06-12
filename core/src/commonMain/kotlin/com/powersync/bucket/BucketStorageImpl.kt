@@ -8,27 +8,21 @@ import com.powersync.db.crud.CrudRow
 import com.powersync.db.internal.InternalDatabase
 import com.powersync.db.internal.InternalTable
 import com.powersync.db.internal.PowerSyncTransaction
+import com.powersync.sync.Instruction
+import com.powersync.sync.LegacySyncImplementation
 import com.powersync.sync.SyncDataBatch
 import com.powersync.sync.SyncLocalDatabaseResult
 import com.powersync.utils.JsonUtil
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 
 internal class BucketStorageImpl(
     private val db: InternalDatabase,
     private val logger: Logger,
 ) : BucketStorage {
     private var hasCompletedSync = AtomicBoolean(false)
-    private var pendingBucketDeletes = AtomicBoolean(false)
-
-    /**
-     * Count up, and do a compact on startup.
-     */
-    private var compactCounter = COMPACT_OPERATION_INTERVAL
 
     companion object {
         const val MAX_OP_ID = "9223372036854775807"
-        const val COMPACT_OPERATION_INTERVAL = 1_000
     }
 
     override fun getMaxOpId(): String = MAX_OP_ID
@@ -130,6 +124,7 @@ internal class BucketStorageImpl(
         }
     }
 
+    @LegacySyncImplementation
     override suspend fun saveSyncData(syncDataBatch: SyncDataBatch) {
         db.writeTransaction { tx ->
             val jsonString = JsonUtil.json.encodeToString(syncDataBatch)
@@ -138,9 +133,9 @@ internal class BucketStorageImpl(
                 listOf("save", jsonString),
             )
         }
-        this.compactCounter += syncDataBatch.buckets.sumOf { it.data.size }
     }
 
+    @LegacySyncImplementation
     override suspend fun getBucketStates(): List<BucketState> =
         db.getAll(
             "SELECT name AS bucket, CAST(last_op AS TEXT) AS op_id FROM ${InternalTable.BUCKETS} WHERE pending_delete = 0 AND name != '\$local'",
@@ -152,6 +147,7 @@ internal class BucketStorageImpl(
             },
         )
 
+    @LegacySyncImplementation
     override suspend fun getBucketOperationProgress(): Map<String, LocalOperationCounters> =
         buildMap {
             val rows =
@@ -168,12 +164,7 @@ internal class BucketStorageImpl(
             }
         }
 
-    override suspend fun removeBuckets(bucketsToDelete: List<String>) {
-        bucketsToDelete.forEach { bucketName ->
-            deleteBucket(bucketName)
-        }
-    }
-
+    @LegacySyncImplementation
     private suspend fun deleteBucket(bucketName: String) {
         db.writeTransaction { tx ->
             tx.execute(
@@ -183,8 +174,13 @@ internal class BucketStorageImpl(
         }
 
         Logger.d("[deleteBucket] Done deleting")
+    }
 
-        this.pendingBucketDeletes.value = true
+    @LegacySyncImplementation
+    override suspend fun removeBuckets(bucketsToDelete: List<String>) {
+        bucketsToDelete.forEach { bucketName ->
+            deleteBucket(bucketName)
+        }
     }
 
     override suspend fun hasCompletedSync(): Boolean {
@@ -208,6 +204,7 @@ internal class BucketStorageImpl(
         }
     }
 
+    @LegacySyncImplementation
     override suspend fun syncLocalDatabase(
         targetCheckpoint: Checkpoint,
         partialPriority: BucketPriority?,
@@ -256,13 +253,12 @@ internal class BucketStorageImpl(
             )
         }
 
-        this.forceCompact()
-
         return SyncLocalDatabaseResult(
             ready = true,
         )
     }
 
+    @LegacySyncImplementation
     private suspend fun validateChecksums(
         checkpoint: Checkpoint,
         priority: BucketPriority? = null,
@@ -298,6 +294,7 @@ internal class BucketStorageImpl(
      *
      * This includes creating new tables, dropping old tables, and copying data over from the oplog.
      */
+    @LegacySyncImplementation
     private suspend fun updateObjectsFromBuckets(
         checkpoint: Checkpoint,
         priority: BucketPriority? = null,
@@ -356,54 +353,34 @@ internal class BucketStorageImpl(
         }
     }
 
-    private suspend fun forceCompact() {
-        // Reset counter
-        this.compactCounter = COMPACT_OPERATION_INTERVAL
-        this.pendingBucketDeletes.value = true
-
-        this.autoCompact()
-    }
-
-    private suspend fun autoCompact() {
-        // 1. Delete buckets
-        deletePendingBuckets()
-
-        // 2. Clear REMOVE operations, only keeping PUT ones
-        clearRemoveOps()
-    }
-
-    private suspend fun deletePendingBuckets() {
-        if (!this.pendingBucketDeletes.value) {
-            return
-        }
-
-        db.writeTransaction { tx ->
-            tx.execute(
-                "INSERT INTO powersync_operations(op, data) VALUES (?, ?)",
-                listOf("delete_pending_buckets", ""),
-            )
-
-            // Executed once after start-up, and again when there are pending deletes.
-            pendingBucketDeletes.value = false
-        }
-    }
-
-    private suspend fun clearRemoveOps() {
-        if (this.compactCounter < COMPACT_OPERATION_INTERVAL) {
-            return
-        }
-
-        db.writeTransaction { tx ->
-            tx.execute(
-                "INSERT INTO powersync_operations(op, data) VALUES (?, ?)",
-                listOf("clear_remove_ops", ""),
-            )
-        }
-        this.compactCounter = 0
-    }
-
-    @Suppress("UNUSED_PARAMETER")
+    @LegacySyncImplementation
     override fun setTargetCheckpoint(checkpoint: Checkpoint) {
-        // No-op for now
+        // No-op
     }
+
+    private fun handleControlResult(cursor: SqlCursor): List<Instruction> {
+        val result = cursor.getString(0)!!
+        logger.v { "control result: $result" }
+
+        return JsonUtil.json.decodeFromString<List<Instruction>>(result)
+    }
+
+    override suspend fun control(
+        op: String,
+        payload: String?,
+    ): List<Instruction> =
+        db.writeTransaction { tx ->
+            logger.v { "powersync_control($op, $payload)" }
+
+            tx.get("SELECT powersync_control(?, ?) AS r", listOf(op, payload), ::handleControlResult)
+        }
+
+    override suspend fun control(
+        op: String,
+        payload: ByteArray,
+    ): List<Instruction> =
+        db.writeTransaction { tx ->
+            logger.v { "powersync_control($op, binary payload)" }
+            tx.get("SELECT powersync_control(?, ?) AS r", listOf(op, payload), ::handleControlResult)
+        }
 }

@@ -2,6 +2,7 @@ package com.powersync.testutils
 
 import app.cash.turbine.ReceiveTurbine
 import com.powersync.bucket.WriteCheckpointResponse
+import com.powersync.sync.LegacySyncImplementation
 import com.powersync.sync.SyncLine
 import com.powersync.sync.SyncStatusData
 import com.powersync.utils.JsonUtil
@@ -32,9 +33,11 @@ import kotlinx.serialization.encodeToString
  * function which makes it very hard to cancel the channel when the sync client closes the request stream. That is
  * precisely what we may want to test though.
  */
+@OptIn(LegacySyncImplementation::class)
 internal class MockSyncService(
     private val lines: ReceiveChannel<SyncLine>,
     private val generateCheckpoint: () -> WriteCheckpointResponse,
+    private val trackSyncRequest: suspend (HttpRequestData) -> Unit,
 ) : HttpClientEngineBase("sync-service") {
     override val config: HttpClientEngineConfig
         get() = Config
@@ -50,6 +53,7 @@ internal class MockSyncService(
         val scope = CoroutineScope(context)
 
         return if (data.url.encodedPath == "/sync/stream") {
+            trackSyncRequest(data)
             val job =
                 scope.writer {
                     lines.consume {

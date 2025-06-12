@@ -1,51 +1,33 @@
 package com.powersync.sync
 
-import app.cash.turbine.turbineScope
+import co.touchlab.kermit.ExperimentalKermitApi
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import co.touchlab.kermit.TestConfig
 import co.touchlab.kermit.TestLogWriter
-import com.powersync.bucket.BucketChecksum
-import com.powersync.bucket.BucketPriority
+import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.bucket.BucketStorage
-import com.powersync.bucket.Checkpoint
-import com.powersync.bucket.OpType
-import com.powersync.bucket.OplogEntry
-import com.powersync.bucket.WriteCheckpointData
-import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.UpdateType
-import com.powersync.testutils.MockSyncService
-import com.powersync.testutils.waitFor
-import com.powersync.utils.JsonUtil
 import dev.mokkery.answering.returns
 import dev.mokkery.everySuspend
-import dev.mokkery.matcher.any
 import dev.mokkery.mock
-import dev.mokkery.resetCalls
 import dev.mokkery.verify
-import dev.mokkery.verify.VerifyMode.Companion.order
-import dev.mokkery.verifyNoMoreCalls
-import dev.mokkery.verifySuspend
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonObject
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
-import kotlin.time.Duration.Companion.seconds
 
-@OptIn(co.touchlab.kermit.ExperimentalKermitApi::class)
+@OptIn(ExperimentalKermitApi::class, ExperimentalPowerSyncAPI::class)
 class SyncStreamTest {
     private lateinit var bucketStorage: BucketStorage
     private lateinit var connector: PowerSyncBackendConnector
@@ -71,17 +53,6 @@ class SyncStreamTest {
         bucketStorage =
             mock<BucketStorage> {
                 everySuspend { getClientId() } returns "test-client-id"
-                everySuspend { getBucketStates() } returns emptyList()
-                everySuspend { removeBuckets(any()) } returns Unit
-                everySuspend { setTargetCheckpoint(any()) } returns Unit
-                everySuspend { saveSyncData(any()) } returns Unit
-                everySuspend { syncLocalDatabase(any(), any()) } returns
-                    SyncLocalDatabaseResult(
-                        ready = true,
-                        checkpointValid = true,
-                        checkpointFailures = emptyList(),
-                    )
-                everySuspend { getBucketOperationProgress() } returns mapOf()
             }
         connector =
             mock<PowerSyncBackendConnector> {
@@ -109,7 +80,8 @@ class SyncStreamTest {
                     uploadCrud = {},
                     logger = logger,
                     params = JsonObject(emptyMap()),
-                    scope = this,
+                    uploadScope = this,
+                    options = SyncOptions(),
                 )
 
             syncStream.invalidateCredentials()
@@ -146,7 +118,8 @@ class SyncStreamTest {
                     retryDelayMs = 10,
                     logger = logger,
                     params = JsonObject(emptyMap()),
-                    scope = this,
+                    uploadScope = this,
+                    options = SyncOptions(),
                 )
 
             syncStream.status.update { copy(connected = true) }
@@ -174,7 +147,6 @@ class SyncStreamTest {
             bucketStorage =
                 mock<BucketStorage> {
                     everySuspend { getClientId() } returns "test-client-id"
-                    everySuspend { getBucketStates() } returns emptyList()
                 }
 
             syncStream =
@@ -186,7 +158,8 @@ class SyncStreamTest {
                     retryDelayMs = 10,
                     logger = logger,
                     params = JsonObject(emptyMap()),
-                    scope = this,
+                    uploadScope = this,
+                    options = SyncOptions(),
                 )
 
             // Launch streaming sync in a coroutine that we'll cancel after verification
@@ -208,124 +181,5 @@ class SyncStreamTest {
 
             // Clean up
             job.cancel()
-        }
-
-    @Test
-    fun testPartialSync() =
-        runTest {
-            // TODO: It would be neat if we could use in-memory sqlite instances instead of mocking everything
-            // Revisit https://github.com/powersync-ja/powersync-kotlin/pull/117/files at some point
-            val syncLines = Channel<SyncLine>()
-            val client = MockSyncService(syncLines, { WriteCheckpointResponse(WriteCheckpointData("1000")) })
-
-            syncStream =
-                SyncStream(
-                    bucketStorage = bucketStorage,
-                    connector = connector,
-                    createClient = { config -> HttpClient(client, config) },
-                    uploadCrud = { },
-                    retryDelayMs = 10,
-                    logger = logger,
-                    params = JsonObject(emptyMap()),
-                    scope = this,
-                )
-
-            val job = launch { syncStream.streamingSync() }
-            var operationId = 1
-
-            suspend fun pushData(priority: Int) {
-                val id = operationId++
-
-                syncLines.send(
-                    SyncLine.SyncDataBucket(
-                        bucket = "prio$priority",
-                        data =
-                            listOf(
-                                OplogEntry(
-                                    checksum = (priority + 10).toLong(),
-                                    data = JsonUtil.json.encodeToString(mapOf("foo" to "bar")),
-                                    op = OpType.PUT,
-                                    opId = id.toString(),
-                                    rowId = "prio$priority",
-                                    rowType = "customers",
-                                ),
-                            ),
-                        after = null,
-                        nextAfter = null,
-                    ),
-                )
-            }
-
-            turbineScope(timeout = 10.0.seconds) {
-                val turbine = syncStream.status.asFlow().testIn(this)
-                turbine.waitFor { it.connected }
-                resetCalls(bucketStorage)
-
-                // Start a sync flow
-                syncLines.send(
-                    SyncLine.FullCheckpoint(
-                        Checkpoint(
-                            lastOpId = "4",
-                            checksums =
-                                buildList {
-                                    for (priority in 0..3) {
-                                        add(
-                                            BucketChecksum(
-                                                bucket = "prio$priority",
-                                                priority = BucketPriority(priority),
-                                                checksum = 10 + priority,
-                                            ),
-                                        )
-                                    }
-                                },
-                        ),
-                    ),
-                )
-
-                // Emit a partial sync complete for each priority but the last.
-                for (priorityNo in 0..<3) {
-                    val priority = BucketPriority(priorityNo)
-                    pushData(priorityNo)
-                    syncLines.send(
-                        SyncLine.CheckpointPartiallyComplete(
-                            lastOpId = operationId.toString(),
-                            priority = priority,
-                        ),
-                    )
-
-                    turbine.waitFor { it.statusForPriority(priority).hasSynced == true }
-
-                    verifySuspend(order) {
-                        if (priorityNo == 0) {
-                            bucketStorage.getBucketOperationProgress()
-                            bucketStorage.removeBuckets(any())
-                            bucketStorage.setTargetCheckpoint(any())
-                        }
-
-                        bucketStorage.saveSyncData(any())
-                        bucketStorage.syncLocalDatabase(any(), priority)
-                    }
-                }
-
-                // Then complete the sync
-                pushData(3)
-                syncLines.send(
-                    SyncLine.CheckpointComplete(
-                        lastOpId = operationId.toString(),
-                    ),
-                )
-
-                turbine.waitFor { it.hasSynced == true }
-                verifySuspend {
-                    bucketStorage.saveSyncData(any())
-                    bucketStorage.syncLocalDatabase(any(), null)
-                }
-
-                turbine.cancel()
-            }
-
-            verifyNoMoreCalls(bucketStorage)
-            job.cancel()
-            syncLines.close()
         }
 }

@@ -19,7 +19,12 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-class SyncProgressTest {
+@OptIn(LegacySyncImplementation::class)
+abstract class BaseSyncProgressTest(
+    useNewSyncImplementation: Boolean,
+) : AbstractSyncTest(
+        useNewSyncImplementation,
+    ) {
     private var lastOpId = 0
 
     @BeforeTest
@@ -113,7 +118,7 @@ class SyncProgressTest {
     @Test
     fun withoutPriorities() =
         databaseTest {
-            database.connect(connector)
+            database.connect(connector, options = options)
 
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -162,7 +167,7 @@ class SyncProgressTest {
     @Test
     fun interruptedSync() =
         databaseTest {
-            database.connect(connector)
+            database.connect(connector, options = options)
 
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -192,7 +197,7 @@ class SyncProgressTest {
             // And reconnecting
             database = openDatabase()
             syncLines = Channel()
-            database.connect(connector)
+            database.connect(connector, options = options)
 
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -226,7 +231,7 @@ class SyncProgressTest {
     @Test
     fun interruptedSyncWithNewCheckpoint() =
         databaseTest {
-            database.connect(connector)
+            database.connect(connector, options = options)
 
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -252,7 +257,7 @@ class SyncProgressTest {
             syncLines.close()
             database = openDatabase()
             syncLines = Channel()
-            database.connect(connector)
+            database.connect(connector, options = options)
 
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -340,7 +345,7 @@ class SyncProgressTest {
     @Test
     fun differentPriorities() =
         databaseTest {
-            database.connect(connector)
+            database.connect(connector, options = options)
 
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -405,3 +410,7 @@ class SyncProgressTest {
             syncLines.close()
         }
 }
+
+class LegacySyncProgressTest : BaseSyncProgressTest(false)
+
+class NewSyncProgressTest : BaseSyncProgressTest(true)
