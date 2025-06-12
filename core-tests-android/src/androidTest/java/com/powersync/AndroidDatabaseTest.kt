@@ -222,4 +222,14 @@ class AndroidDatabaseTest {
             // The exception messages differ slightly between drivers
             assertEquals(exception.message!!.contains("write a readonly database"), true)
         }
+
+    @Test
+    fun canUseTempStore() = runTest {
+        database.execute("PRAGMA temp_store = 1;") // Store temporary data as files
+        database.execute("CREATE TEMP TABLE foo (bar TEXT);")
+        val data = "new row".repeat(100);
+        for (i in 0..10000) {
+            database.execute("INSERT INTO foo VALUES (?)", parameters = listOf(data))
+        }
+    }
 }

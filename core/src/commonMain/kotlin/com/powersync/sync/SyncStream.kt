@@ -48,6 +48,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
@@ -635,8 +636,8 @@ internal class SyncStream(
             state: SyncStreamState,
         ): SyncStreamState {
             val batch = SyncDataBatch(listOf(data))
-            status.update { copy(downloading = true, downloadProgress = downloadProgress?.incrementDownloaded(batch)) }
             bucketStorage.saveSyncData(batch)
+            status.update { copy(downloading = true, downloadProgress = downloadProgress?.incrementDownloaded(batch)) }
             return state
         }
 

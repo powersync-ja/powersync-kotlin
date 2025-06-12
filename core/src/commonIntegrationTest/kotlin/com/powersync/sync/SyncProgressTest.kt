@@ -10,10 +10,11 @@ import com.powersync.bucket.OplogEntry
 import com.powersync.testutils.ActiveDatabaseTest
 import com.powersync.testutils.databaseTest
 import com.powersync.testutils.waitFor
+import io.kotest.assertions.withClue
+import io.kotest.matchers.properties.shouldHaveValue
 import kotlinx.coroutines.channels.Channel
 import kotlin.test.BeforeTest
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -80,6 +81,16 @@ abstract class BaseSyncProgressTest(
         }
     }
 
+    private fun ProgressWithOperations.shouldBe(
+        downloaded: Int,
+        total: Int,
+    ) {
+        withClue("progress $downloadedOperations/$totalOperations should be $downloaded/$total") {
+            this::downloadedOperations shouldHaveValue downloaded
+            this::totalOperations shouldHaveValue total
+        }
+    }
+
     private suspend fun ReceiveTurbine<SyncStatusData>.expectProgress(
         total: Pair<Int, Int>,
         priorities: Map<BucketPriority, Pair<Int, Int>> = emptyMap(),
@@ -88,14 +99,12 @@ abstract class BaseSyncProgressTest(
         val progress = item.downloadProgress ?: error("Expected download progress on $item")
 
         assertTrue { item.downloading }
-        assertEquals(total.first, progress.downloadedOperations)
-        assertEquals(total.second, progress.totalOperations)
+        progress.shouldBe(total.first, total.second)
 
         priorities.forEach { (priority, expected) ->
             val (expectedDownloaded, expectedTotal) = expected
-            val progress = progress.untilPriority(priority)
-            assertEquals(expectedDownloaded, progress.downloadedOperations)
-            assertEquals(expectedTotal, progress.totalOperations)
+            val actualProgress = progress.untilPriority(priority)
+            actualProgress.shouldBe(expectedDownloaded, expectedTotal)
         }
     }
 
@@ -271,6 +280,61 @@ abstract class BaseSyncProgressTest(
                 addCheckpointComplete()
                 turbine.expectNotDownloading()
 
+                turbine.cancel()
+            }
+
+            database.close()
+            syncLines.close()
+        }
+
+    @Test
+    fun interruptedWithDefrag() =
+        databaseTest {
+            database.connect(connector)
+
+            turbineScope {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                turbine.waitFor { it.connected && !it.downloading }
+                syncLines.send(
+                    SyncLine.FullCheckpoint(
+                        Checkpoint(
+                            lastOpId = "10",
+                            checksums = listOf(bucket("a", 10)),
+                        ),
+                    ),
+                )
+                turbine.expectProgress(0 to 10)
+
+                addDataLine("a", 5)
+                turbine.expectProgress(5 to 10)
+
+                turbine.cancel()
+            }
+
+            // Close and re-connect
+            database.close()
+            syncLines.close()
+            database = openDatabase()
+            syncLines = Channel()
+            database.connect(connector)
+
+            turbineScope {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                turbine.waitFor { it.connected && !it.downloading }
+
+                // A sync rule deploy could reset buckets, making the new bucket smaller than the
+                // existing one.
+                syncLines.send(
+                    SyncLine.FullCheckpoint(
+                        Checkpoint(
+                            lastOpId = "14",
+                            checksums = listOf(bucket("a", 4)),
+                        ),
+                    ),
+                )
+
+                // In this special case, don't report 5/4 as progress
+                turbine.expectProgress(0 to 4)
                 turbine.cancel()
             }
 

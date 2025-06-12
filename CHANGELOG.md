@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.2 (pending)
+
+* [Android, JVM] Use version `0.4.0` of `powersync-sqlite-core`.
+
+## 1.1.1
+
+* Fix reported progress around compactions / defrags on the sync service.
+* [Android] Set `temp_store_directory`, avoiding crashes for large materialized views.
+
 ## 1.1.0
 
 * Add `trackPreviousValues` option on `Table` which sets `CrudEntry.previousValues` to previous values on updates.

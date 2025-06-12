@@ -1,14 +1,13 @@
+import com.powersync.compile.ClangCompile
+import com.powersync.compile.CreateSqliteCInterop
+import com.powersync.compile.CreateStaticLibrary
+import com.powersync.compile.UnzipSqlite
 import java.io.File
-import java.io.FileInputStream
 import com.powersync.plugins.sonatype.setupGithubRepository
 import com.powersync.plugins.utils.powersyncTargets
 import de.undercouch.gradle.tasks.download.Download
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
-import org.jetbrains.kotlin.gradle.utils.NativeCompilerDownloader
-import org.jetbrains.kotlin.konan.properties.Properties
 import org.jetbrains.kotlin.konan.target.HostManager
-import org.jetbrains.kotlin.konan.target.KonanTarget
-import org.jetbrains.kotlin.konan.target.PlatformManager
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -20,32 +19,22 @@ plugins {
 val sqliteVersion = "3490100"
 val sqliteReleaseYear = "2025"
 
-val downloads = layout.buildDirectory.dir("downloads")
-val sqliteSrcFolder = downloads.map { it.dir("sqlite3") }
-
 val downloadSQLiteSources by tasks.registering(Download::class) {
     val zipFileName = "sqlite-amalgamation-$sqliteVersion.zip"
     src("https://www.sqlite.org/$sqliteReleaseYear/$zipFileName")
-    dest(downloads.map { it.file(zipFileName) })
+    dest(layout.buildDirectory.dir("downloads").map { it.file(zipFileName) })
     onlyIfNewer(true)
     overwrite(false)
 }
 
-val unzipSQLiteSources by tasks.registering(Copy::class) {
-    dependsOn(downloadSQLiteSources)
+val unzipSQLiteSources by tasks.registering(UnzipSqlite::class) {
+    val zip = downloadSQLiteSources.map { it.outputs.files.singleFile }
+    inputs.file(zip)
 
-    from(
-        zipTree(downloadSQLiteSources.get().dest).matching {
-            include("*/sqlite3.*")
-            exclude {
-                it.isDirectory
-            }
-            eachFile {
-                this.path = this.name
-            }
-        },
+    unzipSqlite(
+        src = zipTree(zip),
+        dir = layout.buildDirectory.dir("downloads/sqlite3")
     )
-    into(sqliteSrcFolder)
 }
 
 // Obtain host and platform manager from Kotlin multiplatform plugin. They're supposed to be
@@ -53,99 +42,33 @@ val unzipSQLiteSources by tasks.registering(Copy::class) {
 // use to compile SQLite for the platforms we need.
 val hostManager = HostManager()
 
-fun compileSqlite(target: KotlinNativeTarget): TaskProvider<Task> {
+fun compileSqlite(target: KotlinNativeTarget): TaskProvider<CreateSqliteCInterop> {
     val name = target.targetName
     val outputDir = layout.buildDirectory.dir("c/$name")
 
-    val compileSqlite = tasks.register("${name}CompileSqlite") {
-        dependsOn(unzipSQLiteSources)
-        val targetDirectory = outputDir.get()
-        val sqliteSource = sqliteSrcFolder.map { it.file("sqlite3.c") }.get()
-        val output = targetDirectory.file("sqlite3.o")
+    val sqlite3Obj = outputDir.map { it.file("sqlite3.o") }
+    val archive = outputDir.map { it.file("libsqlite3.a") }
 
-        inputs.file(sqliteSource)
-        outputs.file(output)
+    val compileSqlite = tasks.register("${name}CompileSqlite", ClangCompile::class) {
+        inputs.dir(unzipSQLiteSources.map { it.destination })
 
-        doFirst {
-            targetDirectory.asFile.mkdirs()
-            output.asFile.delete()
-        }
-
-        doLast {
-            val (llvmTarget, sysRoot) = when (target.konanTarget) {
-                KonanTarget.IOS_X64 -> "x86_64-apple-ios12.0-simulator" to "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk"
-                KonanTarget.IOS_ARM64 -> "arm64-apple-ios12.0" to "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk"
-                KonanTarget.IOS_SIMULATOR_ARM64 -> "arm64-apple-ios14.0-simulator" to "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk"
-                KonanTarget.MACOS_ARM64 -> "aarch64-apple-macos" to "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/"
-                KonanTarget.MACOS_X64 -> "x86_64-apple-macos" to "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/"
-                else -> error("Unexpected target $target")
-            }
-
-            providers.exec {
-                executable = "clang"
-                args(
-                    "-B/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
-                    "-fno-stack-protector",
-                    "-target",
-                    llvmTarget,
-                    "-isysroot",
-                    sysRoot,
-                    "-fPIC",
-                    "--compile",
-                    "-I${sqliteSrcFolder.get().asFile.absolutePath}",
-                    sqliteSource.asFile.absolutePath,
-                    "-DHAVE_GETHOSTUUID=0",
-                    "-DSQLITE_ENABLE_DBSTAT_VTAB",
-                    "-DSQLITE_ENABLE_FTS5",
-                    "-DSQLITE_ENABLE_RTREE",
-                    "-O3",
-                    "-o",
-                    "sqlite3.o",
-                )
-
-                workingDir = targetDirectory.asFile
-            }.result.get()
-        }
+        inputFile.set(unzipSQLiteSources.flatMap { it.destination.file("sqlite3.c") })
+        konanTarget.set(target.konanTarget.name)
+        include.set(unzipSQLiteSources.flatMap { it.destination })
+        objectFile.set(sqlite3Obj)
     }
 
-    val createStaticLibrary = tasks.register("${name}ArchiveSqlite") {
-        dependsOn(compileSqlite)
-        val targetDirectory = outputDir.get()
-        inputs.file(targetDirectory.file("sqlite3.o"))
-        outputs.file(targetDirectory.file("libsqlite3.a"))
-
-        doLast {
-            providers.exec {
-                executable = "ar"
-                args("rc", "libsqlite3.a", "sqlite3.o")
-
-                workingDir = targetDirectory.asFile
-            }.result.get()
-        }
+    val createStaticLibrary = tasks.register("${name}ArchiveSqlite", CreateStaticLibrary::class) {
+        inputs.file(compileSqlite.map { it.objectFile })
+        objects.from(sqlite3Obj)
+        staticLibrary.set(archive)
     }
 
-    val buildCInteropDef = tasks.register("${name}CinteropSqlite") {
-        dependsOn(createStaticLibrary)
+    val buildCInteropDef = tasks.register("${name}CinteropSqlite", CreateSqliteCInterop::class) {
+        inputs.file(createStaticLibrary.map { it.staticLibrary })
 
-        val archive = createStaticLibrary.get().outputs.files.singleFile
-        inputs.file(archive)
-
-        val parent = archive.parentFile
-        val defFile = File(parent, "sqlite3.def")
-        outputs.file(defFile)
-
-        doFirst {
-            defFile.writeText(
-                """
-            package = com.powersync.sqlite3
-            
-            linkerOpts.linux_x64 = -lpthread -ldl
-            linkerOpts.macos_x64 = -lpthread -ldl
-            staticLibraries=${archive.name}
-            libraryPaths=${parent.relativeTo(project.layout.projectDirectory.asFile.canonicalFile)}
-            """.trimIndent(),
-            )
-        }
+        archiveFile.set(archive)
+        definitionFile.fileProvider(archive.map { File(it.asFile.parentFile, "sqlite3.def") })
     }
 
     return buildCInteropDef
@@ -180,10 +103,7 @@ kotlin {
 
             compilations.named("main") {
                 cinterops.create("sqlite3") {
-                    val cInteropTask = tasks[interopProcessingTaskName]
-                    cInteropTask.dependsOn(compileSqlite3)
-                    definitionFile = compileSqlite3.get().outputs.files.singleFile
-                    includeDirs(sqliteSrcFolder.get())
+                    definitionFile.set(compileSqlite3.flatMap { it.definitionFile })
                 }
             }
         }
