@@ -143,7 +143,7 @@ public data class SyncDownloadProgress internal constructor(
                     put(
                         bucket.bucket,
                         previous.copy(
-                            sinceLast = min(previous.sinceLast + bucket.data.size, previous.total),
+                            sinceLast = min(previous.sinceLast + bucket.data.size, previous.targetCount),
                         ),
                     )
                 }
