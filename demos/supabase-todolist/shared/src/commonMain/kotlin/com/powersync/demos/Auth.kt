@@ -5,8 +5,6 @@ import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import com.powersync.PowerSyncDatabase
 import com.powersync.connector.supabase.SupabaseConnector
-import com.powersync.sync.ConnectionMethod
-import com.powersync.sync.SyncOptions
 import io.github.jan.supabase.auth.status.RefreshFailureCause
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -46,9 +44,7 @@ internal class AuthViewModel(
                 supabase.sessionStatus.collect {
                     when (it) {
                         is SessionStatus.Authenticated -> {
-                            // TODO REMOVE
-                            val options = SyncOptions(method = ConnectionMethod.WebSocket())
-                            db.connect(supabase, options = options)
+                            db.connect(supabase)
                         }
                         is SessionStatus.NotAuthenticated -> {
                             db.disconnectAndClear()
