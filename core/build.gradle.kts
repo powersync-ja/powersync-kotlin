@@ -6,6 +6,7 @@ import org.gradle.internal.os.OperatingSystem
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest
 import org.jetbrains.kotlin.gradle.tasks.KotlinTest
+import org.jetbrains.kotlin.konan.target.Family
 
 
 plugins {
@@ -133,18 +134,16 @@ kotlin {
             compileTaskProvider {
                 compilerOptions.freeCompilerArgs.add("-Xexport-kdoc")
             }
-        }
 
-        /*
-        If we ever need macOS support:
-        {
-            binaries.withType<TestExecutable>().configureEach {
-                linkTaskProvider.dependsOn(downloadPowersyncDesktopBinaries)
-                linkerOpts("-lpowersync")
-                linkerOpts("-L", binariesFolder.map { it.dir("powersync") }.get().asFile.path)
+            if (this.target.konanTarget.family == Family.WATCHOS) {
+                // We're linking the core extension statically, which means that we need a cinterop
+                // to call powersync_init_static
+                cinterops.create("powersync_static") {
+                    packageName("com.powersync.static")
+                    headers(file("src/watchosMain/powersync_static.h"))
+                }
             }
         }
-         */
     }
 
     explicitApi()

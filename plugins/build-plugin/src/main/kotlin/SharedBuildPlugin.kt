@@ -24,7 +24,7 @@ class SharedBuildPlugin : Plugin<Project> {
                 .toString()
 
         val frameworkUrl =
-            "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/powersync-sqlite-core.xcframework.zip"
+            "file:/Users/simon/src/powersync-sqlite-core/powersync-sqlite-core.xcframework.zip"
 
         val downloadPowersyncFramework =
             project.tasks.register("downloadPowersyncFramework", Download::class.java) {
