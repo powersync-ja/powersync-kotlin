@@ -41,7 +41,6 @@ public fun KotlinTargetContainerWithPresetFunctions.powersyncTargets(
 
             if (watchOS) {
                 watchosDeviceArm64() // aarch64-apple-watchos
-                watchosArm32() // armv7k-apple-watchos
                 watchosArm64() // arm64_32-apple-watchos
 
                 watchosSimulatorArm64() // aarch64-apple-watchos-simulator

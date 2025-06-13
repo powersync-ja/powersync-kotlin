@@ -57,42 +57,29 @@ class SharedBuildPlugin : Plugin<Project> {
             .targets
             .withType<KotlinNativeTarget>()
             .configureEach {
-                if (konanTarget.family == Family.IOS &&
-                    konanTarget.name.contains(
-                        "simulator",
-                    )
-                ) {
-                    binaries
-                        .withType<org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable>()
-                        .configureEach {
-                            linkTaskProvider.configure { dependsOn(unzipPowersyncFramework) }
-                            linkerOpts("-framework", "powersync-sqlite-core")
-
-                            val frameworkRoot =
-                                binariesFolder
-                                    .map { it.dir("framework/extracted/powersync-sqlite-core.xcframework/ios-arm64_x86_64-simulator") }
-                                    .get()
-                                    .asFile.path
-
-                            linkerOpts("-F", frameworkRoot)
-                            linkerOpts("-rpath", frameworkRoot)
-                        }
-                } else if (konanTarget.family == Family.OSX) {
-                    binaries
-                        .withType<org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable>()
-                        .configureEach {
-                            linkTaskProvider.configure { dependsOn("unzipPowersyncFramework") }
-                            linkerOpts("-framework", "powersync-sqlite-core")
-                            var frameworkRoot =
-                                binariesFolder
-                                    .map { it.dir("framework/extracted/powersync-sqlite-core.xcframework/macos-arm64_x86_64") }
-                                    .get()
-                                    .asFile.path
-
-                            linkerOpts("-F", frameworkRoot)
-                            linkerOpts("-rpath", frameworkRoot)
-                        }
+                val abiName = when(konanTarget.family) {
+                    Family.OSX -> "macos-arm64_x86_64"
+                    // We're testing on simulators
+                    Family.IOS -> "ios-arm64_x86_64-simulator"
+                    Family.WATCHOS -> "watchos-arm64_x86_64-simulator"
+                    else -> return@configureEach
                 }
+
+                binaries
+                    .withType<org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable>()
+                    .configureEach {
+                        linkTaskProvider.configure { dependsOn(unzipPowersyncFramework) }
+                        linkerOpts("-framework", "powersync-sqlite-core")
+
+                        val frameworkRoot =
+                            binariesFolder
+                                .map { it.dir("framework/extracted/powersync-sqlite-core.xcframework/$abiName") }
+                                .get()
+                                .asFile.path
+
+                        linkerOpts("-F", frameworkRoot)
+                        linkerOpts("-rpath", frameworkRoot)
+                    }
             }
     }
 }
