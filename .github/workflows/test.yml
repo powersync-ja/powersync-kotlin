@@ -16,7 +16,7 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            targets: iosSimulatorArm64Test macosArm64Test jvmTest
+            targets: iosSimulatorArm64Test macosArm64Test watchosSimulatorArm64Test jvmTest
           - os: ubuntu-latest
             targets: testDebugUnitTest testReleaseUnitTest jvmTest lintKotlin
           - os: windows-latest
