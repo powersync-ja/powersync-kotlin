@@ -7,6 +7,8 @@ import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.UpdateType
 import com.powersync.db.runWrappedSuspending
+import com.powersync.db.schema.Schema
+import com.powersync.db.schema.Table
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.annotations.SupabaseInternal
 import io.github.jan.supabase.auth.Auth
@@ -37,6 +39,7 @@ public class SupabaseConnector(
     private val storageBucket: String? = null,
 ) : PowerSyncBackendConnector() {
     private var errorCode: String? = null
+    private var schema: Schema? = null
 
     private object PostgresFatalCodes {
         // Using Regex patterns for Postgres error codes
@@ -143,6 +146,15 @@ public class SupabaseConnector(
     public fun session(): UserSession? = supabaseClient.auth.currentSessionOrNull()
 
     public val sessionStatus: StateFlow<SessionStatus> = supabaseClient.auth.sessionStatus
+    
+    /**
+     * Set the PowerSync schema to enable automatic conflict resolution for upserts.
+     * When a schema is provided, the connector will use unique constraints defined in the schema
+     * to determine conflict resolution columns for upsert operations.
+     */
+    public fun setSchema(schema: Schema) {
+        this.schema = schema
+    }
 
     public suspend fun loginAnonymously() {
         runWrappedSuspending {
@@ -191,7 +203,22 @@ public class SupabaseConnector(
                         UpdateType.PUT -> {
                             val data = entry.opData?.toMutableMap() ?: mutableMapOf()
                             data["id"] = entry.id
-                            table.upsert(data)
+                            
+                            // Check if we have schema information to determine unique constraints
+                            val tableSchema = schema?.tables?.find { it.name == entry.table }
+                            val uniqueIndex = tableSchema?.getFirstUniqueIndex()
+                            
+                            if (uniqueIndex != null) {
+                                // Use unique columns for conflict resolution
+                                val conflictColumns = uniqueIndex.columns.joinToString(",") { it.column }
+                                table.upsert(data) {
+                                    onConflict = conflictColumns
+                                    ignoreDuplicates = false // Merge duplicates by default
+                                }
+                            } else {
+                                // Default upsert behavior (conflict on primary key)
+                                table.upsert(data)
+                            }
                         }
 
                         UpdateType.PATCH -> {
