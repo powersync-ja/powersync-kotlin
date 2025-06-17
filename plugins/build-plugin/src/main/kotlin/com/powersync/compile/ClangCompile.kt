@@ -1,6 +1,9 @@
 package com.powersync.compile
 
+import kotlin.io.path.Path
 import org.gradle.api.DefaultTask
+import org.gradle.api.GradleException
+import org.gradle.api.provider.Provider
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
@@ -15,6 +18,7 @@ import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import org.jetbrains.kotlin.konan.target.KonanTarget
 import javax.inject.Inject
+import kotlin.io.path.absolutePathString
 import kotlin.io.path.name
 
 @CacheableTask
@@ -36,9 +40,22 @@ abstract class ClangCompile: DefaultTask() {
     @get:Inject
     protected abstract val providers: ProviderFactory
 
+    @get:Input
+    val xcodeInstallation: Provider<String> get() = providers.exec {
+        executable("xcode-select")
+        args("-p")
+    }.standardOutput.asText
+
     @TaskAction
     fun run() {
         val target = requireNotNull(KonanTarget.predefinedTargets[konanTarget.get()])
+        val xcodePath = xcodeInstallation.get().trim()
+        if (xcodePath.isEmpty()) {
+            throw GradleException("xcode-select was unable to resolve an XCode installation")
+        }
+
+        val xcode = Path(xcodePath)
+        val toolchain = xcode.resolve("Toolchains/XcodeDefault.xctoolchain/usr/bin").absolutePathString()
 
         val (llvmTarget, sysRoot) = when (target) {
             KonanTarget.IOS_X64 -> "x86_64-apple-ios12.0-simulator" to IOS_SIMULATOR_SDK
@@ -59,12 +76,12 @@ abstract class ClangCompile: DefaultTask() {
         providers.exec {
             executable = "clang"
             args(
-                "-B/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+                "-B${toolchain}",
                 "-fno-stack-protector",
                 "-target",
                 llvmTarget,
                 "-isysroot",
-                sysRoot,
+                xcode.resolve(sysRoot).absolutePathString(),
                 "-fPIC",
                 "--compile",
                 "-I${include.get().asFile.absolutePath}",
@@ -83,10 +100,10 @@ abstract class ClangCompile: DefaultTask() {
     }
 
     companion object {
-        const val WATCHOS_SDK = "/Applications/Xcode.app/Contents/Developer/Platforms/WatchOS.platform/Developer/SDKs/WatchOS.sdk"
-        const val WATCHOS_SIMULATOR_SDK = "/Applications/Xcode.app/Contents/Developer/Platforms/WatchSimulator.platform/Developer/SDKs/WatchSimulator.sdk/"
-        const val IOS_SDK = "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk"
-        const val IOS_SIMULATOR_SDK = "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk"
-        const val MACOS_SDK = "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/"
+        const val WATCHOS_SDK = "Platforms/WatchOS.platform/Developer/SDKs/WatchOS.sdk"
+        const val WATCHOS_SIMULATOR_SDK = "Platforms/WatchSimulator.platform/Developer/SDKs/WatchSimulator.sdk/"
+        const val IOS_SDK = "Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk"
+        const val IOS_SIMULATOR_SDK = "Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk"
+        const val MACOS_SDK = "Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/"
     }
 }
