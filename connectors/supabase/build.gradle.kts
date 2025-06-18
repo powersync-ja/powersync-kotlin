@@ -12,7 +12,8 @@ plugins {
 }
 
 kotlin {
-    powersyncTargets()
+    // The Supabase KMP project does not support arm64 watchOS builds
+    powersyncTargets(watchOS = false)
     targets.withType<KotlinNativeTarget> {
         compilations.named("main") {
             compileTaskProvider {
