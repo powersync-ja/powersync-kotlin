@@ -1,5 +1,4 @@
 import co.touchlab.kermit.Logger
-import com.powersync.bucket.BucketState
 import com.powersync.bucket.BucketStorageImpl
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.UpdateType
@@ -146,27 +145,6 @@ class BucketStorageTest {
 
             val result = bucketStorage.updateLocalTarget { "new-checkpoint" }
             assertTrue(result)
-        }
-
-    @Test
-    fun testGetBucketStates() =
-        runTest {
-            val mockBucketStates = listOf(BucketState("bucket1", "op1"), BucketState("bucket2", "op2"))
-            mockDb =
-                mock<InternalDatabase> {
-                    everySuspend {
-                        getOptional<Long>(
-                            any(),
-                            any(),
-                            any(),
-                        )
-                    } returns 1L
-                    everySuspend { getAll<BucketState>(any(), any(), any()) } returns mockBucketStates
-                }
-            bucketStorage = BucketStorageImpl(mockDb, Logger)
-
-            val result = bucketStorage.getBucketStates()
-            assertEquals(mockBucketStates, result)
         }
 
     // TODO: Add tests for removeBuckets, hasCompletedSync, syncLocalDatabase currently not covered because

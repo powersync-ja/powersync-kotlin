@@ -2,5 +2,5 @@ package com.powersync
 
 public class PowerSyncException(
     message: String,
-    cause: Throwable,
+    cause: Throwable?,
 ) : Exception(message, cause)

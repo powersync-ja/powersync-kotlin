@@ -2,6 +2,9 @@
 
 package com.powersync
 
+import com.powersync.sync.ConnectionMethod
+import com.powersync.sync.SyncOptions
+
 /**
  * Helper class designed to bridge SKIEE methods and allow them to throw
  * `PowerSyncException`. This is necessary because these exceptions cannot
@@ -13,3 +16,25 @@ package com.powersync
  */
 @Throws(PowerSyncException::class)
 public fun throwPowerSyncException(exception: PowerSyncException): Unit = throw exception
+
+/**
+ * Creates a [ConnectionMethod] based on simple booleans, because creating the actual instance with
+ * the default constructor is not possible from Swift due to an optional argument with an internal
+ * default value.
+ */
+@OptIn(ExperimentalPowerSyncAPI::class)
+public fun createSyncOptions(
+    newClient: Boolean,
+    webSocket: Boolean,
+    userAgent: String,
+): SyncOptions =
+    SyncOptions(
+        newClientImplementation = newClient,
+        method =
+            if (webSocket) {
+                ConnectionMethod.WebSocket()
+            } else {
+                ConnectionMethod.Http
+            },
+        userAgent = userAgent,
+    )

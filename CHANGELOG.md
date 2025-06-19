@@ -1,7 +1,30 @@
 # Changelog
 
-## 1.1.2 (pending)
+## 1.2.0 (pending)
 
+* Add a new sync client implementation written in Rust instead of Kotlin. While this client is still
+  experimental, we intend to make it the default in the future. The main benefit of this client is
+  faster sync performance, but upcoming features will also require this client. We encourage 
+  interested users to try it out by opting in to `ExperimentalPowerSyncAPI` and passing options when
+  connecting:
+  ```Kotlin
+  //@file:OptIn(ExperimentalPowerSyncAPI::class)
+  database.connect(MyConnector(), options = SyncOptions(
+    newClientImplementation = true,
+  ))
+  ```
+  Switching between the clients can be done at any time without compatibility issues. If you run
+  into issues with the new client, please reach out to us!
+* In addition to HTTP streams, the Kotlin SDK also supports fetching sync instructions from the
+  PowerSync service in a binary format. This requires the new sync client, and can then be enabled
+  on the sync options:
+  ```Kotlin
+  //@file:OptIn(ExperimentalPowerSyncAPI::class)
+  database.connect(MyConnector(), options = SyncOptions(
+    newClientImplementation = true,
+    method = ConnectionMethod.WebSocket()
+  ))
+  ```
 * [Android, JVM] Use version `0.4.0` of `powersync-sqlite-core`.
 
 ## 1.1.1

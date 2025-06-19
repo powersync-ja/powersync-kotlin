@@ -1,7 +1,9 @@
 package com.powersync.sync
 
 import co.touchlab.kermit.Logger
+import co.touchlab.kermit.Severity
 import co.touchlab.stately.concurrency.AtomicReference
+import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.bucket.BucketChecksum
 import com.powersync.bucket.BucketRequest
 import com.powersync.bucket.BucketStorage
@@ -13,9 +15,11 @@ import com.powersync.utils.JsonUtil
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.call.body
+import io.ktor.client.plugins.DefaultRequest
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.timeout
+import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
 import io.ktor.client.request.preparePost
@@ -31,14 +35,25 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.encodeToJsonElement
 
+@OptIn(ExperimentalPowerSyncAPI::class)
 internal class SyncStream(
     private val bucketStorage: BucketStorage,
     private val connector: PowerSyncBackendConnector,
@@ -46,15 +61,17 @@ internal class SyncStream(
     private val retryDelayMs: Long = 5000L,
     private val logger: Logger,
     private val params: JsonObject,
-    private val scope: CoroutineScope,
+    private val uploadScope: CoroutineScope,
+    private val options: SyncOptions,
     createClient: (HttpClientConfig<*>.() -> Unit) -> HttpClient,
 ) {
     private var isUploadingCrud = AtomicReference<PendingCrudUpload?>(null)
+    private var completedCrudUploads = Channel<Unit>(onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
     /**
-     * The current sync status. This instance is updated as changes occur
+     * The current sync status. This instance is mutated as changes occur
      */
-    var status = SyncStatus()
+    val status = SyncStatus()
 
     private var clientId: String? = null
 
@@ -62,6 +79,13 @@ internal class SyncStream(
         createClient {
             install(HttpTimeout)
             install(ContentNegotiation)
+            install(WebSockets)
+
+            install(DefaultRequest) {
+                headers {
+                    append("User-Agent", options.userAgent)
+                }
+            }
         }
 
     fun invalidateCredentials() {
@@ -96,7 +120,7 @@ internal class SyncStream(
     }
 
     fun triggerCrudUploadAsync(): Job =
-        scope.launch {
+        uploadScope.launch {
             val thisIteration = PendingCrudUpload(CompletableDeferred())
             var holdingUploadLock = false
 
@@ -109,6 +133,7 @@ internal class SyncStream(
                 uploadAllCrud()
             } finally {
                 if (holdingUploadLock) {
+                    completedCrudUploads.send(Unit)
                     isUploadingCrud.set(null)
                 }
 
@@ -181,7 +206,7 @@ internal class SyncStream(
         return body.data.writeCheckpoint
     }
 
-    private fun streamingSyncRequest(req: StreamingSyncRequest): Flow<String> =
+    private fun connectViaHttp(req: JsonElement): Flow<String> =
         flow {
             val credentials = connector.getCredentialsCached()
             require(credentials != null) { "Not logged in" }
@@ -221,242 +246,424 @@ internal class SyncStream(
             }
         }
 
-    private suspend fun streamingSyncIteration(): SyncStreamState {
-        val bucketEntries = bucketStorage.getBucketStates()
-        val initialBuckets = mutableMapOf<String, String>()
+    private fun connectViaWebSocket(
+        req: JsonObject,
+        options: ConnectionMethod.WebSocket,
+    ): Flow<ByteArray> =
+        flow {
+            val credentials = requireNotNull(connector.getCredentialsCached()) { "Not logged in" }
 
-        var state =
-            SyncStreamState(
-                targetCheckpoint = null,
-                validatedCheckpoint = null,
-                appliedCheckpoint = null,
-                bucketSet = initialBuckets.keys.toMutableSet(),
+            emitAll(
+                httpClient.rSocketSyncStream(
+                    userAgent = this@SyncStream.options.userAgent,
+                    options = options,
+                    req = req,
+                    credentials = credentials,
+                ),
             )
-
-        bucketEntries.forEach { entry ->
-            initialBuckets[entry.bucket] = entry.opId
         }
 
-        val req =
-            StreamingSyncRequest(
-                buckets = initialBuckets.map { (bucket, after) -> BucketRequest(bucket, after) },
-                clientId = clientId!!,
-                parameters = params,
+    private suspend fun streamingSyncIteration() {
+        coroutineScope {
+            if (options.newClientImplementation) {
+                val iteration = ActiveIteration(this)
+
+                try {
+                    iteration.start()
+                } finally {
+                    // This can't be cancelled because we need to send a stop message, which is async, to
+                    // clean up resources.
+                    withContext(NonCancellable) {
+                        iteration.stop()
+                    }
+                }
+            } else {
+                legacySyncIteration()
+            }
+        }
+    }
+
+    @OptIn(LegacySyncImplementation::class)
+    private suspend fun CoroutineScope.legacySyncIteration() {
+        LegacyIteration(this).streamingSyncIteration()
+    }
+
+    /**
+     * Implementation of a sync iteration that delegates to helper functions implemented in the
+     * Rust core extension.
+     *
+     * This avoids us having to decode sync lines in Kotlin, unlocking the RSocket protocol and
+     * improving performance.
+     */
+    private inner class ActiveIteration(
+        val scope: CoroutineScope,
+        var fetchLinesJob: Job? = null,
+        var credentialsInvalidation: Job? = null,
+    ) {
+        suspend fun start() {
+            @Serializable
+            class StartParameters(
+                val parameters: JsonObject,
             )
 
-        streamingSyncRequest(req).collect { value ->
-            val line = JsonUtil.json.decodeFromString<SyncLine>(value)
+            control("start", JsonUtil.json.encodeToString(StartParameters(params)))
+            fetchLinesJob?.join()
+        }
 
-            state = handleInstruction(line, value, state)
+        suspend fun stop() {
+            control("stop")
+            fetchLinesJob?.join()
+        }
 
-            if (state.abortIteration) {
-                return@collect
+        private suspend fun control(
+            op: String,
+            payload: String? = null,
+        ) {
+            val instructions = bucketStorage.control(op, payload)
+            handleInstructions(instructions)
+        }
+
+        private suspend fun control(
+            op: String,
+            payload: ByteArray,
+        ) {
+            val instructions = bucketStorage.control(op, payload)
+            handleInstructions(instructions)
+        }
+
+        private suspend fun handleInstructions(instructions: List<Instruction>) {
+            instructions.forEach { handleInstruction(it) }
+        }
+
+        private suspend fun handleInstruction(instruction: Instruction) {
+            when (instruction) {
+                is Instruction.EstablishSyncStream -> {
+                    fetchLinesJob?.cancelAndJoin()
+                    fetchLinesJob =
+                        scope.launch {
+                            launch {
+                                for (completion in completedCrudUploads) {
+                                    control("completed_upload")
+                                }
+                            }
+
+                            launch {
+                                connect(instruction)
+                            }
+                        }
+                }
+                Instruction.CloseSyncStream -> {
+                    fetchLinesJob!!.cancelAndJoin()
+                    fetchLinesJob = null
+                }
+                Instruction.FlushSileSystem -> {
+                    // We have durable file systems, so flushing is not necessary
+                }
+                is Instruction.LogLine -> {
+                    logger.log(
+                        severity =
+                            when (instruction.severity) {
+                                "DEBUG" -> Severity.Debug
+                                "INFO" -> Severity.Debug
+                                else -> Severity.Warn
+                            },
+                        message = instruction.line,
+                        tag = logger.tag,
+                        throwable = null,
+                    )
+                }
+                is Instruction.UpdateSyncStatus -> {
+                    status.update {
+                        applyCoreChanges(instruction.status)
+                    }
+                }
+                is Instruction.FetchCredentials -> {
+                    if (instruction.didExpire) {
+                        connector.invalidateCredentials()
+                    } else {
+                        // Token expires soon - refresh it in the background
+                        if (credentialsInvalidation == null) {
+                            val job =
+                                scope.launch {
+                                    connector.prefetchCredentials().join()
+
+                                    // Token has been refreshed, start another iteration
+                                    stop()
+                                }
+                            job.invokeOnCompletion {
+                                credentialsInvalidation = null
+                            }
+                            credentialsInvalidation = job
+                        }
+                    }
+                }
+                Instruction.DidCompleteSync -> {
+                    status.update { copy(downloadError = null) }
+                }
+                is Instruction.UnknownInstruction -> {
+                    logger.w { "Unknown instruction received from core extension: ${instruction.raw}" }
+                }
             }
         }
 
-        status.update { abortedDownload() }
-
-        return state
+        private suspend fun connect(start: Instruction.EstablishSyncStream) {
+            when (val method = options.method) {
+                ConnectionMethod.Http ->
+                    connectViaHttp(start.request).collect { rawLine ->
+                        control("line_text", rawLine)
+                    }
+                is ConnectionMethod.WebSocket ->
+                    connectViaWebSocket(start.request, method).collect { binaryLine ->
+                        control("line_binary", binaryLine)
+                    }
+            }
+        }
     }
 
-    private suspend fun handleInstruction(
-        line: SyncLine,
-        jsonString: String,
-        state: SyncStreamState,
-    ): SyncStreamState =
-        when (line) {
-            is SyncLine.FullCheckpoint -> handleStreamingSyncCheckpoint(line, state)
-            is SyncLine.CheckpointDiff -> handleStreamingSyncCheckpointDiff(line, state)
-            is SyncLine.CheckpointComplete -> handleStreamingSyncCheckpointComplete(state)
-            is SyncLine.CheckpointPartiallyComplete ->
-                handleStreamingSyncCheckpointPartiallyComplete(
-                    line,
-                    state,
+    @LegacySyncImplementation
+    private inner class LegacyIteration(
+        val scope: CoroutineScope,
+    ) {
+        suspend fun streamingSyncIteration() {
+            val bucketEntries = bucketStorage.getBucketStates()
+            val initialBuckets = mutableMapOf<String, String>()
+
+            var state =
+                SyncStreamState(
+                    targetCheckpoint = null,
+                    validatedCheckpoint = null,
+                    appliedCheckpoint = null,
+                    bucketSet = initialBuckets.keys.toMutableSet(),
                 )
 
-            is SyncLine.KeepAlive -> handleStreamingKeepAlive(line, state)
-            is SyncLine.SyncDataBucket -> handleStreamingSyncData(line, state)
-            SyncLine.UnknownSyncLine -> {
-                logger.w { "Unhandled instruction $jsonString" }
-                state
+            bucketEntries.forEach { entry ->
+                initialBuckets[entry.bucket] = entry.opId
             }
+
+            val req =
+                StreamingSyncRequest(
+                    buckets = initialBuckets.map { (bucket, after) -> BucketRequest(bucket, after) },
+                    clientId = clientId!!,
+                    parameters = params,
+                )
+
+            lateinit var receiveLines: Job
+            receiveLines =
+                scope.launch {
+                    connectViaHttp(JsonUtil.json.encodeToJsonElement(req)).collect { value ->
+                        val line = JsonUtil.json.decodeFromString<SyncLine>(value)
+
+                        state = handleInstruction(line, value, state)
+
+                        if (state.abortIteration) {
+                            receiveLines.cancel()
+                        }
+                    }
+                }
+
+            receiveLines.join()
+            status.update { abortedDownload() }
         }
 
-    private suspend fun handleStreamingSyncCheckpoint(
-        line: SyncLine.FullCheckpoint,
-        state: SyncStreamState,
-    ): SyncStreamState {
-        val (checkpoint) = line
-        state.targetCheckpoint = checkpoint
+        private suspend fun handleInstruction(
+            line: SyncLine,
+            jsonString: String,
+            state: SyncStreamState,
+        ): SyncStreamState =
+            when (line) {
+                is SyncLine.FullCheckpoint -> handleStreamingSyncCheckpoint(line, state)
+                is SyncLine.CheckpointDiff -> handleStreamingSyncCheckpointDiff(line, state)
+                is SyncLine.CheckpointComplete -> handleStreamingSyncCheckpointComplete(state)
+                is SyncLine.CheckpointPartiallyComplete ->
+                    handleStreamingSyncCheckpointPartiallyComplete(
+                        line,
+                        state,
+                    )
 
-        val bucketsToDelete = state.bucketSet!!.toMutableList()
-        val newBuckets = mutableSetOf<String>()
-
-        checkpoint.checksums.forEach { checksum ->
-            run {
-                newBuckets.add(checksum.bucket)
-                bucketsToDelete.remove(checksum.bucket)
+                is SyncLine.KeepAlive -> handleStreamingKeepAlive(line, state)
+                is SyncLine.SyncDataBucket -> handleStreamingSyncData(line, state)
+                SyncLine.UnknownSyncLine -> {
+                    logger.w { "Unhandled instruction $jsonString" }
+                    state
+                }
             }
-        }
 
-        state.bucketSet = newBuckets
-        startTrackingCheckpoint(checkpoint, bucketsToDelete)
+        private suspend fun handleStreamingSyncCheckpoint(
+            line: SyncLine.FullCheckpoint,
+            state: SyncStreamState,
+        ): SyncStreamState {
+            val (checkpoint) = line
+            state.targetCheckpoint = checkpoint
 
-        return state
-    }
+            val bucketsToDelete = state.bucketSet!!.toMutableList()
+            val newBuckets = mutableSetOf<String>()
 
-    private suspend fun startTrackingCheckpoint(
-        checkpoint: Checkpoint,
-        bucketsToDelete: List<String>,
-    ) {
-        val progress = bucketStorage.getBucketOperationProgress()
-        status.update {
-            copy(
-                downloading = true,
-                downloadProgress = SyncDownloadProgress(progress, checkpoint),
-            )
-        }
+            checkpoint.checksums.forEach { checksum ->
+                run {
+                    newBuckets.add(checksum.bucket)
+                    bucketsToDelete.remove(checksum.bucket)
+                }
+            }
 
-        if (bucketsToDelete.isNotEmpty()) {
-            logger.i { "Removing buckets [${bucketsToDelete.joinToString(separator = ", ")}]" }
-        }
+            state.bucketSet = newBuckets
+            startTrackingCheckpoint(checkpoint, bucketsToDelete)
 
-        bucketStorage.removeBuckets(bucketsToDelete)
-        bucketStorage.setTargetCheckpoint(checkpoint)
-    }
-
-    private suspend fun handleStreamingSyncCheckpointComplete(state: SyncStreamState): SyncStreamState {
-        val checkpoint = state.targetCheckpoint!!
-        var result = bucketStorage.syncLocalDatabase(checkpoint)
-        val pending = isUploadingCrud.get()
-
-        if (!result.checkpointValid) {
-            // This means checksums failed. Start again with a new checkpoint.
-            // TODO: better back-off
-            delay(50)
-            state.abortIteration = true
-            // TODO handle retries
-            return state
-        } else if (!result.ready && pending != null) {
-            // We have pending entries in the local upload queue or are waiting to confirm a write checkpoint, which
-            // prevented this checkpoint from applying. Wait for that to complete and try again.
-            logger.d { "Could not apply checkpoint due to local data. Waiting for in-progress upload before retrying." }
-            pending.done.await()
-
-            result = bucketStorage.syncLocalDatabase(checkpoint)
-        }
-
-        if (result.checkpointValid && result.ready) {
-            state.appliedCheckpoint = checkpoint.clone()
-            logger.i { "validated checkpoint ${state.appliedCheckpoint}" }
-
-            state.validatedCheckpoint = state.targetCheckpoint
-            status.update { copyWithCompletedDownload() }
-        } else {
-            logger.d { "Could not apply checkpoint. Waiting for next sync complete line" }
-        }
-
-        return state
-    }
-
-    private suspend fun handleStreamingSyncCheckpointPartiallyComplete(
-        line: SyncLine.CheckpointPartiallyComplete,
-        state: SyncStreamState,
-    ): SyncStreamState {
-        val priority = line.priority
-        val result = bucketStorage.syncLocalDatabase(state.targetCheckpoint!!, priority)
-        if (!result.checkpointValid) {
-            // This means checksums failed. Start again with a new checkpoint.
-            // TODO: better back-off
-            delay(50)
-            state.abortIteration = true
-            // TODO handle retries
-            return state
-        } else if (!result.ready) {
-            // Checkpoint is valid, but we have local data preventing this to be published. We'll try to resolve this
-            // once we have a complete checkpoint if the problem persists.
-        } else {
-            logger.i { "validated partial checkpoint ${state.appliedCheckpoint} up to priority of $priority" }
-        }
-
-        status.update {
-            copy(
-                priorityStatusEntries =
-                    buildList {
-                        // All states with a higher priority can be deleted since this partial sync includes them.
-                        addAll(status.priorityStatusEntries.filter { it.priority >= line.priority })
-                        add(
-                            PriorityStatusEntry(
-                                priority = priority,
-                                lastSyncedAt = Clock.System.now(),
-                                hasSynced = true,
-                            ),
-                        )
-                    },
-            )
-        }
-        return state
-    }
-
-    private suspend fun handleStreamingSyncCheckpointDiff(
-        checkpointDiff: SyncLine.CheckpointDiff,
-        state: SyncStreamState,
-    ): SyncStreamState {
-        // TODO: It may be faster to just keep track of the diff, instead of the entire checkpoint
-        if (state.targetCheckpoint == null) {
-            throw Exception("Checkpoint diff without previous checkpoint")
-        }
-
-        val newBuckets = mutableMapOf<String, BucketChecksum>()
-
-        state.targetCheckpoint!!.checksums.forEach { checksum ->
-            newBuckets[checksum.bucket] = checksum
-        }
-        checkpointDiff.updatedBuckets.forEach { checksum ->
-            newBuckets[checksum.bucket] = checksum
-        }
-
-        checkpointDiff.removedBuckets.forEach { bucket -> newBuckets.remove(bucket) }
-
-        val newCheckpoint =
-            Checkpoint(
-                lastOpId = checkpointDiff.lastOpId,
-                checksums = newBuckets.values.toList(),
-                writeCheckpoint = checkpointDiff.writeCheckpoint,
-            )
-
-        state.targetCheckpoint = newCheckpoint
-        startTrackingCheckpoint(newCheckpoint, checkpointDiff.removedBuckets)
-
-        return state
-    }
-
-    private suspend fun handleStreamingSyncData(
-        data: SyncLine.SyncDataBucket,
-        state: SyncStreamState,
-    ): SyncStreamState {
-        val batch = SyncDataBatch(listOf(data))
-        bucketStorage.saveSyncData(batch)
-        status.update { copy(downloading = true, downloadProgress = downloadProgress?.incrementDownloaded(batch)) }
-        return state
-    }
-
-    private suspend fun handleStreamingKeepAlive(
-        keepAlive: SyncLine.KeepAlive,
-        state: SyncStreamState,
-    ): SyncStreamState {
-        val (tokenExpiresIn) = keepAlive
-
-        if (tokenExpiresIn <= 0) {
-            // Connection would be closed automatically right after this
-            logger.i { "Token expiring reconnect" }
-            connector.invalidateCredentials()
-            state.abortIteration = true
             return state
         }
-        // Don't await the upload job, we can keep receiving sync lines
-        triggerCrudUploadAsync()
-        return state
+
+        private suspend fun startTrackingCheckpoint(
+            checkpoint: Checkpoint,
+            bucketsToDelete: List<String>,
+        ) {
+            val progress = bucketStorage.getBucketOperationProgress()
+            status.update {
+                copy(
+                    downloading = true,
+                    downloadProgress = SyncDownloadProgress(progress, checkpoint),
+                )
+            }
+
+            if (bucketsToDelete.isNotEmpty()) {
+                logger.i { "Removing buckets [${bucketsToDelete.joinToString(separator = ", ")}]" }
+            }
+
+            bucketStorage.removeBuckets(bucketsToDelete)
+            bucketStorage.setTargetCheckpoint(checkpoint)
+        }
+
+        private suspend fun handleStreamingSyncCheckpointComplete(state: SyncStreamState): SyncStreamState {
+            val checkpoint = state.targetCheckpoint!!
+            var result = bucketStorage.syncLocalDatabase(checkpoint)
+            val pending = isUploadingCrud.get()
+
+            if (!result.checkpointValid) {
+                // This means checksums failed. Start again with a new checkpoint.
+                // TODO: better back-off
+                delay(50)
+                state.abortIteration = true
+                // TODO handle retries
+                return state
+            } else if (!result.ready && pending != null) {
+                // We have pending entries in the local upload queue or are waiting to confirm a write checkpoint, which
+                // prevented this checkpoint from applying. Wait for that to complete and try again.
+                logger.d { "Could not apply checkpoint due to local data. Waiting for in-progress upload before retrying." }
+                pending.done.await()
+
+                result = bucketStorage.syncLocalDatabase(checkpoint)
+            }
+
+            if (result.checkpointValid && result.ready) {
+                state.appliedCheckpoint = checkpoint.clone()
+                logger.i { "validated checkpoint ${state.appliedCheckpoint}" }
+
+                state.validatedCheckpoint = state.targetCheckpoint
+                status.update { copyWithCompletedDownload() }
+            } else {
+                logger.d { "Could not apply checkpoint. Waiting for next sync complete line" }
+            }
+
+            return state
+        }
+
+        private suspend fun handleStreamingSyncCheckpointPartiallyComplete(
+            line: SyncLine.CheckpointPartiallyComplete,
+            state: SyncStreamState,
+        ): SyncStreamState {
+            val priority = line.priority
+            val result = bucketStorage.syncLocalDatabase(state.targetCheckpoint!!, priority)
+            if (!result.checkpointValid) {
+                // This means checksums failed. Start again with a new checkpoint.
+                // TODO: better back-off
+                delay(50)
+                state.abortIteration = true
+                // TODO handle retries
+                return state
+            } else if (!result.ready) {
+                // Checkpoint is valid, but we have local data preventing this to be published. We'll try to resolve this
+                // once we have a complete checkpoint if the problem persists.
+            } else {
+                logger.i { "validated partial checkpoint ${state.appliedCheckpoint} up to priority of $priority" }
+            }
+
+            status.update {
+                copy(
+                    priorityStatusEntries =
+                        buildList {
+                            // All states with a higher priority can be deleted since this partial sync includes them.
+                            addAll(status.priorityStatusEntries.filter { it.priority >= line.priority })
+                            add(
+                                PriorityStatusEntry(
+                                    priority = priority,
+                                    lastSyncedAt = Clock.System.now(),
+                                    hasSynced = true,
+                                ),
+                            )
+                        },
+                )
+            }
+            return state
+        }
+
+        private suspend fun handleStreamingSyncCheckpointDiff(
+            checkpointDiff: SyncLine.CheckpointDiff,
+            state: SyncStreamState,
+        ): SyncStreamState {
+            // TODO: It may be faster to just keep track of the diff, instead of the entire checkpoint
+            if (state.targetCheckpoint == null) {
+                throw Exception("Checkpoint diff without previous checkpoint")
+            }
+
+            val newBuckets = mutableMapOf<String, BucketChecksum>()
+
+            state.targetCheckpoint!!.checksums.forEach { checksum ->
+                newBuckets[checksum.bucket] = checksum
+            }
+            checkpointDiff.updatedBuckets.forEach { checksum ->
+                newBuckets[checksum.bucket] = checksum
+            }
+
+            checkpointDiff.removedBuckets.forEach { bucket -> newBuckets.remove(bucket) }
+
+            val newCheckpoint =
+                Checkpoint(
+                    lastOpId = checkpointDiff.lastOpId,
+                    checksums = newBuckets.values.toList(),
+                    writeCheckpoint = checkpointDiff.writeCheckpoint,
+                )
+
+            state.targetCheckpoint = newCheckpoint
+            startTrackingCheckpoint(newCheckpoint, checkpointDiff.removedBuckets)
+
+            return state
+        }
+
+        private suspend fun handleStreamingSyncData(
+            data: SyncLine.SyncDataBucket,
+            state: SyncStreamState,
+        ): SyncStreamState {
+            val batch = SyncDataBatch(listOf(data))
+            bucketStorage.saveSyncData(batch)
+            status.update { copy(downloading = true, downloadProgress = downloadProgress?.incrementDownloaded(batch)) }
+            return state
+        }
+
+        private fun handleStreamingKeepAlive(
+            keepAlive: SyncLine.KeepAlive,
+            state: SyncStreamState,
+        ): SyncStreamState {
+            val (tokenExpiresIn) = keepAlive
+
+            if (tokenExpiresIn <= 0) {
+                // Connection would be closed automatically right after this
+                logger.i { "Token expiring reconnect" }
+                connector.invalidateCredentials()
+                state.abortIteration = true
+                return state
+            }
+            // Don't await the upload job, we can keep receiving sync lines
+            triggerCrudUploadAsync()
+            return state
+        }
     }
 
     internal companion object {
@@ -467,6 +674,7 @@ internal class SyncStream(
     }
 }
 
+@LegacySyncImplementation
 internal data class SyncStreamState(
     var targetCheckpoint: Checkpoint?,
     var validatedCheckpoint: Checkpoint?,

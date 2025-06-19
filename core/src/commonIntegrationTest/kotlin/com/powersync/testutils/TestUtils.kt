@@ -1,3 +1,5 @@
+@file:OptIn(LegacySyncImplementation::class)
+
 package com.powersync.testutils
 
 import co.touchlab.kermit.ExperimentalKermitApi
@@ -14,16 +16,20 @@ import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.createPowerSyncDatabaseImpl
 import com.powersync.db.PowerSyncDatabaseImpl
 import com.powersync.db.schema.Schema
+import com.powersync.sync.LegacySyncImplementation
 import com.powersync.sync.SyncLine
+import com.powersync.utils.JsonUtil
 import dev.mokkery.answering.returns
 import dev.mokkery.everySuspend
 import dev.mokkery.mock
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
+import io.ktor.client.engine.mock.toByteArray
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.files.Path
+import kotlinx.serialization.json.JsonElement
 
 expect val factory: DatabaseDriverFactory
 
@@ -77,12 +83,14 @@ internal class ActiveDatabaseTest(
     val logger =
         Logger(
             TestConfig(
-                minSeverity = Severity.Debug,
+                minSeverity = Severity.Verbose,
                 logWriterList = listOf(logWriter, generatePrintLogWriter()),
             ),
         )
 
+    @OptIn(LegacySyncImplementation::class)
     var syncLines = Channel<SyncLine>()
+    var requestedSyncStreams = mutableListOf<JsonElement>()
     var checkpointResponse: () -> WriteCheckpointResponse = {
         WriteCheckpointResponse(WriteCheckpointData("1000"))
     }
@@ -125,7 +133,15 @@ internal class ActiveDatabaseTest(
     suspend fun openDatabaseAndInitialize(): PowerSyncDatabaseImpl = openDatabase().also { it.readLock { } }
 
     private fun createClient(config: HttpClientConfig<*>.() -> Unit): HttpClient {
-        val engine = MockSyncService(syncLines) { checkpointResponse() }
+        val engine =
+            MockSyncService(
+                lines = syncLines,
+                generateCheckpoint = { checkpointResponse() },
+                trackSyncRequest = {
+                    val parsed = JsonUtil.json.parseToJsonElement(it.body.toByteArray().decodeToString())
+                    requestedSyncStreams.add(parsed)
+                },
+            )
 
         return HttpClient(engine) {
             config()
@@ -143,10 +159,7 @@ internal class ActiveDatabaseTest(
             item()
         }
 
-        var path = databaseName
-        testDirectory?.let {
-            path = Path(it, path).name
-        }
+        val path = Path(testDirectory, databaseName).name
         cleanup(path)
     }
 }

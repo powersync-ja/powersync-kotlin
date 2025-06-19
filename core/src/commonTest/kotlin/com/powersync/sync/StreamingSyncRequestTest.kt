@@ -1,4 +1,5 @@
 import com.powersync.bucket.BucketRequest
+import com.powersync.sync.LegacySyncImplementation
 import com.powersync.sync.StreamingSyncRequest
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -9,6 +10,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
+@OptIn(LegacySyncImplementation::class)
 class StreamingSyncRequestTest {
     private val json = Json { ignoreUnknownKeys = true }
 

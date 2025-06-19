@@ -33,7 +33,7 @@ public abstract class PowerSyncBackendConnector {
     public open suspend fun getCredentialsCached(): PowerSyncCredentials? {
         return runWrappedSuspending {
             cachedCredentials?.let { return@runWrappedSuspending it }
-            prefetchCredentials()?.join()
+            prefetchCredentials().join()
             cachedCredentials
         }
     }
@@ -56,10 +56,10 @@ public abstract class PowerSyncBackendConnector {
      * This may be called before the current credentials have expired.
      */
     @Throws(PowerSyncException::class, CancellationException::class)
-    public open suspend fun prefetchCredentials(): Job? {
+    public open fun prefetchCredentials(): Job {
         fetchRequest?.takeIf { it.isActive }?.let { return it }
 
-        fetchRequest =
+        val request =
             scope.launch {
                 fetchCredentials().also { value ->
                     cachedCredentials = value
@@ -67,7 +67,8 @@ public abstract class PowerSyncBackendConnector {
                 }
             }
 
-        return fetchRequest
+        fetchRequest = request
+        return request
     }
 
     /**

@@ -5,6 +5,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
+@LegacySyncImplementation
 @Serializable
 internal data class StreamingSyncRequest(
     val buckets: List<BucketRequest>,
