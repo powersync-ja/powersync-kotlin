@@ -3,8 +3,11 @@ package com.powersync.demos
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
+import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
 import com.powersync.connector.supabase.SupabaseConnector
+import com.powersync.sync.ConnectionMethod
+import com.powersync.sync.SyncOptions
 import io.github.jan.supabase.auth.status.RefreshFailureCause
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +30,7 @@ sealed class AuthState {
     data object SignedIn : AuthState()
 }
 
+@OptIn(ExperimentalPowerSyncAPI::class)
 internal class AuthViewModel(
     private val supabase: SupabaseConnector,
     private val db: PowerSyncDatabase,
@@ -44,7 +48,10 @@ internal class AuthViewModel(
                 supabase.sessionStatus.collect {
                     when (it) {
                         is SessionStatus.Authenticated -> {
-                            db.connect(supabase)
+                            db.connect(supabase, options = SyncOptions(
+                                newClientImplementation = true,
+                                method = ConnectionMethod.WebSocket(),
+                            ))
                         }
                         is SessionStatus.NotAuthenticated -> {
                             db.disconnectAndClear()
