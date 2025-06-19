@@ -1,3 +1,3 @@
 package com.powersync.sync
 
-internal fun userAgent(): String = "PowerSync Kotlin SDK"
+internal expect fun userAgent(): String

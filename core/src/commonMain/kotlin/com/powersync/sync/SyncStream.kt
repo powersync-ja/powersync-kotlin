@@ -83,7 +83,7 @@ internal class SyncStream(
 
             install(DefaultRequest) {
                 headers {
-                    append("User-Agent", userAgent())
+                    append("User-Agent", options.userAgent)
                 }
             }
         }
@@ -255,6 +255,7 @@ internal class SyncStream(
 
             emitAll(
                 httpClient.rSocketSyncStream(
+                    userAgent = this@SyncStream.options.userAgent,
                     options = options,
                     req = req,
                     credentials = credentials,

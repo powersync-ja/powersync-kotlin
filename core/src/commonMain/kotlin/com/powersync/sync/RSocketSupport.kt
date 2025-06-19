@@ -42,6 +42,7 @@ import kotlin.coroutines.CoroutineContext
  */
 @OptIn(RSocketTransportApi::class, ExperimentalPowerSyncAPI::class)
 internal fun HttpClient.rSocketSyncStream(
+    userAgent: String,
     options: ConnectionMethod.WebSocket,
     req: JsonObject,
     credentials: PowerSyncCredentials,
@@ -90,7 +91,14 @@ internal fun HttpClient.rSocketSyncStream(
                     setupPayload {
                         buildPayload {
                             data("{}")
-                            metadata(JsonUtil.json.encodeToString(ConnectionSetupMetadata(token = "Bearer ${credentials.token}")))
+                            metadata(
+                                JsonUtil.json.encodeToString(
+                                    ConnectionSetupMetadata(
+                                        token = "Bearer ${credentials.token}",
+                                        userAgent = userAgent,
+                                    ),
+                                ),
+                            )
                         }
                     }
 
@@ -119,7 +127,7 @@ internal fun HttpClient.rSocketSyncStream(
 private class ConnectionSetupMetadata(
     val token: String,
     @SerialName("user_agent")
-    val userAgent: String = userAgent(),
+    val userAgent: String,
 )
 
 /**

@@ -21,6 +21,10 @@ public class SyncOptions
         public val newClientImplementation: Boolean = false,
         @property:ExperimentalPowerSyncAPI
         public val method: ConnectionMethod = ConnectionMethod.Http,
+        /**
+         * The user agent to use for requests made to the PowerSync service.
+         */
+        public val userAgent: String = userAgent(),
     ) {
         public companion object {
             /**
