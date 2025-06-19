@@ -6,7 +6,9 @@ import org.gradle.internal.os.OperatingSystem
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest
 import org.jetbrains.kotlin.gradle.tasks.KotlinTest
-
+import java.nio.file.Path
+import kotlin.io.path.createDirectories
+import kotlin.io.path.writeText
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -128,23 +130,24 @@ val moveJDBCJNIFiles by tasks.registering(Copy::class) {
 kotlin {
     powersyncTargets()
 
-    targets.withType<KotlinNativeTarget> {
-        compilations.named("main") {
-            compileTaskProvider {
-                compilerOptions.freeCompilerArgs.add("-Xexport-kdoc")
+    targets.configureEach {
+        compilations.configureEach {
+            compileTaskProvider.configure {
+                dependsOn(generateVersionConstant)
             }
         }
 
-        /*
-        If we ever need macOS support:
-        {
-            binaries.withType<TestExecutable>().configureEach {
-                linkTaskProvider.dependsOn(downloadPowersyncDesktopBinaries)
-                linkerOpts("-lpowersync")
-                linkerOpts("-L", binariesFolder.map { it.dir("powersync") }.get().asFile.path)
+        if (this is KotlinNativeTarget) {
+            compilations.named("main") {
+                compileTaskProvider.configure {
+                    compilerOptions.freeCompilerArgs.add("-Xexport-kdoc")
+                }
             }
         }
-         */
+    }
+
+    targets.withType<KotlinNativeTarget> {
+
     }
 
     explicitApi()
@@ -168,21 +171,27 @@ kotlin {
             }
         }
 
-        commonMain.dependencies {
-            implementation(libs.uuid)
-            implementation(libs.kotlin.stdlib)
-            implementation(libs.ktor.client.core)
-            implementation(libs.ktor.client.contentnegotiation)
-            implementation(libs.ktor.serialization.json)
-            implementation(libs.kotlinx.io)
-            implementation(libs.rsocket.core)
-            implementation(libs.rsocket.transport.websocket)
-            implementation(libs.kotlinx.coroutines.core)
-            implementation(libs.kotlinx.datetime)
-            implementation(libs.stately.concurrency)
-            implementation(libs.configuration.annotations)
-            api(projects.persistence)
-            api(libs.kermit)
+        commonMain.configure {
+            kotlin {
+                srcDir(layout.buildDirectory.dir("generated/constants"))
+            }
+
+            dependencies {
+                implementation(libs.uuid)
+                implementation(libs.kotlin.stdlib)
+                implementation(libs.ktor.client.core)
+                implementation(libs.ktor.client.contentnegotiation)
+                implementation(libs.ktor.serialization.json)
+                implementation(libs.kotlinx.io)
+                implementation(libs.rsocket.core)
+                implementation(libs.rsocket.transport.websocket)
+                implementation(libs.kotlinx.coroutines.core)
+                implementation(libs.kotlinx.datetime)
+                implementation(libs.stately.concurrency)
+                implementation(libs.configuration.annotations)
+                api(projects.persistence)
+                api(libs.kermit)
+            }
         }
 
         androidMain {
@@ -301,4 +310,30 @@ setupGithubRepository()
 
 dokka {
     moduleName.set("PowerSync Core")
+}
+
+val generateVersionConstant by tasks.registering {
+    val target = project.layout.buildDirectory.dir("generated/constants")
+    val packageName = "com.powersync.build"
+
+    outputs.dir(target)
+    val currentVersion = version.toString()
+
+    doLast {
+        val dir = target.get().asFile
+        dir.mkdir()
+        val rootPath = dir.toPath()
+
+        val source = """
+            package $packageName
+            
+            internal const val LIBRARY_VERSION: String = "$currentVersion"
+
+        """.trimIndent()
+
+        val packageRoot = packageName.split('.').fold(rootPath, Path::resolve)
+        packageRoot.createDirectories()
+
+        packageRoot.resolve("BuildConstants.kt").writeText(source)
+    }
 }
