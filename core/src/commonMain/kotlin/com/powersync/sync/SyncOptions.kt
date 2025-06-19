@@ -73,14 +73,13 @@ public data class RSocketKeepAlive(
     val interval: Duration,
     val maxLifetime: Duration,
 ) {
-    internal fun toRSocket(): KeepAlive {
-        return KeepAlive(interval, maxLifetime)
-    }
+    internal fun toRSocket(): KeepAlive = KeepAlive(interval, maxLifetime)
 
     internal companion object {
-        val default = RSocketKeepAlive(
-            interval = 20.0.seconds,
-            maxLifetime = 30.0.seconds,
-        )
+        val default =
+            RSocketKeepAlive(
+                interval = 20.0.seconds,
+                maxLifetime = 30.0.seconds,
+            )
     }
 }

@@ -4,7 +4,6 @@ import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import co.touchlab.stately.concurrency.AtomicReference
 import com.powersync.ExperimentalPowerSyncAPI
-import com.powersync.PowerSyncException
 import com.powersync.bucket.BucketChecksum
 import com.powersync.bucket.BucketRequest
 import com.powersync.bucket.BucketStorage
@@ -401,7 +400,7 @@ internal class SyncStream(
                     status.update { copy(downloadError = null) }
                 }
                 is Instruction.UnknownInstruction -> {
-                    throw PowerSyncException("Unknown instruction received from core extension: ${instruction.raw}", null)
+                    logger.w { "Unknown instruction received from core extension: ${instruction.raw}" }
                 }
             }
         }
