@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2.0 (pending)
+## 1.2.0
 
 * Add a new sync client implementation written in Rust instead of Kotlin. While this client is still
   experimental, we intend to make it the default in the future. The main benefit of this client is
