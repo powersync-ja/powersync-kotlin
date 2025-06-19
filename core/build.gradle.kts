@@ -127,27 +127,41 @@ val moveJDBCJNIFiles by tasks.registering(Copy::class) {
     into(jniLibsFolder) // Move everything into the base jniLibs folder
 }
 
+val generateVersionConstant by tasks.registering {
+    val target = project.layout.buildDirectory.dir("generated/constants")
+    val packageName = "com.powersync.build"
+
+    outputs.dir(target)
+    val currentVersion = version.toString()
+
+    doLast {
+        val dir = target.get().asFile
+        dir.mkdir()
+        val rootPath = dir.toPath()
+
+        val source = """
+            package $packageName
+            
+            internal const val LIBRARY_VERSION: String = "$currentVersion"
+
+        """.trimIndent()
+
+        val packageRoot = packageName.split('.').fold(rootPath, Path::resolve)
+        packageRoot.createDirectories()
+
+        packageRoot.resolve("BuildConstants.kt").writeText(source)
+    }
+}
+
 kotlin {
     powersyncTargets()
 
-    targets.configureEach {
-        compilations.configureEach {
-            compileTaskProvider.configure {
-                dependsOn(generateVersionConstant)
-            }
-        }
-
-        if (this is KotlinNativeTarget) {
-            compilations.named("main") {
-                compileTaskProvider.configure {
-                    compilerOptions.freeCompilerArgs.add("-Xexport-kdoc")
-                }
-            }
-        }
-    }
-
     targets.withType<KotlinNativeTarget> {
-
+        compilations.named("main") {
+            compileTaskProvider {
+                compilerOptions.freeCompilerArgs.add("-Xexport-kdoc")
+            }
+        }
     }
 
     explicitApi()
@@ -173,7 +187,7 @@ kotlin {
 
         commonMain.configure {
             kotlin {
-                srcDir(layout.buildDirectory.dir("generated/constants"))
+                srcDir(generateVersionConstant)
             }
 
             dependencies {
@@ -310,30 +324,4 @@ setupGithubRepository()
 
 dokka {
     moduleName.set("PowerSync Core")
-}
-
-val generateVersionConstant by tasks.registering {
-    val target = project.layout.buildDirectory.dir("generated/constants")
-    val packageName = "com.powersync.build"
-
-    outputs.dir(target)
-    val currentVersion = version.toString()
-
-    doLast {
-        val dir = target.get().asFile
-        dir.mkdir()
-        val rootPath = dir.toPath()
-
-        val source = """
-            package $packageName
-            
-            internal const val LIBRARY_VERSION: String = "$currentVersion"
-
-        """.trimIndent()
-
-        val packageRoot = packageName.split('.').fold(rootPath, Path::resolve)
-        packageRoot.createDirectories()
-
-        packageRoot.resolve("BuildConstants.kt").writeText(source)
-    }
 }
