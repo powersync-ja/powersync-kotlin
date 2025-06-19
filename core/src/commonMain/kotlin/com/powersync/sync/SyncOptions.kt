@@ -3,6 +3,7 @@ package com.powersync.sync
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
 import io.rsocket.kotlin.keepalive.KeepAlive
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -22,6 +23,12 @@ public class SyncOptions
         public val method: ConnectionMethod = ConnectionMethod.Http,
     ) {
         public companion object {
+            /**
+             * The default sync options, which are safe and stable to use.
+             *
+             * Constructing non-standard sync options requires an opt-in to experimental PowerSync
+             * APIs, and those might change in the future.
+             */
             @OptIn(ExperimentalPowerSyncAPI::class)
             public val defaults: SyncOptions = SyncOptions()
         }
@@ -51,14 +58,29 @@ public sealed interface ConnectionMethod {
      */
     @ExperimentalPowerSyncAPI
     public data class WebSocket(
-        val keepAlive: KeepAlive = DefaultKeepAlive,
-    ) : ConnectionMethod {
-        private companion object {
-            val DefaultKeepAlive =
-                KeepAlive(
-                    interval = 20.0.seconds,
-                    maxLifetime = 30.0.seconds,
-                )
-        }
+        val keepAlive: RSocketKeepAlive = RSocketKeepAlive.default,
+    ) : ConnectionMethod
+}
+
+/**
+ * Keep-alive options for long-running RSocket streams:
+ *
+ * The client will ping the server every [interval], and assumes the connection to be closed if it
+ * hasn't received an acknowledgement in [maxLifetime].
+ */
+@ExperimentalPowerSyncAPI
+public data class RSocketKeepAlive(
+    val interval: Duration,
+    val maxLifetime: Duration,
+) {
+    internal fun toRSocket(): KeepAlive {
+        return KeepAlive(interval, maxLifetime)
+    }
+
+    internal companion object {
+        val default = RSocketKeepAlive(
+            interval = 20.0.seconds,
+            maxLifetime = 30.0.seconds,
+        )
     }
 }

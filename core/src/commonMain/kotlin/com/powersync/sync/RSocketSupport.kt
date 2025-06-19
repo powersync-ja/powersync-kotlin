@@ -94,7 +94,7 @@ internal fun HttpClient.rSocketSyncStream(
                         }
                     }
 
-                    keepAlive = options.keepAlive
+                    keepAlive = options.keepAlive.toRSocket()
                 }
             }
 
