@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1 (pending release)
+
+* [Supabase Connector] Fixed issue where only `400` HTTP status code errors where reported as connection errors. The connector now reports errors for codes `>=400`.
+
 ## 1.2.0
 
 * Add a new sync client implementation written in Rust instead of Kotlin. While this client is still
