@@ -3,6 +3,7 @@
 ## 1.2.1 (pending release)
 
 * [Supabase Connector] Fixed issue where only `400` HTTP status code errors where reported as connection errors. The connector now reports errors for codes `>=400`.
+* Update PowerSync core extension to `0.4.1`, fixing an issue with the new Rust client.
 
 ## 1.2.0
 

@@ -24,7 +24,7 @@ compose-preview = "1.7.8"
 lifecycle = "2.8.4"
 
 # plugins
-android-gradle-plugin = "8.9.0"
+android-gradle-plugin = "8.10.1"
 
 # Sample - Android
 androidx-core = "1.15.0"

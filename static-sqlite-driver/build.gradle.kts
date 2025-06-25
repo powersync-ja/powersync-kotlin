@@ -16,7 +16,7 @@ plugins {
     id("com.powersync.plugins.sonatype")
 }
 
-val sqliteVersion = "3490100"
+val sqliteVersion = "3500100"
 val sqliteReleaseYear = "2025"
 
 val downloadSQLiteSources by tasks.registering(Download::class) {
