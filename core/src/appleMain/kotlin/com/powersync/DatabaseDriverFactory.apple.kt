@@ -12,6 +12,7 @@ import co.touchlab.sqliter.sqlite3.sqlite3_enable_load_extension
 import co.touchlab.sqliter.sqlite3.sqlite3_load_extension
 import co.touchlab.sqliter.sqlite3.sqlite3_rollback_hook
 import co.touchlab.sqliter.sqlite3.sqlite3_update_hook
+import com.powersync.DatabaseDriverFactory.Companion.powerSyncExtensionPath
 import com.powersync.db.internal.InternalSchema
 import com.powersync.persistence.driver.NativeSqliteDriver
 import com.powersync.persistence.driver.wrapConnection
@@ -22,6 +23,7 @@ import kotlinx.cinterop.MemScope
 import kotlinx.cinterop.StableRef
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.asStableRef
+import kotlinx.cinterop.free
 import kotlinx.cinterop.nativeHeap
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.staticCFunction
@@ -132,38 +134,9 @@ public actual class DatabaseDriverFactory {
         connection: DatabaseConnection,
         driver: DeferredDriver,
     ) {
+        connection.loadPowerSyncSqliteCoreExtension()
+
         val ptr = connection.getDbPointer().getPointer(MemScope())
-        val extensionPath = powerSyncExtensionPath
-
-        // Enable extension loading
-        // We don't disable this after the fact, this should allow users to load their own extensions
-        // in future.
-        val enableResult = sqlite3_enable_load_extension(ptr, 1)
-        if (enableResult != SqliteErrorType.SQLITE_OK.code) {
-            throw PowerSyncException(
-                "Could not dynamically load the PowerSync SQLite core extension",
-                cause =
-                    Exception(
-                        "Call to sqlite3_enable_load_extension failed",
-                    ),
-            )
-        }
-
-        // A place to store a potential error message response
-        val errMsg = nativeHeap.alloc<CPointerVar<ByteVar>>()
-        val result =
-            sqlite3_load_extension(ptr, extensionPath, "sqlite3_powersync_init", errMsg.ptr)
-        if (result != SqliteErrorType.SQLITE_OK.code) {
-            val errorMessage = errMsg.value?.toKString() ?: "Unknown error"
-            throw PowerSyncException(
-                "Could not load the PowerSync SQLite core extension",
-                cause =
-                    Exception(
-                        "Calling sqlite3_load_extension failed with error: $errorMessage",
-                    ),
-            )
-        }
-
         val driverRef = StableRef.create(driver)
 
         sqlite3_update_hook(
@@ -221,3 +194,41 @@ public actual class DatabaseDriverFactory {
         }
     }
 }
+
+internal fun DatabaseConnection.loadPowerSyncSqliteCoreExtensionDynamically() {
+    val ptr = getDbPointer().getPointer(MemScope())
+    val extensionPath = powerSyncExtensionPath
+
+    // Enable extension loading
+    // We don't disable this after the fact, this should allow users to load their own extensions
+    // in future.
+    val enableResult = sqlite3_enable_load_extension(ptr, 1)
+    if (enableResult != SqliteErrorType.SQLITE_OK.code) {
+        throw PowerSyncException(
+            "Could not dynamically load the PowerSync SQLite core extension",
+            cause =
+                Exception(
+                    "Call to sqlite3_enable_load_extension failed",
+                ),
+        )
+    }
+
+    // A place to store a potential error message response
+    val errMsg = nativeHeap.alloc<CPointerVar<ByteVar>>()
+    val result =
+        sqlite3_load_extension(ptr, extensionPath, "sqlite3_powersync_init", errMsg.ptr)
+    val resultingError = errMsg.value
+    nativeHeap.free(errMsg)
+    if (result != SqliteErrorType.SQLITE_OK.code) {
+        val errorMessage = resultingError?.toKString() ?: "Unknown error"
+        throw PowerSyncException(
+            "Could not load the PowerSync SQLite core extension",
+            cause =
+                Exception(
+                    "Calling sqlite3_load_extension failed with error: $errorMessage",
+                ),
+        )
+    }
+}
+
+internal expect fun DatabaseConnection.loadPowerSyncSqliteCoreExtension()

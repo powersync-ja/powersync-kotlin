@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinTest
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText
+import org.jetbrains.kotlin.konan.target.Family
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -160,6 +161,15 @@ kotlin {
         compilations.named("main") {
             compileTaskProvider {
                 compilerOptions.freeCompilerArgs.add("-Xexport-kdoc")
+            }
+
+            if (target.konanTarget.family == Family.WATCHOS) {
+                // We're linking the core extension statically, which means that we need a cinterop
+                // to call powersync_init_static
+                cinterops.create("powersync_static") {
+                    packageName("com.powersync.static")
+                    headers(file("src/watchosMain/powersync_static.h"))
+                }
             }
         }
     }
