@@ -1,10 +1,11 @@
 # Changelog
 
-## 1.2.1 (pending release)
+## 1.2.1
 
 * [Supabase Connector] Fixed issue where only `400` HTTP status code errors where reported as connection errors. The connector now reports errors for codes `>=400`.
 * Update PowerSync core extension to `0.4.1`, fixing an issue with the new Rust client.
 * Rust sync client: Fix writes made while offline not being uploaded reliably.
+* Add watchOS support.
 
 ## 1.2.0
 
