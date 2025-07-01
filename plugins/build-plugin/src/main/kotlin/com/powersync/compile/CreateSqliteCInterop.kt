@@ -18,7 +18,6 @@ abstract class CreateSqliteCInterop: DefaultTask() {
     @get:OutputFile
     abstract val definitionFile: RegularFileProperty
 
-    @get:Internal
     @get:Inject
     abstract val layout: ProjectLayout
 
