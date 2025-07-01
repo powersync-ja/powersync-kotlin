@@ -424,13 +424,13 @@ internal class SyncStream(
         }
 
         private suspend fun line(text: String) {
-            triggerCrudUploadIfFirstLine()
             control("line_text", text)
+            triggerCrudUploadIfFirstLine()
         }
 
         private suspend fun line(blob: ByteArray) {
-            triggerCrudUploadIfFirstLine()
             control("line_binary", blob)
+            triggerCrudUploadIfFirstLine()
         }
 
         private suspend fun connect(start: Instruction.EstablishSyncStream) {
