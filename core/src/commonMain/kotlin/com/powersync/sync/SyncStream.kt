@@ -48,7 +48,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
@@ -133,6 +132,7 @@ internal class SyncStream(
                 uploadAllCrud()
             } finally {
                 if (holdingUploadLock) {
+                    logger.v { "crud upload: notify completion" }
                     completedCrudUploads.send(Unit)
                     isUploadingCrud.set(null)
                 }
@@ -297,6 +297,7 @@ internal class SyncStream(
      */
     private inner class ActiveIteration(
         val scope: CoroutineScope,
+        var hadSyncLine: Boolean = false,
         var fetchLinesJob: Job? = null,
         var credentialsInvalidation: Job? = null,
     ) {
@@ -342,6 +343,8 @@ internal class SyncStream(
                     fetchLinesJob =
                         scope.launch {
                             launch {
+                                logger.v { "listening for completed uploads" }
+
                                 for (completion in completedCrudUploads) {
                                     control("completed_upload")
                                 }
@@ -406,16 +409,36 @@ internal class SyncStream(
             }
         }
 
+        /**
+         * Triggers a crud upload when called for the first time.
+         *
+         * We could have pending local writes made while disconnected, so in addition to listening
+         * on updates to `ps_crud`, we also need to trigger a CRUD upload in some other cases. We
+         * do this on the first sync line because the client is likely to be online in that case.
+         */
+        private fun triggerCrudUploadIfFirstLine() {
+            if (!hadSyncLine) {
+                triggerCrudUploadAsync()
+                hadSyncLine = true
+            }
+        }
+
+        private suspend fun line(text: String) {
+            triggerCrudUploadIfFirstLine()
+            control("line_text", text)
+        }
+
+        private suspend fun line(blob: ByteArray) {
+            triggerCrudUploadIfFirstLine()
+            control("line_binary", blob)
+        }
+
         private suspend fun connect(start: Instruction.EstablishSyncStream) {
             when (val method = options.method) {
                 ConnectionMethod.Http ->
-                    connectViaHttp(start.request).collect { rawLine ->
-                        control("line_text", rawLine)
-                    }
+                    connectViaHttp(start.request).collect(this::line)
                 is ConnectionMethod.WebSocket ->
-                    connectViaWebSocket(start.request, method).collect { binaryLine ->
-                        control("line_binary", binaryLine)
-                    }
+                    connectViaWebSocket(start.request, method).collect(this::line)
             }
         }
     }
