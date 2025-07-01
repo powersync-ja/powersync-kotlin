@@ -564,6 +564,65 @@ abstract class BaseSyncIntegrationTest(
         }
 
     @Test
+    fun `handles write made while offline`() =
+        databaseTest {
+            connector = TestConnector()
+            val uploadCompleted = CompletableDeferred<Unit>()
+            checkpointResponse = {
+                uploadCompleted.complete(Unit)
+                WriteCheckpointResponse(WriteCheckpointData("1"))
+            }
+
+            database.execute("INSERT INTO users (id, name) VALUES (uuid(), ?)", listOf("local write"))
+            database.connect(connector, options = options)
+
+            turbineScope(timeout = 10.0.seconds) {
+                val turbine = database.currentStatus.asFlow().testIn(scope)
+                turbine.waitFor { it.connected }
+
+                val query = database.watch("SELECT name FROM users") { it.getString(0)!! }.testIn(scope)
+                query.awaitItem() shouldBe listOf("local write")
+
+                syncLines.send(SyncLine.KeepAlive(tokenExpiresIn = 1234))
+                syncLines.send(
+                    SyncLine.FullCheckpoint(
+                        Checkpoint(
+                            writeCheckpoint = "1",
+                            lastOpId = "1",
+                            checksums = listOf(BucketChecksum("a", checksum = 0)),
+                        ),
+                    ),
+                )
+                syncLines.send(
+                    SyncLine.SyncDataBucket(
+                        bucket = "a",
+                        data =
+                            listOf(
+                                OplogEntry(
+                                    checksum = 0,
+                                    opId = "1",
+                                    op = OpType.PUT,
+                                    rowId = "1",
+                                    rowType = "users",
+                                    data = """{"id": "test1", "name": "from server"}""",
+                                ),
+                            ),
+                        after = null,
+                        nextAfter = null,
+                    ),
+                )
+
+                uploadCompleted.await()
+                syncLines.send(SyncLine.CheckpointComplete("1"))
+
+                query.awaitItem() shouldBe listOf("from server")
+
+                turbine.cancelAndIgnoreRemainingEvents()
+                query.cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
     fun testTokenExpired() =
         databaseTest {
             turbineScope(timeout = 10.0.seconds) {
