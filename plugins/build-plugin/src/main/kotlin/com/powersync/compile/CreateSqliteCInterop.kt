@@ -8,6 +8,7 @@ import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 import org.gradle.work.DisableCachingByDefault
+import javax.inject.Inject
 
 @DisableCachingByDefault(because = "not worth caching")
 abstract class CreateSqliteCInterop: DefaultTask() {
@@ -18,6 +19,7 @@ abstract class CreateSqliteCInterop: DefaultTask() {
     abstract val definitionFile: RegularFileProperty
 
     @get:Internal
+    @get:Inject
     abstract val layout: ProjectLayout
 
     @TaskAction
