@@ -36,6 +36,7 @@ public class SupabaseConnector(
     public val powerSyncEndpoint: String,
     private val storageBucket: String? = null,
 ) : PowerSyncBackendConnector() {
+    private val json = Json { coerceInputValues = true }
     private var errorCode: String? = null
 
     private object PostgresFatalCodes {
@@ -98,7 +99,7 @@ public class SupabaseConnector(
 
                 try {
                     val error =
-                        Json { coerceInputValues = true }.decodeFromString<Map<String, String?>>(
+                        json.decodeFromString<Map<String, String?>>(
                             responseText,
                         )
                     errorCode = error["code"]
