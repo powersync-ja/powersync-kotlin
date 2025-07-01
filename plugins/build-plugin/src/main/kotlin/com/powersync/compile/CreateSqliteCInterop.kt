@@ -1,8 +1,10 @@
 package com.powersync.compile
 
 import org.gradle.api.DefaultTask
+import org.gradle.api.file.ProjectLayout
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 import org.gradle.work.DisableCachingByDefault
@@ -15,6 +17,9 @@ abstract class CreateSqliteCInterop: DefaultTask() {
     @get:OutputFile
     abstract val definitionFile: RegularFileProperty
 
+    @get:Internal
+    abstract val layout: ProjectLayout
+
     @TaskAction
     fun run() {
         val archive = archiveFile.get().asFile
@@ -26,7 +31,7 @@ abstract class CreateSqliteCInterop: DefaultTask() {
             linkerOpts.linux_x64 = -lpthread -ldl
             linkerOpts.macos_x64 = -lpthread -ldl
             staticLibraries=${archive.name}
-            libraryPaths=${parent.relativeTo(project.layout.projectDirectory.asFile.canonicalFile)}
+            libraryPaths=${parent.relativeTo(layout.projectDirectory.asFile.canonicalFile)}
             """.trimIndent(),
         )
     }
