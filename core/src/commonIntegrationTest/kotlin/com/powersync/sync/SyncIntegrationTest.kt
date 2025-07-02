@@ -675,7 +675,7 @@ class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
                 verifyNoMoreCalls(connector)
 
                 syncLines.send(SyncLine.KeepAlive(tokenExpiresIn = 10))
-                prefetchCalled.complete(Unit)
+                prefetchCalled.await()
                 // Should still be connected before prefetch completes
                 database.currentStatus.connected shouldBe true
 
