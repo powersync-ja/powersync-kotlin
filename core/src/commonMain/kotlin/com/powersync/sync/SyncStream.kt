@@ -40,17 +40,14 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.consume
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
@@ -342,22 +339,23 @@ internal class SyncStream(
                 is Instruction.EstablishSyncStream -> {
                     fetchLinesJob?.cancelAndJoin()
                     fetchLinesJob =
-                        scope.launch {
-                            launch {
-                                logger.v { "listening for completed uploads" }
-                                for (completion in completedCrudUploads) {
-                                    controlInvocations.send(PowerSyncControlArguments.CompletedUpload)
+                        scope
+                            .launch {
+                                launch {
+                                    logger.v { "listening for completed uploads" }
+                                    for (completion in completedCrudUploads) {
+                                        controlInvocations.send(PowerSyncControlArguments.CompletedUpload)
+                                    }
+                                }
+
+                                launch {
+                                    connect(instruction)
+                                }
+                            }.also {
+                                it.invokeOnCompletion {
+                                    controlInvocations.close()
                                 }
                             }
-
-                            launch {
-                                connect(instruction)
-                            }
-                        }.also {
-                            it.invokeOnCompletion {
-                                controlInvocations.close()
-                            }
-                        }
                 }
                 Instruction.CloseSyncStream -> {
                     logger.v { "Closing sync stream connection" }

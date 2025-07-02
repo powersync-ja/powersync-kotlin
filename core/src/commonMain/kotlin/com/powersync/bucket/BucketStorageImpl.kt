@@ -369,15 +369,16 @@ internal class BucketStorageImpl(
         db.writeTransaction { tx ->
             logger.v { "powersync_control: $args" }
 
-            val (op: String, data: Any?) = when (args) {
-                is PowerSyncControlArguments.Start -> "start" to JsonUtil.json.encodeToString(args)
-                PowerSyncControlArguments.Stop -> "stop" to null
+            val (op: String, data: Any?) =
+                when (args) {
+                    is PowerSyncControlArguments.Start -> "start" to JsonUtil.json.encodeToString(args)
+                    PowerSyncControlArguments.Stop -> "stop" to null
 
-                PowerSyncControlArguments.CompletedUpload -> "completed_upload" to null
+                    PowerSyncControlArguments.CompletedUpload -> "completed_upload" to null
 
-                is PowerSyncControlArguments.BinaryLine -> "line_binary" to args.line
-                is PowerSyncControlArguments.TextLine -> "line_text" to args.line
-            }
+                    is PowerSyncControlArguments.BinaryLine -> "line_binary" to args.line
+                    is PowerSyncControlArguments.TextLine -> "line_text" to args.line
+                }
 
             tx.get("SELECT powersync_control(?, ?) AS r", listOf(op, data), ::handleControlResult)
         }

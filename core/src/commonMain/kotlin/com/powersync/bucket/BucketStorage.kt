@@ -7,7 +7,6 @@ import com.powersync.sync.LegacySyncImplementation
 import com.powersync.sync.SyncDataBatch
 import com.powersync.sync.SyncLocalDatabaseResult
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 
 internal interface BucketStorage {
@@ -59,18 +58,22 @@ internal interface BucketStorage {
 internal sealed interface PowerSyncControlArguments {
     @Serializable
     class Start(
-        val parameters: JsonObject
-    ): PowerSyncControlArguments
-    data object Stop: PowerSyncControlArguments
+        val parameters: JsonObject,
+    ) : PowerSyncControlArguments
 
-    data class TextLine(val line: String): PowerSyncControlArguments
-    class BinaryLine(val line: ByteArray): PowerSyncControlArguments {
-        override fun toString(): String {
-            return "BinaryLine"
-        }
+    data object Stop : PowerSyncControlArguments
+
+    data class TextLine(
+        val line: String,
+    ) : PowerSyncControlArguments
+
+    class BinaryLine(
+        val line: ByteArray,
+    ) : PowerSyncControlArguments {
+        override fun toString(): String = "BinaryLine"
     }
 
-    data object CompletedUpload: PowerSyncControlArguments
+    data object CompletedUpload : PowerSyncControlArguments
 }
 
 @Serializable
