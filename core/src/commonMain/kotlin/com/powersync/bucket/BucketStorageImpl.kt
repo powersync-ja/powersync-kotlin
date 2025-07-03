@@ -365,22 +365,21 @@ internal class BucketStorageImpl(
         return JsonUtil.json.decodeFromString<List<Instruction>>(result)
     }
 
-    override suspend fun control(
-        op: String,
-        payload: String?,
-    ): List<Instruction> =
+    override suspend fun control(args: PowerSyncControlArguments): List<Instruction> =
         db.writeTransaction { tx ->
-            logger.v { "powersync_control($op, $payload)" }
+            logger.v { "powersync_control: $args" }
 
-            tx.get("SELECT powersync_control(?, ?) AS r", listOf(op, payload), ::handleControlResult)
-        }
+            val (op: String, data: Any?) =
+                when (args) {
+                    is PowerSyncControlArguments.Start -> "start" to JsonUtil.json.encodeToString(args)
+                    PowerSyncControlArguments.Stop -> "stop" to null
 
-    override suspend fun control(
-        op: String,
-        payload: ByteArray,
-    ): List<Instruction> =
-        db.writeTransaction { tx ->
-            logger.v { "powersync_control($op, binary payload)" }
-            tx.get("SELECT powersync_control(?, ?) AS r", listOf(op, payload), ::handleControlResult)
+                    PowerSyncControlArguments.CompletedUpload -> "completed_upload" to null
+
+                    is PowerSyncControlArguments.BinaryLine -> "line_binary" to args.line
+                    is PowerSyncControlArguments.TextLine -> "line_text" to args.line
+                }
+
+            tx.get("SELECT powersync_control(?, ?) AS r", listOf(op, data), ::handleControlResult)
         }
 }

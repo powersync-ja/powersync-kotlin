@@ -467,6 +467,7 @@ abstract class BaseSyncIntegrationTest(
             val uploadStarted = CompletableDeferred<Unit>()
             testConnector.uploadDataCallback = { db ->
                 db.getCrudBatch()?.let { batch ->
+                    logger.v { "connector: uploading crud batch" }
                     uploadStarted.complete(Unit)
                     completeUpload.await()
                     batch.complete.invoke(null)
@@ -478,7 +479,7 @@ abstract class BaseSyncIntegrationTest(
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)
                 syncLines.send(SyncLine.KeepAlive(1234))
-                turbine.waitFor { it.connected }
+                turbine.waitFor { it.connected && !it.uploading }
                 turbine.cancelAndIgnoreRemainingEvents()
             }
 
@@ -675,7 +676,7 @@ class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
                 verifyNoMoreCalls(connector)
 
                 syncLines.send(SyncLine.KeepAlive(tokenExpiresIn = 10))
-                prefetchCalled.complete(Unit)
+                prefetchCalled.await()
                 // Should still be connected before prefetch completes
                 database.currentStatus.connected shouldBe true
 

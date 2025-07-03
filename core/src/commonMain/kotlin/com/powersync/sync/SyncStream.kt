@@ -8,6 +8,7 @@ import com.powersync.bucket.BucketChecksum
 import com.powersync.bucket.BucketRequest
 import com.powersync.bucket.BucketStorage
 import com.powersync.bucket.Checkpoint
+import com.powersync.bucket.PowerSyncControlArguments
 import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.crud.CrudEntry
@@ -47,7 +48,6 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
@@ -297,43 +297,41 @@ internal class SyncStream(
      */
     private inner class ActiveIteration(
         val scope: CoroutineScope,
-        var hadSyncLine: Boolean = false,
         var fetchLinesJob: Job? = null,
         var credentialsInvalidation: Job? = null,
     ) {
-        suspend fun start() {
-            @Serializable
-            class StartParameters(
-                val parameters: JsonObject,
-            )
+        // Using a channel for control invocations so that they're handled by a single coroutine,
+        // avoiding races between concurrent jobs like fetching credentials.
+        private val controlInvocations = Channel<PowerSyncControlArguments>()
 
-            control("start", JsonUtil.json.encodeToString(StartParameters(params)))
-            fetchLinesJob?.join()
+        private suspend fun invokeControl(args: PowerSyncControlArguments) {
+            val instructions = bucketStorage.control(args)
+            instructions.forEach { handleInstruction(it) }
+        }
+
+        suspend fun start() {
+            invokeControl(PowerSyncControlArguments.Start(params))
+
+            var hadSyncLine = false
+            for (line in controlInvocations) {
+                val instructions = bucketStorage.control(line)
+                instructions.forEach { handleInstruction(it) }
+
+                if (!hadSyncLine && (line is PowerSyncControlArguments.TextLine || line is PowerSyncControlArguments.BinaryLine)) {
+                    // Trigger a crud upload when receiving the first sync line: We could have
+                    // pending local writes made while disconnected, so in addition to listening on
+                    // updates to `ps_crud`, we also need to trigger a CRUD upload in some other
+                    // cases. We do this on the first sync line because the client is likely to be
+                    // online in that case.
+                    hadSyncLine = true
+                    triggerCrudUploadAsync()
+                }
+            }
         }
 
         suspend fun stop() {
-            control("stop")
+            invokeControl(PowerSyncControlArguments.Stop)
             fetchLinesJob?.join()
-        }
-
-        private suspend fun control(
-            op: String,
-            payload: String? = null,
-        ) {
-            val instructions = bucketStorage.control(op, payload)
-            handleInstructions(instructions)
-        }
-
-        private suspend fun control(
-            op: String,
-            payload: ByteArray,
-        ) {
-            val instructions = bucketStorage.control(op, payload)
-            handleInstructions(instructions)
-        }
-
-        private suspend fun handleInstructions(instructions: List<Instruction>) {
-            instructions.forEach { handleInstruction(it) }
         }
 
         private suspend fun handleInstruction(instruction: Instruction) {
@@ -341,23 +339,29 @@ internal class SyncStream(
                 is Instruction.EstablishSyncStream -> {
                     fetchLinesJob?.cancelAndJoin()
                     fetchLinesJob =
-                        scope.launch {
-                            launch {
-                                logger.v { "listening for completed uploads" }
+                        scope
+                            .launch {
+                                launch {
+                                    logger.v { "listening for completed uploads" }
+                                    for (completion in completedCrudUploads) {
+                                        controlInvocations.send(PowerSyncControlArguments.CompletedUpload)
+                                    }
+                                }
 
-                                for (completion in completedCrudUploads) {
-                                    control("completed_upload")
+                                launch {
+                                    connect(instruction)
+                                }
+                            }.also {
+                                it.invokeOnCompletion {
+                                    controlInvocations.close()
                                 }
                             }
-
-                            launch {
-                                connect(instruction)
-                            }
-                        }
                 }
                 Instruction.CloseSyncStream -> {
+                    logger.v { "Closing sync stream connection" }
                     fetchLinesJob!!.cancelAndJoin()
                     fetchLinesJob = null
+                    logger.v { "Sync stream connection shut down" }
                 }
                 Instruction.FlushSileSystem -> {
                     // We have durable file systems, so flushing is not necessary
@@ -389,9 +393,10 @@ internal class SyncStream(
                             val job =
                                 scope.launch {
                                     connector.prefetchCredentials().join()
+                                    logger.v { "Stopping because new credentials are available" }
 
                                     // Token has been refreshed, start another iteration
-                                    stop()
+                                    controlInvocations.send(PowerSyncControlArguments.Stop)
                                 }
                             job.invokeOnCompletion {
                                 credentialsInvalidation = null
@@ -409,36 +414,16 @@ internal class SyncStream(
             }
         }
 
-        /**
-         * Triggers a crud upload when called for the first time.
-         *
-         * We could have pending local writes made while disconnected, so in addition to listening
-         * on updates to `ps_crud`, we also need to trigger a CRUD upload in some other cases. We
-         * do this on the first sync line because the client is likely to be online in that case.
-         */
-        private fun triggerCrudUploadIfFirstLine() {
-            if (!hadSyncLine) {
-                triggerCrudUploadAsync()
-                hadSyncLine = true
-            }
-        }
-
-        private suspend fun line(text: String) {
-            triggerCrudUploadIfFirstLine()
-            control("line_text", text)
-        }
-
-        private suspend fun line(blob: ByteArray) {
-            triggerCrudUploadIfFirstLine()
-            control("line_binary", blob)
-        }
-
         private suspend fun connect(start: Instruction.EstablishSyncStream) {
             when (val method = options.method) {
                 ConnectionMethod.Http ->
-                    connectViaHttp(start.request).collect(this::line)
+                    connectViaHttp(start.request).collect {
+                        controlInvocations.send(PowerSyncControlArguments.TextLine(it))
+                    }
                 is ConnectionMethod.WebSocket ->
-                    connectViaWebSocket(start.request, method).collect(this::line)
+                    connectViaWebSocket(start.request, method).collect {
+                        controlInvocations.send(PowerSyncControlArguments.BinaryLine(it))
+                    }
             }
         }
     }

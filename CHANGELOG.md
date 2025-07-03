@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.2
+
+* Supabase: Avoid creating `Json` serializers multiple times.
+* Fix local writes not being uploaded correctly when using WebSockets as a transport protocol.
+
 ## 1.2.1
 
 * [Supabase Connector] Fixed issue where only `400` HTTP status code errors where reported as connection errors. The connector now reports errors for codes `>=400`.

@@ -6,6 +6,8 @@ import com.powersync.sync.Instruction
 import com.powersync.sync.LegacySyncImplementation
 import com.powersync.sync.SyncDataBatch
 import com.powersync.sync.SyncLocalDatabaseResult
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 
 internal interface BucketStorage {
     fun getMaxOpId(): String
@@ -50,13 +52,31 @@ internal interface BucketStorage {
         partialPriority: BucketPriority? = null,
     ): SyncLocalDatabaseResult
 
-    suspend fun control(
-        op: String,
-        payload: String?,
-    ): List<Instruction>
-
-    suspend fun control(
-        op: String,
-        payload: ByteArray,
-    ): List<Instruction>
+    suspend fun control(args: PowerSyncControlArguments): List<Instruction>
 }
+
+internal sealed interface PowerSyncControlArguments {
+    @Serializable
+    class Start(
+        val parameters: JsonObject,
+    ) : PowerSyncControlArguments
+
+    data object Stop : PowerSyncControlArguments
+
+    data class TextLine(
+        val line: String,
+    ) : PowerSyncControlArguments
+
+    class BinaryLine(
+        val line: ByteArray,
+    ) : PowerSyncControlArguments {
+        override fun toString(): String = "BinaryLine"
+    }
+
+    data object CompletedUpload : PowerSyncControlArguments
+}
+
+@Serializable
+internal class StartSyncIteration(
+    val parameters: JsonObject,
+)
