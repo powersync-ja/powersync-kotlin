@@ -216,6 +216,25 @@ public data class Table(
      */
     public val viewName: String
         get() = viewNameOverride ?: name
+    
+    /**
+     * Get all unique column names from unique indexes.
+     * This returns a list of all columns that participate in unique constraints.
+     */
+    public fun getUniqueColumns(): List<String> {
+        return indexes
+            .filter { it.unique }
+            .flatMap { index -> index.columns.map { it.column } }
+            .distinct()
+    }
+    
+    /**
+     * Get the first unique index if any exists.
+     * This is useful for determining conflict resolution columns for upsert operations.
+     */
+    public fun getFirstUniqueIndex(): Index? {
+        return indexes.firstOrNull { it.unique }
+    }
 }
 
 /**
