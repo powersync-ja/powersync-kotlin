@@ -2,6 +2,7 @@ package com.powersync.sync
 
 import app.cash.turbine.turbineScope
 import co.touchlab.kermit.ExperimentalKermitApi
+import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
 import com.powersync.PowerSyncException
 import com.powersync.TestConnector
@@ -13,6 +14,9 @@ import com.powersync.bucket.OplogEntry
 import com.powersync.bucket.WriteCheckpointData
 import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.db.PowerSyncDatabaseImpl
+import com.powersync.db.schema.PendingStatement
+import com.powersync.db.schema.PendingStatementParameter
+import com.powersync.db.schema.RawTable
 import com.powersync.db.schema.Schema
 import com.powersync.testutils.UserRow
 import com.powersync.testutils.databaseTest
@@ -650,7 +654,7 @@ abstract class BaseSyncIntegrationTest(
 class LegacySyncIntegrationTest : BaseSyncIntegrationTest(false)
 
 class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
-    // The legacy sync implementation doesn't prefetch credentials.
+    // The legacy sync implementation doesn't prefetch credentials and doesn't support raw tables.
 
     @OptIn(LegacySyncImplementation::class)
     @Test
@@ -688,4 +692,88 @@ class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
                 turbine.cancel()
             }
         }
+
+    @Test
+    @OptIn(ExperimentalPowerSyncAPI::class, LegacySyncImplementation::class)
+    fun rawTables() = databaseTest(createInitialDatabase = false) {
+        val db = openDatabase(Schema(listOf(
+            RawTable(
+                name = "lists",
+                put = PendingStatement(
+                    "INSERT OR REPLACE INTO lists (id, name) VALUES (?, ?)",
+                    listOf(PendingStatementParameter.Id, PendingStatementParameter.Column("name"))
+                ),
+                delete = PendingStatement(
+                    "DELETE FROM lists WHERE id = ?", listOf(PendingStatementParameter.Id)
+                )
+            )
+        )))
+
+        db.execute("CREATE TABLE lists (id TEXT NOT NULL PRIMARY KEY, name TEXT)")
+        turbineScope(timeout = 10.0.seconds) {
+            val query = db.watch("SELECT * FROM lists", throttleMs = 0L) {
+                it.getString(0) to it.getString(1)
+            }.testIn(this)
+            query.awaitItem() shouldBe emptyList()
+
+            db.connect(connector, options = options)
+            syncLines.send(SyncLine.FullCheckpoint(Checkpoint(
+                lastOpId = "1",
+                checksums = listOf(BucketChecksum("a", checksum = 0)),
+            )))
+            syncLines.send(
+                SyncLine.SyncDataBucket(
+                    bucket = "a",
+                    data =
+                        listOf(
+                            OplogEntry(
+                                checksum = 0L,
+                                data =
+                                    JsonUtil.json.encodeToString(
+                                        mapOf(
+                                            "name" to "custom list",
+                                        ),
+                                    ),
+                                op = OpType.PUT,
+                                opId = "1",
+                                rowId = "my_list",
+                                rowType = "lists",
+                            ),
+                        ),
+                    after = null,
+                    nextAfter = null,
+                ),
+            )
+            syncLines.send(SyncLine.CheckpointComplete("1"))
+
+            query.awaitItem() shouldBe listOf("my_list" to "custom list")
+
+            syncLines.send(SyncLine.FullCheckpoint(Checkpoint(
+                lastOpId = "2",
+                checksums = listOf(BucketChecksum("a", checksum = 0)),
+            )))
+            syncLines.send(
+                SyncLine.SyncDataBucket(
+                    bucket = "a",
+                    data =
+                        listOf(
+                            OplogEntry(
+                                checksum = 0L,
+                                data = null,
+                                op = OpType.REMOVE,
+                                opId = "2",
+                                rowId = "my_list",
+                                rowType = "lists",
+                            ),
+                        ),
+                    after = null,
+                    nextAfter = null,
+                ),
+            )
+            syncLines.send(SyncLine.CheckpointComplete("1"))
+
+            query.awaitItem() shouldBe emptyList()
+            query.cancelAndIgnoreRemainingEvents()
+        }
+    }
 }

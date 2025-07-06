@@ -16,7 +16,7 @@ public data class Table(
     /**
      * The synced table name, matching sync rules.
      */
-    var name: String,
+    override var name: String,
     /**
      * List of columns.
      */
@@ -53,7 +53,7 @@ public data class Table(
      * CRUD entries.
      */
     val ignoreEmptyUpdates: Boolean = false,
-) {
+): BaseTable {
     init {
         /**
          * Need to set the column definition for each index column.
@@ -141,10 +141,7 @@ public data class Table(
                         )
                 )
 
-    /**
-     * Check that there are no issues in the table definition.
-     */
-    public fun validate() {
+    public override fun validate() {
         if (columns.size > MAX_AMOUNT_OF_COLUMNS) {
             throw AssertionError("Table $name has more than $MAX_AMOUNT_OF_COLUMNS columns, which is not supported")
         }

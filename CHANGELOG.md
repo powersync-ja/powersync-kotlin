@@ -1,7 +1,8 @@
 # Changelog
 
-## 1.2.3 (unreleased)
+## 1.3.0 (unreleased)
 
+* Support tables created outside of PowerSync with the `RawTable` API.
 * Fix `runWrapped` catching cancellation exceptions.
 
 ## 1.2.2

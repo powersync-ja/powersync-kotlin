@@ -1,6 +1,9 @@
 package com.powersync.db.schema
 
+import com.powersync.ExperimentalPowerSyncAPI
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
 /**
  * The schema used by the database.
@@ -8,11 +11,23 @@ import kotlinx.serialization.Serializable
  * The implementation uses the schema as a "VIEW" on top of JSON data.
  * No migrations are required on the client.
  */
-public data class Schema(
+@OptIn(ExperimentalPowerSyncAPI::class)
+public data class Schema internal constructor(
     val tables: List<Table>,
+    val rawTables: List<RawTable>,
 ) {
+    public constructor(tables: List<BaseTable>): this(
+        tables.filterIsInstance<Table>(),
+        tables.filterIsInstance<RawTable>()
+    )
+
     init {
         validate()
+    }
+
+    internal val allTables: Sequence<BaseTable> get() = sequence {
+        yieldAll(tables)
+        yieldAll(rawTables)
     }
 
     /**
@@ -28,7 +43,7 @@ public data class Schema(
      */
     public fun validate() {
         val tableNames = mutableSetOf<String>()
-        tables.forEach { table ->
+        allTables.forEach { table ->
             if (!tableNames.add(table.name)) {
                 throw AssertionError("Duplicate table name: ${table.name}")
             }
@@ -56,9 +71,15 @@ public data class Schema(
 @Serializable
 internal data class SerializableSchema(
     val tables: List<SerializableTable>,
+    @SerialName("raw_tables")
+    val rawTables: List<JsonElement>,
 )
 
+@OptIn(ExperimentalPowerSyncAPI::class)
 internal fun Schema.toSerializable(): SerializableSchema =
     with(this) {
-        SerializableSchema(tables.map { it.toSerializable() })
+        SerializableSchema(
+            tables = tables.map { it.toSerializable() },
+            rawTables = rawTables.map { it.serialize() }
+        )
     }

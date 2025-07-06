@@ -114,12 +114,12 @@ internal class ActiveDatabaseTest(
             everySuspend { invalidateCredentials() } returns Unit
         }
 
-    fun openDatabase(): PowerSyncDatabaseImpl {
+    fun openDatabase(schema: Schema = Schema(UserRow.table)): PowerSyncDatabaseImpl {
         logger.d { "Opening database $databaseName in directory $testDirectory" }
         val db =
             createPowerSyncDatabaseImpl(
                 factory = factory,
-                schema = Schema(UserRow.table),
+                schema = schema,
                 dbFilename = databaseName,
                 dbDirectory = testDirectory,
                 logger = logger,
