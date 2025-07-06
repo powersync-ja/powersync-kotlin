@@ -169,6 +169,7 @@ internal class PowerSyncDatabaseImpl(
                     uploadScope = scope,
                     createClient = createClient,
                     options = options,
+                    schema = schema,
                 )
             }
         }

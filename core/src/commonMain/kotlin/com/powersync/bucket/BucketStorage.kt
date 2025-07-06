@@ -2,6 +2,7 @@ package com.powersync.bucket
 
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.internal.PowerSyncTransaction
+import com.powersync.db.schema.SerializableSchema
 import com.powersync.sync.Instruction
 import com.powersync.sync.LegacySyncImplementation
 import com.powersync.sync.SyncDataBatch
@@ -59,6 +60,7 @@ internal sealed interface PowerSyncControlArguments {
     @Serializable
     class Start(
         val parameters: JsonObject,
+        val schema: SerializableSchema
     ) : PowerSyncControlArguments
 
     data object Stop : PowerSyncControlArguments

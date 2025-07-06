@@ -25,7 +25,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
 
-@OptIn(FlowPreview::class)
 internal class InternalDatabaseImpl(
     private val factory: DatabaseDriverFactory,
     private val scope: CoroutineScope,

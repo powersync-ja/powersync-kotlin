@@ -11,6 +11,7 @@ import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.UpdateType
+import com.powersync.db.schema.Schema
 import dev.mokkery.answering.returns
 import dev.mokkery.everySuspend
 import dev.mokkery.mock
@@ -82,6 +83,7 @@ class SyncStreamTest {
                     params = JsonObject(emptyMap()),
                     uploadScope = this,
                     options = SyncOptions(),
+                    schema = Schema(),
                 )
 
             syncStream.invalidateCredentials()
@@ -120,6 +122,7 @@ class SyncStreamTest {
                     params = JsonObject(emptyMap()),
                     uploadScope = this,
                     options = SyncOptions(),
+                    schema = Schema()
                 )
 
             syncStream.status.update { copy(connected = true) }
@@ -160,6 +163,7 @@ class SyncStreamTest {
                     params = JsonObject(emptyMap()),
                     uploadScope = this,
                     options = SyncOptions(),
+                    schema = Schema()
                 )
 
             // Launch streaming sync in a coroutine that we'll cancel after verification

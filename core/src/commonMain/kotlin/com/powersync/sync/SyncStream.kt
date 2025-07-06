@@ -12,6 +12,9 @@ import com.powersync.bucket.PowerSyncControlArguments
 import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.crud.CrudEntry
+import com.powersync.db.schema.Schema
+import com.powersync.db.schema.SerializableSchema
+import com.powersync.db.schema.toSerializable
 import com.powersync.utils.JsonUtil
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
@@ -62,6 +65,7 @@ internal class SyncStream(
     private val params: JsonObject,
     private val uploadScope: CoroutineScope,
     private val options: SyncOptions,
+    private val schema: Schema,
     createClient: (HttpClientConfig<*>.() -> Unit) -> HttpClient,
 ) {
     private var isUploadingCrud = AtomicReference<PendingCrudUpload?>(null)
@@ -310,7 +314,10 @@ internal class SyncStream(
         }
 
         suspend fun start() {
-            invokeControl(PowerSyncControlArguments.Start(params))
+            invokeControl(PowerSyncControlArguments.Start(
+                parameters = params,
+                schema = schema.toSerializable(),
+            ))
 
             var hadSyncLine = false
             for (line in controlInvocations) {
