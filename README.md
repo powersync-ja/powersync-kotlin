@@ -10,11 +10,6 @@ This is the PowerSync client SDK for Kotlin Mutliplatform. This SDK currently su
 
 See a summary of features [here](https://docs.powersync.com/client-sdk-references/kotlin-multiplatform#sdk-features).
 
-## Beta release
-
-This SDK is currently in a beta release it is suitable for production use, given you have tested your use case(s) extensively. If you find a bug or issue, please open a [GitHub issue](https://github.com/powersync-ja/powersync-kotlin/issues). Questions or feedback can be posted on
-our [community Discord](https://discord.gg/powersync) - we'd love to hear from you.
-
 ## Structure: Packages
 
 - [core](./core/)
@@ -40,8 +35,6 @@ Demo applications are located in the [`demos/`](./demos) directory. See their re
 - [demos/android-supabase-todolist](./demos/android-supabase-todolist/README.md): A simple to-do list application demonstrating the use of the PowerSync Kotlin Multiplatform SDK and the Supabase connector in an Android application.
 
 ## Current Limitations / Future work
-
-The PowerSync Kotlin Multiplatform SDK is currently in a beta release. It can be used in production if you’ve tested your use cases.
 
 Current limitations:
 
