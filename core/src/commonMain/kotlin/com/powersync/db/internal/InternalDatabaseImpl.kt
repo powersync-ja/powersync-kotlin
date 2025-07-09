@@ -7,7 +7,6 @@ import com.powersync.db.SqlCursor
 import com.powersync.db.ThrowableLockCallback
 import com.powersync.db.ThrowableTransactionCallback
 import com.powersync.db.runWrapped
-import com.powersync.db.runWrappedSuspending
 import com.powersync.utils.AtomicMutableSet
 import com.powersync.utils.JsonUtil
 import com.powersync.utils.throttle
@@ -24,7 +23,6 @@ import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.encodeToString
 import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(FlowPreview::class)
@@ -67,7 +65,7 @@ internal class InternalDatabaseImpl(
 
     override suspend fun updateSchema(schemaJson: String) {
         withContext(dbContext) {
-            runWrappedSuspending {
+            runWrapped {
                 // First get a lock on all read connections
                 readPool.withAllConnections { readConnections ->
                     // Then get access to the write connection
@@ -183,7 +181,7 @@ internal class InternalDatabaseImpl(
      */
     private suspend fun <R> internalReadLock(callback: (TransactorDriver) -> R): R =
         withContext(dbContext) {
-            runWrappedSuspending {
+            runWrapped {
                 readPool.withConnection {
                     catchSwiftExceptions {
                         callback(it)
@@ -295,7 +293,7 @@ internal class InternalDatabaseImpl(
     }
 
     override suspend fun close() {
-        runWrappedSuspending {
+        runWrapped {
             writeConnection.driver.close()
             readPool.close()
         }

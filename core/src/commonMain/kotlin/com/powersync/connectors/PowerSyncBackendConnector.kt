@@ -2,7 +2,7 @@ package com.powersync.connectors
 
 import com.powersync.PowerSyncDatabase
 import com.powersync.PowerSyncException
-import com.powersync.db.runWrappedSuspending
+import com.powersync.db.runWrapped
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -31,8 +31,8 @@ public abstract class PowerSyncBackendConnector {
      */
     @Throws(PowerSyncException::class, CancellationException::class)
     public open suspend fun getCredentialsCached(): PowerSyncCredentials? {
-        return runWrappedSuspending {
-            cachedCredentials?.let { return@runWrappedSuspending it }
+        return runWrapped {
+            cachedCredentials?.let { return@runWrapped it }
             prefetchCredentials().join()
             cachedCredentials
         }

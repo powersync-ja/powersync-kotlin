@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.3 (unreleased)
+
+* Fix `runWrapped` catching cancellation exceptions.
+
 ## 1.2.2
 
 * Supabase: Avoid creating `Json` serializers multiple times.

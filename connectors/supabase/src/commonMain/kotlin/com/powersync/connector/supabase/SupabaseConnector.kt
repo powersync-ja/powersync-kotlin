@@ -6,7 +6,7 @@ import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.UpdateType
-import com.powersync.db.runWrappedSuspending
+import com.powersync.db.runWrapped
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.annotations.SupabaseInternal
 import io.github.jan.supabase.auth.Auth
@@ -115,7 +115,7 @@ public class SupabaseConnector(
         email: String,
         password: String,
     ) {
-        runWrappedSuspending {
+        runWrapped {
             supabaseClient.auth.signInWith(Email) {
                 this.email = email
                 this.password = password
@@ -127,7 +127,7 @@ public class SupabaseConnector(
         email: String,
         password: String,
     ) {
-        runWrappedSuspending {
+        runWrapped {
             supabaseClient.auth.signUpWith(Email) {
                 this.email = email
                 this.password = password
@@ -136,7 +136,7 @@ public class SupabaseConnector(
     }
 
     public suspend fun signOut() {
-        runWrappedSuspending {
+        runWrapped {
             supabaseClient.auth.signOut()
         }
     }
@@ -146,7 +146,7 @@ public class SupabaseConnector(
     public val sessionStatus: StateFlow<SessionStatus> = supabaseClient.auth.sessionStatus
 
     public suspend fun loginAnonymously() {
-        runWrappedSuspending {
+        runWrapped {
             supabaseClient.auth.signInAnonymously()
         }
     }
@@ -155,7 +155,7 @@ public class SupabaseConnector(
      * Get credentials for PowerSync.
      */
     override suspend fun fetchCredentials(): PowerSyncCredentials =
-        runWrappedSuspending {
+        runWrapped {
             check(supabaseClient.auth.sessionStatus.value is SessionStatus.Authenticated) { "Supabase client is not authenticated" }
 
             // Use Supabase token for PowerSync
@@ -178,8 +178,8 @@ public class SupabaseConnector(
      * If this call throws an error, it is retried periodically.
      */
     override suspend fun uploadData(database: PowerSyncDatabase) {
-        return runWrappedSuspending {
-            val transaction = database.getNextCrudTransaction() ?: return@runWrappedSuspending
+        return runWrapped {
+            val transaction = database.getNextCrudTransaction() ?: return@runWrapped
 
             var lastEntry: CrudEntry? = null
             try {
@@ -227,7 +227,7 @@ public class SupabaseConnector(
                     Logger.e("Data upload error: ${e.message}")
                     Logger.e("Discarding entry: $lastEntry")
                     transaction.complete(null)
-                    return@runWrappedSuspending
+                    return@runWrapped
                 }
 
                 Logger.e("Data upload error - retrying last entry: $lastEntry, $e")
