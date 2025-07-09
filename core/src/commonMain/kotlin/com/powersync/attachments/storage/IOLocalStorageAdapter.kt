@@ -1,7 +1,7 @@
 package com.powersync.attachments.storage
 
 import com.powersync.attachments.LocalStorage
-import com.powersync.db.runWrappedSuspending
+import com.powersync.db.runWrapped
 import io.ktor.utils.io.core.remaining
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -26,7 +26,7 @@ public open class IOLocalStorageAdapter(
         filePath: String,
         data: Flow<ByteArray>,
     ): Long =
-        runWrappedSuspending {
+        runWrapped {
             withContext(Dispatchers.IO) {
                 var totalSize = 0L
                 fileSystem.sink(Path(filePath)).use { sink ->
@@ -65,28 +65,28 @@ public open class IOLocalStorageAdapter(
         }.flowOn(Dispatchers.IO)
 
     public override suspend fun deleteFile(filePath: String): Unit =
-        runWrappedSuspending {
+        runWrapped {
             withContext(Dispatchers.IO) {
                 fileSystem.delete(Path(filePath))
             }
         }
 
     public override suspend fun fileExists(filePath: String): Boolean =
-        runWrappedSuspending {
+        runWrapped {
             withContext(Dispatchers.IO) {
                 fileSystem.exists(Path(filePath))
             }
         }
 
     public override suspend fun makeDir(path: String): Unit =
-        runWrappedSuspending {
+        runWrapped {
             withContext(Dispatchers.IO) {
                 fileSystem.createDirectories(Path(path))
             }
         }
 
     public override suspend fun rmDir(path: String): Unit =
-        runWrappedSuspending {
+        runWrapped {
             withContext(Dispatchers.IO) {
                 for (item in fileSystem.list(Path(path))) {
                     // Can't delete directories with files in them. Need to go down the file tree
@@ -105,7 +105,7 @@ public open class IOLocalStorageAdapter(
         sourcePath: String,
         targetPath: String,
     ): Unit =
-        runWrappedSuspending {
+        runWrapped {
             withContext(Dispatchers.IO) {
                 fileSystem.source(Path(sourcePath)).use { source ->
                     fileSystem.sink(Path(targetPath)).use { sink ->

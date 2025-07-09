@@ -8,7 +8,7 @@ import com.powersync.attachments.storage.IOLocalStorageAdapter
 import com.powersync.attachments.sync.SyncingService
 import com.powersync.db.getString
 import com.powersync.db.internal.ConnectionContext
-import com.powersync.db.runWrappedSuspending
+import com.powersync.db.runWrapped
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -207,7 +207,7 @@ public open class AttachmentQueue(
      */
     @Throws(PowerSyncException::class, CancellationException::class)
     public suspend fun startSync(): Unit =
-        runWrappedSuspending {
+        runWrapped {
             mutex.withLock {
                 if (closed) {
                     throw Exception("Attachment queue has been closed")
@@ -261,9 +261,9 @@ public open class AttachmentQueue(
         }
 
     private suspend fun stopSyncingInternal(): Unit =
-        runWrappedSuspending {
+        runWrapped {
             if (closed) {
-                return@runWrappedSuspending
+                return@runWrapped
             }
 
             syncStatusJob?.cancelAndJoin()
@@ -278,10 +278,10 @@ public open class AttachmentQueue(
      */
     @Throws(PowerSyncException::class, CancellationException::class)
     public suspend fun close(): Unit =
-        runWrappedSuspending {
+        runWrapped {
             mutex.withLock {
                 if (closed) {
-                    return@runWrappedSuspending
+                    return@runWrapped
                 }
 
                 syncStatusJob?.cancelAndJoin()
@@ -322,11 +322,18 @@ public open class AttachmentQueue(
      */
     @Throws(PowerSyncException::class, CancellationException::class)
     public open suspend fun processWatchedAttachments(items: List<WatchedAttachmentItem>): Unit =
-        runWrappedSuspending {
+        runWrapped {
+            /**
+             * Use a lock here to prevent conflicting state updates.
+             */
             /**
              * Use a lock here to prevent conflicting state updates.
              */
             attachmentsService.withContext { attachmentsContext ->
+                /**
+                 * Need to get all the attachments which are tracked in the DB.
+                 * We might need to restore an archived attachment.
+                 */
                 /**
                  * Need to get all the attachments which are tracked in the DB.
                  * We might need to restore an archived attachment.
@@ -374,6 +381,11 @@ public open class AttachmentQueue(
                              * and has been synced. If it's missing and hasSynced is false then
                              * it must be an upload operation.
                              */
+                            /**
+                             * The localURI should be set if the record was meant to be downloaded
+                             * and has been synced. If it's missing and hasSynced is false then
+                             * it must be an upload operation.
+                             */
                             attachmentUpdates.add(
                                 existingQueueItem.copy(
                                     state =
@@ -387,6 +399,12 @@ public open class AttachmentQueue(
                         }
                     }
                 }
+
+                /**
+                 * Archive any items not specified in the watched items.
+                 * For QUEUED_DELETE or QUEUED_UPLOAD states, archive only if hasSynced is true.
+                 * For other states, archive if the record is not found in the items.
+                 */
 
                 /**
                  * Archive any items not specified in the watched items.
@@ -436,7 +454,7 @@ public open class AttachmentQueue(
         metaData: String? = null,
         updateHook: (context: ConnectionContext, attachment: Attachment) -> Unit,
     ): Attachment =
-        runWrappedSuspending {
+        runWrapped {
             val id = db.get("SELECT uuid() as id") { it.getString("id") }
             val filename =
                 resolveNewAttachmentFilename(attachmentId = id, fileExtension = fileExtension)
@@ -444,6 +462,11 @@ public open class AttachmentQueue(
 
             // Write the file to the filesystem.
             val fileSize = localStorage.saveFile(localUri, data)
+
+            /**
+             * Starts a write transaction. The attachment record and relevant local relationship
+             * assignment should happen in the same transaction.
+             */
 
             /**
              * Starts a write transaction. The attachment record and relevant local relationship
@@ -461,6 +484,10 @@ public open class AttachmentQueue(
                             localUri = localUri,
                             metaData = metaData,
                         )
+
+                    /**
+                     * Allow consumers to set relationships to this attachment ID.
+                     */
 
                     /**
                      * Allow consumers to set relationships to this attachment ID.
@@ -487,7 +514,7 @@ public open class AttachmentQueue(
         attachmentId: String,
         updateHook: (context: ConnectionContext, attachment: Attachment) -> Unit,
     ): Attachment =
-        runWrappedSuspending {
+        runWrapped {
             attachmentsService.withContext { attachmentContext ->
                 val attachment =
                     attachmentContext.getAttachment(attachmentId)

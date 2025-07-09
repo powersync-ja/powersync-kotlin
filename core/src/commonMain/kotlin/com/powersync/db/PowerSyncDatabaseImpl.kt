@@ -128,7 +128,7 @@ internal class PowerSyncDatabaseImpl(
     }
 
     override suspend fun updateSchema(schema: Schema) =
-        runWrappedSuspending {
+        runWrapped {
             waitReady()
             updateSchemaInternal(schema)
         }
@@ -515,7 +515,7 @@ internal class PowerSyncDatabaseImpl(
     }
 
     override suspend fun close() =
-        runWrappedSuspending {
+        runWrapped {
             mutex.withLock {
                 if (closed) {
                     return@withLock
