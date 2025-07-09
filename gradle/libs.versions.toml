@@ -18,7 +18,7 @@ kotlinx-io = "0.5.4"
 ktor = "3.1.0"
 rsocket = "0.20.0"
 uuid = "0.8.2"
-powersync-core = "0.4.1"
+powersync-core = "0.4.2"
 sqlite-jdbc = "3.50.1.0"
 sqliter = "1.3.1"
 turbine = "1.2.0"
@@ -62,7 +62,7 @@ gradle-download-task = { module = "de.undercouch:gradle-download-task", version.
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 kermit-test = { module = "co.touchlab:kermit-test", version.ref = "kermit" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
-powersync-sqlite-core-android = { module = "co.powersync:powersync-sqlite-core", version.ref = "powersync-core" }
+powersync-sqlite-core-android = { module = "com.powersync:powersync-sqlite-core", version.ref = "powersync-core" }
 mavenPublishPlugin = { module = "com.vanniktech:gradle-maven-publish-plugin", version.ref = "maven-publish" }
 
 test-junit = { group = "junit", name = "junit", version.ref = "junit" }
