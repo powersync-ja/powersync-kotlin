@@ -326,14 +326,7 @@ public open class AttachmentQueue(
             /**
              * Use a lock here to prevent conflicting state updates.
              */
-            /**
-             * Use a lock here to prevent conflicting state updates.
-             */
             attachmentsService.withContext { attachmentsContext ->
-                /**
-                 * Need to get all the attachments which are tracked in the DB.
-                 * We might need to restore an archived attachment.
-                 */
                 /**
                  * Need to get all the attachments which are tracked in the DB.
                  * We might need to restore an archived attachment.
@@ -381,11 +374,6 @@ public open class AttachmentQueue(
                              * and has been synced. If it's missing and hasSynced is false then
                              * it must be an upload operation.
                              */
-                            /**
-                             * The localURI should be set if the record was meant to be downloaded
-                             * and has been synced. If it's missing and hasSynced is false then
-                             * it must be an upload operation.
-                             */
                             attachmentUpdates.add(
                                 existingQueueItem.copy(
                                     state =
@@ -399,12 +387,6 @@ public open class AttachmentQueue(
                         }
                     }
                 }
-
-                /**
-                 * Archive any items not specified in the watched items.
-                 * For QUEUED_DELETE or QUEUED_UPLOAD states, archive only if hasSynced is true.
-                 * For other states, archive if the record is not found in the items.
-                 */
 
                 /**
                  * Archive any items not specified in the watched items.
@@ -467,11 +449,6 @@ public open class AttachmentQueue(
              * Starts a write transaction. The attachment record and relevant local relationship
              * assignment should happen in the same transaction.
              */
-
-            /**
-             * Starts a write transaction. The attachment record and relevant local relationship
-             * assignment should happen in the same transaction.
-             */
             attachmentsService.withContext { attachmentContext ->
                 db.writeTransaction { tx ->
                     val attachment =
@@ -484,10 +461,6 @@ public open class AttachmentQueue(
                             localUri = localUri,
                             metaData = metaData,
                         )
-
-                    /**
-                     * Allow consumers to set relationships to this attachment ID.
-                     */
 
                     /**
                      * Allow consumers to set relationships to this attachment ID.
