@@ -12,7 +12,6 @@ import com.powersync.utils.JsonUtil
 import com.powersync.utils.throttle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
@@ -25,7 +24,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
 
-@OptIn(FlowPreview::class)
 internal class InternalDatabaseImpl(
     private val factory: DatabaseDriverFactory,
     private val scope: CoroutineScope,
