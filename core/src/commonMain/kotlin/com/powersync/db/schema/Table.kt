@@ -53,7 +53,7 @@ public data class Table(
      * CRUD entries.
      */
     val ignoreEmptyUpdates: Boolean = false,
-): BaseTable {
+) : BaseTable {
     init {
         /**
          * Need to set the column definition for each index column.

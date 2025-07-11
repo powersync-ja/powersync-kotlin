@@ -695,85 +695,104 @@ class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
 
     @Test
     @OptIn(ExperimentalPowerSyncAPI::class, LegacySyncImplementation::class)
-    fun rawTables() = databaseTest(createInitialDatabase = false) {
-        val db = openDatabase(Schema(listOf(
-            RawTable(
-                name = "lists",
-                put = PendingStatement(
-                    "INSERT OR REPLACE INTO lists (id, name) VALUES (?, ?)",
-                    listOf(PendingStatementParameter.Id, PendingStatementParameter.Column("name"))
-                ),
-                delete = PendingStatement(
-                    "DELETE FROM lists WHERE id = ?", listOf(PendingStatementParameter.Id)
-                )
-            )
-        )))
-
-        db.execute("CREATE TABLE lists (id TEXT NOT NULL PRIMARY KEY, name TEXT)")
-        turbineScope(timeout = 10.0.seconds) {
-            val query = db.watch("SELECT * FROM lists", throttleMs = 0L) {
-                it.getString(0) to it.getString(1)
-            }.testIn(this)
-            query.awaitItem() shouldBe emptyList()
-
-            db.connect(connector, options = options)
-            syncLines.send(SyncLine.FullCheckpoint(Checkpoint(
-                lastOpId = "1",
-                checksums = listOf(BucketChecksum("a", checksum = 0)),
-            )))
-            syncLines.send(
-                SyncLine.SyncDataBucket(
-                    bucket = "a",
-                    data =
+    fun rawTables() =
+        databaseTest(createInitialDatabase = false) {
+            val db =
+                openDatabase(
+                    Schema(
                         listOf(
-                            OplogEntry(
-                                checksum = 0L,
-                                data =
-                                    JsonUtil.json.encodeToString(
-                                        mapOf(
-                                            "name" to "custom list",
-                                        ),
+                            RawTable(
+                                name = "lists",
+                                put =
+                                    PendingStatement(
+                                        "INSERT OR REPLACE INTO lists (id, name) VALUES (?, ?)",
+                                        listOf(PendingStatementParameter.Id, PendingStatementParameter.Column("name")),
                                     ),
-                                op = OpType.PUT,
-                                opId = "1",
-                                rowId = "my_list",
-                                rowType = "lists",
+                                delete =
+                                    PendingStatement(
+                                        "DELETE FROM lists WHERE id = ?",
+                                        listOf(PendingStatementParameter.Id),
+                                    ),
                             ),
                         ),
-                    after = null,
-                    nextAfter = null,
-                ),
-            )
-            syncLines.send(SyncLine.CheckpointComplete("1"))
+                    ),
+                )
 
-            query.awaitItem() shouldBe listOf("my_list" to "custom list")
+            db.execute("CREATE TABLE lists (id TEXT NOT NULL PRIMARY KEY, name TEXT)")
+            turbineScope(timeout = 10.0.seconds) {
+                val query =
+                    db
+                        .watch("SELECT * FROM lists", throttleMs = 0L) {
+                            it.getString(0) to it.getString(1)
+                        }.testIn(this)
+                query.awaitItem() shouldBe emptyList()
 
-            syncLines.send(SyncLine.FullCheckpoint(Checkpoint(
-                lastOpId = "2",
-                checksums = listOf(BucketChecksum("a", checksum = 0)),
-            )))
-            syncLines.send(
-                SyncLine.SyncDataBucket(
-                    bucket = "a",
-                    data =
-                        listOf(
-                            OplogEntry(
-                                checksum = 0L,
-                                data = null,
-                                op = OpType.REMOVE,
-                                opId = "2",
-                                rowId = "my_list",
-                                rowType = "lists",
-                            ),
+                db.connect(connector, options = options)
+                syncLines.send(
+                    SyncLine.FullCheckpoint(
+                        Checkpoint(
+                            lastOpId = "1",
+                            checksums = listOf(BucketChecksum("a", checksum = 0)),
                         ),
-                    after = null,
-                    nextAfter = null,
-                ),
-            )
-            syncLines.send(SyncLine.CheckpointComplete("1"))
+                    ),
+                )
+                syncLines.send(
+                    SyncLine.SyncDataBucket(
+                        bucket = "a",
+                        data =
+                            listOf(
+                                OplogEntry(
+                                    checksum = 0L,
+                                    data =
+                                        JsonUtil.json.encodeToString(
+                                            mapOf(
+                                                "name" to "custom list",
+                                            ),
+                                        ),
+                                    op = OpType.PUT,
+                                    opId = "1",
+                                    rowId = "my_list",
+                                    rowType = "lists",
+                                ),
+                            ),
+                        after = null,
+                        nextAfter = null,
+                    ),
+                )
+                syncLines.send(SyncLine.CheckpointComplete("1"))
 
-            query.awaitItem() shouldBe emptyList()
-            query.cancelAndIgnoreRemainingEvents()
+                query.awaitItem() shouldBe listOf("my_list" to "custom list")
+
+                syncLines.send(
+                    SyncLine.FullCheckpoint(
+                        Checkpoint(
+                            lastOpId = "2",
+                            checksums = listOf(BucketChecksum("a", checksum = 0)),
+                        ),
+                    ),
+                )
+                syncLines.send(
+                    SyncLine.SyncDataBucket(
+                        bucket = "a",
+                        data =
+                            listOf(
+                                OplogEntry(
+                                    checksum = 0L,
+                                    data = null,
+                                    op = OpType.REMOVE,
+                                    opId = "2",
+                                    rowId = "my_list",
+                                    rowType = "lists",
+                                ),
+                            ),
+                        after = null,
+                        nextAfter = null,
+                    ),
+                )
+                syncLines.send(SyncLine.CheckpointComplete("1"))
+
+                query.awaitItem() shouldBe emptyList()
+                query.cancelAndIgnoreRemainingEvents()
+            }
         }
-    }
 }
