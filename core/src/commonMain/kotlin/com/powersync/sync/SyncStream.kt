@@ -13,7 +13,6 @@ import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.schema.Schema
-import com.powersync.db.schema.SerializableSchema
 import com.powersync.db.schema.toSerializable
 import com.powersync.utils.JsonUtil
 import io.ktor.client.HttpClient
@@ -314,10 +313,12 @@ internal class SyncStream(
         }
 
         suspend fun start() {
-            invokeControl(PowerSyncControlArguments.Start(
-                parameters = params,
-                schema = schema.toSerializable(),
-            ))
+            invokeControl(
+                PowerSyncControlArguments.Start(
+                    parameters = params,
+                    schema = schema.toSerializable(),
+                ),
+            )
 
             var hadSyncLine = false
             for (line in controlInvocations) {

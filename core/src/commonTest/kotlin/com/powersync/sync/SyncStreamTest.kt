@@ -122,7 +122,7 @@ class SyncStreamTest {
                     params = JsonObject(emptyMap()),
                     uploadScope = this,
                     options = SyncOptions(),
-                    schema = Schema()
+                    schema = Schema(),
                 )
 
             syncStream.status.update { copy(connected = true) }
@@ -163,7 +163,7 @@ class SyncStreamTest {
                     params = JsonObject(emptyMap()),
                     uploadScope = this,
                     options = SyncOptions(),
-                    schema = Schema()
+                    schema = Schema(),
                 )
 
             // Launch streaming sync in a coroutine that we'll cancel after verification

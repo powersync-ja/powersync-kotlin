@@ -16,19 +16,20 @@ public data class Schema internal constructor(
     val tables: List<Table>,
     val rawTables: List<RawTable>,
 ) {
-    public constructor(tables: List<BaseTable>): this(
+    public constructor(tables: List<BaseTable>) : this(
         tables.filterIsInstance<Table>(),
-        tables.filterIsInstance<RawTable>()
+        tables.filterIsInstance<RawTable>(),
     )
 
     init {
         validate()
     }
 
-    internal val allTables: Sequence<BaseTable> get() = sequence {
-        yieldAll(tables)
-        yieldAll(rawTables)
-    }
+    internal val allTables: Sequence<BaseTable> get() =
+        sequence {
+            yieldAll(tables)
+            yieldAll(rawTables)
+        }
 
     /**
      * Secondary constructor to create a schema with a variable number of tables.
@@ -80,6 +81,6 @@ internal fun Schema.toSerializable(): SerializableSchema =
     with(this) {
         SerializableSchema(
             tables = tables.map { it.toSerializable() },
-            rawTables = rawTables.map { it.serialize() }
+            rawTables = rawTables.map { it.serialize() },
         )
     }

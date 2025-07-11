@@ -2,9 +2,7 @@ package com.powersync.db.schema
 
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.sync.SyncOptions
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -31,18 +29,17 @@ public class RawTable(
      * The statement to run when the sync client wants to delete a row.
      */
     public val delete: PendingStatement,
-): BaseTable {
+) : BaseTable {
     override fun validate() {
         // We don't currently have any validation for raw tables
     }
 
-    internal fun serialize(): JsonElement {
-        return buildJsonObject {
+    internal fun serialize(): JsonElement =
+        buildJsonObject {
             put("name", name)
             put("put", put.serialize())
             put("delete", delete.serialize())
         }
-    }
 }
 
 @ExperimentalPowerSyncAPI
@@ -50,21 +47,26 @@ public class PendingStatement(
     public val sql: String,
     public val parameters: List<PendingStatementParameter>,
 ) {
-    internal fun serialize(): JsonElement {
-        return buildJsonObject {
+    internal fun serialize(): JsonElement =
+        buildJsonObject {
             put("sql", sql)
-            put("params", buildJsonArray {
-                for (param in parameters) {
-                    add(when(param) {
-                        is PendingStatementParameter.Column -> buildJsonObject {
-                            put("Column", param.name)
-                        }
-                        PendingStatementParameter.Id -> JsonPrimitive("Id")
-                    })
-                }
-            })
+            put(
+                "params",
+                buildJsonArray {
+                    for (param in parameters) {
+                        add(
+                            when (param) {
+                                is PendingStatementParameter.Column ->
+                                    buildJsonObject {
+                                        put("Column", param.name)
+                                    }
+                                PendingStatementParameter.Id -> JsonPrimitive("Id")
+                            },
+                        )
+                    }
+                },
+            )
         }
-    }
 }
 
 /**
@@ -75,7 +77,7 @@ public sealed interface PendingStatementParameter {
     /**
      * Resolves to the id of the affected row.
      */
-    public object Id: PendingStatementParameter
+    public object Id : PendingStatementParameter
 
     /**
      * Resolves to the value of a column in the added row.
@@ -83,6 +85,7 @@ public sealed interface PendingStatementParameter {
      * This is only available for [RawTable.put] - in [RawTable.delete] statements, only the [Id]
      * can be used as a value.
      */
-    public class Column(public val name: String): PendingStatementParameter
+    public class Column(
+        public val name: String,
+    ) : PendingStatementParameter
 }
-

@@ -60,7 +60,7 @@ internal sealed interface PowerSyncControlArguments {
     @Serializable
     class Start(
         val parameters: JsonObject,
-        val schema: SerializableSchema
+        val schema: SerializableSchema,
     ) : PowerSyncControlArguments
 
     data object Stop : PowerSyncControlArguments
