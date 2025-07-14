@@ -3,6 +3,8 @@
 ## 1.2.3 (unreleased)
 
 * Fix `runWrapped` catching cancellation exceptions.
+* Update to Kotlin 2.2.0.
+* Migrate to `kotlin.time` APIs where appropriate.
 
 ## 1.2.2
 
