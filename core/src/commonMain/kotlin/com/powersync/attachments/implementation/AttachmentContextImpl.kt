@@ -7,8 +7,7 @@ import com.powersync.attachments.AttachmentContext
 import com.powersync.attachments.AttachmentState
 import com.powersync.db.getString
 import com.powersync.db.internal.ConnectionContext
-import kotlinx.datetime.Clock
-import kotlinx.serialization.encodeToString
+import kotlin.time.Clock
 import kotlinx.serialization.json.Json
 
 /**

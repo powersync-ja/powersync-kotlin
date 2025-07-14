@@ -1,7 +1,7 @@
 package com.powersync.sync
 
 import com.powersync.bucket.BucketPriority
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
