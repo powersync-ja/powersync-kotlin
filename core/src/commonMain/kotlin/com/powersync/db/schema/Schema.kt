@@ -11,6 +11,7 @@ import kotlinx.serialization.json.JsonElement
  * The implementation uses the schema as a "VIEW" on top of JSON data.
  * No migrations are required on the client.
  */
+@ConsistentCopyVisibility
 @OptIn(ExperimentalPowerSyncAPI::class)
 public data class Schema internal constructor(
     val tables: List<Table>,
@@ -31,10 +32,14 @@ public data class Schema internal constructor(
             yieldAll(rawTables)
         }
 
+    // Kept for binary compatibility, the new constructor taking a BaseTable vararg will be used when recompiling.
+    @Deprecated(level = DeprecationLevel.HIDDEN, message = "Use constructor taking BaseTable args instead")
+    public constructor(vararg tables: Table) : this(tables.asList())
+
     /**
      * Secondary constructor to create a schema with a variable number of tables.
      */
-    public constructor(vararg tables: Table) : this(tables.asList())
+    public constructor(vararg tables: BaseTable) : this(tables.asList())
 
     /**
      * Validates the schema by ensuring there are no duplicate table names

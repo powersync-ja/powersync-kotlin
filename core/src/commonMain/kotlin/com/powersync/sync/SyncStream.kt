@@ -441,6 +441,10 @@ internal class SyncStream(
         val scope: CoroutineScope,
     ) {
         suspend fun streamingSyncIteration() {
+            check(schema.rawTables.isEmpty()) {
+                "Raw tables are only supported by the Rust sync client."
+            }
+
             val bucketEntries = bucketStorage.getBucketStates()
             val initialBuckets = mutableMapOf<String, String>()
 
