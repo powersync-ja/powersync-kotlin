@@ -18,6 +18,9 @@ import kotlinx.serialization.json.put
  *
  * A main benefit of raw tables is that, since they're not backed by JSON views, complex queries on
  * them can be much more efficient.
+ * However, it's the responsibility of the developer to create these raw tables, migrate them when necessary and to
+ * write triggers detecting local writes. For more information, see
+ * [the documentation page](https://docs.powersync.com/usage/use-case-examples/raw-tables).
  *
  * Note that raw tables are only supported when [SyncOptions.newClientImplementation] is enabled.
  */
