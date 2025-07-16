@@ -5,6 +5,7 @@
 * Support tables created outside of PowerSync with the `RawTable` API.
   For more information, see [the documentation](https://docs.powersync.com/usage/use-case-examples/raw-tables).
 * Fix `runWrapped` catching cancellation exceptions.
+* Fix errors in `PowerSyncBackendConnector.fetchCredentials()` crashing Android apps.
 
 ## 1.2.2
 

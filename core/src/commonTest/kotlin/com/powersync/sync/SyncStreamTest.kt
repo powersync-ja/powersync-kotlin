@@ -6,16 +6,16 @@ import co.touchlab.kermit.Severity
 import co.touchlab.kermit.TestConfig
 import co.touchlab.kermit.TestLogWriter
 import com.powersync.ExperimentalPowerSyncAPI
+import com.powersync.TestConnector
 import com.powersync.bucket.BucketStorage
 import com.powersync.connectors.PowerSyncBackendConnector
-import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.UpdateType
 import com.powersync.db.schema.Schema
 import dev.mokkery.answering.returns
 import dev.mokkery.everySuspend
 import dev.mokkery.mock
-import dev.mokkery.verify
+import io.kotest.matchers.shouldBe
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import kotlinx.coroutines.delay
@@ -55,24 +55,12 @@ class SyncStreamTest {
             mock<BucketStorage> {
                 everySuspend { getClientId() } returns "test-client-id"
             }
-        connector =
-            mock<PowerSyncBackendConnector> {
-                everySuspend { getCredentialsCached() } returns
-                    PowerSyncCredentials(
-                        token = "test-token",
-                        endpoint = "https://test.com",
-                    )
-            }
+        connector = TestConnector()
     }
 
     @Test
     fun testInvalidateCredentials() =
         runTest {
-            connector =
-                mock<PowerSyncBackendConnector> {
-                    everySuspend { invalidateCredentials() } returns Unit
-                }
-
             syncStream =
                 SyncStream(
                     bucketStorage = bucketStorage,
@@ -86,8 +74,9 @@ class SyncStreamTest {
                     schema = Schema(),
                 )
 
+            connector.cachedCredentials = TestConnector.testCredentials
             syncStream.invalidateCredentials()
-            verify { connector.invalidateCredentials() }
+            connector.cachedCredentials shouldBe null
         }
 
     // TODO: Work on improving testing this without needing to test the logs are displayed

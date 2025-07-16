@@ -400,7 +400,7 @@ internal class SyncStream(
                         if (credentialsInvalidation == null) {
                             val job =
                                 scope.launch {
-                                    connector.prefetchCredentials().join()
+                                    connector.updateCredentials()
                                     logger.v { "Stopping because new credentials are available" }
 
                                     // Token has been refreshed, start another iteration

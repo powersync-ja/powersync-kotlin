@@ -9,19 +9,15 @@ import co.touchlab.kermit.Severity
 import co.touchlab.kermit.TestConfig
 import co.touchlab.kermit.TestLogWriter
 import com.powersync.DatabaseDriverFactory
+import com.powersync.TestConnector
 import com.powersync.bucket.WriteCheckpointData
 import com.powersync.bucket.WriteCheckpointResponse
-import com.powersync.connectors.PowerSyncBackendConnector
-import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.createPowerSyncDatabaseImpl
 import com.powersync.db.PowerSyncDatabaseImpl
 import com.powersync.db.schema.Schema
 import com.powersync.sync.LegacySyncImplementation
 import com.powersync.sync.SyncLine
 import com.powersync.utils.JsonUtil
-import dev.mokkery.answering.returns
-import dev.mokkery.everySuspend
-import dev.mokkery.mock
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.mock.toByteArray
@@ -103,16 +99,7 @@ internal class ActiveDatabaseTest(
         "db-$suffix"
     }
 
-    var connector =
-        mock<PowerSyncBackendConnector> {
-            everySuspend { getCredentialsCached() } returns
-                PowerSyncCredentials(
-                    token = "test-token",
-                    endpoint = "https://test.com",
-                )
-
-            everySuspend { invalidateCredentials() } returns Unit
-        }
+    var connector = TestConnector()
 
     fun openDatabase(schema: Schema = Schema(UserRow.table)): PowerSyncDatabaseImpl {
         logger.d { "Opening database $databaseName in directory $testDirectory" }

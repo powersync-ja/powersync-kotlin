@@ -8,6 +8,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -19,9 +21,16 @@ import kotlin.coroutines.cancellation.CancellationException
  *
  */
 public abstract class PowerSyncBackendConnector {
-    private var cachedCredentials: PowerSyncCredentials? = null
+    internal var cachedCredentials: PowerSyncCredentials? = null
+    private var fetchingCredentials = Mutex()
+
     private var fetchRequest: Job? = null
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+
+    private suspend fun fetchAndCacheCredentials(): PowerSyncCredentials? =
+        fetchCredentials().also {
+            cachedCredentials = it
+        }
 
     /**
      * Get credentials current cached, or fetch new credentials if none are
@@ -33,8 +42,15 @@ public abstract class PowerSyncBackendConnector {
     public open suspend fun getCredentialsCached(): PowerSyncCredentials? {
         return runWrapped {
             cachedCredentials?.let { return@runWrapped it }
-            prefetchCredentials().join()
-            cachedCredentials
+
+            return fetchingCredentials.withLock {
+                // With concurrent calls, it's possible that credentials have just been fetched.
+                cachedCredentials?.let { return it }
+
+                val credentials = fetchAndCacheCredentials()
+                check(credentials === cachedCredentials)
+                credentials
+            }
         }
     }
 
@@ -55,20 +71,37 @@ public abstract class PowerSyncBackendConnector {
      *
      * This may be called before the current credentials have expired.
      */
-    @Throws(PowerSyncException::class, CancellationException::class)
+    @Deprecated(
+        "Call updateCredentials, bring your own CoroutineScope if you need it to be asynchronous",
+        replaceWith = ReplaceWith("updateCredentials"),
+    )
     public open fun prefetchCredentials(): Job {
         fetchRequest?.takeIf { it.isActive }?.let { return it }
 
         val request =
             scope.launch {
-                fetchCredentials().also { value ->
-                    cachedCredentials = value
-                    fetchRequest = null
-                }
+                fetchAndCacheCredentials().also { fetchRequest = null }
             }
 
         fetchRequest = request
         return request
+    }
+
+    /**
+     * If no other task is currently fetching credentials, calls [fetchCredentials] again and caches
+     * the result internally.
+     *
+     * This is used by the sync client if a token is about to expire: By fetching a new token early,
+     * we can avoid interruptions in the sync process.
+     */
+    public suspend fun updateCredentials() {
+        if (fetchingCredentials.tryLock()) {
+            try {
+                fetchAndCacheCredentials()
+            } finally {
+                fetchingCredentials.unlock()
+            }
+        }
     }
 
     /**

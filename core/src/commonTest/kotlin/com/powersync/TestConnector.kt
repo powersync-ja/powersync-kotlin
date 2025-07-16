@@ -5,10 +5,7 @@ import com.powersync.connectors.PowerSyncCredentials
 
 class TestConnector : PowerSyncBackendConnector() {
     var fetchCredentialsCallback: suspend () -> PowerSyncCredentials? = {
-        PowerSyncCredentials(
-            token = "test-token",
-            endpoint = "https://test.com",
-        )
+        testCredentials
     }
     var uploadDataCallback: suspend (PowerSyncDatabase) -> Unit = {
         val tx = it.getNextCrudTransaction()
@@ -19,5 +16,13 @@ class TestConnector : PowerSyncBackendConnector() {
 
     override suspend fun uploadData(database: PowerSyncDatabase) {
         uploadDataCallback(database)
+    }
+
+    companion object {
+        val testCredentials =
+            PowerSyncCredentials(
+                token = "test-token",
+                endpoint = "https://powersynctest.example.com",
+            )
     }
 }
