@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.3.0 (unreleased)
+## 1.3.0
 
 * Support tables created outside of PowerSync with the `RawTable` API.
   For more information, see [the documentation](https://docs.powersync.com/usage/use-case-examples/raw-tables).
