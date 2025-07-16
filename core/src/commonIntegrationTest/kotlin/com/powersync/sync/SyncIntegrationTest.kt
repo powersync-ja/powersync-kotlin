@@ -667,10 +667,7 @@ abstract class BaseSyncIntegrationTest(
                             fail("Expected exception from fetchCredentials")
                         }
 
-                        return PowerSyncCredentials(
-                            token = "test-token",
-                            endpoint = "https://test.com",
-                        )
+                        return TestConnector.testCredentials
                     }
 
                     override suspend fun uploadData(database: PowerSyncDatabase) {
@@ -716,10 +713,7 @@ class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
                             completePrefetch.await()
                         }
 
-                        return PowerSyncCredentials(
-                            token = "test-token",
-                            endpoint = "https://test.com",
-                        )
+                        return TestConnector.testCredentials
                     }
 
                     override suspend fun uploadData(database: PowerSyncDatabase) {}
