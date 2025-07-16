@@ -309,6 +309,62 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 
+    override suspend fun getNextCrudTransactionBatch(transactionLimit: Int): CrudBatch? {
+        waitReady()
+        return internalDb.readTransaction { transaction ->
+            // Since tx_id can be null, we can't use a WHERE tx_id < ? with transactionLimit + first crud entry tx_id
+            // So we get all operations and group them by transaction or fall back to an individual transaction if tx_id is null
+            val allOperations =
+                transaction.getAll(
+                    "SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC",
+                ) { cursor ->
+                    CrudEntry.fromRow(
+                        CrudRow(
+                            id = cursor.getString("id"),
+                            data = cursor.getString("data"),
+                            txId = cursor.getLongOptional("tx_id")?.toInt(),
+                        ),
+                    )
+                }
+
+            val result = mutableListOf<CrudEntry>()
+            val processedTransactions = mutableSetOf<Int>()
+            var transactionCount = 0
+
+            for (operation in allOperations) {
+                if (transactionCount >= transactionLimit) break
+
+                val txId = operation.transactionId
+                if (txId == null) {
+                    // NULL tx_id operations are individual transactions
+                    result.add(operation)
+                    transactionCount++
+                } else if (txId !in processedTransactions) {
+                    val transactionOperations = bucketStorage.getCrudItemsByTransactionId(txId, transaction)
+                    result.addAll(transactionOperations)
+                    processedTransactions.add(txId)
+                    transactionCount++
+                }
+            }
+
+            if (result.isEmpty()) {
+                return@readTransaction null
+            }
+
+            val hasMore = result.size < allOperations.size
+            val last = result.last()
+
+            return@readTransaction CrudBatch(
+                crud = result,
+                hasMore = hasMore,
+                complete = { writeCheckpoint ->
+                    logger.i { "[CrudTransactionBatch::complete] Completing batch with checkpoint $writeCheckpoint" }
+                    handleWriteCheckpoint(last.clientId, writeCheckpoint)
+                },
+            )
+        }
+    }
+
     override suspend fun getPowerSyncVersion(): String {
         // The initialization sets powerSyncVersion.
         waitReady()

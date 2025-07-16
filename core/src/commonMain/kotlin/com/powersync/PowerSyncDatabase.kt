@@ -135,6 +135,25 @@ public interface PowerSyncDatabase : Queries {
     public suspend fun getNextCrudTransaction(): CrudTransaction?
 
     /**
+     * Get a batch of crud data from multiple transactions to upload.
+     *
+     * Returns null if there is no data to upload.
+     *
+     * Use this from the [PowerSyncBackendConnector.uploadData]` callback.
+     *
+     * Once the data have been successfully uploaded, call [CrudBatch.complete] before
+     * requesting the next batch.
+     *
+     * Unlike [getCrudBatch], this groups data by transaction, allowing developers to
+     * upload multiple complete transactions in a single batch operation.
+     *
+     * @param transactionLimit The maximum number of transactions to include in the batch.
+     * Default is 5.
+     */
+    @Throws(PowerSyncException::class, CancellationException::class)
+    public suspend fun getNextCrudTransactionBatch(transactionLimit: Int = 10): CrudBatch?
+
+    /**
      * Convenience method to get the current version of PowerSync.
      */
     @Throws(PowerSyncException::class, CancellationException::class)
