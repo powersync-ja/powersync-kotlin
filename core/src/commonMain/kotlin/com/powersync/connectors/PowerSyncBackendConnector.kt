@@ -72,8 +72,8 @@ public abstract class PowerSyncBackendConnector {
      * This may be called before the current credentials have expired.
      */
     @Deprecated(
-        "Bring your own CoroutineScope to launch refetchCredentials",
-        replaceWith = ReplaceWith("refetchCredentials"),
+        "Bring your own CoroutineScope to launch updateCredentials",
+        replaceWith = ReplaceWith("updateCredentials"),
     )
     public open fun prefetchCredentials(): Job {
         fetchRequest?.takeIf { it.isActive }?.let { return it }
