@@ -72,7 +72,7 @@ public abstract class PowerSyncBackendConnector {
      * This may be called before the current credentials have expired.
      */
     @Deprecated(
-        "Bring your own CoroutineScope to launch updateCredentials",
+        "Call updateCredentials, bring your own CoroutineScope if you need it to be asynchronous",
         replaceWith = ReplaceWith("updateCredentials"),
     )
     public open fun prefetchCredentials(): Job {
@@ -94,7 +94,7 @@ public abstract class PowerSyncBackendConnector {
      * This is used by the sync client if a token is about to expire: By fetching a new token early,
      * we can avoid interruptions in the sync process.
      */
-    internal suspend fun updateCredentials() {
+    public suspend fun updateCredentials() {
         if (fetchingCredentials.tryLock()) {
             try {
                 fetchAndCacheCredentials()
