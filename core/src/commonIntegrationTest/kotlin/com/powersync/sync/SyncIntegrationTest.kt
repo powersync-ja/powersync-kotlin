@@ -13,6 +13,8 @@ import com.powersync.bucket.OpType
 import com.powersync.bucket.OplogEntry
 import com.powersync.bucket.WriteCheckpointData
 import com.powersync.bucket.WriteCheckpointResponse
+import com.powersync.connectors.PowerSyncBackendConnector
+import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.db.PowerSyncDatabaseImpl
 import com.powersync.db.schema.PendingStatement
 import com.powersync.db.schema.PendingStatementParameter
@@ -23,24 +25,20 @@ import com.powersync.testutils.databaseTest
 import com.powersync.testutils.waitFor
 import com.powersync.utils.JsonParam
 import com.powersync.utils.JsonUtil
-import dev.mokkery.answering.returns
-import dev.mokkery.every
-import dev.mokkery.verify
-import dev.mokkery.verifyNoMoreCalls
-import dev.mokkery.verifySuspend
 import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
+import io.kotest.matchers.string.shouldContain
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.launch
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
+import kotlin.test.fail
 import kotlin.time.Duration.Companion.seconds
 
 @OptIn(LegacySyncImplementation::class)
@@ -116,6 +114,7 @@ abstract class BaseSyncIntegrationTest(
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
                 turbine.waitFor { it.connected }
+                connector.cachedCredentials shouldNotBe null
 
                 database.disconnect()
                 turbine.waitFor { !it.connected }
@@ -126,7 +125,7 @@ abstract class BaseSyncIntegrationTest(
             waitFor { syncLines.isClosedForSend shouldBe true }
 
             // And called invalidateCredentials on the connector
-            verify { connector.invalidateCredentials() }
+            connector.cachedCredentials shouldBe null
         }
 
     @Test
@@ -630,6 +629,12 @@ abstract class BaseSyncIntegrationTest(
     @Test
     fun testTokenExpired() =
         databaseTest {
+            var fetchCredentialsCalls = 0
+            connector.fetchCredentialsCallback = {
+                fetchCredentialsCalls++
+                TestConnector.testCredentials
+            }
+
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
 
@@ -638,13 +643,51 @@ abstract class BaseSyncIntegrationTest(
 
                 syncLines.send(SyncLine.KeepAlive(tokenExpiresIn = 4000))
                 turbine.waitFor { it.connected }
-                verifySuspend { connector.getCredentialsCached() }
-                verifyNoMoreCalls(connector)
+                fetchCredentialsCalls shouldBe 1
 
                 // Should invalidate credentials when token expires
                 syncLines.send(SyncLine.KeepAlive(tokenExpiresIn = 0))
                 turbine.waitFor { !it.connected }
-                verify { connector.invalidateCredentials() }
+                connector.cachedCredentials shouldBe null
+
+                turbine.cancel()
+            }
+        }
+
+    @Test
+    fun testTokenThrows() =
+        databaseTest {
+            // Regression test for https://github.com/powersync-ja/powersync-kotlin/issues/219
+            var attempt = 0
+            val connector =
+                object : PowerSyncBackendConnector() {
+                    override suspend fun fetchCredentials(): PowerSyncCredentials? {
+                        attempt++
+                        if (attempt == 1) {
+                            fail("Expected exception from fetchCredentials")
+                        }
+
+                        return PowerSyncCredentials(
+                            token = "test-token",
+                            endpoint = "https://test.com",
+                        )
+                    }
+
+                    override suspend fun uploadData(database: PowerSyncDatabase) {
+                        fail("Not implemented: uploadData")
+                    }
+                }
+
+            turbineScope(timeout = 10.0.seconds) {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+
+                database.connect(connector, 1000L, retryDelayMs = 5000, options = options)
+                turbine.waitFor { it.downloadError != null }
+
+                database.currentStatus.downloadError?.toString() shouldContain "Expected exception from fetchCredentials"
+
+                // Should retry, and the second fetchCredentials call will work
+                turbine.waitFor { it.connected }
 
                 turbine.cancel()
             }
@@ -662,10 +705,24 @@ class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
         databaseTest {
             val prefetchCalled = CompletableDeferred<Unit>()
             val completePrefetch = CompletableDeferred<Unit>()
-            every { connector.prefetchCredentials() } returns
-                scope.launch {
-                    prefetchCalled.complete(Unit)
-                    completePrefetch.await()
+            var fetchCredentialsCount = 0
+
+            val connector =
+                object : PowerSyncBackendConnector() {
+                    override suspend fun fetchCredentials(): PowerSyncCredentials? {
+                        fetchCredentialsCount++
+                        if (fetchCredentialsCount == 2) {
+                            prefetchCalled.complete(Unit)
+                            completePrefetch.await()
+                        }
+
+                        return PowerSyncCredentials(
+                            token = "test-token",
+                            endpoint = "https://test.com",
+                        )
+                    }
+
+                    override suspend fun uploadData(database: PowerSyncDatabase) {}
                 }
 
             turbineScope(timeout = 10.0.seconds) {
@@ -676,8 +733,7 @@ class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
 
                 syncLines.send(SyncLine.KeepAlive(tokenExpiresIn = 4000))
                 turbine.waitFor { it.connected }
-                verifySuspend { connector.getCredentialsCached() }
-                verifyNoMoreCalls(connector)
+                fetchCredentialsCount shouldBe 1
 
                 syncLines.send(SyncLine.KeepAlive(tokenExpiresIn = 10))
                 prefetchCalled.await()
@@ -689,6 +745,7 @@ class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
                 turbine.waitFor { !it.connected }
 
                 turbine.waitFor { it.connected }
+                fetchCredentialsCount shouldBe 2
                 turbine.cancel()
             }
         }
