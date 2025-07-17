@@ -31,7 +31,7 @@ jobs:
           validate-wrappers: true
       - name: Build Docs
         run: |
-          ./gradlew \
+          ./gradlew --scan \
             --no-configuration-cache \
            -PGITHUB_PUBLISH_TOKEN=${{ secrets.GITHUB_TOKEN }} \
           dokkaGenerate
