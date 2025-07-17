@@ -2,11 +2,10 @@
 
 ## 1.4.0 (unreleased)
 
-- Add `getNextCrudTransactionBatch` method to `PowerSyncDatabase` which allows for fetching a batch of CRUD operations to upload.
+* Add `getNextCrudTransactionBatch` method to `PowerSyncDatabase` which allows for fetching a batch of CRUD operations to upload.
   This is useful for uploading multiple transactions in a single batch.
 
-
-## 1.3.0 (unreleased)
+## 1.3.0
 
 * Support tables created outside of PowerSync with the `RawTable` API.
   For more information, see [the documentation](https://docs.powersync.com/usage/use-case-examples/raw-tables).
@@ -29,7 +28,7 @@
 
 * Add a new sync client implementation written in Rust instead of Kotlin. While this client is still
   experimental, we intend to make it the default in the future. The main benefit of this client is
-  faster sync performance, but upcoming features will also require this client. We encourage 
+  faster sync performance, but upcoming features will also require this client. We encourage
   interested users to try it out by opting in to `ExperimentalPowerSyncAPI` and passing options when
   connecting:
   ```Kotlin
@@ -50,7 +49,7 @@
     method = ConnectionMethod.WebSocket()
   ))
   ```
-* [Android, JVM] Use version `0.4.0` of `powersync-sqlite-core`.
+* [Android, JVM] Use version `0.4.0` of `powersync*sqlite*core`.
 
 ## 1.1.1
 
@@ -73,27 +72,27 @@
 * Bump SDK to V1/Stable feature status
 * Fixed `CrudBatch` `hasMore` always returning false.
 * Added `triggerImmediately` to `onChange` method.
-* Report real-time progress information about downloads through `SyncStatus.downloadProgress`.
+* Report real*time progress information about downloads through `SyncStatus.downloadProgress`.
 * Compose: Add `composeState()` extension method on `SyncStatus`.
 * [Internal] Added helper method for Swift `PowerSyncException` throwing.
 
-## 1.0.0-BETA32
+## 1.0.0*BETA32
 
 * Added `onChange` method to the PowerSync client. This allows for observing table changes.
-* Removed unnecessary `User-Id` header from internal PowerSync service requests.
+* Removed unnecessary `User*Id` header from internal PowerSync service requests.
 * Fix loading native PowerSync extension for Java targets.
 
-## 1.0.0-BETA31
+## 1.0.0*BETA31
 
 * Added helpers for Attachment syncing.
 * Fix `getNextCrudTransaction()` only returning a single item.
 
-## 1.0.0-BETA30
+## 1.0.0*BETA30
 
 * Fix a deadlock when calling `connect()` immediately after opening a database.
-  The issue has been introduced in version `1.0.0-BETA29`.
+  The issue has been introduced in version `1.0.0*BETA29`.
 
-## 1.0.0-BETA29
+## 1.0.0*BETA29
 
 * Fix potential race condition between jobs in `connect()` and `disconnect()`.
 * [JVM Windows] Fixed PowerSync Extension temporary file deletion error on process shutdown.
@@ -105,7 +104,7 @@ Sqlite operation failure database is locked attempted to run migration and faile
 
 * Fix race condition causing data received during uploads not to be applied.
 
-## 1.0.0-BETA28
+## 1.0.0*BETA28
 
 * Update PowerSync SQLite core extension to 0.3.12.
 * Added queing protection and warnings when connecting multiple PowerSync clients to the same
@@ -120,35 +119,35 @@ Sqlite operation failure database is locked attempted to run migration and faile
 * Fixed bug where local only, insert only and view name overrides were not applied for schema
   tables.
 * The Android SQLite driver now uses
-  the [Xerial JDBC library](https://github.com/xerial/sqlite-jdbc). This removes the requirement for
+  the [Xerial JDBC library](https://github.com/xerial/sqlite*jdbc). This removes the requirement for
   users to add the jitpack Maven repository to their projects.
 
 ```diff
 // settings.gradle.kts example
     repositories {
         google()
--        maven("https://jitpack.io") {
--            content { includeGroup("com.github.requery") }
--        }
+*        maven("https://jitpack.io") {
+*            content { includeGroup("com.github.requery") }
+*        }
         mavenCentral()
     }
 ```
 
-## 1.0.0-BETA27
+## 1.0.0*BETA27
 
 * Improved watch query internals. Added the ability to throttle watched queries.
 * Fixed `uploading` and `downloading` sync status indicators.
 
-## 1.0.0-BETA26
+## 1.0.0*BETA26
 
 * Support bucket priorities and partial syncs.
 * Android: Add ProGuard rules to prevent methods called through JNI from being minified or removed.
 
-## 1.0.0-BETA25
+## 1.0.0*BETA25
 
 * JVM: Lower minimum supported version from 17 to 8.
 
-## 1.0.0-BETA24
+## 1.0.0*BETA24
 
 * Improve internal handling of watch queries to avoid issues where updates are not being received
   due to transaction commits occurring after the query is run.
@@ -156,29 +155,29 @@ Sqlite operation failure database is locked attempted to run migration and faile
   driver starting at 1 instead of 0 as in the other drivers/
 * Throw and not just catch `CancellationExceptions` in `runWrappedSuspending`
 
-## 1.0.0-BETA23
+## 1.0.0*BETA23
 
 * Make `execute` and `PowerSyncTransaction` functions throwable for Swift
 
-## 1.0.0-BETA22
+## 1.0.0*BETA22
 
 * Fix `updateHasSynced` internal null pointer exception
 
-## 1.0.0-BETA21
+## 1.0.0*BETA21
 
 * Improve error handling for Swift by adding @Throws annotation so errors can be handled in Swift
 * Throw PowerSync exceptions for all public facing methods
 
-## 1.0.0-BETA20
+## 1.0.0*BETA20
 
 * Add cursor optional functions: `getStringOptional`, `getLongOptional`, `getDoubleOptional`,
   `getBooleanOptional` and `getBytesOptional` when using the column name which allow for optional
   return types
 * Throw errors for invalid column on all cursor functions
 * `getString`, `getLong`, `getBytes`, `getDouble` and `getBoolean` used with the column name will
-  now throw an error for non-null values and expect a non optional return type
+  now throw an error for non*null values and expect a non optional return type
 
-## 1.0.0-BETA19
+## 1.0.0*BETA19
 
 * Allow cursor to get values by column name e.g. `getStringOptional("id")`
 * BREAKING CHANGE: If you were using `SqlCursor` from SqlDelight previously for your own custom
@@ -196,83 +195,83 @@ Sqlite operation failure database is locked attempted to run migration and faile
   import com.powersync.db.SqlCursor
   ```
 
-## 1.0.0-BETA18
+## 1.0.0*BETA18
 
 * BREAKING CHANGE: Move from async sqldelight calls to synchronous calls. This will only affect
   `readTransaction` and `writeTransaction`where the callback function is no longer asynchronous.
 
-## 1.0.0-BETA17
+## 1.0.0*BETA17
 
 * Add fix for Windows using JVM build
 
-## 1.0.0-BETA16
+## 1.0.0*BETA16
 
 * Add `close` method to database methods
 * Throw when error is a `CancellationError` and remove invalidation for all errors in
   `streamingSync` catch.
 
-## 1.0.0-BETA15
+## 1.0.0*BETA15
 
-* Update powersync-sqlite-core to 0.3.8
+* Update powersync*sqlite*core to 0.3.8
 * Increase maximum amount of columns from 63 to 1999
 
-## 1.0.0-BETA14
+## 1.0.0*BETA14
 
 * Add JVM compatibility
 * Revert previous iOS changes as they resulted in further issues.
 
-## 1.0.0-BETA13
+## 1.0.0*BETA13
 
 * Move iOS database driver to use IO dispatcher which should avoid race conditions and improve
   performance.
 
-## 1.0.0-BETA12
+## 1.0.0*BETA12
 
 * Use transaction context in `writeTransaction` in `BucketStorageImpl`.
 
-## 1.0.0-BETA11
+## 1.0.0*BETA11
 
 * Update version to fix deployment issue of previous release
 
-## 1.0.0-BETA10
+## 1.0.0*BETA10
 
 * Change Swift package name from `PowerSync` to `PowerSyncKotlin`
 
-## 1.0.0-BETA9
+## 1.0.0*BETA9
 
-* Re-enable SKIE `SuspendInterop`
+* Re*enable SKIE `SuspendInterop`
 * Move transaction functions out of `PowerSyncTransactionFactory` to avoid threading issues in Swift
   SDK
 
-## 1.0.0-BETA8
+## 1.0.0*BETA8
 
 * Disable SKIE `SuspendInterop` plugin to fix overriding `suspend` functions in Swift
 
-## 1.0.0-BETA7
+## 1.0.0*BETA7
 
-* Update supabase connector to use supabase-kt version 3
+* Update supabase connector to use supabase*kt version 3
 * Handle Postgres error codes in supabase connector
 
-## 1.0.0-BETA6
+## 1.0.0*BETA6
 
 * Fix Custom Write Checkpoint application logic
 
-## 1.0.0-BETA5
+## 1.0.0*BETA5
 
 * Fix `hasSynced` not updating after `disconnectAndClear`
 * Fix error being thrown in iOS app launch
 
-## 1.0.0-BETA4
+## 1.0.0*BETA4
 
 * Fix sync status being reset when `update` function is run
 
-## 1.0.0-BETA3
+## 1.0.0*BETA3
 
-* Add `waitForFirstSync` function - which resolves after the initial sync is completed
-* Upgrade to Kotlin 2.0.20 - should not cause any issues with users who are still on Kotlin 1.9
-* Upgrade `powersync-sqlite-core` to 0.3.0 - improves incremental sync performance
-* Add client sync parameters - which allows you specify sync parameters from the
-  client https://docs.powersync.com/usage/sync-rules/advanced-topics/client-parameters-beta
+* Add `waitForFirstSync` function * which resolves after the initial sync is completed
+* Upgrade to Kotlin 2.0.20 * should not cause any issues with users who are still on Kotlin 1.9
+* Upgrade `powersync*sqlite*core` to 0.3.0 * improves incremental sync performance
+* Add client sync parameters * which allows you specify sync parameters from the
+  client https://docs.powersync.com/usage/sync*rules/advanced*topics/client*parameters*beta
 
 ```kotlin
 val params = JsonParam.Map(
@@ -293,17 +292,17 @@ params = params
 * Add warning message if there is a crudItem in the queue that has not yet been synced and after a
   delay rerun the upload
 
-## 1.0.0-BETA2
+## 1.0.0*BETA2
 
 * Publish persistence package
 
-## 1.0.0-BETA1
+## 1.0.0*BETA1
 
 * Improve API by changing from Builder pattern to simply instantiating the database
   `PowerSyncDatabase`
   E.g. `val db = PowerSyncDatabase(factory, schema)`
 * Use callback context in transactions
-  E.g. `db.writeTransaction{ ctx -> ctx.execute(...) }`
+  E.g. `db.writeTransaction{ ctx *> ctx.execute(...) }`
 * Removed unnecessary expiredAt field
 * Added table max column validation as there is a hard limit of 63 columns
 * Moved SQLDelight models to a separate module to reduce export size
