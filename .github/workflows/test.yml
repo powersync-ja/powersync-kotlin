@@ -43,7 +43,7 @@ jobs:
 
     - name: Build and run tests with Gradle
       run: |
-        ./gradlew \
+        ./gradlew --scan \
           ${{ matrix.targets }}
       shell: bash
 

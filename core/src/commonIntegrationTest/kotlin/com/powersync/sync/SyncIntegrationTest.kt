@@ -411,8 +411,8 @@ abstract class BaseSyncIntegrationTest(
                 db2.disconnect()
                 turbine2.waitFor { !it.connecting }
 
-                turbine1.cancel()
-                turbine2.cancel()
+                turbine1.cancelAndIgnoreRemainingEvents()
+                turbine2.cancelAndIgnoreRemainingEvents()
             }
         }
 
@@ -433,7 +433,7 @@ abstract class BaseSyncIntegrationTest(
                 database.disconnect()
                 turbine.waitFor { !it.connecting }
 
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
         }
 
@@ -449,7 +449,7 @@ abstract class BaseSyncIntegrationTest(
                 database.connect(connector, 1000L, retryDelayMs = 5000, options = options)
                 turbine.waitFor { it.connecting }
 
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
         }
 
@@ -650,7 +650,7 @@ abstract class BaseSyncIntegrationTest(
                 turbine.waitFor { !it.connected }
                 connector.cachedCredentials shouldBe null
 
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
         }
 
@@ -686,7 +686,7 @@ abstract class BaseSyncIntegrationTest(
                 // Should retry, and the second fetchCredentials call will work
                 turbine.waitFor { it.connected }
 
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
         }
 }
@@ -740,7 +740,7 @@ class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
 
                 turbine.waitFor { it.connected }
                 fetchCredentialsCount shouldBe 2
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
         }
 
