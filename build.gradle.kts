@@ -75,6 +75,22 @@ dokka {
     moduleName.set("PowerSync Kotlin")
 }
 
+develocity {
+    val isPowerSyncCI = System.getenv("GITHUB_REPOSITORY") == "powersync-ja/powersync-kotlin"
+
+    buildScan {
+        // We can't know if everyone running this build has accepted the TOS, but we've accepted
+        // them for our CI.
+        if (isPowerSyncCI) {
+            termsOfUseUrl.set("https://gradle.com/help/legal-terms-of-use")
+            termsOfUseAgree.set("yes")
+        }
+
+        // Only upload build scan if the --scan parameter is set
+        publishing.onlyIf { false }
+    }
+}
+
 // Serve the generated Dokka documentation using a simple HTTP server
 // File changes are not watched here
 tasks.register("serveDokka") {
