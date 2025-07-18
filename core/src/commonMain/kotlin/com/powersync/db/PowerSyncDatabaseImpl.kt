@@ -309,6 +309,87 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 
+    override suspend fun getNextCrudTransactionBatch(limit: Int?): CrudBatch? {
+        waitReady()
+
+        if (limit == 0) {
+            return null
+        }
+
+        return internalDb.readTransaction { transaction ->
+            val result =
+                transaction.getAll(
+                    """
+                WITH all_operations AS (
+                    -- Compute transaction group once and reuse throughout
+                    SELECT 
+                        id,
+                        tx_id,
+                        data,
+                        COALESCE(tx_id, id) as transaction_group
+                    FROM ps_crud
+                ),
+                transaction_groups AS (
+                    SELECT 
+                        transaction_group,
+                        MIN(id) as first_operation_id,
+                        COUNT(*) as operation_count
+                    FROM all_operations
+                    GROUP BY transaction_group
+                ),
+                transaction_with_running_totals AS (
+                    SELECT 
+                        transaction_group,
+                        first_operation_id,
+                        operation_count,
+                        ROW_NUMBER() OVER (ORDER BY first_operation_id) as transaction_rank,
+                        SUM(operation_count) OVER (ORDER BY first_operation_id ROWS UNBOUNDED PRECEDING) as running_total
+                    FROM transaction_groups
+                ),
+                selected_transactions AS (
+                    SELECT transaction_group
+                    FROM transaction_with_running_totals
+                    WHERE ? IS NULL OR running_total <= ? OR transaction_rank = 1
+                )
+                SELECT ao.id, ao.tx_id, ao.data
+                FROM all_operations ao
+                INNER JOIN selected_transactions st ON ao.transaction_group = st.transaction_group
+                ORDER BY ao.id
+                """,
+                    listOf(limit?.toLong(), limit?.toLong()),
+                ) { cursor ->
+                    CrudEntry.fromRow(
+                        CrudRow(
+                            id = cursor.getString("id"),
+                            data = cursor.getString("data"),
+                            txId = cursor.getLongOptional("tx_id")?.toInt(),
+                        ),
+                    )
+                }
+
+            if (result.isEmpty()) {
+                return@readTransaction null
+            }
+
+            val maxOperationId = result.maxOfOrNull { it.clientId } ?: 0
+
+            val hasMore =
+                transaction.get(
+                    "SELECT EXISTS(SELECT 1 FROM ps_crud WHERE id > ? LIMIT 1)",
+                    listOf(maxOperationId.toLong()),
+                ) { it.getLong(0)!! } > 0
+
+            return@readTransaction CrudBatch(
+                crud = result,
+                hasMore = hasMore,
+                complete = { writeCheckpoint ->
+                    logger.i { "[CrudTransactionBatch::complete] Completing batch with checkpoint $writeCheckpoint" }
+                    handleWriteCheckpoint(maxOperationId, writeCheckpoint)
+                },
+            )
+        }
+    }
+
     override suspend fun getPowerSyncVersion(): String {
         // The initialization sets powerSyncVersion.
         waitReady()

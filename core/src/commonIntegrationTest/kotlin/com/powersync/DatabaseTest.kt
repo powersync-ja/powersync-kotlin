@@ -22,6 +22,7 @@ import kotlinx.coroutines.withContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.time.TimeSource
 
 @OptIn(ExperimentalKermitApi::class)
 class DatabaseTest {
@@ -458,5 +459,358 @@ class DatabaseTest {
             batch.complete(null)
 
             database.getCrudBatch() shouldBe null
+        }
+
+    @Test
+    fun testCrudTransactionBatch() =
+        databaseTest {
+            // Create a single insert (transaction 1)
+            database.execute(
+                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                listOf("a", "a@example.org"),
+            )
+
+            // Create a transaction with 2 inserts (transaction 2)
+            database.writeTransaction {
+                it.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf("b", "b@example.org"),
+                )
+                it.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf("c", "c@example.org"),
+                )
+            }
+
+            // Create another single insert (transaction 3)
+            database.execute(
+                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                listOf("d", "d@example.org"),
+            )
+
+            // Create another transaction with 3 inserts (transaction 4)
+            database.writeTransaction {
+                it.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf("e", "e@example.org"),
+                )
+                it.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf("f", "f@example.org"),
+                )
+                it.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf("g", "g@example.org"),
+                )
+            }
+
+            // Test with item limit of 3 - should get first transaction (1 item) + second transaction (2 items)
+            var batch = database.getNextCrudTransactionBatch(limit = 3) ?: error("Batch should not be null")
+            batch.hasMore shouldBe true
+            batch.crud shouldHaveSize 3 // 1 entry from transaction 1 + 2 entries from transaction 2
+            batch.complete(null)
+
+            // Test with item limit of 2 - should get third transaction (1 item) only
+            batch = database.getNextCrudTransactionBatch(limit = 2) ?: error("Batch should not be null")
+            batch.hasMore shouldBe true
+            batch.crud shouldHaveSize 1 // 1 entry from transaction 3
+            batch.complete(null)
+
+            // Test with no limit - should get remaining transactions
+            batch = database.getNextCrudTransactionBatch() ?: error("Batch should not be null")
+            batch.hasMore shouldBe false
+            batch.crud shouldHaveSize 3 // 3 entries from transaction 4
+            batch.complete(null)
+
+            // Should be no more transactions
+            database.getNextCrudTransactionBatch() shouldBe null
+        }
+
+    @Test
+    fun testCrudTransactionBatchWithNullTxId() =
+        databaseTest {
+            // Create operations without transactions (NULL tx_id)
+            database.execute(
+                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                listOf("a", "a@example.org"),
+            )
+            database.execute(
+                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                listOf("b", "b@example.org"),
+            )
+            database.execute(
+                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                listOf("c", "c@example.org"),
+            )
+
+            // Each NULL tx_id operation should be treated as its own transaction
+            var batch = database.getNextCrudTransactionBatch(limit = 2) ?: error("Batch should not be null")
+            batch.hasMore shouldBe true
+            batch.crud shouldHaveSize 2 // 2 individual transactions
+            batch.complete(null)
+
+            // Get the remaining transaction
+            batch = database.getNextCrudTransactionBatch() ?: error("Batch should not be null")
+            batch.hasMore shouldBe false
+            batch.crud shouldHaveSize 1 // 1 remaining transaction
+            batch.complete(null)
+
+            database.getNextCrudTransactionBatch() shouldBe null
+        }
+
+    @Test
+    fun testCrudTransactionBatchLargeTransaction() =
+        databaseTest {
+            // Create a large transaction with many operations
+            database.writeTransaction {
+                repeat(10) { i ->
+                    it.execute(
+                        "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                        listOf("user$i", "user$i@example.org"),
+                    )
+                }
+            }
+
+            // Add a single operation
+            database.execute(
+                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                listOf("single", "single@example.org"),
+            )
+
+            // Should get entire large transaction (10 operations) - at least one transaction rule
+            var batch = database.getNextCrudTransactionBatch(limit = 5) ?: error("Batch should not be null")
+            batch.hasMore shouldBe true
+            batch.crud shouldHaveSize 10
+            batch.complete(null)
+
+            // Should get the single operation
+            batch = database.getNextCrudTransactionBatch() ?: error("Batch should not be null")
+            batch.hasMore shouldBe false
+            batch.crud shouldHaveSize 1
+            batch.complete(null)
+
+            database.getNextCrudTransactionBatch() shouldBe null
+        }
+
+    @Test
+    fun testCrudTransactionBatchOrdering() =
+        databaseTest {
+            // Create operations in a specific order to test ordering
+            database.execute(
+                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                listOf("first", "first@example.org"),
+            )
+
+            database.writeTransaction {
+                it.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf("second_a", "second_a@example.org"),
+                )
+                it.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf("second_b", "second_b@example.org"),
+                )
+            }
+
+            database.execute(
+                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                listOf("third", "third@example.org"),
+            )
+
+            // Operations should be processed in order
+            val batch = database.getNextCrudTransactionBatch() ?: error("Batch should not be null")
+            batch.hasMore shouldBe false
+            batch.crud shouldHaveSize 4
+
+            // Verify order by checking operation data
+            val operations = batch.crud
+            operations[0].opData!!["name"] shouldBe "first"
+            operations[1].opData!!["name"] shouldBe "second_a"
+            operations[2].opData!!["name"] shouldBe "second_b"
+            operations[3].opData!!["name"] shouldBe "third"
+
+            batch.complete(null)
+            database.getNextCrudTransactionBatch() shouldBe null
+        }
+
+    @Test
+    fun testCrudTransactionBatchEmptyDatabase() =
+        databaseTest {
+            val batch = database.getNextCrudTransactionBatch()
+            batch shouldBe null
+        }
+
+    @Test
+    fun testCrudTransactionBatchZerolimit() =
+        databaseTest {
+            // Create some operations
+            database.execute(
+                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                listOf("a", "a@example.org"),
+            )
+
+            // Item limit of 0 should return null even if operations exist
+            val batch = database.getNextCrudTransactionBatch(limit = 0)
+            batch shouldBe null
+        }
+
+    @Test
+    fun testCrudTransactionBatchGroupsByTransaction() =
+        databaseTest {
+            // Create a transaction with 3 operations
+            database.writeTransaction {
+                it.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf("tx1_op1", "tx1_op1@example.org"),
+                )
+                it.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf("tx1_op2", "tx1_op2@example.org"),
+                )
+                it.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf("tx1_op3", "tx1_op3@example.org"),
+                )
+            }
+
+            // Create a single operation (NULL tx_id)
+            database.execute(
+                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                listOf("single", "single@example.org"),
+            )
+
+            // Request with no limit - should get all 4 operations (3 from tx + 1 single)
+            val batch = database.getNextCrudTransactionBatch() ?: error("Batch should not be null")
+            batch.hasMore shouldBe false
+            batch.crud shouldHaveSize 4
+            batch.complete(null)
+
+            database.getNextCrudTransactionBatch() shouldBe null
+        }
+
+    @Test
+    fun testCrudTransactionBatchWithlimit() =
+        databaseTest {
+            // Create a transaction with 5 operations
+            database.writeTransaction {
+                repeat(5) { i ->
+                    it.execute(
+                        "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                        listOf("user$i", "user$i@example.org"),
+                    )
+                }
+            }
+
+            // Create another transaction with 3 operations
+            database.writeTransaction {
+                repeat(3) { i ->
+                    it.execute(
+                        "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                        listOf("user2_$i", "user2_$i@example.org"),
+                    )
+                }
+            }
+
+            // Add a single operation (NULL tx_id)
+            database.execute(
+                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                listOf("single", "single@example.org"),
+            )
+
+            // Test with item limit of 6 - should get first transaction (5 items) only
+            var batch = database.getNextCrudTransactionBatch(limit = 6) ?: error("Batch should not be null")
+            batch.hasMore shouldBe true
+            batch.crud shouldHaveSize 5
+            batch.complete(null)
+
+            // Test with item limit of 4 - should get second transaction (3 items) + single operation (1 item)
+            batch = database.getNextCrudTransactionBatch(limit = 4) ?: error("Batch should not be null")
+            batch.hasMore shouldBe false
+            batch.crud shouldHaveSize 4
+            batch.complete(null)
+
+            database.getNextCrudTransactionBatch() shouldBe null
+        }
+
+    @Test
+    fun testCrudTransactionBatchlimitReturnsAtLeastOneTransaction() =
+        databaseTest {
+            // Create a transaction with 10 operations
+            database.writeTransaction {
+                repeat(10) { i ->
+                    it.execute(
+                        "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                        listOf("user$i", "user$i@example.org"),
+                    )
+                }
+            }
+
+            // With item limit of 5, should return entire transaction (10 items) - at least one transaction rule, even if it exceeds the limit
+            var batch = database.getNextCrudTransactionBatch(limit = 5) ?: error("Batch should not be null")
+            batch.hasMore shouldBe false
+            batch.crud shouldHaveSize 10
+            batch.complete(null)
+
+            database.getNextCrudTransactionBatch() shouldBe null
+        }
+
+    @Test
+    fun testCrudTransactionBatchPerformanceBenchmark() =
+        databaseTest {
+            // Create a large number of transactions with varying sizes
+            val totalOperations = 100_000
+            val transactionSizes = listOf(1, 3, 5, 10, 20, 50, 100, 200, 500, 1000)
+            var operationCount = 0
+
+            while (operationCount < totalOperations) {
+                val size = transactionSizes.random()
+                val remainingOps = totalOperations - operationCount
+                val actualSize = minOf(size, remainingOps)
+
+                if (actualSize == 1) {
+                    // Single operation (NULL tx_id)
+                    database.execute(
+                        "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                        listOf("user$operationCount", "user$operationCount@example.org"),
+                    )
+                } else {
+                    // Transaction with multiple operations
+                    database.writeTransaction {
+                        repeat(actualSize) { i ->
+                            it.execute(
+                                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                                listOf("user${operationCount + i}", "user${operationCount + i}@example.org"),
+                            )
+                        }
+                    }
+                }
+                operationCount += actualSize
+            }
+
+            val startTime =
+                kotlin.time.TimeSource.Monotonic
+                    .markNow()
+            var totalBatches = 0
+            var totalOperationsProcessed = 0
+
+            while (true) {
+                val batch = database.getNextCrudTransactionBatch(limit = 100)
+                if (batch == null) break
+
+                totalBatches++
+                totalOperationsProcessed += batch.crud.size
+                batch.complete(null)
+            }
+
+            val elapsedTime = startTime.elapsedNow()
+
+            totalOperationsProcessed shouldBe totalOperations
+
+            println("Benchmark Results:")
+            println("Total operations: $totalOperations")
+            println("Total batches: $totalBatches")
+            println("Average operations per batch: ${totalOperationsProcessed.toDouble() / totalBatches}")
+            println("Processing time: ${elapsedTime.inWholeMilliseconds}ms")
+            println("Operations per second: ${(totalOperations * 1000.0 / elapsedTime.inWholeMilliseconds).toInt()}")
         }
 }

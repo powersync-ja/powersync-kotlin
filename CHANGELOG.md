@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.0 (unreleased)
+
+* Add `getNextCrudTransactionBatch` method to `PowerSyncDatabase` which allows for fetching a batch of CRUD operations to upload.
+  This is useful for uploading multiple transactions in a single batch.
+  
 ## 1.3.0
 
 * Support tables created outside of PowerSync with the `RawTable` API.
