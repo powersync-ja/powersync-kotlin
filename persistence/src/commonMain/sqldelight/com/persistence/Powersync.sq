@@ -28,6 +28,9 @@ DELETE FROM ps_crud WHERE id <= ?;
 -- we can define interal tables as part of the dialect.
 CREATE TABLE IF NOT EXISTS ps_crud (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT, tx_id INTEGER);
 
+CREATE INDEX IF NOT EXISTS idx_ps_crud_tx_id ON ps_crud(tx_id);
+CREATE INDEX IF NOT EXISTS idx_ps_crud_tx_id_id ON ps_crud(tx_id, id);
+
 CREATE TABLE ps_buckets(
     name TEXT PRIMARY KEY,
     last_applied_op INTEGER NOT NULL DEFAULT 0,
