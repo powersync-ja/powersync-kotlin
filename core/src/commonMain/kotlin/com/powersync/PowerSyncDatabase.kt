@@ -147,11 +147,13 @@ public interface PowerSyncDatabase : Queries {
      * Unlike [getCrudBatch], this groups data by transaction, allowing developers to
      * upload multiple complete transactions in a single batch operation.
      *
-     * @param transactionLimit The maximum number of transactions to include in the batch.
-     * Default is 5.
+     * @param limit The maximum number of crud items to include in the batch.
+     * If null, no item limit is applied. Returns the maximum number of complete
+     * transactions that fit within the item limit, but always returns at least
+     * one complete transaction even if its number of operations exceeds the limit.
      */
     @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun getNextCrudTransactionBatch(transactionLimit: Int = 10): CrudBatch?
+    public suspend fun getNextCrudTransactionBatch(limit: Int? = null): CrudBatch?
 
     /**
      * Convenience method to get the current version of PowerSync.
