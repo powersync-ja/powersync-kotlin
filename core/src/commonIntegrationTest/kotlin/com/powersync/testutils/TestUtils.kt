@@ -9,6 +9,7 @@ import co.touchlab.kermit.Severity
 import co.touchlab.kermit.TestConfig
 import co.touchlab.kermit.TestLogWriter
 import com.powersync.DatabaseDriverFactory
+import com.powersync.PowerSyncTestLogWriter
 import com.powersync.TestConnector
 import com.powersync.bucket.WriteCheckpointData
 import com.powersync.bucket.WriteCheckpointResponse
@@ -73,8 +74,8 @@ internal class ActiveDatabaseTest(
     lateinit var database: PowerSyncDatabaseImpl
 
     val logWriter =
-        TestLogWriter(
-            loggable = Severity.Debug,
+        PowerSyncTestLogWriter(
+            loggable = Severity.Verbose,
         )
     val logger =
         Logger(

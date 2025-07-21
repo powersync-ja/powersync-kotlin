@@ -32,6 +32,8 @@ import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
@@ -482,8 +484,19 @@ abstract class BaseSyncIntegrationTest(
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)
                 syncLines.send(SyncLine.KeepAlive(1234))
-                turbine.waitFor { it.connected && !it.uploading }
+                turbine.waitFor { it.connected }
                 turbine.cancelAndIgnoreRemainingEvents()
+            }
+
+            // Wait for the first upload task triggered when connecting to be complete.
+            withContext(Dispatchers.Default) {
+                waitFor {
+                    assertNotNull(
+                        logWriter.logs.find {
+                            it.message.contains("crud upload: notify completion")
+                        },
+                    )
+                }
             }
 
             database.execute("INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)", listOf("local", "local@example.org"))
