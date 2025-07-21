@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.1 (unreleased)
+
+* Update SQLite to 3.50.3.
+* Android: Ensure JNI libraries are 16KB-aligned.
+
 ## 1.3.0
 
 * Support tables created outside of PowerSync with the `RawTable` API.
