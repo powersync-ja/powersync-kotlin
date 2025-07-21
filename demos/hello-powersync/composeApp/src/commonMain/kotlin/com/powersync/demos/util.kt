@@ -1,6 +1,5 @@
 package com.powersync.demos
 
-import kotlinx.datetime.Clock
 import kotlin.random.Random
 
 fun generateRandomPerson(): Pair<String, String> {
