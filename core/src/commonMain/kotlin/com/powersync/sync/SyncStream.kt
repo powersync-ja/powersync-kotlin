@@ -36,6 +36,7 @@ import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.readUTF8Line
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -122,7 +123,7 @@ internal class SyncStream(
     }
 
     fun triggerCrudUploadAsync(): Job =
-        uploadScope.launch {
+        uploadScope.launch(CoroutineName("triggerCrudUploadAsync")) {
             val thisIteration = PendingCrudUpload(CompletableDeferred())
             var holdingUploadLock = false
 

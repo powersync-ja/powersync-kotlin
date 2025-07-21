@@ -32,6 +32,8 @@ import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
@@ -411,8 +413,8 @@ abstract class BaseSyncIntegrationTest(
                 db2.disconnect()
                 turbine2.waitFor { !it.connecting }
 
-                turbine1.cancel()
-                turbine2.cancel()
+                turbine1.cancelAndIgnoreRemainingEvents()
+                turbine2.cancelAndIgnoreRemainingEvents()
             }
         }
 
@@ -433,7 +435,7 @@ abstract class BaseSyncIntegrationTest(
                 database.disconnect()
                 turbine.waitFor { !it.connecting }
 
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
         }
 
@@ -449,7 +451,7 @@ abstract class BaseSyncIntegrationTest(
                 database.connect(connector, 1000L, retryDelayMs = 5000, options = options)
                 turbine.waitFor { it.connecting }
 
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
         }
 
@@ -482,8 +484,19 @@ abstract class BaseSyncIntegrationTest(
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)
                 syncLines.send(SyncLine.KeepAlive(1234))
-                turbine.waitFor { it.connected && !it.uploading }
+                turbine.waitFor { it.connected }
                 turbine.cancelAndIgnoreRemainingEvents()
+            }
+
+            // Wait for the first upload task triggered when connecting to be complete.
+            withContext(Dispatchers.Default) {
+                waitFor {
+                    assertNotNull(
+                        logWriter.logs.find {
+                            it.message.contains("crud upload: notify completion")
+                        },
+                    )
+                }
             }
 
             database.execute("INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)", listOf("local", "local@example.org"))
@@ -650,7 +663,7 @@ abstract class BaseSyncIntegrationTest(
                 turbine.waitFor { !it.connected }
                 connector.cachedCredentials shouldBe null
 
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
         }
 
@@ -686,7 +699,7 @@ abstract class BaseSyncIntegrationTest(
                 // Should retry, and the second fetchCredentials call will work
                 turbine.waitFor { it.connected }
 
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
         }
 }
@@ -740,7 +753,7 @@ class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
 
                 turbine.waitFor { it.connected }
                 fetchCredentialsCount shouldBe 2
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
         }
 
