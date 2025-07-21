@@ -12,18 +12,26 @@ import kotlinx.atomicfu.locks.withLock
  * for concurrent access.
 */
 @OptIn(ExperimentalKermitApi::class)
-class PowerSyncTestLogWriter(private val loggable: Severity) : LogWriter() {
+class PowerSyncTestLogWriter(
+    private val loggable: Severity,
+) : LogWriter() {
     private val lock = reentrantLock()
     private val _logs = mutableListOf<LogEntry>()
 
     val logs: List<LogEntry>
         get() = lock.withLock { _logs.toList() }
 
-    override fun isLoggable(tag: String, severity: Severity): Boolean {
-        return severity.ordinal >= loggable.ordinal
-    }
+    override fun isLoggable(
+        tag: String,
+        severity: Severity,
+    ): Boolean = severity.ordinal >= loggable.ordinal
 
-    override fun log(severity: Severity, message: String, tag: String, throwable: Throwable?) {
+    override fun log(
+        severity: Severity,
+        message: String,
+        tag: String,
+        throwable: Throwable?,
+    ) {
         lock.withLock {
             _logs.add(LogEntry(severity, message, tag, throwable))
         }

@@ -7,7 +7,6 @@ import co.touchlab.kermit.LogWriter
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import co.touchlab.kermit.TestConfig
-import co.touchlab.kermit.TestLogWriter
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncTestLogWriter
 import com.powersync.TestConnector
