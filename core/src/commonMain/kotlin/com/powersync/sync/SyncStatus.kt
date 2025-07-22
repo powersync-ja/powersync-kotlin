@@ -5,8 +5,8 @@ import com.powersync.connectors.PowerSyncBackendConnector
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 @ConsistentCopyVisibility
 public data class PriorityStatusEntry internal constructor(

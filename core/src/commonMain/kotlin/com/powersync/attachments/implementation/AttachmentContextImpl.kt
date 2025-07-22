@@ -7,9 +7,9 @@ import com.powersync.attachments.AttachmentContext
 import com.powersync.attachments.AttachmentState
 import com.powersync.db.getString
 import com.powersync.db.internal.ConnectionContext
-import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlin.time.Clock
 
 /**
  * Default implementation of [AttachmentContext].

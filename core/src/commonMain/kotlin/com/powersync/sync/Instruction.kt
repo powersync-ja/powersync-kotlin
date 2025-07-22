@@ -1,7 +1,6 @@
 package com.powersync.sync
 
 import com.powersync.bucket.BucketPriority
-import kotlinx.datetime.Instant
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -16,6 +15,7 @@ import kotlinx.serialization.encoding.decodeStructure
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.serializer
+import kotlin.time.Instant
 
 /**
  * An instruction sent to this SDK by the core extension to implement sync behavior.

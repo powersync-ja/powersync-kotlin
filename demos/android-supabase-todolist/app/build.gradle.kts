@@ -81,6 +81,14 @@ android {
     }
 }
 
+kotlin {
+    sourceSets.all {
+        languageSettings {
+            optIn("kotlin.time.ExperimentalTime")
+        }
+    }
+}
+
 dependencies {
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.core.ktx)
