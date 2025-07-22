@@ -38,6 +38,12 @@ kotlin {
         }
     }
     sourceSets {
+        all {
+            languageSettings {
+                optIn("kotlin.time.ExperimentalTime")
+            }
+        }
+
         commonMain.dependencies {
             // Need to use api here otherwise Database driver can't be accessed
             // When copying this example, replace "latest.release" with the current version available
