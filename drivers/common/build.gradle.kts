@@ -1,28 +1,45 @@
-import com.powersync.plugins.sonatype.setupGithubRepository
 import com.powersync.plugins.utils.powersyncTargets
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
-    alias(libs.plugins.jetbrainsCompose)
-    alias(libs.plugins.compose.compiler)
     alias(libs.plugins.kotlinter)
     id("com.powersync.plugins.sonatype")
-    id("dokka-convention")
 }
 
 kotlin {
-    powersyncTargets(includeTargetsWithoutComposeSupport = false)
-
+    powersyncTargets()
     explicitApi()
+    applyDefaultHierarchyTemplate()
 
     sourceSets {
         commonMain.dependencies {
-            api(project(":core"))
-            implementation(compose.runtime)
+            api(libs.androidx.sqlite)
         }
-        androidMain.dependencies {
-            implementation(compose.foundation)
+
+        val commonJava by creating {
+            dependsOn(commonMain.get())
+            dependencies {
+                implementation(libs.sqlite.jdbc)
+            }
+        }
+
+        jvmMain {
+            dependsOn(commonJava)
+        }
+
+        androidMain {
+            dependsOn(commonJava)
+        }
+
+        nativeMain.dependencies {
+            implementation(libs.androidx.sqliteFramework)
+        }
+
+        all {
+            languageSettings {
+                optIn("kotlinx.cinterop.ExperimentalForeignApi")
+            }
         }
     }
 }
@@ -42,10 +59,4 @@ android {
     kotlin {
         jvmToolchain(17)
     }
-}
-
-setupGithubRepository()
-
-dokka {
-    moduleName.set("PowerSync Compose")
 }

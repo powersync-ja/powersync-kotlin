@@ -1,5 +1,6 @@
 package com.powersync.db
 
+import androidx.sqlite.SQLiteStatement
 import co.touchlab.skie.configuration.annotations.FunctionInterop
 import com.powersync.PowerSyncException
 
@@ -27,6 +28,44 @@ private inline fun <T> SqlCursor.getColumnValue(
 ): T {
     val index = columnNames[name] ?: throw IllegalArgumentException("Column '$name' not found")
     return getValue(index) ?: throw IllegalArgumentException("Null value found for column '$name'")
+}
+
+internal class StatementBasedCursor(private val stmt: SQLiteStatement): SqlCursor {
+    override fun getBoolean(index: Int): Boolean? {
+        return getLong(index) != 0L
+    }
+
+    override fun getBytes(index: Int): ByteArray? {
+        return stmt.getBlob(index)
+    }
+
+    override fun getDouble(index: Int): Double? {
+        return stmt.getDouble(index)
+    }
+
+    override fun getLong(index: Int): Long? {
+        return stmt.getLong(index)
+    }
+
+    override fun getString(index: Int): String? {
+        return stmt.getText(index)
+    }
+
+    override fun columnName(index: Int): String? {
+        return stmt.getColumnName(index)
+    }
+
+    override val columnCount: Int
+        get() = stmt.getColumnCount()
+
+    override val columnNames: Map<String, Int> by lazy {
+        buildMap {
+            stmt.getColumnNames().forEachIndexed { index, name ->
+                put(name, index)
+            }
+        }
+    }
+
 }
 
 private inline fun <T> SqlCursor.getColumnValueOptional(

@@ -201,6 +201,8 @@ kotlin {
             }
 
             dependencies {
+                api(libs.kermit)
+
                 implementation(libs.uuid)
                 implementation(libs.kotlin.stdlib)
                 implementation(libs.ktor.client.core)
@@ -213,8 +215,7 @@ kotlin {
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.stately.concurrency)
                 implementation(libs.configuration.annotations)
-                api(projects.persistence)
-                api(libs.kermit)
+                implementation(projects.drivers.common)
             }
         }
 
