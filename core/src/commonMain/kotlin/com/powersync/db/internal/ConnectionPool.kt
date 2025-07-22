@@ -1,7 +1,7 @@
 package com.powersync.db.internal
 
+import androidx.sqlite.SQLiteConnection
 import com.powersync.PowerSyncException
-import com.powersync.PsSqlDriver
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -12,15 +12,15 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 
 internal class ConnectionPool(
-    factory: () -> PsSqlDriver,
+    factory: () -> SQLiteConnection,
     size: Int = 5,
     private val scope: CoroutineScope,
 ) {
-    private val available = Channel<Pair<TransactorDriver, CompletableDeferred<Unit>>>()
+    private val available = Channel<Pair<SQLiteConnection, CompletableDeferred<Unit>>>()
     private val connections: List<Job> =
         List(size) {
             scope.launch {
-                val driver = TransactorDriver(factory())
+                val driver = factory()
                 try {
                     while (true) {
                         val done = CompletableDeferred<Unit>()
@@ -33,12 +33,12 @@ internal class ConnectionPool(
                         done.await()
                     }
                 } finally {
-                    driver.driver.close()
+                    driver.close()
                 }
             }
         }
 
-    suspend fun <R> withConnection(action: suspend (connection: TransactorDriver) -> R): R {
+    suspend fun <R> withConnection(action: suspend (connection: SQLiteConnection) -> R): R {
         val (connection, done) =
             try {
                 available.receive()
@@ -56,8 +56,8 @@ internal class ConnectionPool(
         }
     }
 
-    suspend fun <R> withAllConnections(action: suspend (connections: List<TransactorDriver>) -> R): R {
-        val obtainedConnections = mutableListOf<Pair<TransactorDriver, CompletableDeferred<Unit>>>()
+    suspend fun <R> withAllConnections(action: suspend (connections: List<SQLiteConnection>) -> R): R {
+        val obtainedConnections = mutableListOf<Pair<SQLiteConnection, CompletableDeferred<Unit>>>()
 
         try {
             /**

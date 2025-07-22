@@ -7,7 +7,6 @@ configurationAnnotations = "0.10.4"
 dokkaBase = "2.0.0"
 gradleDownloadTask = "5.6.0"
 java = "17"
-idea = "243.22562.218" # Meerkat | 2024.3.1 (see https://plugins.jetbrains.com/docs/intellij/android-studio-releases-list.html)
 
 # Dependencies
 kermit = "2.0.6"
@@ -19,11 +18,9 @@ ktor = "3.2.3"
 uuid = "0.8.4"
 powersync-core = "0.4.4"
 sqlite-jdbc = "3.50.3.0"
-sqliter = "1.3.3"
 turbine = "1.2.1"
 kotest = "5.9.1"
 
-sqlDelight = "2.1.0"
 stately = "2.1.0"
 supabase = "3.2.2"
 junit = "4.13.2"
@@ -32,7 +29,7 @@ compose = "1.8.2" # This is for the multiplatform compose
 androidCompose = "2025.07.00"
 compose-preview = "1.8.3"
 compose-lifecycle = "2.9.1"
-androidxSqlite = "2.5.2"
+androidxSqlite = "2.6.0-rc01"
 androidxSplashscreen = "1.0.1"
 
 # plugins
@@ -96,22 +93,13 @@ ktor-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json", 
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "coroutines" }
 
-sqldelight-driver-native = { module = "app.cash.sqldelight:native-driver", version.ref = "sqlDelight" }
-sqliter = { module = "co.touchlab:sqliter-driver", version.ref = "sqliter" }
-sqldelight-driver-android = { module = "app.cash.sqldelight:android-driver", version.ref = "sqlDelight" }
-sqldelight-driver-jdbc = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqlDelight" }
-sqldelight-coroutines = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqlDelight" }
-sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqlDelight" }
-sqldelight-dialect-sqlite338 = { module = "app.cash.sqldelight:sqlite-3-38-dialect", version.ref = "sqlDelight" }
-sqldelight-dialect-sqlite335 = { module = "app.cash.sqldelight:sqlite-3-35-dialect", version.ref = "sqlDelight" }
-sqldelight-compilerEnv = { module = "app.cash.sqldelight:compiler-env", version.ref = "sqlDelight" }
-
 sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite-jdbc" }
 
 stately-concurrency = { module = "co.touchlab:stately-concurrency", version.ref = "stately" }
 supabase-client = { module = "io.github.jan-tennert.supabase:postgrest-kt", version.ref = "supabase" }
 supabase-auth = { module = "io.github.jan-tennert.supabase:auth-kt", version.ref = "supabase" }
 supabase-storage = { module = "io.github.jan-tennert.supabase:storage-kt", version.ref = "supabase" }
+androidx-sqlite = { module = "androidx.sqlite:sqlite", version.ref = "androidxSqlite" }
 androidx-sqliteFramework = { module = "androidx.sqlite:sqlite-framework", version.ref = "androidxSqlite" }
 
 # Sample - Android
@@ -151,8 +139,6 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 skie = { id = "co.touchlab.skie", version.ref = "skie" }
-sqldelight = { id = "app.cash.sqldelight", version.ref = "sqlDelight" }
-grammarKitComposer = { id = "com.alecstrong.grammar.kit.composer", version.ref = "grammarkit-composer" }
 mavenPublishPlugin = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }
 downloadPlugin = { id = "de.undercouch.download", version.ref = "download-plugin" }
 mokkery = { id = "dev.mokkery", version.ref = "mokkery" }
@@ -161,9 +147,3 @@ keeper = { id = "com.slack.keeper", version.ref = "keeper" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version.ref = "atomicfu" }
 buildKonfig = { id = "com.codingfeline.buildkonfig", version.ref = "buildKonfig" }
-
-[bundles]
-sqldelight = [
-    "sqldelight-runtime",
-    "sqldelight-coroutines"
-]

@@ -32,9 +32,9 @@ include(":core-tests-android")
 include(":connectors:supabase")
 include("static-sqlite-driver")
 
-include(":dialect")
-include(":persistence")
 include(":PowerSyncKotlin")
+
+include(":drivers:common")
 
 include(":compose")
 

@@ -92,7 +92,7 @@ kotlin {
 
         nativeTest {
             dependencies {
-                implementation(libs.sqliter)
+                implementation(projects.drivers.common)
             }
         }
     }

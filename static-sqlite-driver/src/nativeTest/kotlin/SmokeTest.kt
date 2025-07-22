@@ -1,25 +1,15 @@
-import co.touchlab.sqliter.DatabaseConfiguration
-import co.touchlab.sqliter.createDatabaseManager
+import com.powersync.internal.driver.NativeDriver
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class SmokeTest {
     @Test
     fun canUseSqlite() {
-        val manager =
-            createDatabaseManager(
-                DatabaseConfiguration(
-                    name = "test",
-                    version = 1,
-                    create = {},
-                    inMemory = true,
-                ),
-            )
-        val db = manager.createSingleThreadedConnection()
-        val stmt = db.createStatement("SELECT sqlite_version();")
-        val cursor = stmt.query()
+        val db = NativeDriver().openDatabase(":memory:")
+        db.prepare("SELECT sqlite_version();").use { stmt ->
+            assertEquals(true, stmt.step())
+        }
 
-        assertEquals(true, cursor.next())
         db.close()
     }
 }
