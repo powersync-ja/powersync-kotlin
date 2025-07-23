@@ -78,18 +78,37 @@ internal class SyncStream(
 
     private var clientId: String? = null
 
-    private val httpClient: HttpClient =
-        createClient {
-            install(HttpTimeout)
-            install(ContentNegotiation)
-            install(WebSockets)
-
-            install(DefaultRequest) {
-                headers {
-                    append("User-Agent", options.userAgent)
-                }
+    private val httpClient: HttpClient = when (val config = options.clientConfiguration) {
+        is SyncClientConfiguration.ExtendedConfig -> {
+            createClient {
+                configureHttpClient()
+                // Apply additional configuration
+                config.block(this)
             }
         }
+
+        is SyncClientConfiguration.ExistingClient -> config.client
+
+        null -> {
+            // Default client configuration
+            createClient {
+                configureHttpClient()
+            }
+        }
+    }
+
+    private fun HttpClientConfig<*>.configureHttpClient() {
+        install(HttpTimeout)
+        install(ContentNegotiation)
+        install(WebSockets)
+
+        install(DefaultRequest) {
+            headers {
+                append("User-Agent", options.userAgent)
+            }
+        }
+    }
+
 
     fun invalidateCredentials() {
         connector.invalidateCredentials()
@@ -366,15 +385,18 @@ internal class SyncStream(
                                 }
                             }
                 }
+
                 Instruction.CloseSyncStream -> {
                     logger.v { "Closing sync stream connection" }
                     fetchLinesJob!!.cancelAndJoin()
                     fetchLinesJob = null
                     logger.v { "Sync stream connection shut down" }
                 }
+
                 Instruction.FlushSileSystem -> {
                     // We have durable file systems, so flushing is not necessary
                 }
+
                 is Instruction.LogLine -> {
                     logger.log(
                         severity =
@@ -388,11 +410,13 @@ internal class SyncStream(
                         throwable = null,
                     )
                 }
+
                 is Instruction.UpdateSyncStatus -> {
                     status.update {
                         applyCoreChanges(instruction.status)
                     }
                 }
+
                 is Instruction.FetchCredentials -> {
                     if (instruction.didExpire) {
                         connector.invalidateCredentials()
@@ -414,9 +438,11 @@ internal class SyncStream(
                         }
                     }
                 }
+
                 Instruction.DidCompleteSync -> {
                     status.update { copy(downloadError = null) }
                 }
+
                 is Instruction.UnknownInstruction -> {
                     logger.w { "Unknown instruction received from core extension: ${instruction.raw}" }
                 }
@@ -429,6 +455,7 @@ internal class SyncStream(
                     connectViaHttp(start.request).collect {
                         controlInvocations.send(PowerSyncControlArguments.TextLine(it))
                     }
+
                 is ConnectionMethod.WebSocket ->
                     connectViaWebSocket(start.request, method).collect {
                         controlInvocations.send(PowerSyncControlArguments.BinaryLine(it))
@@ -463,7 +490,13 @@ internal class SyncStream(
 
             val req =
                 StreamingSyncRequest(
-                    buckets = initialBuckets.map { (bucket, after) -> BucketRequest(bucket, after) },
+                    buckets =
+                        initialBuckets.map { (bucket, after) ->
+                            BucketRequest(
+                                bucket,
+                                after,
+                            )
+                        },
                     clientId = clientId!!,
                     parameters = params,
                 )
@@ -664,7 +697,12 @@ internal class SyncStream(
         ): SyncStreamState {
             val batch = SyncDataBatch(listOf(data))
             bucketStorage.saveSyncData(batch)
-            status.update { copy(downloading = true, downloadProgress = downloadProgress?.incrementDownloaded(batch)) }
+            status.update {
+                copy(
+                    downloading = true,
+                    downloadProgress = downloadProgress?.incrementDownloaded(batch),
+                )
+            }
             return state
         }
 
