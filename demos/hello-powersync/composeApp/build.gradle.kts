@@ -52,6 +52,7 @@ kotlin {
             implementation(compose.ui)
             @OptIn(ExperimentalComposeLibrary::class)
             implementation(compose.components.resources)
+            implementation(projectLibs.ktor.client.logging)
         }
 
         androidMain.dependencies {
