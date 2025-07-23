@@ -16,15 +16,17 @@ public sealed class SyncClientConfiguration {
     /**
      * Extends the default Ktor [HttpClient] configuration with the provided block.
      */
-    public class ExtendedConfig(public val block: HttpClientConfig<*>.() -> Unit) :
-        SyncClientConfiguration()
+    public class ExtendedConfig(
+        public val block: HttpClientConfig<*>.() -> Unit,
+    ) : SyncClientConfiguration()
 
     /**
      * Provides an existing [HttpClient] instance to use for connecting to the PowerSync service.
      * This client should be configured with the necessary plugins and settings to function correctly.
      */
-    public class ExistingClient(public val client: HttpClient) :
-        SyncClientConfiguration()
+    public class ExistingClient(
+        public val client: HttpClient,
+    ) : SyncClientConfiguration()
 }
 
 /**
@@ -36,33 +38,33 @@ public sealed class SyncClientConfiguration {
  * for the rest of the SDK though.
  */
 public class SyncOptions
-@ExperimentalPowerSyncAPI
-constructor(
-    @property:ExperimentalPowerSyncAPI
-    public val newClientImplementation: Boolean = false,
-    @property:ExperimentalPowerSyncAPI
-    public val method: ConnectionMethod = ConnectionMethod.Http,
-    /**
-     * The user agent to use for requests made to the PowerSync service.
-     */
-    public val userAgent: String = userAgent(),
-    @property:ExperimentalPowerSyncAPI
-    /**
-     * Allows configuring the [HttpClient] used for connecting to the PowerSync service.
-     */
-    public val clientConfiguration: SyncClientConfiguration? = null,
-) {
-    public companion object {
+    @ExperimentalPowerSyncAPI
+    constructor(
+        @property:ExperimentalPowerSyncAPI
+        public val newClientImplementation: Boolean = false,
+        @property:ExperimentalPowerSyncAPI
+        public val method: ConnectionMethod = ConnectionMethod.Http,
         /**
-         * The default sync options, which are safe and stable to use.
-         *
-         * Constructing non-standard sync options requires an opt-in to experimental PowerSync
-         * APIs, and those might change in the future.
+         * The user agent to use for requests made to the PowerSync service.
          */
-        @OptIn(ExperimentalPowerSyncAPI::class)
-        public val defaults: SyncOptions = SyncOptions()
+        public val userAgent: String = userAgent(),
+        @property:ExperimentalPowerSyncAPI
+        /**
+         * Allows configuring the [HttpClient] used for connecting to the PowerSync service.
+         */
+        public val clientConfiguration: SyncClientConfiguration? = null,
+    ) {
+        public companion object {
+            /**
+             * The default sync options, which are safe and stable to use.
+             *
+             * Constructing non-standard sync options requires an opt-in to experimental PowerSync
+             * APIs, and those might change in the future.
+             */
+            @OptIn(ExperimentalPowerSyncAPI::class)
+            public val defaults: SyncOptions = SyncOptions()
+        }
     }
-}
 
 /**
  * The connection method to use when the SDK connects to the sync service.

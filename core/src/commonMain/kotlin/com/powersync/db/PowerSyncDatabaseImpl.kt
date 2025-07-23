@@ -26,8 +26,6 @@ import com.powersync.utils.JsonParam
 import com.powersync.utils.JsonUtil
 import com.powersync.utils.throttle
 import com.powersync.utils.toJsonObject
-import io.ktor.client.HttpClient
-import io.ktor.client.HttpClientConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -64,7 +62,6 @@ internal class PowerSyncDatabaseImpl(
     private val dbFilename: String,
     private val dbDirectory: String? = null,
     val logger: Logger = Logger,
-    private val createClient: (HttpClientConfig<*>.() -> Unit) -> HttpClient,
 ) : PowerSyncDatabase {
     companion object {
         internal val streamConflictMessage =
@@ -167,7 +164,6 @@ internal class PowerSyncDatabaseImpl(
                     logger = logger,
                     params = params.toJsonObject(),
                     uploadScope = scope,
-                    createClient = createClient,
                     options = options,
                     schema = schema,
                 )

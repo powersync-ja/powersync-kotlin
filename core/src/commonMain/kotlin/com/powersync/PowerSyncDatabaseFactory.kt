@@ -4,10 +4,7 @@ import co.touchlab.kermit.Logger
 import co.touchlab.skie.configuration.annotations.DefaultArgumentInterop
 import com.powersync.db.PowerSyncDatabaseImpl
 import com.powersync.db.schema.Schema
-import com.powersync.sync.SyncStream
 import com.powersync.utils.generateLogger
-import io.ktor.client.HttpClient
-import io.ktor.client.HttpClientConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
@@ -50,7 +47,6 @@ internal fun createPowerSyncDatabaseImpl(
     scope: CoroutineScope,
     logger: Logger,
     dbDirectory: String?,
-    createClient: (HttpClientConfig<*>.() -> Unit) -> HttpClient = SyncStream::defaultHttpClient,
 ): PowerSyncDatabaseImpl =
     PowerSyncDatabaseImpl(
         schema = schema,
@@ -59,5 +55,4 @@ internal fun createPowerSyncDatabaseImpl(
         scope = scope,
         logger = logger,
         dbDirectory = dbDirectory,
-        createClient = createClient,
     )

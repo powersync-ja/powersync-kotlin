@@ -7,8 +7,8 @@ import com.powersync.connector.supabase.SupabaseConnector
 import com.powersync.db.getString
 import com.powersync.sync.SyncClientConfiguration
 import com.powersync.sync.SyncOptions
-import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logging
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.runBlocking
 
@@ -67,7 +67,7 @@ class PowerSync(
             id ?: database.getOptional("SELECT id FROM customers LIMIT 1", mapper = { cursor ->
                 cursor.getString(0)!!
             })
-            ?: return
+                ?: return
 
         database.writeTransaction { tx ->
             tx.execute("DELETE FROM customers WHERE id = ?", listOf(targetId))
@@ -76,16 +76,16 @@ class PowerSync(
 
     @OptIn(ExperimentalPowerSyncAPI::class)
     suspend fun connect() {
-        println("connecting to PowerSync...")
         database.connect(
             connector,
             options =
                 SyncOptions(
-                    clientConfiguration = SyncClientConfiguration.ExtendedConfig {
-                        install(Logging) {
-                            level = LogLevel.ALL
-                        }
-                    }
+                    clientConfiguration =
+                        SyncClientConfiguration.ExtendedConfig {
+                            install(Logging) {
+                                level = LogLevel.ALL
+                            }
+                        },
                 ),
         )
     }

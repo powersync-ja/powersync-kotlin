@@ -55,6 +55,21 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 
+/**
+ * Configures a [HttpClient] for PowerSync sync operations.
+ */
+public fun HttpClientConfig<*>.configureSyncHttpClient(userAgent: String = userAgent()) {
+    install(HttpTimeout)
+    install(ContentNegotiation)
+    install(WebSockets)
+
+    install(DefaultRequest) {
+        headers {
+            append("User-Agent", userAgent)
+        }
+    }
+}
+
 @OptIn(ExperimentalPowerSyncAPI::class)
 internal class SyncStream(
     private val bucketStorage: BucketStorage,
@@ -66,7 +81,6 @@ internal class SyncStream(
     private val uploadScope: CoroutineScope,
     private val options: SyncOptions,
     private val schema: Schema,
-    createClient: (HttpClientConfig<*>.() -> Unit) -> HttpClient,
 ) {
     private var isUploadingCrud = AtomicReference<PendingCrudUpload?>(null)
     private var completedCrudUploads = Channel<Unit>(onBufferOverflow = BufferOverflow.DROP_OLDEST)
@@ -78,37 +92,23 @@ internal class SyncStream(
 
     private var clientId: String? = null
 
-    private val httpClient: HttpClient = when (val config = options.clientConfiguration) {
-        is SyncClientConfiguration.ExtendedConfig -> {
-            createClient {
-                configureHttpClient()
-                // Apply additional configuration
-                config.block(this)
-            }
+    private val httpClient: HttpClient =
+        when (val config = options.clientConfiguration) {
+            is SyncClientConfiguration.ExtendedConfig ->
+                createClient(options.userAgent, config.block)
+
+            is SyncClientConfiguration.ExistingClient -> config.client
+
+            null -> createClient(options.userAgent)
         }
 
-        is SyncClientConfiguration.ExistingClient -> config.client
-
-        null -> {
-            // Default client configuration
-            createClient {
-                configureHttpClient()
-            }
-        }
+    private fun createClient(
+        userAgent: String,
+        additionalConfig: HttpClientConfig<*>.() -> Unit = {},
+    ) = HttpClient {
+        configureSyncHttpClient(userAgent)
+        additionalConfig()
     }
-
-    private fun HttpClientConfig<*>.configureHttpClient() {
-        install(HttpTimeout)
-        install(ContentNegotiation)
-        install(WebSockets)
-
-        install(DefaultRequest) {
-            headers {
-                append("User-Agent", options.userAgent)
-            }
-        }
-    }
-
 
     fun invalidateCredentials() {
         connector.invalidateCredentials()
@@ -723,13 +723,6 @@ internal class SyncStream(
             triggerCrudUploadAsync()
             return state
         }
-    }
-
-    internal companion object {
-        fun defaultHttpClient(config: HttpClientConfig<*>.() -> Unit) =
-            HttpClient {
-                config(this)
-            }
     }
 }
 

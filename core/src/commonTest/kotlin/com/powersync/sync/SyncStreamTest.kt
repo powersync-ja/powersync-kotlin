@@ -65,12 +65,19 @@ class SyncStreamTest {
                 SyncStream(
                     bucketStorage = bucketStorage,
                     connector = connector,
-                    createClient = { config -> HttpClient(assertNoHttpEngine, config) },
                     uploadCrud = {},
                     logger = logger,
                     params = JsonObject(emptyMap()),
                     uploadScope = this,
-                    options = SyncOptions(),
+                    options =
+                        SyncOptions(
+                            clientConfiguration =
+                                SyncClientConfiguration.ExistingClient(
+                                    HttpClient(assertNoHttpEngine) {
+                                        configureSyncHttpClient()
+                                    },
+                                ),
+                        ),
                     schema = Schema(),
                 )
 
@@ -104,13 +111,20 @@ class SyncStreamTest {
                 SyncStream(
                     bucketStorage = bucketStorage,
                     connector = connector,
-                    createClient = { config -> HttpClient(assertNoHttpEngine, config) },
                     uploadCrud = { },
                     retryDelayMs = 10,
                     logger = logger,
                     params = JsonObject(emptyMap()),
                     uploadScope = this,
-                    options = SyncOptions(),
+                    options =
+                        SyncOptions(
+                            clientConfiguration =
+                                SyncClientConfiguration.ExistingClient(
+                                    HttpClient(assertNoHttpEngine) {
+                                        configureSyncHttpClient()
+                                    },
+                                ),
+                        ),
                     schema = Schema(),
                 )
 
@@ -128,7 +142,10 @@ class SyncStreamTest {
             }
 
             with(testLogWriter.logs[1]) {
-                assertEquals(message, "Error uploading crud: Delaying due to previously encountered CRUD item.")
+                assertEquals(
+                    message,
+                    "Error uploading crud: Delaying due to previously encountered CRUD item.",
+                )
                 assertEquals(Severity.Error, severity)
             }
         }
@@ -145,13 +162,20 @@ class SyncStreamTest {
                 SyncStream(
                     bucketStorage = bucketStorage,
                     connector = connector,
-                    createClient = { config -> HttpClient(assertNoHttpEngine, config) },
                     uploadCrud = { },
                     retryDelayMs = 10,
                     logger = logger,
                     params = JsonObject(emptyMap()),
                     uploadScope = this,
-                    options = SyncOptions(),
+                    options =
+                        SyncOptions(
+                            clientConfiguration =
+                                SyncClientConfiguration.ExistingClient(
+                                    HttpClient(assertNoHttpEngine) {
+                                        configureSyncHttpClient()
+                                    },
+                                ),
+                        ),
                     schema = Schema(),
                 )
 
