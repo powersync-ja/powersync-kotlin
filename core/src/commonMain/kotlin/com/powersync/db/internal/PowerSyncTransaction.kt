@@ -57,14 +57,16 @@ internal class PowerSyncTransactionImpl(
 
 internal inline fun <T> SQLiteConnection.runTransaction(cb: (PowerSyncTransaction) -> T): T {
     execSQL("BEGIN")
+    var didComplete = false
     return try {
         val result = cb(PowerSyncTransactionImpl(this))
-
+        didComplete = true
+        
         check(inTransaction())
         execSQL("COMMIT")
         result
     } catch (e: Throwable) {
-        if (inTransaction()) {
+        if (!didComplete && inTransaction()) {
             execSQL("ROLLBACK")
         }
 

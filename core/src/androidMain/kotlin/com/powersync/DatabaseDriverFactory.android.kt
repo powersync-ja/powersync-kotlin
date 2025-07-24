@@ -3,7 +3,6 @@ package com.powersync
 import android.content.Context
 import androidx.sqlite.SQLiteConnection
 import com.powersync.db.loadExtensions
-import com.powersync.db.setSchemaVersion
 import com.powersync.internal.driver.AndroidDriver
 import com.powersync.internal.driver.ConnectionListener
 import com.powersync.internal.driver.JdbcConnection
@@ -27,7 +26,6 @@ public actual class DatabaseDriverFactory(
 
         val driver = AndroidDriver(context)
         val connection = driver.openDatabase(dbPath, readOnly, listener) as JdbcConnection
-        connection.setSchemaVersion()
         connection.loadExtensions(
             "libpowersync.so" to "sqlite3_powersync_init",
         )

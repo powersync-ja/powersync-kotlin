@@ -1,8 +1,8 @@
 package com.powersync.db.internal
 
 import androidx.sqlite.SQLiteConnection
-import androidx.sqlite.SQLiteStatement
 import androidx.sqlite.execSQL
+import co.touchlab.kermit.Logger
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncException
 import com.powersync.db.SqlCursor
@@ -29,28 +29,18 @@ import kotlin.time.Duration.Companion.milliseconds
 internal class InternalDatabaseImpl(
     private val factory: DatabaseDriverFactory,
     private val scope: CoroutineScope,
+    logger: Logger,
     private val dbFilename: String,
     private val dbDirectory: String?,
     private val writeLockMutex: Mutex,
 ) : InternalDatabase {
-    private val updates = UpdateFlow()
+    private val updates = UpdateFlow(logger)
 
-    private val writeConnection = factory.openDatabase(
-        dbFilename = dbFilename,
-        dbDirectory = dbDirectory,
-        readOnly = false,
-        listener = updates,
-    )
+    private val writeConnection = newConnection(false)
 
     private val readPool =
         ConnectionPool(factory = {
-            factory.openDatabase(
-                dbFilename = dbFilename,
-                dbDirectory = dbDirectory,
-                readOnly = true,
-
-                listener = null,
-            )
+            newConnection(true)
         }, scope = scope)
 
     // Could be scope.coroutineContext, but the default is GlobalScope, which seems like a bad idea. To discuss.
@@ -60,7 +50,7 @@ internal class InternalDatabaseImpl(
         val connection = factory.openDatabase(
             dbFilename = dbFilename,
             dbDirectory = dbDirectory,
-            readOnly = readOnly,
+            readOnly = false,
             // We don't need a listener on read-only connections since we don't expect any update
             // hooks here.
             listener = if (readOnly) null else updates,
@@ -70,6 +60,22 @@ internal class InternalDatabaseImpl(
         connection.execSQL("pragma journal_size_limit = ${6 * 1024 * 1024}")
         connection.execSQL("pragma busy_timeout = 30000")
         connection.execSQL("pragma cache_size = ${50 * 1024}")
+
+        if (readOnly) {
+            connection.execSQL("pragma query_only = TRUE")
+        }
+
+        // Older versions of the SDK used to set up an empty schema and raise the user version to 1.
+        // Keep doing that for consistency.
+        if (!readOnly) {
+            val version = connection.prepare("pragma user_version").use {
+                require(it.step())
+                if (it.isNull(0)) 0L else it.getLong(0)
+            }
+            if (version < 1L) {
+                connection.execSQL("pragma user_version = 1")
+            }
+        }
 
         return connection
     }

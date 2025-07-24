@@ -62,9 +62,12 @@ public open class JdbcDriver: PowerSyncDriver {
     }
 }
 
-public class JdbcConnection(public val connection: org.sqlite.SQLiteConnection): SQLiteConnection {
+public class JdbcConnection(
+    public val connection: org.sqlite.SQLiteConnection,
+): SQLiteConnection {
     override fun inTransaction(): Boolean {
-        return !connection.autoCommit
+        // TODO: Unsupported with sqlite-jdbc?
+        return true
     }
 
     override fun prepare(sql: String): SQLiteStatement {
@@ -80,6 +83,12 @@ private class PowerSyncStatement(
     private val stmt: JDBC4PreparedStatement,
 ): SQLiteStatement {
     private var currentCursor: JDBC4ResultSet? = null
+
+    private val _columnCount: Int by lazy {
+        // We have to call this manually because stmt.metadata.columnCount throws an exception when
+        // a statement has zero columns.
+        stmt.pointer.safeRunInt<Nothing> { db, ptr -> db.column_count(ptr) }
+    }
 
     private fun requireCursor(): JDBC4ResultSet {
         return requireNotNull(currentCursor) {
@@ -108,19 +117,19 @@ private class PowerSyncStatement(
     }
 
     override fun getBlob(index: Int): ByteArray {
-        return requireCursor().getBytes(index)
+        return requireCursor().getBytes(index + 1)
     }
 
     override fun getDouble(index: Int): Double {
-        return requireCursor().getDouble(index)
+        return requireCursor().getDouble(index + 1)
     }
 
     override fun getLong(index: Int): Long {
-        return requireCursor().getLong(index)
+        return requireCursor().getLong(index + 1)
     }
 
     override fun getText(index: Int): String {
-        return requireCursor().getString(index  )
+        return requireCursor().getString(index + 1)
     }
 
     override fun isNull(index: Int): Boolean {
@@ -128,11 +137,11 @@ private class PowerSyncStatement(
     }
 
     override fun getColumnCount(): Int {
-        return currentCursor!!.metaData.columnCount
+        return _columnCount
     }
 
     override fun getColumnName(index: Int): String {
-        return stmt.metaData.getColumnName(index)
+        return stmt.metaData.getColumnName(index + 1)
     }
 
     override fun getColumnType(index: Int): Int {
@@ -141,7 +150,13 @@ private class PowerSyncStatement(
 
     override fun step(): Boolean {
         if (currentCursor == null) {
-            currentCursor = stmt.executeQuery() as JDBC4ResultSet
+            if (_columnCount == 0) {
+                // sqlite-jdbc refuses executeQuery calls for statements that don't return results
+                stmt.execute()
+                return false
+            } else {
+                currentCursor = stmt.executeQuery() as JDBC4ResultSet
+            }
         }
 
         return currentCursor!!.next()
@@ -158,6 +173,7 @@ private class PowerSyncStatement(
 
     override fun close() {
         currentCursor?.close()
+        currentCursor = null
         stmt.close()
     }
 }

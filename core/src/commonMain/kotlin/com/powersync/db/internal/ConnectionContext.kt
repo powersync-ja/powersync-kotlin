@@ -40,7 +40,14 @@ internal class ConnectionContextImplementation(val connection: SQLiteConnection)
         sql: String,
         parameters: List<Any?>?
     ): Long {
-        TODO("Not yet implemented")
+        withStatement(sql, parameters) {
+            while (it.step()) {
+                // Iterate through the statement
+            }
+
+            // TODO: What is this even supposed to return
+            return 0L
+        }
     }
 
     override fun <RowType : Any> getOptional(
@@ -48,7 +55,13 @@ internal class ConnectionContextImplementation(val connection: SQLiteConnection)
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType
     ): RowType? {
-        return getSequence(sql, parameters, mapper).firstOrNull()
+        return withStatement(sql, parameters) { stmt ->
+            if (stmt.step()) {
+                mapper(StatementBasedCursor(stmt))
+            } else {
+                null
+            }
+        }
     }
 
     override fun <RowType : Any> getAll(
@@ -56,7 +69,14 @@ internal class ConnectionContextImplementation(val connection: SQLiteConnection)
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType
     ): List<RowType> {
-        return getSequence(sql, parameters, mapper).toList()
+        return withStatement(sql, parameters) { stmt ->
+            buildList {
+                val cursor = StatementBasedCursor(stmt)
+                while (stmt.step()) {
+                    add(mapper(cursor))
+                }
+            }
+        }
     }
 
     override fun <RowType : Any> get(
@@ -67,17 +87,8 @@ internal class ConnectionContextImplementation(val connection: SQLiteConnection)
         return getOptional(sql, parameters, mapper) ?: throw PowerSyncException("get() called with query that returned no rows", null)
     }
 
-    private fun <RowType : Any> getSequence(
-        sql: String,
-        parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType
-    ): Sequence<RowType> = sequence {
-        val stmt = prepareStmt(sql, parameters)
-        val cursor = StatementBasedCursor(stmt)
-
-        while (stmt.step()) {
-            yield(mapper(cursor))
-        }
+    private inline fun <T> withStatement(sql: String, parameters: List<Any?>?, block: (SQLiteStatement) -> T): T {
+        return prepareStmt(sql, parameters).use(block)
     }
 
     private fun prepareStmt(sql: String, parameters: List<Any?>?): SQLiteStatement {

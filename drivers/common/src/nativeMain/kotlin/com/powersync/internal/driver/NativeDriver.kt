@@ -29,7 +29,13 @@ public class NativeDriver : PowerSyncDriver {
         path: String,
         readOnly: Boolean,
         listener: ConnectionListener?,
-    ): SQLiteConnection {
+    ): SQLiteConnection = openNativeDatabase(path, readOnly, listener)
+
+    public fun openNativeDatabase(
+        path: String,
+        readOnly: Boolean,
+        listener: ConnectionListener?,
+    ): NativeConnection {
         val flags = if (readOnly) {
             SQLITE_OPEN_READONLY
         } else {
@@ -45,13 +51,13 @@ public class NativeDriver : PowerSyncDriver {
                 throwSQLiteException(resultCode, null)
             }
 
-            ListenerConnection(dbPointer.value!!, listener)
+            NativeConnection(dbPointer.value!!, listener)
         }
     }
 }
 
-private class ListenerConnection(
-    sqlite: CPointer<sqlite3>,
+public class NativeConnection(
+    public val sqlite: CPointer<sqlite3>,
     listener: ConnectionListener?
 ): SQLiteConnection {
     private val inner: NativeSQLiteConnection = NativeSQLiteConnection(sqlite)

@@ -43,6 +43,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
+import kotlin.math.log
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Instant
 
@@ -87,6 +88,7 @@ internal class PowerSyncDatabaseImpl(
             dbFilename = dbFilename,
             dbDirectory = dbDirectory,
             writeLockMutex = resource.group.writeLockMutex,
+            logger = logger,
         )
 
     internal val bucketStorage: BucketStorage = BucketStorageImpl(internalDb, logger)

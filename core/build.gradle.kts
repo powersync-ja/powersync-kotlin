@@ -233,6 +233,7 @@ kotlin {
 
         appleMain.dependencies {
             implementation(libs.ktor.client.darwin)
+            implementation(projects.staticSqliteDriver)
         }
 
         commonTest.dependencies {
