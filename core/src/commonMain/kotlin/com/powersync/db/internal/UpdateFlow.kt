@@ -1,12 +1,13 @@
 package com.powersync.db.internal
 
+import co.touchlab.kermit.Logger
 import com.powersync.internal.driver.ConnectionListener
 import com.powersync.utils.AtomicMutableSet
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 
-internal class UpdateFlow: ConnectionListener {
+internal class UpdateFlow(private val logger: Logger): ConnectionListener {
     // MutableSharedFlow to emit batched table updates
     private val tableUpdatesFlow = MutableSharedFlow<Set<String>>(replay = 0)
 
@@ -16,6 +17,7 @@ internal class UpdateFlow: ConnectionListener {
     override fun onCommit() {}
 
     override fun onRollback() {
+        logger.v { "onRollback, clearing pending updates" }
         pendingUpdates.clear()
     }
 
@@ -36,6 +38,10 @@ internal class UpdateFlow: ConnectionListener {
 
     suspend fun fireTableUpdates() {
         val updates = pendingUpdates.toSetAndClear()
+        if (updates.isNotEmpty()) {
+            logger.v { "Firing table updates for $updates" }
+        }
+
         tableUpdatesFlow.emit(updates)
     }
 }

@@ -1,7 +1,7 @@
 package com.powersync
 
-import co.touchlab.sqliter.DatabaseConnection
+import com.powersync.internal.driver.NativeConnection
 
-internal actual fun DatabaseConnection.loadPowerSyncSqliteCoreExtension() {
+internal actual fun NativeConnection.loadPowerSyncSqliteCoreExtension() {
     loadPowerSyncSqliteCoreExtensionDynamically()
 }

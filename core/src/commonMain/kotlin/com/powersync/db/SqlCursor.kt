@@ -3,6 +3,7 @@ package com.powersync.db
 import androidx.sqlite.SQLiteStatement
 import co.touchlab.skie.configuration.annotations.FunctionInterop
 import com.powersync.PowerSyncException
+import kotlin.collections.set
 
 public interface SqlCursor {
     public fun getBoolean(index: Int): Boolean?
@@ -32,23 +33,31 @@ private inline fun <T> SqlCursor.getColumnValue(
 
 internal class StatementBasedCursor(private val stmt: SQLiteStatement): SqlCursor {
     override fun getBoolean(index: Int): Boolean? {
-        return getLong(index) != 0L
+        return getNullable(index) { index -> stmt.getLong(index) != 0L }
     }
 
     override fun getBytes(index: Int): ByteArray? {
-        return stmt.getBlob(index)
+        return getNullable(index, SQLiteStatement::getBlob)
     }
 
     override fun getDouble(index: Int): Double? {
-        return stmt.getDouble(index)
+        return getNullable(index, SQLiteStatement::getDouble)
     }
 
     override fun getLong(index: Int): Long? {
-        return stmt.getLong(index)
+        return getNullable(index, SQLiteStatement::getLong)
     }
 
     override fun getString(index: Int): String? {
-        return stmt.getText(index)
+        return getNullable(index, SQLiteStatement::getText)
+    }
+
+    private inline fun <T> getNullable(index: Int, read: SQLiteStatement.(Int) -> T): T? {
+        return if (stmt.isNull(index)) {
+            null
+        } else {
+            stmt.read(index)
+        }
     }
 
     override fun columnName(index: Int): String? {
@@ -60,8 +69,20 @@ internal class StatementBasedCursor(private val stmt: SQLiteStatement): SqlCurso
 
     override val columnNames: Map<String, Int> by lazy {
         buildMap {
-            stmt.getColumnNames().forEachIndexed { index, name ->
-                put(name, index)
+            stmt.getColumnNames().forEachIndexed { index, key ->
+               val finalKey = if (containsKey(key)) {
+                    var index = 1
+                    val basicKey = "$key&JOIN"
+                    var finalKey = basicKey + index
+                    while (containsKey(finalKey)) {
+                        finalKey = basicKey + ++index
+                    }
+                    finalKey
+                } else {
+                    key
+                }
+
+                put(finalKey, index)
             }
         }
     }
