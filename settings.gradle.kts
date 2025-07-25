@@ -31,5 +31,6 @@ include(":PowerSyncKotlin")
 include(":drivers:common")
 
 include(":compose")
+include(":integrations:room")
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
