@@ -21,6 +21,7 @@ powersync-core = "0.4.2"
 sqlite-jdbc = "3.50.3.0"
 turbine = "1.2.0"
 kotest = "5.9.1"
+sqldelight = "2.1.0"
 
 stately = "2.1.0"
 supabase = "3.0.1"
@@ -95,6 +96,10 @@ supabase-storage = { module = "io.github.jan-tennert.supabase:storage-kt", versi
 androidx-sqlite = { module = "androidx.sqlite:sqlite", version.ref = "androidxSqlite" }
 androidx-sqliteFramework = { module = "androidx.sqlite:sqlite-framework", version.ref = "androidxSqlite" }
 
+sqldelight-coroutines = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
+sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }
+sqldelight-dialect-sqlite38 = { module = "app.cash.sqldelight:sqlite-3-38-dialect", version.ref = "sqldelight" }
+
 # Sample - Android
 androidx-core = { group = "androidx.core", name = "core-ktx", version.ref = "androidx-core" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidx-appcompat" }
@@ -121,3 +126,4 @@ kotlinter = { id = "org.jmailen.kotlinter", version.ref = "kotlinter" }
 keeper = { id = "com.slack.keeper", version.ref = "keeper" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version.ref = "atomicfu" }
+sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }

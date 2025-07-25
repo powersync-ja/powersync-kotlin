@@ -7,16 +7,19 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinTargetContainerWithPresetFunctions
 public fun KotlinTargetContainerWithPresetFunctions.powersyncTargets(
     native: Boolean = true,
     jvm: Boolean = true,
+    android: Boolean = true,
     includeTargetsWithoutComposeSupport: Boolean = true,
     watchOS: Boolean = true,
 ) {
     if (jvm) {
-        androidTarget {
-            publishLibraryVariants("release", "debug")
+        if (android) {
+            androidTarget {
+                publishLibraryVariants("release", "debug")
 
-            @OptIn(ExperimentalKotlinGradlePluginApi::class)
-            compilerOptions {
-                jvmTarget.set(JvmTarget.JVM_17)
+                @OptIn(ExperimentalKotlinGradlePluginApi::class)
+                compilerOptions {
+                    jvmTarget.set(JvmTarget.JVM_17)
+                }
             }
         }
 
