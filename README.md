@@ -32,6 +32,10 @@ and API documentation [here](https://powersync-ja.github.io/powersync-kotlin/).
         1. Retrieve a token to connect to the PowerSync service.
         2. Apply local changes on your backend application server (and from there, to your backend database).
 
+- [integrations](./integrations/)
+    - [sqldelight](./integrations/sqldelight/): An experimental SQLDelight driver backed by PowerSync databases.
+      Changes to the PowerSync database, including those from the server, update SQLDelight queries.
+
 ## Demo Apps / Example Projects
 
 The easiest way to test the PowerSync KMP SDK is to run one of our demo applications.

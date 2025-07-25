@@ -31,5 +31,7 @@ include(":PowerSyncKotlin")
 include(":drivers:common")
 
 include(":compose")
+include(":integrations:sqldelight")
+include(":integrations:sqldelight-test-database")
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
