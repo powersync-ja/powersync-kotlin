@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.flow.transform
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
@@ -212,8 +213,23 @@ internal class InternalDatabaseImpl(
             readPool.obtainConnection()
         } else {
             writeLockMutex.lock()
-            RawConnectionLease(writeConnection, writeLockMutex::unlock)
+            RawConnectionLease(writeConnection) {
+                scope.launch {
+                    // When we've leased a write connection, we may have to update table update
+                    // flows after users ran their custom statements.
+                    // For internal queries, this happens with leaseWrite() and an asynchronous call
+                    // in internalWriteLock
+                    updates.fireTableUpdates()
+                }
+
+                writeLockMutex.unlock()
+            }
         }
+
+    private suspend fun leaseWrite(): SQLiteConnection {
+        writeLockMutex.lock()
+        return RawConnectionLease(writeConnection, writeLockMutex::unlock)
+    }
 
     /**
      * Creates a read lock while providing an internal transactor for transactions
@@ -251,7 +267,7 @@ internal class InternalDatabaseImpl(
     @OptIn(ExperimentalPowerSyncAPI::class)
     private suspend fun <R> internalWriteLock(callback: (SQLiteConnection) -> R): R =
         withContext(dbContext) {
-            val lease = leaseConnection(readOnly = false)
+            val lease = leaseWrite()
             try {
                 runWrapped {
                     catchSwiftExceptions {
