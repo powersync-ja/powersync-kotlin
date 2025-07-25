@@ -3,7 +3,31 @@
 This library provides the `PowerSyncDriver` class, which implements an `SqlDriver` for `SQLDelight`
 backed by PowerSync.
 
-Usage:
+## Usage
+
+To get started, ensure that SQLDelight is not linking sqlite3 (the PowerSync SDK takes care of that,
+and you don't want to link it twice). Also, ensure the async generator is active because the
+PowerSync driver does not support synchronous reads:
+
+```kotlin
+sqldelight {
+    databases {
+        linkSqlite.set(false)
+
+        create("MyAppDatabase") {
+            generateAsync.set(true)
+            deriveSchemaFromMigrations.set(false)
+
+            dialect("app.cash.sqldelight:sqlite-3-38-dialect")
+        }
+    }
+}
+```
+
+Next, define your tables in `.sq` files (but note that the `CREATE TABLE` statement won't be used,
+PowerSync creates JSON-backed views for tables instead).
+Open a PowerSync database [in the usual way](https://docs.powersync.com/client-sdk-references/kotlin-multiplatform#getting-started)
+and finally pass it to the constructor of your generated SQLDelight database:
 
 ```kotlin
 val db: PowerSyncDatabase = openPowerSyncDatabase()
@@ -11,7 +35,7 @@ val yourSqlDelightDatabase = YourDatabase(PowerSyncDriver(db))
 ```
 
 Afterwards, writes on both databases (the original `PowerSyncDatabase` instance and the SQLDelight
-database) will be visible to each other, update each other's query flows and will be synced
+database) will be visible to each other, update each other's query flows and will get synced
 properly.
 
 ## Limitations
