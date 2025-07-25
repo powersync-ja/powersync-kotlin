@@ -1,7 +1,10 @@
 package com.powersync.db.internal
 
-import app.cash.sqldelight.db.SqlPreparedStatement
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.execSQL
+import co.touchlab.kermit.Logger
 import com.powersync.DatabaseDriverFactory
+import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncException
 import com.powersync.db.SqlCursor
 import com.powersync.db.ThrowableLockCallback
@@ -19,39 +22,66 @@ import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.flow.transform
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
 
 internal class InternalDatabaseImpl(
     private val factory: DatabaseDriverFactory,
     private val scope: CoroutineScope,
+    logger: Logger,
     private val dbFilename: String,
     private val dbDirectory: String?,
     private val writeLockMutex: Mutex,
 ) : InternalDatabase {
-    private val writeConnection =
-        TransactorDriver(
-            factory.createDriver(
-                scope = scope,
-                dbFilename = dbFilename,
-                dbDirectory = dbDirectory,
-            ),
-        )
+    private val updates = UpdateFlow(logger)
+
+    private val writeConnection = newConnection(false)
 
     private val readPool =
         ConnectionPool(factory = {
-            factory.createDriver(
-                scope = scope,
-                dbFilename = dbFilename,
-                dbDirectory = dbDirectory,
-                readOnly = true,
-            )
+            newConnection(true)
         }, scope = scope)
 
     // Could be scope.coroutineContext, but the default is GlobalScope, which seems like a bad idea. To discuss.
     private val dbContext = Dispatchers.IO
+
+    private fun newConnection(readOnly: Boolean): SQLiteConnection {
+        val connection =
+            factory.openDatabase(
+                dbFilename = dbFilename,
+                dbDirectory = dbDirectory,
+                readOnly = false,
+                // We don't need a listener on read-only connections since we don't expect any update
+                // hooks here.
+                listener = if (readOnly) null else updates,
+            )
+
+        connection.execSQL("pragma journal_mode = WAL")
+        connection.execSQL("pragma journal_size_limit = ${6 * 1024 * 1024}")
+        connection.execSQL("pragma busy_timeout = 30000")
+        connection.execSQL("pragma cache_size = ${50 * 1024}")
+
+        if (readOnly) {
+            connection.execSQL("pragma query_only = TRUE")
+        }
+
+        // Older versions of the SDK used to set up an empty schema and raise the user version to 1.
+        // Keep doing that for consistency.
+        if (!readOnly) {
+            val version =
+                connection.prepare("pragma user_version").use {
+                    require(it.step())
+                    if (it.isNull(0)) 0L else it.getLong(0)
+                }
+            if (version < 1L) {
+                connection.execSQL("pragma user_version = 1")
+            }
+        }
+
+        return connection
+    }
 
     override suspend fun execute(
         sql: String,
@@ -75,7 +105,10 @@ internal class InternalDatabaseImpl(
                     }
 
                     // Update the schema on all read connections
-                    readConnections.forEach { it.driver.getAll("pragma table_info('sqlite_master')") {} }
+                    for (readConnection in readConnections) {
+                        ConnectionContextImplementation(readConnection)
+                            .getAll("pragma table_info('sqlite_master')") {}
+                    }
                 }
             }
         }
@@ -174,78 +207,104 @@ internal class InternalDatabaseImpl(
                 }
         }
 
+    @ExperimentalPowerSyncAPI
+    override suspend fun leaseConnection(readOnly: Boolean): SQLiteConnection =
+        if (readOnly) {
+            readPool.obtainConnection()
+        } else {
+            writeLockMutex.lock()
+            RawConnectionLease(writeConnection) {
+                scope.launch {
+                    // When we've leased a write connection, we may have to update table update
+                    // flows after users ran their custom statements.
+                    // For internal queries, this happens with leaseWrite() and an asynchronous call
+                    // in internalWriteLock
+                    updates.fireTableUpdates()
+                }
+
+                writeLockMutex.unlock()
+            }
+        }
+
+    private suspend fun leaseWrite(): SQLiteConnection {
+        writeLockMutex.lock()
+        return RawConnectionLease(writeConnection, writeLockMutex::unlock)
+    }
+
     /**
      * Creates a read lock while providing an internal transactor for transactions
      */
-    private suspend fun <R> internalReadLock(callback: (TransactorDriver) -> R): R =
+    @OptIn(ExperimentalPowerSyncAPI::class)
+    private suspend fun <R> internalReadLock(callback: (SQLiteConnection) -> R): R =
         withContext(dbContext) {
             runWrapped {
-                readPool.withConnection {
+                val connection = leaseConnection(readOnly = true)
+                try {
                     catchSwiftExceptions {
-                        callback(it)
+                        callback(connection)
                     }
+                } finally {
+                    // Closing the lease will release the connection back into the pool.
+                    connection.close()
                 }
             }
         }
 
     override suspend fun <R> readLock(callback: ThrowableLockCallback<R>): R =
         internalReadLock {
-            callback.execute(it.driver)
+            callback.execute(ConnectionContextImplementation(it))
         }
 
     override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R =
         internalReadLock {
-            it.transactor.transactionWithResult(noEnclosing = true) {
+            it.runTransaction { tx ->
                 catchSwiftExceptions {
-                    callback.execute(
-                        PowerSyncTransactionImpl(
-                            it.driver,
-                        ),
-                    )
+                    callback.execute(tx)
                 }
             }
         }
 
-    private suspend fun <R> internalWriteLock(callback: (TransactorDriver) -> R): R =
+    @OptIn(ExperimentalPowerSyncAPI::class)
+    private suspend fun <R> internalWriteLock(callback: (SQLiteConnection) -> R): R =
         withContext(dbContext) {
-            writeLockMutex.withLock {
+            val lease = leaseWrite()
+            try {
                 runWrapped {
                     catchSwiftExceptions {
-                        callback(writeConnection)
+                        callback(lease)
                     }
                 }.also {
                     // Trigger watched queries
                     // Fire updates inside the write lock
-                    writeConnection.driver.fireTableUpdates()
+                    updates.fireTableUpdates()
                 }
+            } finally {
+                // Returning the lease will unlock the writeLockMutex
+                lease.close()
             }
         }
 
     override suspend fun <R> writeLock(callback: ThrowableLockCallback<R>): R =
         internalWriteLock {
-            callback.execute(it.driver)
+            callback.execute(ConnectionContextImplementation(it))
         }
 
     override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R =
         internalWriteLock {
-            it.transactor.transactionWithResult(noEnclosing = true) {
+            it.runTransaction { tx ->
                 // Need to catch Swift exceptions here for Rollback
                 catchSwiftExceptions {
-                    callback.execute(
-                        PowerSyncTransactionImpl(
-                            it.driver,
-                        ),
-                    )
+                    callback.execute(tx)
                 }
             }
         }
 
     // Register callback for table updates on a specific table
-    override fun updatesOnTables(): SharedFlow<Set<String>> = writeConnection.driver.updatesOnTables()
+    override fun updatesOnTables(): SharedFlow<Set<String>> = updates.updatesOnTables()
 
     // Unfortunately Errors can't be thrown from Swift SDK callbacks.
     // These are currently returned and should be thrown here.
-    private fun <R> catchSwiftExceptions(action: () -> R): R {
+    private inline fun <R> catchSwiftExceptions(action: () -> R): R {
         val result = action()
 
         if (result is PowerSyncException) {
@@ -292,7 +351,7 @@ internal class InternalDatabaseImpl(
 
     override suspend fun close() {
         runWrapped {
-            writeConnection.driver.close()
+            writeConnection.close()
             readPool.close()
         }
     }
@@ -316,27 +375,4 @@ private fun friendlyTableName(table: String): String {
     val re2 = Regex("^ps_data_local__(.+)$")
     val match = re.matchEntire(table) ?: re2.matchEntire(table)
     return match?.groupValues?.get(1) ?: table
-}
-
-internal fun getBindersFromParams(parameters: List<Any?>?): (SqlPreparedStatement.() -> Unit)? {
-    if (parameters.isNullOrEmpty()) {
-        return null
-    }
-    return {
-        parameters.forEachIndexed { index, parameter ->
-            when (parameter) {
-                is Boolean -> bindBoolean(index, parameter)
-                is String -> bindString(index, parameter)
-                is Long -> bindLong(index, parameter)
-                is Int -> bindLong(index, parameter.toLong())
-                is Double -> bindDouble(index, parameter)
-                is ByteArray -> bindBytes(index, parameter)
-                else -> {
-                    if (parameter != null) {
-                        throw IllegalArgumentException("Unsupported parameter type: ${parameter::class}, at index $index")
-                    }
-                }
-            }
-        }
-    }
 }

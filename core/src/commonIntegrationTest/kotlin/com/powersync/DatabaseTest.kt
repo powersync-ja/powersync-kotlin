@@ -3,6 +3,7 @@ package com.powersync
 import app.cash.turbine.turbineScope
 import co.touchlab.kermit.ExperimentalKermitApi
 import com.powersync.db.ActiveDatabaseGroup
+import com.powersync.db.getString
 import com.powersync.db.schema.Schema
 import com.powersync.testutils.UserRow
 import com.powersync.testutils.databaseTest
@@ -17,11 +18,13 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalKermitApi::class)
 class DatabaseTest {
@@ -458,5 +461,55 @@ class DatabaseTest {
             batch.complete(null)
 
             database.getCrudBatch() shouldBe null
+        }
+
+    @Test
+    @OptIn(ExperimentalPowerSyncAPI::class)
+    fun testLeaseReadOnly() =
+        databaseTest {
+            database.execute(
+                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                listOf("a", "a@example.org"),
+            )
+
+            val raw = database.leaseConnection(readOnly = true)
+            raw.prepare("SELECT * FROM users").use { stmt ->
+                stmt.step() shouldBe true
+                stmt.getText(1) shouldBe "a"
+                stmt.getText(2) shouldBe "a@example.org"
+            }
+            raw.close()
+        }
+
+    @Test
+    @OptIn(ExperimentalPowerSyncAPI::class)
+    fun testLeaseWrite() =
+        databaseTest {
+            val raw = database.leaseConnection(readOnly = false)
+            raw.prepare("INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)").use { stmt ->
+                stmt.bindText(1, "name")
+                stmt.bindText(2, "email")
+                stmt.step() shouldBe false
+
+                stmt.reset()
+                stmt.step() shouldBe false
+            }
+
+            database.getAll("SELECT * FROM users") { it.getString("name") } shouldHaveSize 2
+
+            // Verify that the statement indeed holds a lock on the database.
+            val hadOtherWrite = CompletableDeferred<Unit>()
+            scope.launch {
+                database.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf("another", "a@example.org"),
+                )
+                hadOtherWrite.complete(Unit)
+            }
+
+            delay(100.milliseconds)
+            hadOtherWrite.isCompleted shouldBe false
+            raw.close()
+            hadOtherWrite.await()
         }
 }

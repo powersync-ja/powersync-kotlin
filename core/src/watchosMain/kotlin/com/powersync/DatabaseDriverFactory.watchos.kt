@@ -1,9 +1,9 @@
 package com.powersync
 
-import co.touchlab.sqliter.DatabaseConnection
+import com.powersync.internal.driver.NativeConnection
 import com.powersync.static.powersync_init_static
 
-internal actual fun DatabaseConnection.loadPowerSyncSqliteCoreExtension() {
+internal actual fun NativeConnection.loadPowerSyncSqliteCoreExtension() {
     val rc = powersync_init_static()
     if (rc != 0) {
         throw PowerSyncException(

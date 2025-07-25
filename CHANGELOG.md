@@ -1,9 +1,12 @@
 # Changelog
 
-## 1.3.1 (unreleased)
+## 1.4.0 (unreleased)
 
 * Update SQLite to 3.50.3.
+* Remove internal SQLDelight and SQLiter dependencies.
 * Android: Ensure JNI libraries are 16KB-aligned.
+* Add `rawConnection` getter to `ConnectionContext`, which is a `SQLiteConnection` instance from
+  `androidx.sqlite` that can be used to step through statements in a custom way.
 
 ## 1.3.0
 

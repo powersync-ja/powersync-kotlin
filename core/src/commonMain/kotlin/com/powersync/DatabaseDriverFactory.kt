@@ -1,13 +1,14 @@
 package com.powersync
 
-import kotlinx.coroutines.CoroutineScope
+import androidx.sqlite.SQLiteConnection
+import com.powersync.internal.driver.ConnectionListener
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 public expect class DatabaseDriverFactory {
-    internal fun createDriver(
-        scope: CoroutineScope,
+    internal fun openDatabase(
         dbFilename: String,
         dbDirectory: String?,
         readOnly: Boolean = false,
-    ): PsSqlDriver
+        listener: ConnectionListener?,
+    ): SQLiteConnection
 }

@@ -181,6 +181,7 @@ kotlin {
         all {
             languageSettings {
                 optIn("kotlinx.cinterop.ExperimentalForeignApi")
+                optIn("kotlin.experimental.ExperimentalObjCRefinement")
             }
         }
 
@@ -201,6 +202,9 @@ kotlin {
             }
 
             dependencies {
+                api(libs.kermit)
+                api(libs.androidx.sqlite)
+
                 implementation(libs.uuid)
                 implementation(libs.kotlin.stdlib)
                 implementation(libs.ktor.client.core)
@@ -213,8 +217,7 @@ kotlin {
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.stately.concurrency)
                 implementation(libs.configuration.annotations)
-                api(projects.persistence)
-                api(libs.kermit)
+                implementation(projects.drivers.common)
             }
         }
 
@@ -233,6 +236,7 @@ kotlin {
 
         appleMain.dependencies {
             implementation(libs.ktor.client.darwin)
+            implementation(projects.staticSqliteDriver)
         }
 
         commonTest.dependencies {
