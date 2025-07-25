@@ -6,6 +6,9 @@
   to upload multiple transactions in a batch.
 * Fix modifying severity of the global Kermit logger
 * Add `PowerSync` tag for the logs
+* Remove internal SQLDelight and SQLiter dependencies.
+* Add `rawConnection` getter to `ConnectionContext`, which is a `SQLiteConnection` instance from
+  `androidx.sqlite` that can be used to step through statements in a custom way.
 
 ## 1.4.0
 
