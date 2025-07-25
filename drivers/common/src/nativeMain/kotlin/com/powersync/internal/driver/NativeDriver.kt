@@ -36,11 +36,12 @@ public class NativeDriver : PowerSyncDriver {
         readOnly: Boolean,
         listener: ConnectionListener?,
     ): NativeConnection {
-        val flags = if (readOnly) {
-            SQLITE_OPEN_READONLY
-        } else {
-            SQLITE_OPEN_READWRITE or SQLITE_OPEN_CREATE
-        }
+        val flags =
+            if (readOnly) {
+                SQLITE_OPEN_READONLY
+            } else {
+                SQLITE_OPEN_READWRITE or SQLITE_OPEN_CREATE
+            }
 
         return memScoped {
             val dbPointer = allocPointerTo<sqlite3>()
@@ -58,22 +59,19 @@ public class NativeDriver : PowerSyncDriver {
 
 public class NativeConnection(
     public val sqlite: CPointer<sqlite3>,
-    listener: ConnectionListener?
-): SQLiteConnection {
+    listener: ConnectionListener?,
+) : SQLiteConnection {
     private val inner: NativeSQLiteConnection = NativeSQLiteConnection(sqlite)
-    private val listener: StableRef<ConnectionListener>? = listener?.let { StableRef.create(it) }?.also {
-        sqlite3_update_hook(sqlite, updateHook, it.asCPointer())
-        sqlite3_commit_hook(sqlite, commitHook, it.asCPointer())
-        sqlite3_rollback_hook(sqlite, rollbackHook, it.asCPointer())
-    }
+    private val listener: StableRef<ConnectionListener>? =
+        listener?.let { StableRef.create(it) }?.also {
+            sqlite3_update_hook(sqlite, updateHook, it.asCPointer())
+            sqlite3_commit_hook(sqlite, commitHook, it.asCPointer())
+            sqlite3_rollback_hook(sqlite, rollbackHook, it.asCPointer())
+        }
 
-    override fun inTransaction(): Boolean {
-        return inner.inTransaction()
-    }
+    override fun inTransaction(): Boolean = inner.inTransaction()
 
-    override fun prepare(sql: String): SQLiteStatement {
-        return inner.prepare(sql)
-    }
+    override fun prepare(sql: String): SQLiteStatement = inner.prepare(sql)
 
     override fun close() {
         inner.close()
@@ -96,13 +94,13 @@ private val rollbackHook =
 
 private val updateHook =
     staticCFunction<
-            COpaquePointer?,
-            Int,
-            CPointer<ByteVar>?,
-            CPointer<ByteVar>?,
-            Long,
-            Unit,
-            > { ctx, type, db, table, rowId ->
+        COpaquePointer?,
+        Int,
+        CPointer<ByteVar>?,
+        CPointer<ByteVar>?,
+        Long,
+        Unit,
+    > { ctx, type, db, table, rowId ->
         val listener = ctx!!.asStableRef<ConnectionListener>().get()
         listener.onUpdate(
             type,

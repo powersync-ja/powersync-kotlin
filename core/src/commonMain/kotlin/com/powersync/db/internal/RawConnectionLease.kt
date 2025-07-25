@@ -8,10 +8,12 @@ import androidx.sqlite.SQLiteStatement
  */
 internal class RawConnectionLease(
     private val connection: SQLiteConnection,
-    var completed: Boolean = false,
+    private val returnConnection: () -> Unit,
 ) : SQLiteConnection {
+    private var isCompleted = false
+
     private fun checkNotCompleted() {
-        check(!completed) { "Connection lease already closed" }
+        check(!isCompleted) { "Connection lease already closed" }
     }
 
     override fun inTransaction(): Boolean {
@@ -26,5 +28,9 @@ internal class RawConnectionLease(
 
     override fun close() {
         // Note: This is a lease, don't close the underlying connection.
+        if (!isCompleted) {
+            isCompleted = true
+            returnConnection()
+        }
     }
 }

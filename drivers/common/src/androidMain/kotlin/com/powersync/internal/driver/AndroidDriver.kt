@@ -4,7 +4,9 @@ import android.content.Context
 import java.util.Properties
 import java.util.concurrent.atomic.AtomicBoolean
 
-public class AndroidDriver(private val context: Context): JdbcDriver() {
+public class AndroidDriver(
+    private val context: Context,
+) : JdbcDriver() {
     override fun addDefaultProperties(properties: Properties) {
         val isFirst = IS_FIRST_CONNECTION.getAndSet(false)
         if (isFirst) {

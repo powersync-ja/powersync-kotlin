@@ -4,6 +4,7 @@ import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
 import co.touchlab.kermit.Logger
 import com.powersync.DatabaseDriverFactory
+import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncException
 import com.powersync.db.SqlCursor
 import com.powersync.db.ThrowableLockCallback
@@ -22,7 +23,6 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -206,17 +206,30 @@ internal class InternalDatabaseImpl(
                 }
         }
 
+    @ExperimentalPowerSyncAPI
+    override suspend fun leaseConnection(readOnly: Boolean): SQLiteConnection =
+        if (readOnly) {
+            readPool.obtainConnection()
+        } else {
+            writeLockMutex.lock()
+            RawConnectionLease(writeConnection, writeLockMutex::unlock)
+        }
+
     /**
      * Creates a read lock while providing an internal transactor for transactions
      */
+    @OptIn(ExperimentalPowerSyncAPI::class)
     private suspend fun <R> internalReadLock(callback: (SQLiteConnection) -> R): R =
         withContext(dbContext) {
             runWrapped {
-                readPool.withConnection {
+                val connection = leaseConnection(readOnly = true)
+                try {
                     catchSwiftExceptions {
-                        val lease = RawConnectionLease(it)
-                        callback(lease).also { lease.completed = true }
+                        callback(connection)
                     }
+                } finally {
+                    // Closing the lease will release the connection back into the pool.
+                    connection.close()
                 }
             }
         }
@@ -235,11 +248,11 @@ internal class InternalDatabaseImpl(
             }
         }
 
+    @OptIn(ExperimentalPowerSyncAPI::class)
     private suspend fun <R> internalWriteLock(callback: (SQLiteConnection) -> R): R =
         withContext(dbContext) {
-            writeLockMutex.withLock {
-                val lease = RawConnectionLease(writeConnection)
-
+            val lease = leaseConnection(readOnly = false)
+            try {
                 runWrapped {
                     catchSwiftExceptions {
                         callback(lease)
@@ -248,8 +261,10 @@ internal class InternalDatabaseImpl(
                     // Trigger watched queries
                     // Fire updates inside the write lock
                     updates.fireTableUpdates()
-                    lease.completed = true
                 }
+            } finally {
+                // Returning the lease will unlock the writeLockMutex
+                lease.close()
             }
         }
 

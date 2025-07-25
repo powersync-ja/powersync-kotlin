@@ -45,7 +45,7 @@ kotlin {
 }
 
 android {
-    namespace = "com.powersync.compose"
+    namespace = "com.powersync.drivers.common"
     compileSdk =
         libs.versions.android.compileSdk
             .get()

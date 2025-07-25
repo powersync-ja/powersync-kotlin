@@ -19,6 +19,13 @@ public interface PowerSyncDriver {
 
 public interface ConnectionListener {
     public fun onCommit()
+
     public fun onRollback()
-    public fun onUpdate(kind: Int, database: String, table: String, rowid: Long)
+
+    public fun onUpdate(
+        kind: Int,
+        database: String,
+        table: String,
+        rowid: Long,
+    )
 }
