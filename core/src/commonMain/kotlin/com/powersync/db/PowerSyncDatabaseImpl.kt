@@ -1,6 +1,5 @@
 package com.powersync.db
 
-import androidx.sqlite.SQLiteConnection
 import co.touchlab.kermit.Logger
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
