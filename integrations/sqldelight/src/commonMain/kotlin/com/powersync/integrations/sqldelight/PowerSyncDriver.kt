@@ -18,6 +18,17 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
+/**
+ * A driver for SQLDelight that delegates queries to an opened PowerSync database.
+ *
+ * Writes made through SQLDelight will trigger entries in the CRUD queue for PowerSync, allowing
+ * them to be uploaded.
+ * Similarly, writes made on the PowerSync database (both locally and those made during syncing)
+ * will update SQLDelight queries and flows.
+ *
+ * This driver implements [SqlDriver] and can be passed to constructors of your SQLDelight database.
+ * Please see the readme of this library for more details to be aware of.
+ */
 @OptIn(ExperimentalPowerSyncAPI::class)
 public class PowerSyncDriver(
     private val db: PowerSyncDatabase,
