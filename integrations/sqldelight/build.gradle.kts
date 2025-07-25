@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlinter)
     alias(libs.plugins.kotlin.atomicfu)
     id("com.powersync.plugins.sonatype")
+    id("dokka-convention")
 }
 
 kotlin {
@@ -49,4 +50,8 @@ android {
     kotlin {
         jvmToolchain(17)
     }
+}
+
+dokka {
+    moduleName.set("PowerSync for SQLDelight")
 }
