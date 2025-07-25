@@ -5,8 +5,12 @@ import androidx.sqlite.SQLiteStatement
 import com.powersync.PowerSyncException
 import com.powersync.db.SqlCursor
 import com.powersync.db.StatementBasedCursor
+import kotlin.native.HiddenFromObjC
 
 public interface ConnectionContext {
+    @HiddenFromObjC
+    public val rawConnection: SQLiteConnection
+
     @Throws(PowerSyncException::class)
     public fun execute(
         sql: String,
@@ -35,10 +39,12 @@ public interface ConnectionContext {
     ): RowType
 }
 
-internal class ConnectionContextImplementation(val connection: SQLiteConnection): ConnectionContext {
+internal class ConnectionContextImplementation(
+    override val rawConnection: SQLiteConnection,
+) : ConnectionContext {
     override fun execute(
         sql: String,
-        parameters: List<Any?>?
+        parameters: List<Any?>?,
     ): Long {
         withStatement(sql, parameters) {
             while (it.step()) {
@@ -53,23 +59,22 @@ internal class ConnectionContextImplementation(val connection: SQLiteConnection)
     override fun <RowType : Any> getOptional(
         sql: String,
         parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType
-    ): RowType? {
-        return withStatement(sql, parameters) { stmt ->
+        mapper: (SqlCursor) -> RowType,
+    ): RowType? =
+        withStatement(sql, parameters) { stmt ->
             if (stmt.step()) {
                 mapper(StatementBasedCursor(stmt))
             } else {
                 null
             }
         }
-    }
 
     override fun <RowType : Any> getAll(
         sql: String,
         parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType
-    ): List<RowType> {
-        return withStatement(sql, parameters) { stmt ->
+        mapper: (SqlCursor) -> RowType,
+    ): List<RowType> =
+        withStatement(sql, parameters) { stmt ->
             buildList {
                 val cursor = StatementBasedCursor(stmt)
                 while (stmt.step()) {
@@ -77,22 +82,24 @@ internal class ConnectionContextImplementation(val connection: SQLiteConnection)
                 }
             }
         }
-    }
 
     override fun <RowType : Any> get(
         sql: String,
         parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType
-    ): RowType {
-        return getOptional(sql, parameters, mapper) ?: throw PowerSyncException("get() called with query that returned no rows", null)
-    }
+        mapper: (SqlCursor) -> RowType,
+    ): RowType = getOptional(sql, parameters, mapper) ?: throw PowerSyncException("get() called with query that returned no rows", null)
 
-    private inline fun <T> withStatement(sql: String, parameters: List<Any?>?, block: (SQLiteStatement) -> T): T {
-        return prepareStmt(sql, parameters).use(block)
-    }
+    private inline fun <T> withStatement(
+        sql: String,
+        parameters: List<Any?>?,
+        block: (SQLiteStatement) -> T,
+    ): T = prepareStmt(sql, parameters).use(block)
 
-    private fun prepareStmt(sql: String, parameters: List<Any?>?): SQLiteStatement {
-        return connection.prepare(sql).apply {
+    private fun prepareStmt(
+        sql: String,
+        parameters: List<Any?>?,
+    ): SQLiteStatement =
+        rawConnection.prepare(sql).apply {
             try {
                 parameters?.forEachIndexed { i, parameter ->
                     // SQLite parameters are 1-indexed
@@ -117,5 +124,4 @@ internal class ConnectionContextImplementation(val connection: SQLiteConnection)
                 throw e
             }
         }
-    }
 }

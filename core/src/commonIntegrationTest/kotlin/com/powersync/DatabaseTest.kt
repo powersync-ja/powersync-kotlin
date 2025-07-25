@@ -1,6 +1,8 @@
 package com.powersync
 
 import app.cash.turbine.test
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.execSQL
 import app.cash.turbine.turbineScope
 import co.touchlab.kermit.ExperimentalKermitApi
 import com.powersync.db.ActiveDatabaseGroup
@@ -16,6 +18,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.throwable.shouldHaveMessage
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -494,5 +497,39 @@ class DatabaseTest {
             batch.complete(null)
 
             database.getCrudBatch() shouldBe null
+        }
+
+    @Test
+    fun testRawConnection() =
+        databaseTest {
+            database.execute(
+                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                listOf("a", "a@example.org"),
+            )
+            var capturedConnection: SQLiteConnection? = null
+
+            database.readLock {
+                it.rawConnection.prepare("SELECT * FROM users").use { stmt ->
+                    stmt.step() shouldBe true
+                    stmt.getText(1) shouldBe "a"
+                    stmt.getText(2) shouldBe "a@example.org"
+                }
+
+                capturedConnection = it.rawConnection
+            }
+
+            // When we exit readLock, the connection should no longer be usable
+            shouldThrow<IllegalStateException> { capturedConnection!!.execSQL("DELETE FROM users") } shouldHaveMessage
+                "Connection lease already closed"
+
+            capturedConnection = null
+            database.writeLock {
+                it.rawConnection.execSQL("DELETE FROM users")
+                capturedConnection = it.rawConnection
+            }
+
+            // Same thing for writes
+            shouldThrow<IllegalStateException> { capturedConnection!!.prepare("SELECT * FROM users") } shouldHaveMessage
+                "Connection lease already closed"
         }
 }

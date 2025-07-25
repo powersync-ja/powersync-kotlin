@@ -7,7 +7,9 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 
-internal class UpdateFlow(private val logger: Logger): ConnectionListener {
+internal class UpdateFlow(
+    private val logger: Logger,
+) : ConnectionListener {
     // MutableSharedFlow to emit batched table updates
     private val tableUpdatesFlow = MutableSharedFlow<Set<String>>(replay = 0)
 
@@ -25,7 +27,7 @@ internal class UpdateFlow(private val logger: Logger): ConnectionListener {
         kind: Int,
         database: String,
         table: String,
-        rowid: Long
+        rowid: Long,
     ) {
         pendingUpdates.add(table)
     }

@@ -33,7 +33,7 @@ public actual class DatabaseDriverFactory {
         dbFilename: String,
         dbDirectory: String?,
         readOnly: Boolean,
-        listener: ConnectionListener?
+        listener: ConnectionListener?,
     ): SQLiteConnection {
         val directory = dbDirectory ?: defaultDatabaseDirectory()
         val path = Path(directory, dbFilename).toString()
@@ -61,15 +61,16 @@ public actual class DatabaseDriverFactory {
         @OptIn(UnsafeNumber::class)
         private fun defaultDatabaseDirectory(search: String = "databases"): String {
             // This needs to be compatible with https://github.com/touchlab/SQLiter/blob/a37bbe7e9c65e6a5a94c5bfcaccdaae55ad2bac9/sqliter-driver/src/appleMain/kotlin/co/touchlab/sqliter/DatabaseFileContext.kt#L36-L51
-            val paths = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, true);
-            val documentsDirectory = paths[0] as String;
+            val paths = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, true)
+            val documentsDirectory = paths[0] as String
 
             val databaseDirectory = "$documentsDirectory/$search"
 
             val fileManager = NSFileManager.defaultManager()
 
-            if (!fileManager.fileExistsAtPath(databaseDirectory))
-                fileManager.createDirectoryAtPath(databaseDirectory, true, null, null); //Create folder
+            if (!fileManager.fileExistsAtPath(databaseDirectory)) {
+                fileManager.createDirectoryAtPath(databaseDirectory, true, null, null)
+            }; // Create folder
 
             return databaseDirectory
         }

@@ -183,6 +183,7 @@ kotlin {
             languageSettings {
                 optIn("kotlinx.cinterop.ExperimentalForeignApi")
                 optIn("kotlin.time.ExperimentalTime")
+                optIn("kotlin.experimental.ExperimentalObjCRefinement")
             }
         }
 
@@ -203,6 +204,8 @@ kotlin {
             }
 
             dependencies {
+                api(libs.androidx.sqlite)
+
                 implementation(libs.uuid)
                 implementation(libs.kotlin.stdlib)
                 implementation(libs.ktor.client.contentnegotiation)
