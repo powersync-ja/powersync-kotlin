@@ -1,10 +1,13 @@
 package com.powersync.db
 
+import androidx.sqlite.SQLiteConnection
+import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncException
 import com.powersync.db.internal.ConnectionContext
 import com.powersync.db.internal.PowerSyncTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.native.HiddenFromObjC
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -183,4 +186,21 @@ public interface Queries {
      */
     @Throws(PowerSyncException::class, CancellationException::class)
     public suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R
+
+    /**
+     * Obtains a connection from the read pool or an exclusive reference on the write connection.
+     *
+     * This is useful when you need full control over the raw statements to use.
+     *
+     * The connection needs to be released by calling [SQLiteConnection.close] as soon as you're
+     * done with it, because the connection will occupy a read resource or the write lock while
+     * active.
+     *
+     * Misusing this API, for instance by not cleaning up transactions started on the underlying
+     * connection with a `BEGIN` statement or forgetting to close it, can disrupt the rest of the
+     * PowerSync SDK. For this reason, this method should only be used if absolutely necessary.
+     */
+    @ExperimentalPowerSyncAPI()
+    @HiddenFromObjC()
+    public suspend fun leaseConnection(readOnly: Boolean = false): SQLiteConnection
 }

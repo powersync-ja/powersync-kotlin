@@ -5,12 +5,8 @@ import androidx.sqlite.SQLiteStatement
 import com.powersync.PowerSyncException
 import com.powersync.db.SqlCursor
 import com.powersync.db.StatementBasedCursor
-import kotlin.native.HiddenFromObjC
 
 public interface ConnectionContext {
-    @HiddenFromObjC
-    public val rawConnection: SQLiteConnection
-
     @Throws(PowerSyncException::class)
     public fun execute(
         sql: String,
@@ -40,7 +36,7 @@ public interface ConnectionContext {
 }
 
 internal class ConnectionContextImplementation(
-    override val rawConnection: SQLiteConnection,
+    private val rawConnection: SQLiteConnection,
 ) : ConnectionContext {
     override fun execute(
         sql: String,

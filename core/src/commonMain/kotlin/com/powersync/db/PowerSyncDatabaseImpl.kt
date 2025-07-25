@@ -1,7 +1,9 @@
 package com.powersync.db
 
+import androidx.sqlite.SQLiteConnection
 import co.touchlab.kermit.Logger
 import com.powersync.DatabaseDriverFactory
+import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
 import com.powersync.PowerSyncException
 import com.powersync.bucket.BucketPriority
@@ -327,6 +329,12 @@ internal class PowerSyncDatabaseImpl(
         // The initialization sets powerSyncVersion.
         waitReady()
         return powerSyncVersion
+    }
+
+    @ExperimentalPowerSyncAPI
+    override suspend fun leaseConnection(readOnly: Boolean): SQLiteConnection {
+        waitReady()
+        return internalDb.leaseConnection(readOnly)
     }
 
     override suspend fun <RowType : Any> get(

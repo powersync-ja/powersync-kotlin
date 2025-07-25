@@ -38,7 +38,7 @@ internal class ConnectionPool(
             }
         }
 
-    suspend fun <R> withConnection(action: suspend (connection: SQLiteConnection) -> R): R {
+    suspend fun obtainConnection(): RawConnectionLease {
         val (connection, done) =
             try {
                 available.receive()
@@ -49,11 +49,7 @@ internal class ConnectionPool(
                 )
             }
 
-        try {
-            return action(connection)
-        } finally {
-            done.complete(Unit)
-        }
+        return RawConnectionLease(connection) { done.complete(Unit) }
     }
 
     suspend fun <R> withAllConnections(action: suspend (connections: List<SQLiteConnection>) -> R): R {

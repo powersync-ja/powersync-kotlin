@@ -8,7 +8,7 @@ import com.powersync.db.SqlCursor
 public interface PowerSyncTransaction : ConnectionContext
 
 internal class PowerSyncTransactionImpl(
-    override val rawConnection: SQLiteConnection,
+    private val rawConnection: SQLiteConnection,
 ) : PowerSyncTransaction,
     ConnectionContext {
     private val delegate = ConnectionContextImplementation(rawConnection)
