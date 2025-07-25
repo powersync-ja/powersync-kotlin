@@ -12,7 +12,7 @@ public actual class DatabaseDriverFactory {
         dbFilename: String,
         dbDirectory: String?,
         readOnly: Boolean,
-        listener: ConnectionListener?
+        listener: ConnectionListener?,
     ): SQLiteConnection {
         val dbPath =
             if (dbDirectory != null) {

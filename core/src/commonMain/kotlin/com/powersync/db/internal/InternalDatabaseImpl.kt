@@ -47,14 +47,15 @@ internal class InternalDatabaseImpl(
     private val dbContext = Dispatchers.IO
 
     private fun newConnection(readOnly: Boolean): SQLiteConnection {
-        val connection = factory.openDatabase(
-            dbFilename = dbFilename,
-            dbDirectory = dbDirectory,
-            readOnly = false,
-            // We don't need a listener on read-only connections since we don't expect any update
-            // hooks here.
-            listener = if (readOnly) null else updates,
-        )
+        val connection =
+            factory.openDatabase(
+                dbFilename = dbFilename,
+                dbDirectory = dbDirectory,
+                readOnly = false,
+                // We don't need a listener on read-only connections since we don't expect any update
+                // hooks here.
+                listener = if (readOnly) null else updates,
+            )
 
         connection.execSQL("pragma journal_mode = WAL")
         connection.execSQL("pragma journal_size_limit = ${6 * 1024 * 1024}")
@@ -68,10 +69,11 @@ internal class InternalDatabaseImpl(
         // Older versions of the SDK used to set up an empty schema and raise the user version to 1.
         // Keep doing that for consistency.
         if (!readOnly) {
-            val version = connection.prepare("pragma user_version").use {
-                require(it.step())
-                if (it.isNull(0)) 0L else it.getLong(0)
-            }
+            val version =
+                connection.prepare("pragma user_version").use {
+                    require(it.step())
+                    if (it.isNull(0)) 0L else it.getLong(0)
+                }
             if (version < 1L) {
                 connection.execSQL("pragma user_version = 1")
             }
@@ -212,7 +214,8 @@ internal class InternalDatabaseImpl(
             runWrapped {
                 readPool.withConnection {
                     catchSwiftExceptions {
-                        callback(it)
+                        val lease = RawConnectionLease(it)
+                        callback(lease).also { lease.completed = true }
                     }
                 }
             }
@@ -235,14 +238,17 @@ internal class InternalDatabaseImpl(
     private suspend fun <R> internalWriteLock(callback: (SQLiteConnection) -> R): R =
         withContext(dbContext) {
             writeLockMutex.withLock {
+                val lease = RawConnectionLease(writeConnection)
+
                 runWrapped {
                     catchSwiftExceptions {
-                        callback(writeConnection)
+                        callback(lease)
                     }
                 }.also {
                     // Trigger watched queries
                     // Fire updates inside the write lock
                     updates.fireTableUpdates()
+                    lease.completed = true
                 }
             }
         }
@@ -267,7 +273,7 @@ internal class InternalDatabaseImpl(
 
     // Unfortunately Errors can't be thrown from Swift SDK callbacks.
     // These are currently returned and should be thrown here.
-    private fun <R> catchSwiftExceptions(action: () -> R): R {
+    private inline fun <R> catchSwiftExceptions(action: () -> R): R {
         val result = action()
 
         if (result is PowerSyncException) {

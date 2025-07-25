@@ -181,6 +181,7 @@ kotlin {
         all {
             languageSettings {
                 optIn("kotlinx.cinterop.ExperimentalForeignApi")
+                optIn("kotlin.experimental.ExperimentalObjCRefinement")
             }
         }
 
@@ -202,6 +203,7 @@ kotlin {
 
             dependencies {
                 api(libs.kermit)
+                api(libs.androidx.sqlite)
 
                 implementation(libs.uuid)
                 implementation(libs.kotlin.stdlib)

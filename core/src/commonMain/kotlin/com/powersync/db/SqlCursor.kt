@@ -31,38 +31,30 @@ private inline fun <T> SqlCursor.getColumnValue(
     return getValue(index) ?: throw IllegalArgumentException("Null value found for column '$name'")
 }
 
-internal class StatementBasedCursor(private val stmt: SQLiteStatement): SqlCursor {
-    override fun getBoolean(index: Int): Boolean? {
-        return getNullable(index) { index -> stmt.getLong(index) != 0L }
-    }
+internal class StatementBasedCursor(
+    private val stmt: SQLiteStatement,
+) : SqlCursor {
+    override fun getBoolean(index: Int): Boolean? = getNullable(index) { index -> stmt.getLong(index) != 0L }
 
-    override fun getBytes(index: Int): ByteArray? {
-        return getNullable(index, SQLiteStatement::getBlob)
-    }
+    override fun getBytes(index: Int): ByteArray? = getNullable(index, SQLiteStatement::getBlob)
 
-    override fun getDouble(index: Int): Double? {
-        return getNullable(index, SQLiteStatement::getDouble)
-    }
+    override fun getDouble(index: Int): Double? = getNullable(index, SQLiteStatement::getDouble)
 
-    override fun getLong(index: Int): Long? {
-        return getNullable(index, SQLiteStatement::getLong)
-    }
+    override fun getLong(index: Int): Long? = getNullable(index, SQLiteStatement::getLong)
 
-    override fun getString(index: Int): String? {
-        return getNullable(index, SQLiteStatement::getText)
-    }
+    override fun getString(index: Int): String? = getNullable(index, SQLiteStatement::getText)
 
-    private inline fun <T> getNullable(index: Int, read: SQLiteStatement.(Int) -> T): T? {
-        return if (stmt.isNull(index)) {
+    private inline fun <T> getNullable(
+        index: Int,
+        read: SQLiteStatement.(Int) -> T,
+    ): T? =
+        if (stmt.isNull(index)) {
             null
         } else {
             stmt.read(index)
         }
-    }
 
-    override fun columnName(index: Int): String? {
-        return stmt.getColumnName(index)
-    }
+    override fun columnName(index: Int): String? = stmt.getColumnName(index)
 
     override val columnCount: Int
         get() = stmt.getColumnCount()
@@ -70,23 +62,23 @@ internal class StatementBasedCursor(private val stmt: SQLiteStatement): SqlCurso
     override val columnNames: Map<String, Int> by lazy {
         buildMap {
             stmt.getColumnNames().forEachIndexed { index, key ->
-               val finalKey = if (containsKey(key)) {
-                    var index = 1
-                    val basicKey = "$key&JOIN"
-                    var finalKey = basicKey + index
-                    while (containsKey(finalKey)) {
-                        finalKey = basicKey + ++index
+                val finalKey =
+                    if (containsKey(key)) {
+                        var index = 1
+                        val basicKey = "$key&JOIN"
+                        var finalKey = basicKey + index
+                        while (containsKey(finalKey)) {
+                            finalKey = basicKey + ++index
+                        }
+                        finalKey
+                    } else {
+                        key
                     }
-                    finalKey
-                } else {
-                    key
-                }
 
                 put(finalKey, index)
             }
         }
     }
-
 }
 
 private inline fun <T> SqlCursor.getColumnValueOptional(

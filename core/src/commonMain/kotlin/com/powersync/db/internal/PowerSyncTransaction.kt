@@ -8,20 +8,20 @@ import com.powersync.db.SqlCursor
 public interface PowerSyncTransaction : ConnectionContext
 
 internal class PowerSyncTransactionImpl(
-    private val connection: SQLiteConnection,
+    override val rawConnection: SQLiteConnection
 ) : PowerSyncTransaction,
     ConnectionContext {
-    private val delegate = ConnectionContextImplementation(connection)
+    private val delegate = ConnectionContextImplementation(rawConnection)
 
     private fun checkInTransaction() {
-        if (!connection.inTransaction()) {
+        if (!rawConnection.inTransaction()) {
             throw PowerSyncException("Tried executing statement on a transaction that has been rolled back", cause = null)
         }
     }
 
     override fun execute(
         sql: String,
-        parameters: List<Any?>?
+        parameters: List<Any?>?,
     ): Long {
         checkInTransaction()
         return delegate.execute(sql, parameters)
@@ -30,7 +30,7 @@ internal class PowerSyncTransactionImpl(
     override fun <RowType : Any> getOptional(
         sql: String,
         parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType
+        mapper: (SqlCursor) -> RowType,
     ): RowType? {
         checkInTransaction()
         return delegate.getOptional(sql, parameters, mapper)
@@ -39,7 +39,7 @@ internal class PowerSyncTransactionImpl(
     override fun <RowType : Any> getAll(
         sql: String,
         parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType
+        mapper: (SqlCursor) -> RowType,
     ): List<RowType> {
         checkInTransaction()
         return delegate.getAll(sql, parameters, mapper)
@@ -48,7 +48,7 @@ internal class PowerSyncTransactionImpl(
     override fun <RowType : Any> get(
         sql: String,
         parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType
+        mapper: (SqlCursor) -> RowType,
     ): RowType {
         checkInTransaction()
         return delegate.get(sql, parameters, mapper)
@@ -61,7 +61,7 @@ internal inline fun <T> SQLiteConnection.runTransaction(cb: (PowerSyncTransactio
     return try {
         val result = cb(PowerSyncTransactionImpl(this))
         didComplete = true
-        
+
         check(inTransaction())
         execSQL("COMMIT")
         result

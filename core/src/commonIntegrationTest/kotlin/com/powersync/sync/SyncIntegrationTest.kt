@@ -597,10 +597,12 @@ abstract class BaseSyncIntegrationTest(
                 val turbine = database.currentStatus.asFlow().testIn(scope)
                 turbine.waitFor { it.connected }
 
-                val query = database.watch("SELECT name FROM users") {
-                    println("interpreting results: ${it.getString(0)}")
-                    it.getString(0)!!
-                }.testIn(scope)
+                val query =
+                    database
+                        .watch("SELECT name FROM users") {
+                            println("interpreting results: ${it.getString(0)}")
+                            it.getString(0)!!
+                        }.testIn(scope)
                 query.awaitItem() shouldBe listOf("local write")
 
                 syncLines.send(SyncLine.KeepAlive(tokenExpiresIn = 1234))

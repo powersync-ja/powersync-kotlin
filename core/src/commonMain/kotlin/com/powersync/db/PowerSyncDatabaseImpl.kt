@@ -1,5 +1,6 @@
 package com.powersync.db
 
+import androidx.sqlite.SQLiteConnection
 import co.touchlab.kermit.Logger
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
@@ -46,7 +47,6 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
-import kotlin.math.log
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
