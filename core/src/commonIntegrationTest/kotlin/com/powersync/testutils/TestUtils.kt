@@ -26,6 +26,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.files.Path
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.serializer
 
 expect val factory: DatabaseDriverFactory
 

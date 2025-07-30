@@ -4,6 +4,7 @@ import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import co.touchlab.stately.concurrency.AtomicReference
 import com.powersync.ExperimentalPowerSyncAPI
+import com.powersync.PowerSyncException
 import com.powersync.bucket.BucketChecksum
 import com.powersync.bucket.BucketRequest
 import com.powersync.bucket.BucketStorage
@@ -27,12 +28,19 @@ import io.ktor.client.request.get
 import io.ktor.client.request.headers
 import io.ktor.client.request.preparePost
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.append
 import io.ktor.http.contentType
 import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.core.readAvailable
+import io.ktor.utils.io.readAvailable
+import io.ktor.utils.io.readBuffer
+import io.ktor.utils.io.readByteArray
+import io.ktor.utils.io.readRemaining
 import io.ktor.utils.io.readUTF8Line
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -46,11 +54,16 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
+import kotlinx.io.Buffer
+import kotlinx.io.readByteArray
+import kotlinx.io.readIntLe
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
@@ -210,62 +223,71 @@ internal class SyncStream(
         return body.data.writeCheckpoint
     }
 
-    private fun connectViaHttp(req: JsonElement): Flow<String> =
+    private suspend fun <T> connectToSyncEndpoint(
+        req: JsonElement,
+        supportBson: Boolean,
+        block: suspend (isBson: Boolean, response: HttpResponse) -> T
+    ): T {
+        val credentials = connector.getCredentialsCached()
+        require(credentials != null) { "Not logged in" }
+
+        val uri = credentials.endpointUri("sync/stream")
+
+        val bodyJson = JsonUtil.json.encodeToString(req)
+
+        val request =
+            httpClient.preparePost(uri) {
+                contentType(ContentType.Application.Json)
+                headers {
+                    append(HttpHeaders.Authorization, "Token ${credentials.token}")
+                    if (supportBson) {
+                        contentType(bsonStream.withParameter("q", "0.9"))
+                        // Also indicate ndjson support as fallback
+                        append(HttpHeaders.ContentType, ndjson.withParameter("q", "0.8"))
+                    } else {
+                        contentType(ndjson)
+                    }
+                }
+                timeout { socketTimeoutMillis = Long.MAX_VALUE }
+                setBody(bodyJson)
+            }
+
+        return request.execute { httpResponse ->
+            val isBson = httpResponse.contentType() == bsonStream
+
+            if (httpResponse.status.value == 401) {
+                connector.invalidateCredentials()
+            }
+
+            if (httpResponse.status != HttpStatusCode.OK) {
+                throw RuntimeException("Received error when connecting to sync stream: ${httpResponse.bodyAsText()}")
+            }
+
+            status.update { copy(connected = true, connecting = false) }
+            block(isBson, httpResponse)
+        }
+    }
+
+    private fun receiveTextLines(req: JsonElement): Flow<String> =
         flow {
-            val credentials = connector.getCredentialsCached()
-            require(credentials != null) { "Not logged in" }
+            connectToSyncEndpoint(req, supportBson = false) { isBson, response ->
+                check(!isBson)
 
-            val uri = credentials.endpointUri("sync/stream")
-
-            val bodyJson = JsonUtil.json.encodeToString(req)
-
-            val request =
-                httpClient.preparePost(uri) {
-                    contentType(ContentType.Application.Json)
-                    headers {
-                        append(HttpHeaders.Authorization, "Token ${credentials.token}")
-                    }
-                    timeout { socketTimeoutMillis = Long.MAX_VALUE }
-                    setBody(bodyJson)
-                }
-
-            request.execute { httpResponse ->
-                if (httpResponse.status.value == 401) {
-                    connector.invalidateCredentials()
-                }
-
-                if (httpResponse.status != HttpStatusCode.OK) {
-                    throw RuntimeException("Received error when connecting to sync stream: ${httpResponse.bodyAsText()}")
-                }
-
-                status.update { copy(connected = true, connecting = false) }
-                val channel: ByteReadChannel = httpResponse.body()
-
-                while (!channel.isClosedForRead) {
-                    val line = channel.readUTF8Line()
-                    if (line != null) {
-                        emit(line)
-                    }
-                }
+                emitAll(response.body<ByteReadChannel>().lines())
             }
         }
 
-    private fun connectViaWebSocket(
-        req: JsonObject,
-        options: ConnectionMethod.WebSocket,
-    ): Flow<ByteArray> =
-        flow {
-            val credentials = requireNotNull(connector.getCredentialsCached()) { "Not logged in" }
+    private fun receiveTextOrBinaryLines(req: JsonElement): Flow<PowerSyncControlArguments> = flow {
+        connectToSyncEndpoint(req, supportBson = false) { isBson, response ->
+            val body = response.body<ByteReadChannel>()
 
-            emitAll(
-                httpClient.rSocketSyncStream(
-                    userAgent = this@SyncStream.options.userAgent,
-                    options = options,
-                    req = req,
-                    credentials = credentials,
-                ),
-            )
+            if (isBson) {
+                emitAll(body.bsonObjects().map { PowerSyncControlArguments.BinaryLine(it) })
+            } else {
+                emitAll(body.lines().map { PowerSyncControlArguments.TextLine(it) })
+            }
         }
+    }
 
     private suspend fun streamingSyncIteration() {
         coroutineScope {
@@ -424,15 +446,8 @@ internal class SyncStream(
         }
 
         private suspend fun connect(start: Instruction.EstablishSyncStream) {
-            when (val method = options.method) {
-                ConnectionMethod.Http ->
-                    connectViaHttp(start.request).collect {
-                        controlInvocations.send(PowerSyncControlArguments.TextLine(it))
-                    }
-                is ConnectionMethod.WebSocket ->
-                    connectViaWebSocket(start.request, method).collect {
-                        controlInvocations.send(PowerSyncControlArguments.BinaryLine(it))
-                    }
+            receiveTextOrBinaryLines(start.request).collect {
+                controlInvocations.send(it)
             }
         }
     }
@@ -471,7 +486,7 @@ internal class SyncStream(
             lateinit var receiveLines: Job
             receiveLines =
                 scope.launch {
-                    connectViaHttp(JsonUtil.json.encodeToJsonElement(req)).collect { value ->
+                    receiveTextLines(JsonUtil.json.encodeToJsonElement(req)).collect { value ->
                         val line = JsonUtil.json.decodeFromString<SyncLine>(value)
 
                         state = handleInstruction(line, value, state)
@@ -688,10 +703,58 @@ internal class SyncStream(
     }
 
     internal companion object {
+        private val ndjson = ContentType("application", "x-ndjson")
+        private val bsonStream = ContentType("application", "vnd.powersync.bson-stream")
+
         fun defaultHttpClient(config: HttpClientConfig<*>.() -> Unit) =
             HttpClient {
                 config(this)
             }
+
+        private fun ByteReadChannel.lines(): Flow<String> = flow {
+            while (!isClosedForRead) {
+                val line = readUTF8Line()
+                if (line != null) {
+                    emit(line)
+                }
+            }
+        }
+
+        private fun ByteReadChannel.bsonObjects(): Flow<ByteArray> = flow {
+            while (true) {
+                emit(readBsonObject() ?: break)
+            }
+        }
+
+        private suspend fun ByteReadChannel.readBsonObject(): ByteArray? {
+            if (isClosedForRead || !awaitContent(4)) {
+                return null // eof at start of object
+            }
+
+            return readBuffer(4).use { buffer ->
+                // 4 byte length prefix, see https://bsonspec.org/spec.html
+                val length = buffer.peek().readIntLe()
+                // length is the total size of the frame, including the 4 byte length header
+                var remaining = length - 4
+
+                while (remaining > 0) {
+                    val bytesRead = readAvailable(1) { source ->
+                        val available = source.readAtMostTo(buffer, remaining.toLong())
+                        available.toInt()
+                    }
+                    if (bytesRead == -1) {
+                        // No bytes available, wait for more
+                        if (isClosedForRead || !awaitContent(1)) {
+                            throw PowerSyncException("Unexpected end of response in middle of BSON sync line", null)
+                        }
+                    } else {
+                        remaining -= bytesRead
+                    }
+                }
+
+                buffer.readByteArray()
+            }
+        }
     }
 }
 

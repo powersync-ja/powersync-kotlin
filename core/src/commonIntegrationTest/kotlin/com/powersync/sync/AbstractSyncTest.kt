@@ -8,6 +8,7 @@ import com.powersync.ExperimentalPowerSyncAPI
  */
 abstract class AbstractSyncTest(
     private val useNewSyncImplementation: Boolean,
+    protected val useBson: Boolean = false,
 ) {
     @OptIn(ExperimentalPowerSyncAPI::class)
     val options: SyncOptions get() {

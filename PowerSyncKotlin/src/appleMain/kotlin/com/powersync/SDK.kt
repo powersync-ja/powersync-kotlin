@@ -2,7 +2,6 @@
 
 package com.powersync
 
-import com.powersync.sync.ConnectionMethod
 import com.powersync.sync.SyncOptions
 
 /**
@@ -25,16 +24,9 @@ public fun throwPowerSyncException(exception: PowerSyncException): Unit = throw 
 @OptIn(ExperimentalPowerSyncAPI::class)
 public fun createSyncOptions(
     newClient: Boolean,
-    webSocket: Boolean,
     userAgent: String,
 ): SyncOptions =
     SyncOptions(
         newClientImplementation = newClient,
-        method =
-            if (webSocket) {
-                ConnectionMethod.WebSocket()
-            } else {
-                ConnectionMethod.Http
-            },
         userAgent = userAgent,
     )
