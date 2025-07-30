@@ -3,7 +3,6 @@ package com.powersync.sync
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
 
-
 /**
  * Experimental options that can be passed to [PowerSyncDatabase.connect] to specify an experimental
  * connection mechanism.
@@ -33,4 +32,3 @@ public class SyncOptions
             public val defaults: SyncOptions = SyncOptions()
         }
     }
-

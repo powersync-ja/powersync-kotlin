@@ -40,7 +40,6 @@ import io.ktor.utils.io.core.readAvailable
 import io.ktor.utils.io.readAvailable
 import io.ktor.utils.io.readBuffer
 import io.ktor.utils.io.readByteArray
-import io.ktor.utils.io.readRemaining
 import io.ktor.utils.io.readUTF8Line
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -54,14 +53,12 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
-import kotlinx.io.Buffer
 import kotlinx.io.readByteArray
 import kotlinx.io.readIntLe
 import kotlinx.serialization.json.JsonElement
@@ -226,7 +223,7 @@ internal class SyncStream(
     private suspend fun <T> connectToSyncEndpoint(
         req: JsonElement,
         supportBson: Boolean,
-        block: suspend (isBson: Boolean, response: HttpResponse) -> T
+        block: suspend (isBson: Boolean, response: HttpResponse) -> T,
     ): T {
         val credentials = connector.getCredentialsCached()
         require(credentials != null) { "Not logged in" }
@@ -277,17 +274,18 @@ internal class SyncStream(
             }
         }
 
-    private fun receiveTextOrBinaryLines(req: JsonElement): Flow<PowerSyncControlArguments> = flow {
-        connectToSyncEndpoint(req, supportBson = false) { isBson, response ->
-            val body = response.body<ByteReadChannel>()
+    private fun receiveTextOrBinaryLines(req: JsonElement): Flow<PowerSyncControlArguments> =
+        flow {
+            connectToSyncEndpoint(req, supportBson = false) { isBson, response ->
+                val body = response.body<ByteReadChannel>()
 
-            if (isBson) {
-                emitAll(body.bsonObjects().map { PowerSyncControlArguments.BinaryLine(it) })
-            } else {
-                emitAll(body.lines().map { PowerSyncControlArguments.TextLine(it) })
+                if (isBson) {
+                    emitAll(body.bsonObjects().map { PowerSyncControlArguments.BinaryLine(it) })
+                } else {
+                    emitAll(body.lines().map { PowerSyncControlArguments.TextLine(it) })
+                }
             }
         }
-    }
 
     private suspend fun streamingSyncIteration() {
         coroutineScope {
@@ -711,20 +709,22 @@ internal class SyncStream(
                 config(this)
             }
 
-        private fun ByteReadChannel.lines(): Flow<String> = flow {
-            while (!isClosedForRead) {
-                val line = readUTF8Line()
-                if (line != null) {
-                    emit(line)
+        private fun ByteReadChannel.lines(): Flow<String> =
+            flow {
+                while (!isClosedForRead) {
+                    val line = readUTF8Line()
+                    if (line != null) {
+                        emit(line)
+                    }
                 }
             }
-        }
 
-        private fun ByteReadChannel.bsonObjects(): Flow<ByteArray> = flow {
-            while (true) {
-                emit(readBsonObject() ?: break)
+        private fun ByteReadChannel.bsonObjects(): Flow<ByteArray> =
+            flow {
+                while (true) {
+                    emit(readBsonObject() ?: break)
+                }
             }
-        }
 
         private suspend fun ByteReadChannel.readBsonObject(): ByteArray? {
             if (isClosedForRead || !awaitContent(4)) {
@@ -738,10 +738,11 @@ internal class SyncStream(
                 var remaining = length - 4
 
                 while (remaining > 0) {
-                    val bytesRead = readAvailable(1) { source ->
-                        val available = source.readAtMostTo(buffer, remaining.toLong())
-                        available.toInt()
-                    }
+                    val bytesRead =
+                        readAvailable(1) { source ->
+                            val available = source.readAtMostTo(buffer, remaining.toLong())
+                            available.toInt()
+                        }
                     if (bytesRead == -1) {
                         // No bytes available, wait for more
                         if (isClosedForRead || !awaitContent(1)) {
