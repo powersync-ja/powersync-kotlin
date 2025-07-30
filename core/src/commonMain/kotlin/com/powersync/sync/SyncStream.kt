@@ -22,8 +22,8 @@ import io.ktor.client.call.body
 import io.ktor.client.plugins.DefaultRequest
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.timeout
 import io.ktor.client.plugins.websocket.WebSockets
+import io.ktor.client.request.accept
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
 import io.ktor.client.request.preparePost
@@ -241,14 +241,13 @@ internal class SyncStream(
                 headers {
                     append(HttpHeaders.Authorization, "Token ${credentials.token}")
                     if (supportBson) {
-                        contentType(bsonStream.withParameter("q", "0.9"))
+                        accept(bsonStream.withParameter("q", "0.9"))
                         // Also indicate ndjson support as fallback
-                        append(HttpHeaders.ContentType, ndjson.withParameter("q", "0.8"))
+                        append(HttpHeaders.Accept, ndjson.withParameter("q", "0.8"))
                     } else {
-                        contentType(ndjson)
+                        accept(ndjson)
                     }
                 }
-                timeout { socketTimeoutMillis = Long.MAX_VALUE }
                 setBody(bodyJson)
             }
 
