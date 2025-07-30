@@ -62,6 +62,8 @@ import kotlinx.io.readIntLe
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalPowerSyncAPI::class)
 internal class SyncStream(
@@ -88,7 +90,10 @@ internal class SyncStream(
 
     private val httpClient: HttpClient =
         createClient {
-            install(HttpTimeout)
+            install(HttpTimeout) {
+                socketTimeoutMillis = SOCKET_TIMEOUT
+            }
+
             install(ContentNegotiation)
             install(WebSockets)
 
@@ -699,6 +704,10 @@ internal class SyncStream(
     }
 
     internal companion object {
+        // The sync service sends a token keepalive message roughly every 20 seconds. So if we don't receive a message
+        // in twice that time, assume the connection is broken.
+        private const val SOCKET_TIMEOUT: Long = 40_000
+
         private val ndjson = ContentType("application", "x-ndjson")
         private val bsonStream = ContentType("application", "vnd.powersync.bson-stream")
 
