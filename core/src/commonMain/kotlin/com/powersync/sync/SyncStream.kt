@@ -707,7 +707,7 @@ internal class SyncStream(
                 config(this)
             }
 
-        private fun ByteReadChannel.lines(): Flow<String> =
+        fun ByteReadChannel.lines(): Flow<String> =
             flow {
                 while (!isClosedForRead) {
                     val line = readUTF8Line()
@@ -717,7 +717,7 @@ internal class SyncStream(
                 }
             }
 
-        private fun ByteReadChannel.bsonObjects(): Flow<ByteArray> =
+        fun ByteReadChannel.bsonObjects(): Flow<ByteArray> =
             flow {
                 while (true) {
                     emit(readBsonObject() ?: break)
@@ -725,13 +725,18 @@ internal class SyncStream(
             }
 
         private suspend fun ByteReadChannel.readBsonObject(): ByteArray? {
-            if (isClosedForRead || !awaitContent(4)) {
+            if (isClosedForRead || !awaitContent(1)) {
                 return null // eof at start of object
             }
 
             return readBuffer(4).use { buffer ->
                 // 4 byte length prefix, see https://bsonspec.org/spec.html
                 val length = buffer.peek().readIntLe()
+                if (length < 5) {
+                    // At the very least we need the 4 byte length and a zero terminator
+                    throw PowerSyncException("Invalid BSON message, to small", null)
+                }
+
                 // length is the total size of the frame, including the 4 byte length header
                 var remaining = length - 4
 

@@ -41,7 +41,6 @@ internal class MockSyncService(
     private val syncLinesContentType: () -> ContentType,
     private val generateCheckpoint: () -> WriteCheckpointResponse,
     private val trackSyncRequest: suspend (HttpRequestData) -> Unit,
-
 ) : HttpClientEngineBase("sync-service") {
     override val config: HttpClientEngineConfig
         get() = Config

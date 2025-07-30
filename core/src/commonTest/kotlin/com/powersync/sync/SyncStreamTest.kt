@@ -1,5 +1,6 @@
 package com.powersync.sync
 
+import app.cash.turbine.turbineScope
 import co.touchlab.kermit.ExperimentalKermitApi
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
@@ -12,12 +13,16 @@ import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.UpdateType
 import com.powersync.db.schema.Schema
+import com.powersync.sync.SyncStream.Companion.bsonObjects
 import dev.mokkery.answering.returns
 import dev.mokkery.everySuspend
 import dev.mokkery.mock
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
+import io.ktor.utils.io.ByteChannel
+import io.ktor.utils.io.writeByteArray
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
@@ -174,5 +179,76 @@ class SyncStreamTest {
 
             // Clean up
             job.cancel()
+        }
+
+    @Test
+    fun splitBsonObjects() =
+        runTest {
+            turbineScope {
+                val channel = ByteChannel()
+                val objects = channel.bsonObjects().testIn(this)
+
+                channel.writeByteArray(byteArrayOf(5, 0, 0, 0, 1))
+                channel.flush()
+                objects.awaitItem() shouldHaveSize 5
+
+                channel.writeByteArray(byteArrayOf(6, 0))
+                channel.flush()
+                channel.writeByteArray(byteArrayOf(0, 0))
+                channel.flush()
+                channel.writeByteArray(byteArrayOf(0, 0))
+                channel.flush()
+                objects.awaitItem() shouldHaveSize 6
+
+                channel.close()
+                objects.awaitComplete()
+            }
+        }
+
+    @Test
+    fun invalidBsonSize() =
+        runTest {
+            turbineScope {
+                val channel = ByteChannel()
+                val objects = channel.bsonObjects().testIn(this)
+
+                channel.writeByteArray(byteArrayOf(3, 0, 0, 0))
+                channel.flush()
+
+                objects.awaitError()
+                objects.cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun invalidEndInLength() =
+        runTest {
+            turbineScope {
+                val channel = ByteChannel()
+                val objects = channel.bsonObjects().testIn(this)
+
+                channel.writeByteArray(byteArrayOf(5, 0))
+                channel.flush()
+                channel.close()
+
+                // Still two bytes missing for length
+                objects.awaitError()
+            }
+        }
+
+    @Test
+    fun invalidEndInObject() =
+        runTest {
+            turbineScope {
+                val channel = ByteChannel()
+                val objects = channel.bsonObjects().testIn(this)
+
+                channel.writeByteArray(byteArrayOf(6, 0, 0, 0))
+                channel.flush()
+                channel.close()
+
+                // Still two bytes missing for content
+                objects.awaitError()
+            }
         }
 }
