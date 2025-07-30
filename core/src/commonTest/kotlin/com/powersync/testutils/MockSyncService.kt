@@ -13,18 +13,20 @@ import io.ktor.client.engine.callContext
 import io.ktor.client.plugins.HttpTimeoutCapability
 import io.ktor.client.request.HttpRequestData
 import io.ktor.client.request.HttpResponseData
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpProtocolVersion
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.util.date.GMTDate
 import io.ktor.utils.io.InternalAPI
 import io.ktor.utils.io.awaitFreeSpace
+import io.ktor.utils.io.writeByteArray
 import io.ktor.utils.io.writeStringUtf8
 import io.ktor.utils.io.writer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.consume
-import kotlinx.serialization.encodeToString
 
 /**
  * A mock HTTP engine providing sync lines read from a coroutines [ReceiveChannel].
@@ -35,9 +37,11 @@ import kotlinx.serialization.encodeToString
  */
 @OptIn(LegacySyncImplementation::class)
 internal class MockSyncService(
-    private val lines: ReceiveChannel<SyncLine>,
+    private val lines: ReceiveChannel<Any>,
+    private val syncLinesContentType: () -> ContentType,
     private val generateCheckpoint: () -> WriteCheckpointResponse,
     private val trackSyncRequest: suspend (HttpRequestData) -> Unit,
+
 ) : HttpClientEngineBase("sync-service") {
     override val config: HttpClientEngineConfig
         get() = Config
@@ -61,8 +65,20 @@ internal class MockSyncService(
                             // Wait for a downstream listener being ready before requesting a sync line
                             channel.awaitFreeSpace()
                             val line = receive()
-                            val serializedLine = JsonUtil.json.encodeToString(line)
-                            channel.writeStringUtf8("$serializedLine\n")
+                            when (line) {
+                                is SyncLine -> {
+                                    val serializedLine = JsonUtil.json.encodeToString(line)
+                                    channel.writeStringUtf8("$serializedLine\n")
+                                }
+                                is ByteArray -> {
+                                    channel.writeByteArray(line)
+                                }
+                                is String -> {
+                                    channel.writeStringUtf8("$line\n")
+                                }
+                                else -> throw UnsupportedOperationException("Unknown sync line type")
+                            }
+
                             channel.flush()
                         }
                     }
@@ -71,7 +87,7 @@ internal class MockSyncService(
             HttpResponseData(
                 HttpStatusCode.OK,
                 GMTDate(),
-                headersOf(),
+                headersOf(HttpHeaders.ContentType, syncLinesContentType().toString()),
                 HttpProtocolVersion.HTTP_1_1,
                 job.channel,
                 context,

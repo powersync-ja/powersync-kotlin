@@ -36,10 +36,8 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.append
 import io.ktor.http.contentType
 import io.ktor.utils.io.ByteReadChannel
-import io.ktor.utils.io.core.readAvailable
 import io.ktor.utils.io.readAvailable
 import io.ktor.utils.io.readBuffer
-import io.ktor.utils.io.readByteArray
 import io.ktor.utils.io.readUTF8Line
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred

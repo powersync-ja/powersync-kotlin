@@ -16,11 +16,11 @@ import com.powersync.createPowerSyncDatabaseImpl
 import com.powersync.db.PowerSyncDatabaseImpl
 import com.powersync.db.schema.Schema
 import com.powersync.sync.LegacySyncImplementation
-import com.powersync.sync.SyncLine
 import com.powersync.utils.JsonUtil
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.mock.toByteArray
+import io.ktor.http.ContentType
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -84,8 +84,8 @@ internal class ActiveDatabaseTest(
             ),
         )
 
-    @OptIn(LegacySyncImplementation::class)
-    var syncLines = Channel<SyncLine>()
+    var syncLines = Channel<Any>()
+    var syncLinesContentType = ContentType("application", "x-ndjson")
     var requestedSyncStreams = mutableListOf<JsonElement>()
     var checkpointResponse: () -> WriteCheckpointResponse = {
         WriteCheckpointResponse(WriteCheckpointData("1000"))
@@ -124,6 +124,7 @@ internal class ActiveDatabaseTest(
             MockSyncService(
                 lines = syncLines,
                 generateCheckpoint = { checkpointResponse() },
+                syncLinesContentType = { syncLinesContentType },
                 trackSyncRequest = {
                     val parsed = JsonUtil.json.parseToJsonElement(it.body.toByteArray().decodeToString())
                     requestedSyncStreams.add(parsed)
