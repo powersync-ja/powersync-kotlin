@@ -34,14 +34,14 @@ internal fun SwiftNetworkLogLevel.toKtorLogLevel(): LogLevel =
  */
 public data class SwiftNetworkLoggerConfig(
     public val logLevel: SwiftNetworkLogLevel,
-    public val output: (message: String) -> Unit,
+    public val log: (message: String) -> Unit,
 )
 
 /**
  * Creates a Ktor [SyncClientConfiguration.ExtendedConfig] that extends the default Ktor client.
  * Specifying a [SwiftNetworkLoggerConfig] will install the Ktor logging plugin with the specified configuration.
  */
-public fun createExtendedSyncClientConfiguration(loggingConfig: SwiftNetworkLoggerConfig? = null): SyncClientConfiguration.ExtendedConfig =
+public fun createExtendedSyncClientConfiguration(loggingConfig: SwiftNetworkLoggerConfig? = null): SyncClientConfiguration =
     SyncClientConfiguration.ExtendedConfig {
         if (loggingConfig != null) {
             install(Logging) {
@@ -50,7 +50,7 @@ public fun createExtendedSyncClientConfiguration(loggingConfig: SwiftNetworkLogg
                 logger =
                     object : KtorLogger {
                         override fun log(message: String) {
-                            loggingConfig.output(message)
+                            loggingConfig.log(message)
                         }
                     }
             }
