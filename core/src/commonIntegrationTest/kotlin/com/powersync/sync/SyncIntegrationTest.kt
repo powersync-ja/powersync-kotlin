@@ -30,6 +30,7 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
+import io.ktor.http.ContentType
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -870,6 +871,46 @@ class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
                 syncLines.send(SyncLine.CheckpointComplete("1"))
 
                 query.awaitItem() shouldBe emptyList()
+                query.cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @OptIn(ExperimentalStdlibApi::class)
+    @Test
+    fun bson() =
+        databaseTest {
+            // There's no up-to-date bson library for Kotlin multiplatform, so this test verifies BSON support with byte
+            // strings created with package:bson in Dart.
+            syncLinesContentType = ContentType("application", "vnd.powersync.bson-stream")
+
+            turbineScope(timeout = 10.0.seconds) {
+                val query =
+                    database
+                        .watch("SELECT name FROM users", throttleMs = 0L) {
+                            it.getString(0)!!
+                        }.testIn(this)
+                query.awaitItem() shouldBe emptyList()
+
+                database.connect(connector, options = options)
+
+                // {checkpoint: {last_op_id: 1, write_checkpoint: null, buckets: [{bucket: a, checksum: 0, priority: 3, count: null}]}}
+                syncLines.send(
+                    "8100000003636865636b706f696e740070000000026c6173745f6f705f6964000200000031000a77726974655f636865636b706f696e7400046275636b657473003e00000003300036000000026275636b65740002000000610010636865636b73756d0000000000107072696f7269747900030000000a636f756e740000000000"
+                        .hexToByteArray(),
+                )
+
+                // {data: {bucket: a, data: [{checksum: 0, data: {"name":"username"}, op: PUT, op_id: 1, object_id: u, object_type: users}]}}
+                syncLines.send(
+                    "9e00000003646174610093000000026275636b6574000200000061000464617461007a0000000330007200000010636865636b73756d0000000000026461746100140000007b226e616d65223a22757365726e616d65227d00026f70000400000050555400026f705f696400020000003100026f626a6563745f696400020000007500026f626a6563745f74797065000600000075736572730000000000"
+                        .hexToByteArray(),
+                )
+
+                // {checkpoint_complete: {last_op_id: 1}}
+                syncLines.send(
+                    "3100000003636865636b706f696e745f636f6d706c6574650017000000026c6173745f6f705f6964000200000031000000".hexToByteArray(),
+                )
+
+                query.awaitItem() shouldBe listOf("username")
                 query.cancelAndIgnoreRemainingEvents()
             }
         }

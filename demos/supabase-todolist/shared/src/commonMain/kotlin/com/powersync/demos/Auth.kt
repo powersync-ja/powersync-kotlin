@@ -6,7 +6,6 @@ import co.touchlab.kermit.Logger
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
 import com.powersync.connector.supabase.SupabaseConnector
-import com.powersync.sync.ConnectionMethod
 import com.powersync.sync.SyncOptions
 import io.github.jan.supabase.auth.status.RefreshFailureCause
 import io.github.jan.supabase.auth.status.SessionStatus
@@ -50,7 +49,6 @@ internal class AuthViewModel(
                         is SessionStatus.Authenticated -> {
                             db.connect(supabase, options = SyncOptions(
                                 newClientImplementation = true,
-                                method = ConnectionMethod.WebSocket(),
                             ))
                         }
                         is SessionStatus.NotAuthenticated -> {

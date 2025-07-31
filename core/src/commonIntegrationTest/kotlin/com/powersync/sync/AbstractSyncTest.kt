@@ -9,6 +9,7 @@ import com.powersync.testutils.ActiveDatabaseTest
  */
 abstract class AbstractSyncTest(
     private val useNewSyncImplementation: Boolean,
+    protected val useBson: Boolean = false,
 ) {
     @OptIn(ExperimentalPowerSyncAPI::class)
     internal fun ActiveDatabaseTest.getOptions(): SyncOptions =
