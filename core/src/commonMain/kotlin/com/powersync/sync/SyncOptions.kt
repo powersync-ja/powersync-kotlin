@@ -5,6 +5,8 @@ import com.powersync.PowerSyncDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.rsocket.kotlin.keepalive.KeepAlive
+import kotlin.experimental.ExperimentalObjCRefinement
+import kotlin.native.HiddenFromObjC
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -16,6 +18,8 @@ public sealed class SyncClientConfiguration {
     /**
      * Extends the default Ktor [HttpClient] configuration with the provided block.
      */
+    @OptIn(ExperimentalObjCRefinement::class)
+    @HiddenFromObjC
     public class ExtendedConfig(
         public val block: HttpClientConfig<*>.() -> Unit,
     ) : SyncClientConfiguration()
@@ -23,7 +27,12 @@ public sealed class SyncClientConfiguration {
     /**
      * Provides an existing [HttpClient] instance to use for connecting to the PowerSync service.
      * This client should be configured with the necessary plugins and settings to function correctly.
+     * The HTTP client requirements are delicate and subject to change throughout the SDK's development.
+     * The [configureSyncHttpClient] function can be used to configure the client for PowerSync.
      */
+    @OptIn(ExperimentalObjCRefinement::class)
+    @HiddenFromObjC
+    @ExperimentalPowerSyncAPI
     public class ExistingClient(
         public val client: HttpClient,
     ) : SyncClientConfiguration()

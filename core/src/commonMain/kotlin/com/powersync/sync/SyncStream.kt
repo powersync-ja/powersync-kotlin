@@ -54,10 +54,24 @@ import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
+import kotlin.experimental.ExperimentalObjCRefinement
+import kotlin.native.HiddenFromObjC
 
 /**
  * Configures a [HttpClient] for PowerSync sync operations.
+ * Sets up required plugins and default request headers.
+ * This API is experimental and may change in future releases.
+ *
+ * Example usage:
+ *
+ * val client = HttpClient() {
+ *  configureSyncHttpClient()
+ *  // Your own config here
+ * }
  */
+@OptIn(ExperimentalObjCRefinement::class)
+@HiddenFromObjC
+@ExperimentalPowerSyncAPI
 public fun HttpClientConfig<*>.configureSyncHttpClient(userAgent: String = userAgent()) {
     install(HttpTimeout)
     install(ContentNegotiation)
