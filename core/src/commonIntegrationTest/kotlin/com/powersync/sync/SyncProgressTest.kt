@@ -118,7 +118,7 @@ abstract class BaseSyncProgressTest(
     @Test
     fun withoutPriorities() =
         databaseTest {
-            database.connect(connector, options = options)
+            database.connect(connector, options = getOptions())
 
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -167,7 +167,7 @@ abstract class BaseSyncProgressTest(
     @Test
     fun interruptedSync() =
         databaseTest {
-            database.connect(connector, options = options)
+            database.connect(connector, options = getOptions())
 
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -197,7 +197,7 @@ abstract class BaseSyncProgressTest(
             // And reconnecting
             database = openDatabase()
             syncLines = Channel()
-            database.connect(connector, options = options)
+            database.connect(connector, options = getOptions())
 
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -231,7 +231,7 @@ abstract class BaseSyncProgressTest(
     @Test
     fun interruptedSyncWithNewCheckpoint() =
         databaseTest {
-            database.connect(connector, options = options)
+            database.connect(connector, options = getOptions())
 
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -257,7 +257,7 @@ abstract class BaseSyncProgressTest(
             syncLines.close()
             database = openDatabase()
             syncLines = Channel()
-            database.connect(connector, options = options)
+            database.connect(connector, options = getOptions())
 
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -290,7 +290,7 @@ abstract class BaseSyncProgressTest(
     @Test
     fun interruptedWithDefrag() =
         databaseTest {
-            database.connect(connector)
+            database.connect(connector, options = getOptions())
 
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -316,7 +316,7 @@ abstract class BaseSyncProgressTest(
             syncLines.close()
             database = openDatabase()
             syncLines = Channel()
-            database.connect(connector)
+            database.connect(connector, options = getOptions())
 
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -345,7 +345,7 @@ abstract class BaseSyncProgressTest(
     @Test
     fun differentPriorities() =
         databaseTest {
-            database.connect(connector, options = options)
+            database.connect(connector, options = getOptions())
 
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -355,7 +355,10 @@ abstract class BaseSyncProgressTest(
                     prio0: Pair<Int, Int>,
                     prio2: Pair<Int, Int>,
                 ) {
-                    turbine.expectProgress(prio2, mapOf(BucketPriority(0) to prio0, BucketPriority(2) to prio2))
+                    turbine.expectProgress(
+                        prio2,
+                        mapOf(BucketPriority(0) to prio0, BucketPriority(2) to prio2),
+                    )
                 }
 
                 syncLines.send(
