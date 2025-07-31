@@ -6,9 +6,18 @@
 
 # PowerSync Kotlin Multiplatform SDK
 
-This is the PowerSync client SDK for Kotlin Mutliplatform. This SDK currently supports Android and iOS as targets.
+This is the PowerSync client SDK for Kotlin. This SDK currently supports the following Kotlin targets:
 
-See a summary of features [here](https://docs.powersync.com/client-sdk-references/kotlin-multiplatform#sdk-features).
+- Android
+- JVM
+- iOS
+- macOS
+- watchOS
+
+If you need support for additional targets, please reach out!
+
+See a summary of features [here](https://docs.powersync.com/client-sdk-references/kotlin-multiplatform#sdk-features)
+and API documentation [here](https://powersync-ja.github.io/powersync-kotlin/).
 
 ## Structure: Packages
 
