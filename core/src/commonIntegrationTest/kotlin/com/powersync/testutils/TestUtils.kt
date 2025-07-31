@@ -8,6 +8,7 @@ import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import co.touchlab.kermit.TestConfig
 import com.powersync.DatabaseDriverFactory
+import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncTestLogWriter
 import com.powersync.TestConnector
 import com.powersync.bucket.WriteCheckpointData
@@ -16,9 +17,9 @@ import com.powersync.createPowerSyncDatabaseImpl
 import com.powersync.db.PowerSyncDatabaseImpl
 import com.powersync.db.schema.Schema
 import com.powersync.sync.LegacySyncImplementation
+import com.powersync.sync.configureSyncHttpClient
 import com.powersync.utils.JsonUtil
 import io.ktor.client.HttpClient
-import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.mock.toByteArray
 import io.ktor.http.ContentType
 import kotlinx.coroutines.channels.Channel
@@ -111,7 +112,6 @@ internal class ActiveDatabaseTest(
                 dbDirectory = testDirectory,
                 logger = logger,
                 scope = scope,
-                createClient = ::createClient,
             )
         doOnCleanup { db.close() }
         return db
@@ -119,20 +119,22 @@ internal class ActiveDatabaseTest(
 
     suspend fun openDatabaseAndInitialize(): PowerSyncDatabaseImpl = openDatabase().also { it.readLock { } }
 
-    private fun createClient(config: HttpClientConfig<*>.() -> Unit): HttpClient {
+    @OptIn(ExperimentalPowerSyncAPI::class)
+    fun createSyncClient(): HttpClient {
         val engine =
             MockSyncService(
                 lines = syncLines,
                 generateCheckpoint = { checkpointResponse() },
                 syncLinesContentType = { syncLinesContentType },
                 trackSyncRequest = {
-                    val parsed = JsonUtil.json.parseToJsonElement(it.body.toByteArray().decodeToString())
+                    val parsed =
+                        JsonUtil.json.parseToJsonElement(it.body.toByteArray().decodeToString())
                     requestedSyncStreams.add(parsed)
                 },
             )
 
         return HttpClient(engine) {
-            config()
+            configureSyncHttpClient()
         }
     }
 

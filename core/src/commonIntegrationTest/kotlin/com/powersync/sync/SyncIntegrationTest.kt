@@ -891,7 +891,7 @@ class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
                         }.testIn(this)
                 query.awaitItem() shouldBe emptyList()
 
-                database.connect(connector, options = options)
+                database.connect(connector, options = getOptions())
 
                 // {checkpoint: {last_op_id: 1, write_checkpoint: null, buckets: [{bucket: a, checksum: 0, priority: 3, count: null}]}}
                 syncLines.send(

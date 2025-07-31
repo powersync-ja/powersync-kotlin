@@ -2,6 +2,10 @@ package com.powersync.sync
 
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
+import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
+import kotlin.experimental.ExperimentalObjCRefinement
+import kotlin.native.HiddenFromObjC
 
 /**
  * Configuration options for the [PowerSyncDatabase.connect] method, allowing customization of

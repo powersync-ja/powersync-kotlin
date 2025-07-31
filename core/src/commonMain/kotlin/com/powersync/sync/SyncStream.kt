@@ -15,6 +15,7 @@ import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.schema.Schema
 import com.powersync.db.schema.toSerializable
+import com.powersync.sync.SyncStream.Companion.SOCKET_TIMEOUT
 import com.powersync.utils.JsonUtil
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
@@ -62,6 +63,37 @@ import kotlinx.io.readIntLe
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
+import kotlin.experimental.ExperimentalObjCRefinement
+import kotlin.native.HiddenFromObjC
+
+/**
+ * Configures a [HttpClient] for PowerSync sync operations.
+ * Sets up required plugins and default request headers.
+ * This API is experimental and may change in future releases.
+ *
+ * Example usage:
+ *
+ * val client = HttpClient() {
+ *  configureSyncHttpClient()
+ *  // Your own config here
+ * }
+ */
+@OptIn(ExperimentalObjCRefinement::class)
+@HiddenFromObjC
+@ExperimentalPowerSyncAPI
+public fun HttpClientConfig<*>.configureSyncHttpClient(userAgent: String = userAgent()) {
+    install(HttpTimeout) {
+        socketTimeoutMillis = SOCKET_TIMEOUT
+    }
+    install(ContentNegotiation)
+    install(WebSockets)
+
+    install(DefaultRequest) {
+        headers {
+            append("User-Agent", userAgent)
+        }
+    }
+}
 
 @OptIn(ExperimentalPowerSyncAPI::class)
 internal class SyncStream(
@@ -74,7 +106,6 @@ internal class SyncStream(
     private val uploadScope: CoroutineScope,
     private val options: SyncOptions,
     private val schema: Schema,
-    createClient: (HttpClientConfig<*>.() -> Unit) -> HttpClient,
 ) {
     private var isUploadingCrud = AtomicReference<PendingCrudUpload?>(null)
     private var completedCrudUploads = Channel<Unit>(onBufferOverflow = BufferOverflow.DROP_OLDEST)
@@ -87,20 +118,22 @@ internal class SyncStream(
     private var clientId: String? = null
 
     private val httpClient: HttpClient =
-        createClient {
-            install(HttpTimeout) {
-                socketTimeoutMillis = SOCKET_TIMEOUT
-            }
+        when (val config = options.clientConfiguration) {
+            is SyncClientConfiguration.ExtendedConfig ->
+                createClient(options.userAgent, config.block)
 
-            install(ContentNegotiation)
-            install(WebSockets)
+            is SyncClientConfiguration.ExistingClient -> config.client
 
-            install(DefaultRequest) {
-                headers {
-                    append("User-Agent", options.userAgent)
-                }
-            }
+            null -> createClient(options.userAgent)
         }
+
+    private fun createClient(
+        userAgent: String,
+        additionalConfig: HttpClientConfig<*>.() -> Unit = {},
+    ) = HttpClient {
+        configureSyncHttpClient(userAgent)
+        additionalConfig()
+    }
 
     fun invalidateCredentials() {
         connector.invalidateCredentials()
@@ -386,15 +419,18 @@ internal class SyncStream(
                                 }
                             }
                 }
+
                 Instruction.CloseSyncStream -> {
                     logger.v { "Closing sync stream connection" }
                     fetchLinesJob!!.cancelAndJoin()
                     fetchLinesJob = null
                     logger.v { "Sync stream connection shut down" }
                 }
+
                 Instruction.FlushSileSystem -> {
                     // We have durable file systems, so flushing is not necessary
                 }
+
                 is Instruction.LogLine -> {
                     logger.log(
                         severity =
@@ -408,11 +444,13 @@ internal class SyncStream(
                         throwable = null,
                     )
                 }
+
                 is Instruction.UpdateSyncStatus -> {
                     status.update {
                         applyCoreChanges(instruction.status)
                     }
                 }
+
                 is Instruction.FetchCredentials -> {
                     if (instruction.didExpire) {
                         connector.invalidateCredentials()
@@ -434,9 +472,11 @@ internal class SyncStream(
                         }
                     }
                 }
+
                 Instruction.DidCompleteSync -> {
                     status.update { copy(downloadError = null) }
                 }
+
                 is Instruction.UnknownInstruction -> {
                     logger.w { "Unknown instruction received from core extension: ${instruction.raw}" }
                 }
@@ -476,7 +516,13 @@ internal class SyncStream(
 
             val req =
                 StreamingSyncRequest(
-                    buckets = initialBuckets.map { (bucket, after) -> BucketRequest(bucket, after) },
+                    buckets =
+                        initialBuckets.map { (bucket, after) ->
+                            BucketRequest(
+                                bucket,
+                                after,
+                            )
+                        },
                     clientId = clientId!!,
                     parameters = params,
                 )
@@ -677,7 +723,12 @@ internal class SyncStream(
         ): SyncStreamState {
             val batch = SyncDataBatch(listOf(data))
             bucketStorage.saveSyncData(batch)
-            status.update { copy(downloading = true, downloadProgress = downloadProgress?.incrementDownloaded(batch)) }
+            status.update {
+                copy(
+                    downloading = true,
+                    downloadProgress = downloadProgress?.incrementDownloaded(batch),
+                )
+            }
             return state
         }
 
@@ -703,7 +754,7 @@ internal class SyncStream(
     internal companion object {
         // The sync service sends a token keepalive message roughly every 20 seconds. So if we don't receive a message
         // in twice that time, assume the connection is broken.
-        private const val SOCKET_TIMEOUT: Long = 40_000
+        internal const val SOCKET_TIMEOUT: Long = 40_000
 
         private val ndjson = ContentType("application", "x-ndjson")
         private val bsonStream = ContentType("application", "vnd.powersync.bson-stream")
@@ -755,7 +806,10 @@ internal class SyncStream(
                     if (bytesRead == -1) {
                         // No bytes available, wait for more
                         if (isClosedForRead || !awaitContent(1)) {
-                            throw PowerSyncException("Unexpected end of response in middle of BSON sync line", null)
+                            throw PowerSyncException(
+                                "Unexpected end of response in middle of BSON sync line",
+                                null,
+                            )
                         }
                     } else {
                         remaining -= bytesRead
