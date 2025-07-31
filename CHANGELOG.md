@@ -4,6 +4,8 @@
 
 * Update SQLite to 3.50.3.
 * Android: Ensure JNI libraries are 16KB-aligned.
+* Support receiving binary sync lines over HTTP when the Rust client is enabled.
+* Remove the experimental websocket transport mode.
 
 ## 1.3.0
 
