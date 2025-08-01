@@ -359,8 +359,7 @@ public open class AttachmentQueue(
                                 metaData = item.metaData,
                             ),
                         )
-                    } else if
-                        (existingQueueItem.state == AttachmentState.ARCHIVED) {
+                    } else if (existingQueueItem.state == AttachmentState.ARCHIVED) {
                         // The attachment is present again. Need to queue it for sync.
                         // We might be able to optimize this in future.
                         if (existingQueueItem.hasSynced) {
