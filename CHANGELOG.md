@@ -6,6 +6,8 @@
 * Android: Ensure JNI libraries are 16KB-aligned.
 * Support receiving binary sync lines over HTTP when the Rust client is enabled.
 * Remove the experimental websocket transport mode.
+* Update to Kotlin 2.2.0.
+* Migrate to `kotlin.time` APIs where appropriate.
 
 ## 1.3.0
 

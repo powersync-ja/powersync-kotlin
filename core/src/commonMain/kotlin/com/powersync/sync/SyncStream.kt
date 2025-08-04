@@ -57,7 +57,6 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Clock
 import kotlinx.io.readByteArray
 import kotlinx.io.readIntLe
 import kotlinx.serialization.json.JsonElement
@@ -65,6 +64,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlin.experimental.ExperimentalObjCRefinement
 import kotlin.native.HiddenFromObjC
+import kotlin.time.Clock
 
 /**
  * Configures a [HttpClient] for PowerSync sync operations.
@@ -106,6 +106,7 @@ internal class SyncStream(
     private val uploadScope: CoroutineScope,
     private val options: SyncOptions,
     private val schema: Schema,
+    createClient: (HttpClientConfig<*>.() -> Unit) -> HttpClient,
 ) {
     private var isUploadingCrud = AtomicReference<PendingCrudUpload?>(null)
     private var completedCrudUploads = Channel<Unit>(onBufferOverflow = BufferOverflow.DROP_OLDEST)
@@ -754,7 +755,7 @@ internal class SyncStream(
     internal companion object {
         // The sync service sends a token keepalive message roughly every 20 seconds. So if we don't receive a message
         // in twice that time, assume the connection is broken.
-        internal const val SOCKET_TIMEOUT: Long = 40_000
+        private const val SOCKET_TIMEOUT: Long = 40_000
 
         private val ndjson = ContentType("application", "x-ndjson")
         private val bsonStream = ContentType("application", "vnd.powersync.bson-stream")
