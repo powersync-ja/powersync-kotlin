@@ -126,20 +126,20 @@ class CrudTest {
             }
 
             var batch = database.getNextCrudTransaction()!!
-            batch.crud[0].data shouldBe
+            batch.crud[0].opData?.typed shouldBe
                 mapOf(
                     "a" to "text",
                     "b" to 42,
                     "c" to 13.37,
                 )
-            batch.crud[0].typedPreviousValues shouldBe null
+            batch.crud[0].previousValues shouldBe null
 
-            batch.crud[1].data shouldBe
+            batch.crud[1].opData?.typed shouldBe
                 mapOf(
                     "a" to "te\"xt",
                     "b" to null,
                 )
-            batch.crud[1].typedPreviousValues shouldBe
+            batch.crud[1].previousValues?.typed shouldBe
                 mapOf(
                     "a" to "text",
                     "b" to 42,
@@ -152,7 +152,7 @@ class CrudTest {
             )
 
             batch = database.getNextCrudTransaction()!!
-            batch.crud[0].data shouldBe
+            batch.crud[0].opData?.typed shouldBe
                 mapOf(
                     "a" to "42", // Not an integer!
                 )

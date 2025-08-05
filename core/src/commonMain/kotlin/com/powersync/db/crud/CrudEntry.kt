@@ -1,9 +1,8 @@
 package com.powersync.db.crud
 
+import com.powersync.PowerSyncDatabase
 import com.powersync.db.schema.Table
 import com.powersync.utils.JsonUtil
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -58,75 +57,29 @@ public data class CrudEntry internal constructor(
      *
      * For DELETE, this is null.
      */
-    @Deprecated("Use data instead", replaceWith = ReplaceWith("data"))
-    val opData: Map<String, String?>?,
-    /**
-     * Data associated with the change.
-     *
-     * For PUT, this is contains all non-null columns of the row.
-     *
-     * For PATCH, this is contains the columns that changed.
-     *
-     * For DELETE, this is null.
-     */
-    val data: Map<String, Any?>?,
+    val opData: SqliteRow?,
     /**
      * Previous values before this change.
      *
      * These values can be tracked for `UPDATE` statements when [Table.trackPreviousValues] is
      * enabled.
      */
-    @Deprecated("Use typedPreviousValues instead", replaceWith = ReplaceWith("typedPreviousValues"))
-    val previousValues: Map<String, String?>? = null,
-    /**
-     * Previous values before this change.
-     *
-     * These values can be tracked for `UPDATE` statements when [Table.trackPreviousValues] is
-     * enabled.
-     */
-    val typedPreviousValues: Map<String, Any?>? = null,
+    val previousValues: SqliteRow? = null,
 ) {
     public companion object {
         public fun fromRow(row: CrudRow): CrudEntry {
             val data = JsonUtil.json.parseToJsonElement(row.data).jsonObject
-            val opData = data["data"]?.asData()
-            val previousValues = data["old"]?.asData()
-
             return CrudEntry(
                 id = data["id"]!!.jsonPrimitive.content,
                 clientId = row.id.toInt(),
                 op = UpdateType.fromJsonChecked(data["op"]!!.jsonPrimitive.content),
-                opData = opData?.toStringMap(),
-                data = opData,
+                opData = data["data"]?.let { SerializedRow(it.jsonObject) },
                 table = data["type"]!!.jsonPrimitive.content,
                 transactionId = row.txId,
                 metadata = data["metadata"]?.jsonPrimitive?.content,
-                typedPreviousValues = previousValues,
-                previousValues = previousValues?.toStringMap(),
+                previousValues = data["old"]?.let { SerializedRow(it.jsonObject) },
             )
         }
-
-        private fun JsonElement.asData(): Map<String, Any?> =
-            jsonObject.mapValues { (_, value) ->
-                val primitive = value.jsonPrimitive
-                if (primitive === JsonNull) {
-                    null
-                } else if (primitive.isString) {
-                    primitive.content
-                } else {
-                    primitive.content.jsonNumberOrBoolean()
-                }
-            }
-
-        private fun String.jsonNumberOrBoolean(): Any =
-            when {
-                this == "true" -> true
-                this == "false" -> false
-                this.any { char -> char == '.' || char == 'e' || char == 'E' } -> this.toDouble()
-                else -> this.toInt()
-            }
-
-        private fun Map<String, Any?>.toStringMap(): Map<String, String> = mapValues { (_, v) -> v.toString() }
     }
 
     override fun toString(): String = "CrudEntry<$transactionId/$clientId ${op.toJson()} $table/$id $opData>"

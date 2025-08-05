@@ -26,6 +26,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.utils.io.InternalAPI
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * Get a Supabase token to authenticate against the PowerSync instance.
@@ -190,19 +191,20 @@ public class SupabaseConnector(
 
                     when (entry.op) {
                         UpdateType.PUT -> {
-                            val data = entry.opData?.toMutableMap() ?: mutableMapOf()
-                            data["id"] = entry.id
+                            val data =
+                                buildMap {
+                                    put("id", JsonPrimitive(entry.id))
+                                    entry.opData?.jsonValues?.let { putAll(it) }
+                                }
                             table.upsert(data)
                         }
-
                         UpdateType.PATCH -> {
-                            table.update(entry.opData!!) {
+                            table.update(entry.opData!!.jsonValues) {
                                 filter {
                                     eq("id", entry.id)
                                 }
                             }
                         }
-
                         UpdateType.DELETE -> {
                             table.delete {
                                 filter {
