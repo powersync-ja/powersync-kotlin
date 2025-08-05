@@ -114,9 +114,9 @@ buildkonfig {
             val propValue = localProperties.getProperty(name, "")
             if (propValue.isBlank()) {
                 println("Warning: Property $name not found in local.properties")
-            } else {
-                buildConfigField(STRING, name, propValue)
             }
+
+            buildConfigField(STRING, name, propValue)
         }
 
         stringConfigField("POWERSYNC_URL")
