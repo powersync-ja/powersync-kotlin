@@ -106,6 +106,7 @@ class SyncStreamTest {
                         mapOf(
                             "key" to "value",
                         ),
+                    data = mapOf("key" to "value"),
                 )
             bucketStorage =
                 mock<BucketStorage> {

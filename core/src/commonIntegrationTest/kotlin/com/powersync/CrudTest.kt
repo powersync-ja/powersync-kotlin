@@ -90,4 +90,59 @@ class CrudTest {
             val batch = database.getNextCrudTransaction()
             batch shouldBe null
         }
+
+    @Test
+    fun typedUpdates() =
+        databaseTest {
+            database.updateSchema(
+                Schema(
+                    Table(
+                        "foo",
+                        listOf(
+                            Column.text("a"),
+                            Column.integer("b"),
+                            Column.integer("c"),
+                        ),
+                        trackPreviousValues = TrackPreviousValuesOptions(onlyWhenChanged = true),
+                    ),
+                ),
+            )
+
+            database.writeTransaction { tx ->
+                tx.execute(
+                    "INSERT INTO foo (id,a,b,c) VALUES (uuid(), ?, ?, ?)",
+                    listOf(
+                        "text",
+                        42,
+                        13.37,
+                    ),
+                )
+                tx.execute(
+                    "UPDATE foo SET a = ?, b = NULL",
+                    listOf(
+                        "te\"xt",
+                    ),
+                )
+            }
+
+            val batch = database.getNextCrudTransaction()!!
+            batch.crud[0].data shouldBe
+                mapOf(
+                    "a" to "text",
+                    "b" to 42,
+                    "c" to 13.37,
+                )
+            batch.crud[0].typedPreviousValues shouldBe null
+
+            batch.crud[1].data shouldBe
+                mapOf(
+                    "a" to "te\"xt",
+                    "b" to null,
+                )
+            batch.crud[1].typedPreviousValues shouldBe
+                mapOf(
+                    "a" to "text",
+                    "b" to 42,
+                )
+        }
 }
