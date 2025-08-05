@@ -6,9 +6,12 @@ import co.touchlab.kermit.Logger
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
 import com.powersync.connector.supabase.SupabaseConnector
+import com.powersync.sync.SyncClientConfiguration
 import com.powersync.sync.SyncOptions
 import io.github.jan.supabase.auth.status.RefreshFailureCause
 import io.github.jan.supabase.auth.status.SessionStatus
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logging
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -20,7 +23,7 @@ data class AuthOptions(
      * androidBackgroundSync app, this is false because we're connecting from a
      * foreground service.
      */
-    val connectFromViewModel: Boolean
+    val connectFromViewModel: Boolean,
 )
 
 sealed class AuthState {
@@ -47,13 +50,32 @@ internal class AuthViewModel(
                 supabase.sessionStatus.collect {
                     when (it) {
                         is SessionStatus.Authenticated -> {
-                            db.connect(supabase, options = SyncOptions(
-                                newClientImplementation = true,
-                            ))
+                            db.connect(
+                                supabase,
+                                options =
+                                    SyncOptions(
+                                        newClientImplementation = true,
+                                        clientConfiguration =
+                                            SyncClientConfiguration.ExtendedConfig {
+                                                install(Logging) {
+                                                    level = LogLevel.ALL
+                                                    logger =
+                                                        object :
+                                                            io.ktor.client.plugins.logging.Logger {
+                                                            override fun log(message: String) {
+                                                                Logger.d { message }
+                                                            }
+                                                        }
+                                                }
+                                            },
+                                    ),
+                            )
                         }
+
                         is SessionStatus.NotAuthenticated -> {
                             db.disconnectAndClear()
                         }
+
                         else -> {
                             // Ignore
                         }
@@ -78,6 +100,7 @@ internal class AuthViewModel(
                             is RefreshFailureCause.InternalServerError -> Logger.e("Internal server error occurred")
                         }
                     }
+
                     is SessionStatus.NotAuthenticated -> {
                         _authState.value = AuthState.SignedOut
                         navController.navigate(Screen.SignIn)

@@ -106,7 +106,6 @@ internal class SyncStream(
     private val uploadScope: CoroutineScope,
     private val options: SyncOptions,
     private val schema: Schema,
-    createClient: (HttpClientConfig<*>.() -> Unit) -> HttpClient,
 ) {
     private var isUploadingCrud = AtomicReference<PendingCrudUpload?>(null)
     private var completedCrudUploads = Channel<Unit>(onBufferOverflow = BufferOverflow.DROP_OLDEST)
@@ -755,7 +754,7 @@ internal class SyncStream(
     internal companion object {
         // The sync service sends a token keepalive message roughly every 20 seconds. So if we don't receive a message
         // in twice that time, assume the connection is broken.
-        private const val SOCKET_TIMEOUT: Long = 40_000
+        internal const val SOCKET_TIMEOUT: Long = 40_000
 
         private val ndjson = ContentType("application", "x-ndjson")
         private val bsonStream = ContentType("application", "vnd.powersync.bson-stream")

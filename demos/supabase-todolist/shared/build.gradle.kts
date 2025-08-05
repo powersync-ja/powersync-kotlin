@@ -54,6 +54,7 @@ kotlin {
             implementation(libs.supabase.client)
             api(libs.koin.core)
             implementation(libs.koin.compose.viewmodel)
+            implementation(libs.ktor.client.logging)
         }
         androidMain.dependencies {
             api(libs.androidx.activity.compose)
