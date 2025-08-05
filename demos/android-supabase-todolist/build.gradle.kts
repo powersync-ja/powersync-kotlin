@@ -86,16 +86,21 @@ kotlin {
 }
 
 val useReleasedVersions = getLocalProperty("USE_RELEASED_POWERSYNC_VERSIONS", "false") == "true"
-if (!useReleasedVersions) {
+if (useReleasedVersions) {
     configurations.all {
         // https://docs.gradle.org/current/userguide/resolution_rules.html#sec:conditional-dependency-substitution
         resolutionStrategy.dependencySubstitution.all {
             requested.let {
-                if (it is ModuleComponentSelector && it.group == "com.powersync") {
-                    val targetProject = findProject(":${it.module}")
-                    if (targetProject != null) {
-                        useTarget(targetProject)
+                if (it is ProjectComponentSelector) {
+                    val projectPath = it.projectPath
+                    // Translate a dependency of e.g. :core into com.powersync:core:latest.release,
+                    // taking into account that the Supabase connector uses a custom name.
+                    val moduleName = when (projectPath) {
+                        ":connectors:supabase" -> "connector-supabase"
+                        else -> it.projectPath.substring(1).replace(':', '-')
                     }
+
+                    useTarget("com.powersync:${moduleName}:latest.release")
                 }
             }
         }
@@ -120,11 +125,11 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-    // To use a fixed version, replace "latest.release" with the latest version available at
+    // When adopting the PowerSync dependencies into your project, use the latest version available at
     // https://central.sonatype.com/artifact/com.powersync/core
-    implementation("com.powersync:core:latest.release")
-    implementation("com.powersync:connector-supabase:latest.release")
-    implementation("com.powersync:compose:latest.release")
+    implementation(projects.core) // "com.powersync:core:latest.release"
+    implementation(projects.connectors.supabase) // "com.powersync:connector-supabase:latest.release"
+    implementation(projects.compose) // "com.powersync:compose:latest.release"
     implementation(libs.uuid)
     implementation(libs.kermit)
     implementation(libs.androidx.material.icons.extended)
