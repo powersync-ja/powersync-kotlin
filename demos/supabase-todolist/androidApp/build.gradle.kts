@@ -10,7 +10,7 @@ kotlin {
     sourceSets {
         val androidMain by getting {
             dependencies {
-                implementation(project(":shared"))
+                implementation(projects.demos.supabaseTodolist.shared)
                 implementation(compose.material)
             }
         }

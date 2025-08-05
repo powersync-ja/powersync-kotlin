@@ -38,8 +38,6 @@ The easiest way to test the PowerSync KMP SDK is to run one of our demo applicat
 
 Demo applications are located in the [`demos/`](./demos) directory. See their respective README's for testing instructions:
 
-- [demos/hello-powersync](./demos/hello-powersync/README.md): A minimal example demonstrating the use of the PowerSync Kotlin Multiplatform SDK and the Supabase connector.
-
 - [demos/supabase-todolist](./demos/supabase-todolist/README.md): A simple to-do list application demonstrating the use of the PowerSync Kotlin Multiplatform SDK and the Supabase connector.
 - [demos/android-supabase-todolist](./demos/android-supabase-todolist/README.md): A simple to-do list application demonstrating the use of the PowerSync Kotlin Multiplatform SDK and the Supabase connector in an Android application.
 

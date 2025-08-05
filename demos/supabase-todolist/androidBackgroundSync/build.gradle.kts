@@ -1,6 +1,6 @@
 plugins {
-    alias(libs.plugins.androidApplication)
-    alias(libs.plugins.kotlinAndroid)
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
     id("org.jetbrains.compose")
     alias(libs.plugins.kotlin.atomicfu)
@@ -8,12 +8,12 @@ plugins {
 
 android {
     namespace = "com.powersync.demo.backgroundsync"
-    compileSdk = 35
+    compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
         applicationId = "com.powersync.demo.backgroundsync"
         minSdk = 28
-        targetSdk = 35
+        targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
 
@@ -42,17 +42,17 @@ android {
 }
 
 dependencies {
-    // When copying this example, replace "latest.release" with the current version available
+    // When copying this example, use the the current version available
     // at: https://central.sonatype.com/artifact/com.powersync/connector-supabase
-    implementation("com.powersync:connector-supabase:latest.release")
+    implementation(projects.connectors.supabase) // "com.powersync:connector-supabase"
 
-    implementation(projects.shared)
+    implementation(projects.demos.supabaseTodolist.shared)
 
     implementation(compose.material)
     implementation(libs.androidx.core)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.service)
-    implementation(libs.compose.lifecycle)
+    implementation(libs.kmp.lifecycle.compose)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.koin.android)
     implementation(libs.koin.compose.viewmodel)

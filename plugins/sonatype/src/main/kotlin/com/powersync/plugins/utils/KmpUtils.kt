@@ -9,6 +9,7 @@ public fun KotlinTargetContainerWithPresetFunctions.powersyncTargets(
     jvm: Boolean = true,
     includeTargetsWithoutComposeSupport: Boolean = true,
     watchOS: Boolean = true,
+    legacyJavaSupport: Boolean = true,
 ) {
     if (jvm) {
         androidTarget {
@@ -23,9 +24,14 @@ public fun KotlinTargetContainerWithPresetFunctions.powersyncTargets(
         jvm {
             @OptIn(ExperimentalKotlinGradlePluginApi::class)
             compilerOptions {
-                jvmTarget.set(JvmTarget.JVM_1_8)
-                // https://jakewharton.com/kotlins-jdk-release-compatibility-flag/
-                freeCompilerArgs.add("-Xjdk-release=8")
+                if (legacyJavaSupport) {
+                    jvmTarget.set(JvmTarget.JVM_1_8)
+                    // https://jakewharton.com/kotlins-jdk-release-compatibility-flag/
+                    freeCompilerArgs.add("-Xjdk-release=8")
+                } else {
+                    jvmTarget.set(JvmTarget.JVM_11)
+                    freeCompilerArgs.add("-Xjdk-release=11")
+                }
             }
         }
     }

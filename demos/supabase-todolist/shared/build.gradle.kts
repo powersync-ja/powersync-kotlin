@@ -3,7 +3,7 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.android.library)
     alias(libs.plugins.jetbrainsCompose)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.cocoapods)
@@ -39,19 +39,19 @@ kotlin {
     }
     sourceSets {
         commonMain.dependencies {
-            // Need to use api here otherwise Database driver can't be accessed
-            // When copying this example, replace "latest.release" with the current version available
+            // When copying this example, use the current version available
             // at: https://central.sonatype.com/artifact/com.powersync/core
-            api("com.powersync:core:latest.release")
-            implementation("com.powersync:connector-supabase:latest.release")
-            implementation("com.powersync:compose:latest.release")
+            api(projects.core) // "com.powersync:core"
+            implementation(projects.connectors.supabase) // "com.powersync:connector-supabase"
+            implementation(projects.compose) // "com.powersync:compose"
             implementation(libs.uuid)
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material)
             implementation(compose.components.resources)
             implementation(compose.materialIconsExtended)
-            implementation(libs.compose.lifecycle)
+            implementation(libs.kmp.lifecycle.compose)
+            implementation(libs.supabase.client)
             api(libs.koin.core)
             implementation(libs.koin.compose.viewmodel)
         }
@@ -99,10 +99,9 @@ android {
 
 val localProperties =
     Properties().apply {
-        try {
-            load(rootProject.file("local.properties").reader())
-        } catch (ignored: java.io.IOException) {
-            throw Error("local.properties file not found")
+        val localPropertiesFile = parent!!.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            localPropertiesFile.inputStream().use { load(it) }
         }
     }
 
@@ -115,9 +114,9 @@ buildkonfig {
             val propValue = localProperties.getProperty(name, "")
             if (propValue.isBlank()) {
                 println("Warning: Property $name not found in local.properties")
-            } else {
-                buildConfigField(STRING, name, propValue)
             }
+
+            buildConfigField(STRING, name, propValue)
         }
 
         stringConfigField("POWERSYNC_URL")

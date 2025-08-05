@@ -7,8 +7,8 @@ import java.nio.file.Files
 plugins {
     alias(libs.plugins.jetbrainsCompose) apply false
     alias(libs.plugins.compose.compiler) apply false
-    alias(libs.plugins.androidApplication) apply false
-    alias(libs.plugins.androidLibrary) apply false
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.android.library) apply false
     alias(libs.plugins.kotlinMultiplatform) apply false
     alias(libs.plugins.skie) apply false
     alias(libs.plugins.kotlin.jvm) apply false
@@ -20,6 +20,7 @@ plugins {
     alias(libs.plugins.kotlinter) apply false
     alias(libs.plugins.keeper) apply false
     alias(libs.plugins.kotlin.atomicfu) apply false
+    alias(libs.plugins.cocoapods) apply false
     id("org.jetbrains.dokka") version libs.versions.dokkaBase
     id("dokka-convention")
 }
