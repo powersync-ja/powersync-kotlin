@@ -102,11 +102,7 @@ class SyncStreamTest {
                     op = UpdateType.PUT,
                     table = "table1",
                     transactionId = 1,
-                    opData =
-                        mapOf(
-                            "key" to "value",
-                        ),
-                    data = mapOf("key" to "value"),
+                    opData = null,
                 )
             bucketStorage =
                 mock<BucketStorage> {

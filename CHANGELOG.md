@@ -5,8 +5,8 @@
 * Added the ability to log PowerSync service HTTP request information via specifying a
   `SyncClientConfiguration` in the `SyncOptions.clientConfiguration` parameter used in
   `PowerSyncDatabase.connect()` calls.
-* `CrudEntry`: Add `data` and `typedPreviousValues` fields as typed variants of
-  `opData` and `previousValues`, respectively.
+* `CrudEntry`: Introduce `SqliteRow` interface for `opData` and `previousValues`, providing typed
+  access to the underlying values.
 
 ## 1.3.1
 
