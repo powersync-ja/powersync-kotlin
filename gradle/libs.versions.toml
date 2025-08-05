@@ -28,9 +28,11 @@ stately = "2.1.0"
 supabase = "3.2.2"
 junit = "4.13.2"
 
-compose = "1.6.11"
+compose = "1.6.11" # This is for the multiplatform compose
+androidCompose = "2025.07.00"
 compose-preview = "1.8.3"
 androidxSqlite = "2.5.2"
+androidxSplashscreen = "1.0.1"
 
 # plugins
 android-gradle-plugin = "8.11.1"
@@ -46,6 +48,8 @@ atomicfu = "0.29.0"
 # Sample - Android
 androidx-core = "1.16.0"
 androidx-activity-compose = "1.10.1"
+materialIconsExtended = "1.7.8"
+lifecycleRuntimeKtx = "2.9.2"
 
 androidx-appcompat = "1.7.1"
 androidx-espresso-core = "3.6.1"
@@ -107,16 +111,28 @@ androidx-sqliteFramework = { module = "androidx.sqlite:sqlite-framework", versio
 
 # Sample - Android
 androidx-core = { group = "androidx.core", name = "core-ktx", version.ref = "androidx-core" }
+androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "androidxSplashscreen" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidx-appcompat" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity-compose" }
+androidx-activity-ktx = { group = "androidx.activity", name = "activity-ktx", version.ref = "androidx-activity-compose" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "androidx-espresso-core" }
+androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 androidx-material = { group = "com.google.android.material", name = "material", version.ref = "androidx-material" }
+androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "androidCompose" }
+androidx-ui = { group = "androidx.compose.ui", name = "ui" }
+androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
+androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "compose-preview" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 
 [plugins]
-androidApplication = { id = "com.android.application", version.ref = "android-gradle-plugin" }
-androidLibrary = { id = "com.android.library", version.ref = "android-gradle-plugin" }
+android-application = { id = "com.android.application", version.ref = "android-gradle-plugin" }
+android-library = { id = "com.android.library", version.ref = "android-gradle-plugin" }
 jetbrainsCompose = { id = "org.jetbrains.compose", version.ref = "compose" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 cocoapods = { id = "org.jetbrains.kotlin.native.cocoapods", version.ref = "kotlin" }

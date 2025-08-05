@@ -1,6 +1,12 @@
 pluginManagement {
     repositories {
-        google()
+        google {
+            content {
+                includeGroupByRegex("com\\.android.*")
+                includeGroupByRegex("com\\.google.*")
+                includeGroupByRegex("androidx.*")
+            }
+        }
         gradlePluginPortal()
         mavenCentral()
     }
@@ -31,5 +37,7 @@ include(":persistence")
 include(":PowerSyncKotlin")
 
 include(":compose")
+
+include(":demos:android-supabase-todolist")
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")

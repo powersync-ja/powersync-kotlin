@@ -1,7 +1,7 @@
 import com.slack.keeper.optInToKeeper
 
 plugins {
-    alias(libs.plugins.androidApplication)
+    alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.keeper)
 }

@@ -37,9 +37,9 @@ all items have been received.
 ## Configure project in Android Studio
 
 1. Clone this repo: ```git clone https://github.com/powersync-ja/powersync-kotlin.git```
-2. Open `powersync-kotlin/demos/android-supabase-todolist` in Android Studio.
+2. Open `powersync-kotlin/` in Android Studio.
 3. Sync the project with Gradle (this should happen automatically, or choose File > Sync project with Gradle Files).
-4. Insert your Supabase project URL, Supabase Anon Key, and PowerSync instance URL into the `local.properties` file:
+4. Insert your Supabase project URL, Supabase Anon Key, and PowerSync instance URL into the `demos/android-supabase-todolist/local.properties` file:
 
 ```bash
 # local.properties
