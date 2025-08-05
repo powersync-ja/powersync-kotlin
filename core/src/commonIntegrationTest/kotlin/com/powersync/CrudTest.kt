@@ -125,7 +125,7 @@ class CrudTest {
                 )
             }
 
-            val batch = database.getNextCrudTransaction()!!
+            var batch = database.getNextCrudTransaction()!!
             batch.crud[0].data shouldBe
                 mapOf(
                     "a" to "text",
@@ -143,6 +143,18 @@ class CrudTest {
                 mapOf(
                     "a" to "text",
                     "b" to 42,
+                )
+
+            database.execute("DELETE FROM ps_crud")
+            database.execute(
+                "UPDATE foo SET a = ?",
+                listOf("42"),
+            )
+
+            batch = database.getNextCrudTransaction()!!
+            batch.crud[0].data shouldBe
+                mapOf(
+                    "a" to "42", // Not an integer!
                 )
         }
 }
