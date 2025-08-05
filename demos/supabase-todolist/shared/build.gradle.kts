@@ -3,7 +3,7 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.android.library)
     alias(libs.plugins.jetbrainsCompose)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.cocoapods)
@@ -39,7 +39,6 @@ kotlin {
     }
     sourceSets {
         commonMain.dependencies {
-            // Need to use api here otherwise Database driver can't be accessed
             // When copying this example, replace "latest.release" with the current version available
             // at: https://central.sonatype.com/artifact/com.powersync/core
             api("com.powersync:core:latest.release")
@@ -51,7 +50,8 @@ kotlin {
             implementation(compose.material)
             implementation(compose.components.resources)
             implementation(compose.materialIconsExtended)
-            implementation(libs.compose.lifecycle)
+            implementation(libs.kmp.lifecycle.compose)
+            implementation(libs.supabase.client)
             api(libs.koin.core)
             implementation(libs.koin.compose.viewmodel)
         }
@@ -100,7 +100,7 @@ android {
 val localProperties =
     Properties().apply {
         try {
-            load(rootProject.file("local.properties").reader())
+            load(parent!!.file("local.properties").reader())
         } catch (ignored: java.io.IOException) {
             throw Error("local.properties file not found")
         }
