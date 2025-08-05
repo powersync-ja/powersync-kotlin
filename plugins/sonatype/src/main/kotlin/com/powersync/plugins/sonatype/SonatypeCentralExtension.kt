@@ -9,10 +9,10 @@ public abstract class SonatypeCentralExtension(
     private val project: Project
 ) {
     @get:Optional
-    public val username: Property<String?> = project.objects.property(String::class.java)
+    public val username: Property<String> = project.objects.property(String::class.java)
 
     @get:Optional
-    public val password: Property<String?> = project.objects.property(String::class.java)
+    public val password: Property<String> = project.objects.property(String::class.java)
 
     public companion object {
         public const val NAME: String = "sonatypePublishing"

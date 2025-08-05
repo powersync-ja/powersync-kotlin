@@ -20,11 +20,11 @@ import java.util.Base64
 internal abstract class PublishToCentralPortalTask : DefaultTask() {
     @get:Input
     @get:Optional
-    abstract val username: Property<String?>
+    abstract val username: Property<String>
 
     @get:Input
     @get:Optional
-    abstract val password: Property<String?>
+    abstract val password: Property<String>
 
     private fun outputFile(): File {
         val archive = project.tasks.getByName(COMPONENT_BUNDLE_TASK_NAME) as Zip
