@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.3.1 (unreleased)
+## 1.3.1
 
 * Update SQLite to 3.50.3.
 * Android: Ensure JNI libraries are 16KB-aligned.
