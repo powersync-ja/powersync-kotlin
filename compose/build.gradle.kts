@@ -12,7 +12,12 @@ plugins {
 }
 
 kotlin {
-    powersyncTargets(includeTargetsWithoutComposeSupport = false)
+    powersyncTargets(
+        includeTargetsWithoutComposeSupport = false,
+        // Recent versions of Compose Multiplatform generate bytecode with Java 11, which we have
+        // to adopt as well
+        legacyJavaSupport = false,
+    )
 
     explicitApi()
 

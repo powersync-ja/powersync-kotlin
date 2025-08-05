@@ -39,11 +39,11 @@ kotlin {
     }
     sourceSets {
         commonMain.dependencies {
-            // When copying this example, replace "latest.release" with the current version available
+            // When copying this example, use the current version available
             // at: https://central.sonatype.com/artifact/com.powersync/core
-            api("com.powersync:core:latest.release")
-            implementation("com.powersync:connector-supabase:latest.release")
-            implementation("com.powersync:compose:latest.release")
+            api(projects.core) // "com.powersync:core"
+            implementation(projects.connectors.supabase) // "com.powersync:connector-supabase"
+            implementation(projects.compose) // "com.powersync:compose"
             implementation(libs.uuid)
             implementation(compose.runtime)
             implementation(compose.foundation)

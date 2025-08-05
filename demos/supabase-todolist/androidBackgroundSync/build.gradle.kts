@@ -42,9 +42,9 @@ android {
 }
 
 dependencies {
-    // When copying this example, replace "latest.release" with the current version available
+    // When copying this example, use the the current version available
     // at: https://central.sonatype.com/artifact/com.powersync/connector-supabase
-    implementation("com.powersync:connector-supabase:latest.release")
+    implementation(projects.connectors.supabase) // "com.powersync:connector-supabase"
 
     implementation(projects.demos.supabaseTodolist.shared)
 
