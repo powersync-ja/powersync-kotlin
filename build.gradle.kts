@@ -20,6 +20,7 @@ plugins {
     alias(libs.plugins.kotlinter) apply false
     alias(libs.plugins.keeper) apply false
     alias(libs.plugins.kotlin.atomicfu) apply false
+    alias(libs.plugins.cocoapods) apply false
     id("org.jetbrains.dokka") version libs.versions.dokkaBase
     id("dokka-convention")
 }
