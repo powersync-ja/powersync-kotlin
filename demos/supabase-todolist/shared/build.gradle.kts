@@ -99,10 +99,9 @@ android {
 
 val localProperties =
     Properties().apply {
-        try {
-            load(parent!!.file("local.properties").reader())
-        } catch (ignored: java.io.IOException) {
-            throw Error("local.properties file not found")
+        val localPropertiesFile = parent!!.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            localPropertiesFile.inputStream().use { load(it) }
         }
     }
 
