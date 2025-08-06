@@ -11,11 +11,11 @@ import kotlin.native.HiddenFromObjC
  * Configuration options for the [PowerSyncDatabase.connect] method, allowing customization of
  * the HTTP client used to connect to the PowerSync service.
  */
+@OptIn(ExperimentalObjCRefinement::class)
 public sealed class SyncClientConfiguration {
     /**
      * Extends the default Ktor [HttpClient] configuration with the provided block.
      */
-    @OptIn(ExperimentalObjCRefinement::class)
     @HiddenFromObjC
     public class ExtendedConfig(
         public val block: HttpClientConfig<*>.() -> Unit,
@@ -27,7 +27,6 @@ public sealed class SyncClientConfiguration {
      * The HTTP client requirements are delicate and subject to change throughout the SDK's development.
      * The [configureSyncHttpClient] function can be used to configure the client for PowerSync.
      */
-    @OptIn(ExperimentalObjCRefinement::class)
     @HiddenFromObjC
     @ExperimentalPowerSyncAPI
     public class ExistingClient(
