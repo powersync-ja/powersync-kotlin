@@ -67,16 +67,22 @@ import kotlin.native.HiddenFromObjC
 import kotlin.time.Clock
 
 /**
- * Configures a [HttpClient] for PowerSync sync operations.
- * Sets up required plugins and default request headers.
  * This API is experimental and may change in future releases.
+ *
+ * Configures a [HttpClient] for PowerSync sync operations.
+ * Configures required plugins and default request headers.
+ *
+ * This is currently only necessary when using a [SyncClientConfiguration.ExistingClient] for PowerSync
+ * network requests.
  *
  * Example usage:
  *
+ * ```kotlin
  * val client = HttpClient() {
  *  configureSyncHttpClient()
  *  // Your own config here
  * }
+ * ```
  */
 @OptIn(ExperimentalObjCRefinement::class)
 @HiddenFromObjC

@@ -25,7 +25,8 @@ public sealed class SyncClientConfiguration {
      * Provides an existing [HttpClient] instance to use for connecting to the PowerSync service.
      * This client should be configured with the necessary plugins and settings to function correctly.
      * The HTTP client requirements are delicate and subject to change throughout the SDK's development.
-     * The [configureSyncHttpClient] function can be used to configure the client for PowerSync.
+     * The [configureSyncHttpClient] function can be used to configure the client for PowerSync, call
+     * this method when instantiating the client. The PowerSync SDK does not modify the provided client.
      */
     @HiddenFromObjC
     @ExperimentalPowerSyncAPI
