@@ -22,7 +22,7 @@ jobs:
           - os: windows-latest
             targets: jvmTest
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
     - uses: actions/checkout@v4

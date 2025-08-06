@@ -45,6 +45,10 @@ public fun KotlinTargetContainerWithPresetFunctions.powersyncTargets(
             macosX64()
             macosArm64()
 
+            tvosSimulatorArm64()
+            tvosX64()
+            tvosArm64()
+
             if (watchOS) {
                 watchosDeviceArm64() // aarch64-apple-watchos
                 watchosArm64() // arm64_32-apple-watchos

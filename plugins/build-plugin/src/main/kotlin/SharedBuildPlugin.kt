@@ -62,6 +62,7 @@ class SharedBuildPlugin : Plugin<Project> {
                     // We're testing on simulators
                     Family.IOS -> "ios-arm64_x86_64-simulator"
                     Family.WATCHOS -> "watchos-arm64_x86_64-simulator"
+                    Family.TVOS -> "tvos-arm64_x86_64-simulator"
                     else -> return@configureEach
                 }
 
