@@ -24,7 +24,7 @@ public fun throwPowerSyncException(exception: PowerSyncException): Unit = throw 
  * A small wrapper around the Ktor LogLevel enum to allow
  * specifying the log level from Swift without exposing the Ktor plugin types.
  */
-public enum class SwiftNetworkLogLevel {
+public enum class SwiftSyncRequestLogLevel {
     ALL,
     HEADERS,
     BODY,
@@ -35,28 +35,28 @@ public enum class SwiftNetworkLogLevel {
 /**
  * Mapper function to Ktor LogLevel
  */
-internal fun SwiftNetworkLogLevel.toKtorLogLevel(): LogLevel =
+internal fun SwiftSyncRequestLogLevel.toKtorLogLevel(): LogLevel =
     when (this) {
-        SwiftNetworkLogLevel.ALL -> LogLevel.ALL
-        SwiftNetworkLogLevel.HEADERS -> LogLevel.HEADERS
-        SwiftNetworkLogLevel.BODY -> LogLevel.BODY
-        SwiftNetworkLogLevel.INFO -> LogLevel.INFO
-        SwiftNetworkLogLevel.NONE -> LogLevel.NONE
+        SwiftSyncRequestLogLevel.ALL -> LogLevel.ALL
+        SwiftSyncRequestLogLevel.HEADERS -> LogLevel.HEADERS
+        SwiftSyncRequestLogLevel.BODY -> LogLevel.BODY
+        SwiftSyncRequestLogLevel.INFO -> LogLevel.INFO
+        SwiftSyncRequestLogLevel.NONE -> LogLevel.NONE
     }
 
 /**
  * Configuration which is used to configure the Ktor logging plugin
  */
-public data class SwiftNetworkLoggerConfig(
-    public val logLevel: SwiftNetworkLogLevel,
+public data class SwiftRequestLoggerConfig(
+    public val logLevel: SwiftSyncRequestLogLevel,
     public val log: (message: String) -> Unit,
 )
 
 /**
  * Creates a Ktor [SyncClientConfiguration.ExtendedConfig] that extends the default Ktor client.
- * Specifying a [SwiftNetworkLoggerConfig] will install the Ktor logging plugin with the specified configuration.
+ * Specifying a [SwiftRequestLoggerConfig] will install the Ktor logging plugin with the specified configuration.
  */
-public fun createExtendedSyncClientConfiguration(loggingConfig: SwiftNetworkLoggerConfig? = null): SyncClientConfiguration =
+public fun createExtendedSyncClientConfiguration(loggingConfig: SwiftRequestLoggerConfig? = null): SyncClientConfiguration =
     SyncClientConfiguration.ExtendedConfig {
         if (loggingConfig != null) {
             install(Logging) {
@@ -81,7 +81,7 @@ public fun createExtendedSyncClientConfiguration(loggingConfig: SwiftNetworkLogg
 public fun createSyncOptions(
     newClient: Boolean,
     userAgent: String,
-    loggingConfig: SwiftNetworkLoggerConfig? = null,
+    loggingConfig: SwiftRequestLoggerConfig? = null,
 ): SyncOptions =
     SyncOptions(
         newClientImplementation = newClient,
