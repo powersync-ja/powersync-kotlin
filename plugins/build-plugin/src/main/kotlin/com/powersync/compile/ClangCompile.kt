@@ -68,6 +68,9 @@ abstract class ClangCompile: DefaultTask() {
             KonanTarget.WATCHOS_ARM64 -> "arm64_32-apple-watchos" to WATCHOS_SDK
             KonanTarget.WATCHOS_SIMULATOR_ARM64 -> "aarch64-apple-watchos-simulator" to WATCHOS_SIMULATOR_SDK
             KonanTarget.WATCHOS_X64 -> "x86_64-apple-watchos-simulator" to WATCHOS_SIMULATOR_SDK
+            KonanTarget.TVOS_ARM64 -> "aarch64-apple-tvos" to TVOS_SDK
+            KonanTarget.TVOS_X64 -> "x86_64-apple-tvos-simulator" to TVOS_SIMULATOR_SDK
+            KonanTarget.TVOS_SIMULATOR_ARM64 -> "aarch64-apple-tvos-simulator" to TVOS_SIMULATOR_SDK
             else -> error("Unexpected target $target")
         }
 
@@ -104,6 +107,8 @@ abstract class ClangCompile: DefaultTask() {
         const val WATCHOS_SIMULATOR_SDK = "Platforms/WatchSimulator.platform/Developer/SDKs/WatchSimulator.sdk/"
         const val IOS_SDK = "Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk"
         const val IOS_SIMULATOR_SDK = "Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk"
+        const val TVOS_SDK = "Platforms/AppleTVOS.platform/Developer/SDKs/AppleTVOS.sdk"
+        const val TVOS_SIMULATOR_SDK = "Platforms/AppleTVSimulator.platform/Developer/SDKs/AppleTVSimulator.sdk"
         const val MACOS_SDK = "Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/"
     }
 }
