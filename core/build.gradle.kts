@@ -6,10 +6,10 @@ import org.gradle.internal.os.OperatingSystem
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest
 import org.jetbrains.kotlin.gradle.tasks.KotlinTest
+import org.jetbrains.kotlin.konan.target.Family
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText
-import org.jetbrains.kotlin.konan.target.Family
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -140,12 +140,13 @@ val generateVersionConstant by tasks.registering {
         dir.mkdir()
         val rootPath = dir.toPath()
 
-        val source = """
+        val source =
+            """
             package $packageName
             
             internal const val LIBRARY_VERSION: String = "$currentVersion"
 
-        """.trimIndent()
+            """.trimIndent()
 
         val packageRoot = packageName.split('.').fold(rootPath, Path::resolve)
         packageRoot.createDirectories()
@@ -204,7 +205,6 @@ kotlin {
             dependencies {
                 implementation(libs.uuid)
                 implementation(libs.kotlin.stdlib)
-                implementation(libs.ktor.client.core)
                 implementation(libs.ktor.client.contentnegotiation)
                 implementation(libs.ktor.serialization.json)
                 implementation(libs.kotlinx.io)
@@ -213,6 +213,7 @@ kotlin {
                 implementation(libs.stately.concurrency)
                 implementation(libs.configuration.annotations)
                 api(projects.persistence)
+                api(libs.ktor.client.core)
                 api(libs.kermit)
             }
         }
