@@ -46,6 +46,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(project(":core"))
+            implementation(libs.ktor.client.logging)
         }
     }
 }
@@ -58,8 +59,16 @@ listOf("Debug", "Release").forEach { buildType ->
         val originalFramework = tasks.getByName("assemblePowerSyncKotlin${buildType}XCFramework")
         dependsOn(originalFramework)
 
-        val source = project.layout.buildDirectory.map { it.dir("XCFrameworks/${buildType.lowercase()}") }.get().asFile
-        val archiveFile = project.layout.buildDirectory.map { it.file("FrameworkArchives/PowersyncKotlin$buildType.zip") }.get().asFile
+        val source =
+            project.layout.buildDirectory
+                .map { it.dir("XCFrameworks/${buildType.lowercase()}") }
+                .get()
+                .asFile
+        val archiveFile =
+            project.layout.buildDirectory
+                .map { it.file("FrameworkArchives/PowersyncKotlin$buildType.zip") }
+                .get()
+                .asFile
 
         archiveFile.parentFile.mkdirs()
         archiveFile.delete()

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.0 (unreleased)
+
+* Added the ability to log PowerSync service HTTP request information via specifying a
+  `SyncClientConfiguration` in the `SyncOptions.clientConfiguration` parameter used in
+  `PowerSyncDatabase.connect()` calls.
+
 ## 1.3.1
 
 * Update SQLite to 3.50.3.
@@ -12,7 +18,8 @@
 ## 1.3.0
 
 * Support tables created outside of PowerSync with the `RawTable` API.
-  For more information, see [the documentation](https://docs.powersync.com/usage/use-case-examples/raw-tables).
+  For more information,
+  see [the documentation](https://docs.powersync.com/usage/use-case-examples/raw-tables).
 * Fix `runWrapped` catching cancellation exceptions.
 * Fix errors in `PowerSyncBackendConnector.fetchCredentials()` crashing Android apps.
 
@@ -23,7 +30,8 @@
 
 ## 1.2.1
 
-* [Supabase Connector] Fixed issue where only `400` HTTP status code errors where reported as connection errors. The connector now reports errors for codes `>=400`.
+* [Supabase Connector] Fixed issue where only `400` HTTP status code errors where reported as
+  connection errors. The connector now reports errors for codes `>=400`.
 * Update PowerSync core extension to `0.4.1`, fixing an issue with the new Rust client.
 * Rust sync client: Fix writes made while offline not being uploaded reliably.
 * Add watchOS support.
@@ -32,7 +40,7 @@
 
 * Add a new sync client implementation written in Rust instead of Kotlin. While this client is still
   experimental, we intend to make it the default in the future. The main benefit of this client is
-  faster sync performance, but upcoming features will also require this client. We encourage 
+  faster sync performance, but upcoming features will also require this client. We encourage
   interested users to try it out by opting in to `ExperimentalPowerSyncAPI` and passing options when
   connecting:
   ```Kotlin
@@ -62,10 +70,13 @@
 
 ## 1.1.0
 
-* Add `trackPreviousValues` option on `Table` which sets `CrudEntry.previousValues` to previous values on updates.
-* Add `trackMetadata` option on `Table` which adds a `_metadata` column that can be used for updates.
+* Add `trackPreviousValues` option on `Table` which sets `CrudEntry.previousValues` to previous
+  values on updates.
+* Add `trackMetadata` option on `Table` which adds a `_metadata` column that can be used for
+  updates.
   The configured metadata is available through `CrudEntry.metadata`.
-* Add `ignoreEmptyUpdates` option which skips creating CRUD entries for updates that don't change any values.
+* Add `ignoreEmptyUpdates` option which skips creating CRUD entries for updates that don't change
+  any values.
 
 ## 1.0.1
 

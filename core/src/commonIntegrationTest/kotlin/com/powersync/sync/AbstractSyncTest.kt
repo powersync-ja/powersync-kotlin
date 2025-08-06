@@ -1,6 +1,7 @@
 package com.powersync.sync
 
 import com.powersync.ExperimentalPowerSyncAPI
+import com.powersync.testutils.ActiveDatabaseTest
 
 /**
  * Small utility to run tests both with the legacy Kotlin sync implementation and the new
@@ -11,7 +12,9 @@ abstract class AbstractSyncTest(
     protected val useBson: Boolean = false,
 ) {
     @OptIn(ExperimentalPowerSyncAPI::class)
-    val options: SyncOptions get() {
-        return SyncOptions(useNewSyncImplementation)
-    }
+    internal fun ActiveDatabaseTest.getOptions(): SyncOptions =
+        SyncOptions(
+            useNewSyncImplementation,
+            clientConfiguration = SyncClientConfiguration.ExistingClient(createSyncClient()),
+        )
 }

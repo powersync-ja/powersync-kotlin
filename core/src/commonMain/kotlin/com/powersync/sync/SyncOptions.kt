@@ -2,6 +2,38 @@ package com.powersync.sync
 
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
+import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
+import kotlin.experimental.ExperimentalObjCRefinement
+import kotlin.native.HiddenFromObjC
+
+/**
+ * Configuration options for the [PowerSyncDatabase.connect] method, allowing customization of
+ * the HTTP client used to connect to the PowerSync service.
+ */
+@OptIn(ExperimentalObjCRefinement::class)
+public sealed class SyncClientConfiguration {
+    /**
+     * Extends the default Ktor [HttpClient] configuration with the provided block.
+     */
+    @HiddenFromObjC
+    public class ExtendedConfig(
+        public val block: HttpClientConfig<*>.() -> Unit,
+    ) : SyncClientConfiguration()
+
+    /**
+     * Provides an existing [HttpClient] instance to use for connecting to the PowerSync service.
+     * This client should be configured with the necessary plugins and settings to function correctly.
+     * The HTTP client requirements are delicate and subject to change throughout the SDK's development.
+     * The [configureSyncHttpClient] function can be used to configure the client for PowerSync, call
+     * this method when instantiating the client. The PowerSync SDK does not modify the provided client.
+     */
+    @HiddenFromObjC
+    @ExperimentalPowerSyncAPI
+    public class ExistingClient(
+        public val client: HttpClient,
+    ) : SyncClientConfiguration()
+}
 
 /**
  * Experimental options that can be passed to [PowerSyncDatabase.connect] to specify an experimental
@@ -20,6 +52,11 @@ public class SyncOptions
          * The user agent to use for requests made to the PowerSync service.
          */
         public val userAgent: String = userAgent(),
+        @property:ExperimentalPowerSyncAPI
+        /**
+         * Allows configuring the [HttpClient] used for connecting to the PowerSync service.
+         */
+        public val clientConfiguration: SyncClientConfiguration? = null,
     ) {
         public companion object {
             /**
