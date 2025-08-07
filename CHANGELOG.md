@@ -7,7 +7,7 @@
   `PowerSyncDatabase.connect()` calls.
 * `CrudEntry`: Introduce `SqliteRow` interface for `opData` and `previousValues`, providing typed
   access to the underlying values.
-* Update core extension to 0.4.2, fixing a bug where `hasSynced` would turn `false` when loosing
+* Update core extension to 0.4.2, fixing a bug where `hasSynced` would turn `false` when losing
   connectivity.
 
 ## 1.3.1
