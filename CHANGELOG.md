@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+* Fixed modifying severity of the global Kermit logger
+* Added `PowerSync` tag for the logs
+* Removed `generateLogger()` global public method meant to be used internally
+
 ## 1.4.0
 
 * Added the ability to log PowerSync service HTTP request information via specifying a
