@@ -1,12 +1,14 @@
 # Changelog
 
-## 1.4.0 (unreleased)
+## 1.4.0
 
 * Added the ability to log PowerSync service HTTP request information via specifying a
   `SyncClientConfiguration` in the `SyncOptions.clientConfiguration` parameter used in
   `PowerSyncDatabase.connect()` calls.
 * `CrudEntry`: Introduce `SqliteRow` interface for `opData` and `previousValues`, providing typed
   access to the underlying values.
+* Update core extension to 0.4.2, fixing a bug where `hasSynced` would turn `false` when losing
+  connectivity.
 
 ## 1.3.1
 
