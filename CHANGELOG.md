@@ -3,6 +3,7 @@
 ## Unreleased
 
 * Fixed modifying severity of the global Kermit logger
+* Added `PowerSync` tag for the logs
 
 ## 1.4.0
 

@@ -17,5 +17,6 @@ public fun generateLogger(logger: Logger?): Logger {
                 else
                     Severity.Warn
             ),
+            tag = "PowerSync",
         )
 }
