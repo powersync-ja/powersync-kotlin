@@ -1,10 +1,13 @@
 package com.powersync
 
+import BuildConfig
 import co.touchlab.kermit.Logger
+import co.touchlab.kermit.Severity
+import co.touchlab.kermit.StaticConfig
+import co.touchlab.kermit.platformLogWriter
 import co.touchlab.skie.configuration.annotations.DefaultArgumentInterop
 import com.powersync.db.PowerSyncDatabaseImpl
 import com.powersync.db.schema.Schema
-import com.powersync.utils.generateLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
@@ -27,18 +30,25 @@ public fun PowerSyncDatabase(
      * This parameter is ignored for iOS.
      */
     dbDirectory: String? = null,
-): PowerSyncDatabase {
-    val generatedLogger: Logger = generateLogger(logger)
-
-    return createPowerSyncDatabaseImpl(
+): PowerSyncDatabase =
+    createPowerSyncDatabaseImpl(
         schema = schema,
         factory = factory,
         dbFilename = dbFilename,
         scope = scope,
-        logger = generatedLogger,
+        logger = logger
+            ?: Logger(
+                config = StaticConfig(
+                    logWriterList = listOf(platformLogWriter()),
+                    minSeverity = if (BuildConfig.isDebug)
+                        Severity.Verbose
+                    else
+                        Severity.Warn
+                ),
+                tag = "PowerSync",
+            ),
         dbDirectory = dbDirectory,
     )
-}
 
 internal fun createPowerSyncDatabaseImpl(
     factory: DatabaseDriverFactory,
