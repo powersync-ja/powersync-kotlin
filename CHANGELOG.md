@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+* Fixed modifying severity of the global Kermit logger
+
 ## 1.4.0
 
 * Added the ability to log PowerSync service HTTP request information via specifying a
