@@ -35,32 +35,21 @@ internal class BucketStorageImpl(
         return id ?: throw IllegalStateException("Client ID not found")
     }
 
-    override suspend fun nextCrudItem(): CrudEntry? = db.getOptional(sql = nextCrudQuery, mapper = crudEntryMapper)
+    override suspend fun nextCrudItem(): CrudEntry? = db.getOptional(sql = nextCrudQuery, mapper = ::mapCrudEntry)
 
     override fun nextCrudItem(transaction: PowerSyncTransaction): CrudEntry? =
-        transaction.getOptional(sql = nextCrudQuery, mapper = crudEntryMapper)
-
-    override fun getCrudItemsByTransactionId(
-        transactionId: Int,
-        transaction: PowerSyncTransaction,
-    ): List<CrudEntry> =
-        transaction.getAll(
-            sql = transactionCrudQuery,
-            parameters = listOf(transactionId),
-            mapper = crudEntryMapper,
-        )
+        transaction.getOptional(sql = nextCrudQuery, mapper = ::mapCrudEntry)
 
     private val nextCrudQuery = "SELECT id, tx_id, data FROM ${InternalTable.CRUD} ORDER BY id ASC LIMIT 1"
-    private val transactionCrudQuery = "SELECT id, tx_id, data FROM ${InternalTable.CRUD} WHERE tx_id = ? ORDER BY id ASC"
-    private val crudEntryMapper: (SqlCursor) -> CrudEntry = { cursor ->
+
+    override fun mapCrudEntry(row: SqlCursor): CrudEntry =
         CrudEntry.fromRow(
             CrudRow(
-                id = cursor.getString(0)!!,
-                txId = cursor.getString(1)?.toInt(),
-                data = cursor.getString(2)!!,
+                id = row.getString(0)!!,
+                txId = row.getString(1)?.toInt(),
+                data = row.getString(2)!!,
             ),
         )
-    }
 
     override suspend fun hasCrud(): Boolean {
         val res = db.getOptional(sql = hasCrudQuery, mapper = hasCrudMapper)

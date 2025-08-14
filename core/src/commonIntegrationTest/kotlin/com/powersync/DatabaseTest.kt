@@ -3,6 +3,8 @@ package com.powersync
 import app.cash.turbine.turbineScope
 import co.touchlab.kermit.ExperimentalKermitApi
 import com.powersync.db.ActiveDatabaseGroup
+import com.powersync.db.crud.CrudEntry
+import com.powersync.db.crud.CrudTransaction
 import com.powersync.db.schema.Schema
 import com.powersync.testutils.UserRow
 import com.powersync.testutils.databaseTest
@@ -17,6 +19,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlin.test.Test
@@ -425,6 +428,35 @@ class DatabaseTest {
             transaction.complete(null)
 
             database.getNextCrudTransaction() shouldBe null
+        }
+
+    @Test
+    fun testCrudTransactions() =
+        databaseTest {
+            suspend fun insertInTransaction(size: Int) {
+                database.writeTransaction { tx ->
+                    repeat(size) {
+                        tx.execute("INSERT INTO users (id, name, email) VALUES (uuid(), null, null)")
+                    }
+                }
+            }
+
+            insertInTransaction(5)
+            insertInTransaction(10)
+            insertInTransaction(15)
+
+            val batch = mutableListOf<CrudEntry>()
+            var lastTx: CrudTransaction? = null
+            database.getCrudTransactions().takeWhile { batch.size < 10 }.collect {
+                batch.addAll(it.crud)
+                lastTx = it
+            }
+
+            batch shouldHaveSize 15
+            lastTx!!.complete(null)
+
+            val finalTx = database.getNextCrudTransaction()
+            finalTx!!.crud shouldHaveSize 15
         }
 
     @Test

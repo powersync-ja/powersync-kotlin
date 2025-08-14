@@ -276,34 +276,53 @@ internal class PowerSyncDatabaseImpl(
         })
     }
 
-    override suspend fun getNextCrudTransaction(): CrudTransaction? {
-        waitReady()
-        return internalDb.readTransaction { transaction ->
-            val entry =
-                bucketStorage.nextCrudItem(transaction)
-                    ?: return@readTransaction null
+    override suspend fun getCrudTransactions(): Flow<CrudTransaction> =
+        flow {
+            waitReady()
+            var lastItemId = -1
 
-            val txId = entry.transactionId
-            val entries: List<CrudEntry> =
-                if (txId == null) {
-                    listOf(entry)
-                } else {
-                    bucketStorage.getCrudItemsByTransactionId(
-                        transactionId = txId,
-                        transaction = transaction,
-                    )
+            // Note: We try to avoid filtering on tx_id here because there's no index on that column.
+            // Starting at the first entry we want and then joining by rowid is more efficient. This is
+            // sound because there can't be concurrent write transactions, so transaction ids are
+            // increasing when we iterate over rowids.
+            val query =
+                """
+                WITH RECURSIVE crud_entries AS (
+                  SELECT id, tx_id, data FROM ps_crud WHERE id = (SELECT min(id) FROM ps_crud WHERE id > ?)
+                  UNION ALL
+                  SELECT ps_crud.id, ps_crud.tx_id, ps_crud.data FROM ps_crud
+                    INNER JOIN crud_entries ON crud_entries.id + 1 = rowid
+                  WHERE crud_entries.tx_id = ps_crud.tx_id
+                )
+                SELECT * FROM crud_entries;
+                """.trimIndent()
+
+            // TODO: Map the entire flow in a read transaction after we have a driver implementation
+            // that allows suspending transactions.
+            while (true) {
+                val items = getAll(query, listOf(lastItemId), bucketStorage::mapCrudEntry)
+                if (items.isEmpty()) {
+                    break
                 }
 
-            return@readTransaction CrudTransaction(
-                crud = entries,
-                transactionId = txId,
-                complete = { writeCheckpoint ->
-                    logger.i { "[CrudTransaction::complete] Completing transaction with checkpoint $writeCheckpoint" }
-                    handleWriteCheckpoint(entries.last().clientId, writeCheckpoint)
-                },
-            )
+                val txId = items[0].transactionId
+                val lastId = items.last().clientId
+
+                lastItemId = lastId
+                emit(
+                    CrudTransaction(
+                        crud = items,
+                        transactionId = items[0].transactionId,
+                        complete = { writeCheckpoint ->
+                            logger.i {
+                                "[CrudTransaction::complete] Completing transaction $txId (client ids until <=$lastId) with checkpoint $writeCheckpoint"
+                            }
+                            handleWriteCheckpoint(lastId, writeCheckpoint)
+                        },
+                    ),
+                )
+            }
         }
-    }
 
     override suspend fun getPowerSyncVersion(): String {
         // The initialization sets powerSyncVersion.
