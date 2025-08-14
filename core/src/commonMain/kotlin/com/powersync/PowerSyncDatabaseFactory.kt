@@ -37,19 +37,21 @@ public fun PowerSyncDatabase(
         dbFilename = dbFilename,
         scope = scope,
         logger =
-        logger
-            ?: Logger(
-                config = StaticConfig(
-                    logWriterList =
-                    listOf(platformLogWriter()),
-                    minSeverity =
-                    if (BuildConfig.isDebug)
-                        Severity.Verbose
-                    else
-                        Severity.Warn,
+            logger
+                ?: Logger(
+                    config =
+                        StaticConfig(
+                            logWriterList =
+                                listOf(platformLogWriter()),
+                            minSeverity =
+                                if (BuildConfig.isDebug) {
+                                    Severity.Verbose
+                                } else {
+                                    Severity.Warn
+                                },
+                        ),
+                    tag = "PowerSync",
                 ),
-                tag = "PowerSync",
-            ),
         dbDirectory = dbDirectory,
     )
 
