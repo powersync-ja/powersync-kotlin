@@ -297,8 +297,6 @@ internal class PowerSyncDatabaseImpl(
                 SELECT * FROM crud_entries;
                 """.trimIndent()
 
-            // TODO: Map the entire flow in a read transaction after we have a driver implementation
-            // that allows suspending transactions.
             while (true) {
                 val items = getAll(query, listOf(lastItemId), bucketStorage::mapCrudEntry)
                 if (items.isEmpty()) {
