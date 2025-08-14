@@ -1,5 +1,6 @@
 package com.powersync
 
+import app.cash.turbine.test
 import app.cash.turbine.turbineScope
 import co.touchlab.kermit.ExperimentalKermitApi
 import com.powersync.db.ActiveDatabaseGroup
@@ -440,6 +441,9 @@ class DatabaseTest {
                     }
                 }
             }
+
+            // Before inserting data, the flow should be empty
+            database.getCrudTransactions().test { awaitComplete() }
 
             insertInTransaction(5)
             insertInTransaction(10)

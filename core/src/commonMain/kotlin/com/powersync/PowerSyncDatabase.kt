@@ -137,7 +137,7 @@ public interface PowerSyncDatabase : Queries {
     public suspend fun getNextCrudTransaction(): CrudTransaction? = getCrudTransactions().firstOrNull()
 
     /**
-     * Obtains a flow of transactions with local data against the database.
+     * Obtains a flow emitting completed transactions with local writes against the database.
 
      * This is typically used from the [PowerSyncBackendConnector.uploadData] callback.
      * Each entry emitted by the returned flow is a full transaction containing all local writes
@@ -154,7 +154,7 @@ public interface PowerSyncDatabase : Queries {
      * val batch = mutableListOf<CrudEntry>()
      * var lastTx: CrudTransaction? = null
      *
-     * database.getCrudTransactions().takeWhile { batch.size < 10 }.collect {
+     * database.getCrudTransactions().takeWhile { batch.size < 100 }.collect {
      *   batch.addAll(it.crud)
      *   lastTx = it
      * }
