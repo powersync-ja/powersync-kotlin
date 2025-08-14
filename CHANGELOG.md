@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.0 (unreleased)
+
+* Add `PowerSyncDatabase.getCrudTransactions()`, returning a flow of transactions. This is useful
+  to upload multiple transactions in a batch.
+
 ## 1.4.0
 
 * Added the ability to log PowerSync service HTTP request information via specifying a

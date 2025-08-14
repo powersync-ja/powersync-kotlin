@@ -1,5 +1,6 @@
 package com.powersync.bucket
 
+import com.powersync.db.SqlCursor
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.internal.PowerSyncTransaction
 import com.powersync.db.schema.SerializableSchema
@@ -19,14 +20,11 @@ internal interface BucketStorage {
 
     fun nextCrudItem(transaction: PowerSyncTransaction): CrudEntry?
 
-    fun getCrudItemsByTransactionId(
-        transactionId: Int,
-        transaction: PowerSyncTransaction,
-    ): List<CrudEntry>
-
     suspend fun hasCrud(): Boolean
 
     fun hasCrud(transaction: PowerSyncTransaction): Boolean
+
+    fun mapCrudEntry(row: SqlCursor): CrudEntry
 
     suspend fun updateLocalTarget(checkpointCallback: suspend () -> String): Boolean
 
