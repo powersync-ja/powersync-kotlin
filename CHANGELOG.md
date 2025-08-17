@@ -4,7 +4,6 @@
 
 * Fixed modifying severity of the global Kermit logger
 * Added `PowerSync` tag for the logs
-* Removed `generateLogger()` global public method meant to be used internally
 
 ## 1.4.0
 
