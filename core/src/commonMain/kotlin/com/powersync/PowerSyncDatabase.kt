@@ -145,8 +145,8 @@ public interface PowerSyncDatabase : Queries {
      *
      * Unlike [getNextCrudTransaction], which always returns the oldest transaction that hasn't
      * been [CrudTransaction.complete]d yet, this flow can be used to collect multiple transactions.
-     * Calling [CrudTransaction.complete] will mark _all_ transactions emitted by the flow until
-     * that point as completed.
+     * Calling [CrudTransaction.complete] will mark that and all prior transactions emitted by the
+     * flow as completed.
      *
      * This can be used to upload multiple transactions in a single batch, e.g with:
      *
