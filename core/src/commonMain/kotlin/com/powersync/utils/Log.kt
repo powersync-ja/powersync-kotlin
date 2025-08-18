@@ -1,7 +1,10 @@
 package com.powersync.utils
 
 import BuildConfig
-import co.touchlab.kermit.*
+import co.touchlab.kermit.Logger
+import co.touchlab.kermit.Severity
+import co.touchlab.kermit.StaticConfig
+import co.touchlab.kermit.platformLogWriter
 
 /*
  * Generates a logger with the appropriate severity level based on the build type
