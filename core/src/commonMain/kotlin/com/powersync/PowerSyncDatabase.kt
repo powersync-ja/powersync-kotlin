@@ -9,6 +9,8 @@ import com.powersync.db.schema.Schema
 import com.powersync.sync.SyncOptions
 import com.powersync.sync.SyncStatus
 import com.powersync.utils.JsonParam
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -123,7 +125,7 @@ public interface PowerSyncDatabase : Queries {
      *
      * Returns null if there is no data to upload.
      *
-     * Use this from the [PowerSyncBackendConnector.uploadData]` callback.
+     * Use this from the [PowerSyncBackendConnector.uploadData] callback.
      *
      * Once the data have been successfully uploaded, call [CrudTransaction.complete] before
      * requesting the next transaction.
@@ -132,7 +134,41 @@ public interface PowerSyncDatabase : Queries {
      * All data for the transaction is loaded into memory.
      */
     @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun getNextCrudTransaction(): CrudTransaction?
+    public suspend fun getNextCrudTransaction(): CrudTransaction? = getCrudTransactions().firstOrNull()
+
+    /**
+     * Obtains a flow emitting completed transactions with local writes against the database.
+
+     * This is typically used from the [PowerSyncBackendConnector.uploadData] callback.
+     * Each entry emitted by the returned flow is a full transaction containing all local writes
+     * made while that transaction was active.
+     *
+     * Unlike [getNextCrudTransaction], which always returns the oldest transaction that hasn't
+     * been [CrudTransaction.complete]d yet, this flow can be used to collect multiple transactions.
+     * Calling [CrudTransaction.complete] will mark that and all prior transactions emitted by the
+     * flow as completed.
+     *
+     * This can be used to upload multiple transactions in a single batch, e.g with:
+     *
+     * ```Kotlin
+     * val batch = mutableListOf<CrudEntry>()
+     * var lastTx: CrudTransaction? = null
+     *
+     * database.getCrudTransactions().takeWhile { batch.size < 100 }.collect {
+     *   batch.addAll(it.crud)
+     *   lastTx = it
+     * }
+     *
+     * if (batch.isNotEmpty()) {
+     *   uploadChanges(batch)
+     *   lastTx!!.complete(null)
+     * }
+     * ````
+     *
+     * If there is no local data to upload, returns an empty flow.
+     */
+    @Throws(PowerSyncException::class, CancellationException::class)
+    public suspend fun getCrudTransactions(): Flow<CrudTransaction>
 
     /**
      * Convenience method to get the current version of PowerSync.

@@ -1,9 +1,11 @@
 # Changelog
 
-## Unreleased
+## 1.5.0 (unreleased)
 
-* Fixed modifying severity of the global Kermit logger
-* Added `PowerSync` tag for the logs
+* Add `PowerSyncDatabase.getCrudTransactions()`, returning a flow of transactions. This is useful
+  to upload multiple transactions in a batch.
+* Fix modifying severity of the global Kermit logger
+* Add `PowerSync` tag for the logs
 
 ## 1.4.0
 
