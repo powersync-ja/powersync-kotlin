@@ -181,9 +181,7 @@ internal class InternalDatabaseImpl(
         withContext(dbContext) {
             runWrapped {
                 readPool.withConnection {
-                    catchSwiftExceptions {
-                        callback(it)
-                    }
+                    callback(it)
                 }
             }
         }
@@ -196,13 +194,11 @@ internal class InternalDatabaseImpl(
     override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R =
         internalReadLock {
             it.transactor.transactionWithResult(noEnclosing = true) {
-                catchSwiftExceptions {
-                    callback.execute(
-                        PowerSyncTransactionImpl(
-                            it.driver,
-                        ),
-                    )
-                }
+                callback.execute(
+                    PowerSyncTransactionImpl(
+                        it.driver,
+                    ),
+                )
             }
         }
 
@@ -210,9 +206,7 @@ internal class InternalDatabaseImpl(
         withContext(dbContext) {
             writeLockMutex.withLock {
                 runWrapped {
-                    catchSwiftExceptions {
-                        callback(writeConnection)
-                    }
+                    callback(writeConnection)
                 }.also {
                     // Trigger watched queries
                     // Fire updates inside the write lock
@@ -229,30 +223,16 @@ internal class InternalDatabaseImpl(
     override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R =
         internalWriteLock {
             it.transactor.transactionWithResult(noEnclosing = true) {
-                // Need to catch Swift exceptions here for Rollback
-                catchSwiftExceptions {
-                    callback.execute(
-                        PowerSyncTransactionImpl(
-                            it.driver,
-                        ),
-                    )
-                }
+                callback.execute(
+                    PowerSyncTransactionImpl(
+                        it.driver,
+                    ),
+                )
             }
         }
 
     // Register callback for table updates on a specific table
     override fun updatesOnTables(): SharedFlow<Set<String>> = writeConnection.driver.updatesOnTables()
-
-    // Unfortunately Errors can't be thrown from Swift SDK callbacks.
-    // These are currently returned and should be thrown here.
-    private fun <R> catchSwiftExceptions(action: () -> R): R {
-        val result = action()
-
-        if (result is PowerSyncException) {
-            throw result
-        }
-        return result
-    }
 
     private suspend fun getSourceTables(
         sql: String,
