@@ -2,10 +2,6 @@
 
 package com.powersync
 
-import com.powersync.db.ThrowableLockCallback
-import com.powersync.db.ThrowableTransactionCallback
-import com.powersync.db.internal.ConnectionContext
-import com.powersync.db.internal.PowerSyncTransaction
 import com.powersync.sync.SyncClientConfiguration
 import com.powersync.sync.SyncOptions
 import io.ktor.client.plugins.logging.LogLevel

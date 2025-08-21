@@ -2,7 +2,6 @@ package com.powersync.db.internal
 
 import app.cash.sqldelight.db.SqlPreparedStatement
 import com.powersync.DatabaseDriverFactory
-import com.powersync.PowerSyncException
 import com.powersync.db.SqlCursor
 import com.powersync.db.ThrowableLockCallback
 import com.powersync.db.ThrowableTransactionCallback
