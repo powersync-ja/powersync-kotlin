@@ -2,6 +2,7 @@ package com.powersync.db.internal
 
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncException
+import com.powersync.db.QueryRunner
 import com.powersync.db.SqlCursor
 import com.powersync.db.driver.SQLiteConnectionLease
 
@@ -9,50 +10,57 @@ public interface PowerSyncTransaction : ConnectionContext
 
 @ExperimentalPowerSyncAPI
 internal class PowerSyncTransactionImpl(
-    private val lease: SQLiteConnectionLease,
-) : PowerSyncTransaction,
-    ConnectionContext {
-    private val delegate = ConnectionContextImplementation(lease)
+    lease: SQLiteConnectionLease,
+) : PowerSyncTransaction, BaseConnectionContextImplementation() {
+    override val async = AsyncPowerSyncTransactionImpl(lease)
+}
 
-    private fun checkInTransaction() {
-        if (!lease.isInTransactionSync()) {
+@OptIn(ExperimentalPowerSyncAPI::class)
+internal class AsyncPowerSyncTransactionImpl(
+    private val lease: SQLiteConnectionLease
+): QueryRunner {
+
+    private val delegate = ContextQueryRunner(lease)
+
+    private suspend fun checkInTransaction() {
+        if (!lease.isInTransaction()) {
             throw PowerSyncException("Tried executing statement on a transaction that has been rolled back", cause = null)
         }
     }
 
-    override fun execute(
+    override suspend fun execute(
         sql: String,
-        parameters: List<Any?>?,
+        parameters: List<Any?>?
     ): Long {
         checkInTransaction()
         return delegate.execute(sql, parameters)
     }
 
-    override fun <RowType : Any> getOptional(
+    override suspend fun <RowType : Any> get(
         sql: String,
         parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType,
-    ): RowType? {
+        mapper: (SqlCursor) -> RowType
+    ): RowType {
         checkInTransaction()
-        return delegate.getOptional(sql, parameters, mapper)
+        return delegate.get(sql, parameters, mapper)
     }
 
-    override fun <RowType : Any> getAll(
+    override suspend fun <RowType : Any> getAll(
         sql: String,
         parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType,
+        mapper: (SqlCursor) -> RowType
     ): List<RowType> {
         checkInTransaction()
         return delegate.getAll(sql, parameters, mapper)
     }
 
-    override fun <RowType : Any> get(
+    override suspend fun <RowType : Any> getOptional(
         sql: String,
         parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType,
-    ): RowType {
+        mapper: (SqlCursor) -> RowType
+    ): RowType? {
         checkInTransaction()
-        return delegate.get(sql, parameters, mapper)
+        return delegate.getOptional(sql, parameters, mapper)
     }
 }
 

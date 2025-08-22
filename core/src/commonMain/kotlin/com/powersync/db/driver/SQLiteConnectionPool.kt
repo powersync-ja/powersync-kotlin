@@ -27,22 +27,12 @@ public interface SQLiteConnectionLease {
      */
     public suspend fun isInTransaction(): Boolean
 
-    public fun isInTransactionSync(): Boolean {
-        return runBlocking { isInTransaction() }
-    }
-
     /**
      * Prepares [sql] as statement and runs [block] with it.
      *
      * Block most only run on a single-thread. The statement must not be used once [block] returns.
      */
     public suspend fun <R> usePrepared(sql: String, block: (SQLiteStatement) -> R): R
-
-    public fun <R> usePreparedSync(sql: String, block: (SQLiteStatement) -> R): R {
-        return runBlocking {
-            usePrepared(sql, block)
-        }
-    }
 
     public suspend fun execSQL(sql: String) {
         usePrepared(sql) {

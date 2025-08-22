@@ -36,7 +36,7 @@ internal class InternalDatabaseImpl(
         parameters: List<Any?>?,
     ): Long =
         writeLock { context ->
-            context.execute(sql, parameters)
+            context.async.execute(sql, parameters)
         }
 
     override suspend fun updateSchema(schemaJson: String) {
@@ -44,7 +44,7 @@ internal class InternalDatabaseImpl(
             runWrapped {
                 pool.withAllConnections { writer, readers ->
                     writer.runTransaction { tx ->
-                        tx.getOptional(
+                        tx.async.getOptional(
                             "SELECT powersync_replace_schema(?);",
                             listOf(schemaJson),
                         ) {}
@@ -63,19 +63,19 @@ internal class InternalDatabaseImpl(
         sql: String,
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType,
-    ): RowType = readLock { connection -> connection.get(sql, parameters, mapper) }
+    ): RowType = readLock { connection -> connection.async.get(sql, parameters, mapper) }
 
     override suspend fun <RowType : Any> getAll(
         sql: String,
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType,
-    ): List<RowType> = readLock { connection -> connection.getAll(sql, parameters, mapper) }
+    ): List<RowType> = readLock { connection -> connection.async.getAll(sql, parameters, mapper) }
 
     override suspend fun <RowType : Any> getOptional(
         sql: String,
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType,
-    ): RowType? = readLock { connection -> connection.getOptional(sql, parameters, mapper) }
+    ): RowType? = readLock { connection -> connection.async.getOptional(sql, parameters, mapper) }
 
     override fun onChange(
         tables: Set<String>,

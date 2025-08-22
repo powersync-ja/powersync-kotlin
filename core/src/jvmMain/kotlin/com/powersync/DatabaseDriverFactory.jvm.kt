@@ -10,7 +10,7 @@ public actual class DatabaseDriverFactory {
 }
 
 public actual fun BundledSQLiteDriver.addPowerSyncExtension() {
-    addExtension(powersyncExtension, "sqlite3_powersync_init")
+    addExtension("/Users/simon/src/powersync-sqlite-core/target/debug/libpowersync.dylib", "sqlite3_powersync_init")
 }
 
 private val powersyncExtension: String by lazy { extractLib("powersync") }

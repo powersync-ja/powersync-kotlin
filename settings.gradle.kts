@@ -34,6 +34,7 @@ include(":connectors:supabase")
 include(":PowerSyncKotlin")
 
 include(":compose")
+include(":integrations:room")
 
 include(":demos:android-supabase-todolist")
 include(":demos:supabase-todolist")

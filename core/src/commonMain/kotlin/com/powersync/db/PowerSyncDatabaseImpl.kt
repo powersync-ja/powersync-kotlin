@@ -107,7 +107,7 @@ internal class PowerSyncDatabaseImpl(
         logger.d { "PowerSyncVersion: $powerSyncVersion" }
 
         internalDb.writeTransaction { tx ->
-            tx.getOptional("SELECT powersync_init()") {}
+            tx.async.getOptional("SELECT powersync_init()") {}
         }
 
         updateSchemaInternal(schema)
