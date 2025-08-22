@@ -43,7 +43,7 @@ internal class InternalDatabaseImpl(
         withContext(dbContext) {
             runWrapped {
                 pool.withAllConnections { writer, readers ->
-                    writeTransaction { tx ->
+                    writer.runTransaction { tx ->
                         tx.getOptional(
                             "SELECT powersync_replace_schema(?);",
                             listOf(schemaJson),
