@@ -7,11 +7,11 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 public actual class DatabaseDriverFactory(
     private val context: Context,
 ) {
-    internal actual fun addPowerSyncExtension(driver: BundledSQLiteDriver) {
-        driver.addExtension("libpowersync.so", "sqlite3_powersync_init")
-    }
-
     internal actual fun resolveDefaultDatabasePath(dbFilename: String): String {
         return context.getDatabasePath(dbFilename).path
     }
+}
+
+public actual fun BundledSQLiteDriver.addPowerSyncExtension() {
+    addExtension("libpowersync.so", "sqlite3_powersync_init")
 }
