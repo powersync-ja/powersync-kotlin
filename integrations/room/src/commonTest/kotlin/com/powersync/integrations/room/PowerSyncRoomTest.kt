@@ -37,7 +37,7 @@ class PowerSyncRoomTest {
         val logger = Logger(loggerConfigInit())
 
         val powersync = PowerSyncDatabase.opened(
-            pool = RoomConnectionPool(database, this),
+            pool = RoomConnectionPool(database),
             scope = this,
             schema = TestDatabase.schema,
             group = PowerSyncDatabase.databaseGroup(logger, "test"),
