@@ -1,19 +1,17 @@
 package com.powersync.db.internal
 
 import androidx.sqlite.SQLiteConnection
-import androidx.sqlite.execSQL
-import co.touchlab.kermit.Logger
-import com.powersync.DatabaseDriverFactory
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncException
 import com.powersync.db.SqlCursor
 import com.powersync.db.ThrowableLockCallback
 import com.powersync.db.ThrowableTransactionCallback
+import com.powersync.db.driver.SQLiteConnectionLease
+import com.powersync.db.driver.SQLiteConnectionPool
 import com.powersync.db.runWrapped
 import com.powersync.utils.AtomicMutableSet
 import com.powersync.utils.JsonUtil
 import com.powersync.utils.throttle
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
@@ -22,66 +20,16 @@ import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.flow.transform
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
 
+@OptIn(ExperimentalPowerSyncAPI::class)
 internal class InternalDatabaseImpl(
-    private val factory: DatabaseDriverFactory,
-    private val scope: CoroutineScope,
-    logger: Logger,
-    private val dbFilename: String,
-    private val dbDirectory: String?,
-    private val writeLockMutex: Mutex,
+    private val pool: SQLiteConnectionPool
 ) : InternalDatabase {
-    private val updates = UpdateFlow(logger)
-
-    private val writeConnection = newConnection(false)
-
-    private val readPool =
-        ConnectionPool(factory = {
-            newConnection(true)
-        }, scope = scope)
-
     // Could be scope.coroutineContext, but the default is GlobalScope, which seems like a bad idea. To discuss.
     private val dbContext = Dispatchers.IO
 
-    private fun newConnection(readOnly: Boolean): SQLiteConnection {
-        val connection =
-            factory.openDatabase(
-                dbFilename = dbFilename,
-                dbDirectory = dbDirectory,
-                readOnly = false,
-                // We don't need a listener on read-only connections since we don't expect any update
-                // hooks here.
-                listener = if (readOnly) null else updates,
-            )
-
-        connection.execSQL("pragma journal_mode = WAL")
-        connection.execSQL("pragma journal_size_limit = ${6 * 1024 * 1024}")
-        connection.execSQL("pragma busy_timeout = 30000")
-        connection.execSQL("pragma cache_size = ${50 * 1024}")
-
-        if (readOnly) {
-            connection.execSQL("pragma query_only = TRUE")
-        }
-
-        // Older versions of the SDK used to set up an empty schema and raise the user version to 1.
-        // Keep doing that for consistency.
-        if (!readOnly) {
-            val version =
-                connection.prepare("pragma user_version").use {
-                    require(it.step())
-                    if (it.isNull(0)) 0L else it.getLong(0)
-                }
-            if (version < 1L) {
-                connection.execSQL("pragma user_version = 1")
-            }
-        }
-
-        return connection
-    }
 
     override suspend fun execute(
         sql: String,
@@ -94,9 +42,7 @@ internal class InternalDatabaseImpl(
     override suspend fun updateSchema(schemaJson: String) {
         withContext(dbContext) {
             runWrapped {
-                // First get a lock on all read connections
-                readPool.withAllConnections { readConnections ->
-                    // Then get access to the write connection
+                pool.withAllConnections { writer, readers ->
                     writeTransaction { tx ->
                         tx.getOptional(
                             "SELECT powersync_replace_schema(?);",
@@ -105,9 +51,8 @@ internal class InternalDatabaseImpl(
                     }
 
                     // Update the schema on all read connections
-                    for (readConnection in readConnections) {
-                        ConnectionContextImplementation(readConnection)
-                            .getAll("pragma table_info('sqlite_master')") {}
+                    for (readConnection in readers) {
+                        readConnection.execSQL("pragma table_info('sqlite_master')")
                     }
                 }
             }
@@ -207,35 +152,20 @@ internal class InternalDatabaseImpl(
                 }
         }
 
-    @ExperimentalPowerSyncAPI
-    override suspend fun leaseConnection(readOnly: Boolean): SQLiteConnection =
-        if (readOnly) {
-            readPool.obtainConnection()
+
+    override suspend fun leaseConnection(readOnly: Boolean): SQLiteConnectionLease {
+        return if (readOnly) {
+            pool.read()
         } else {
-            writeLockMutex.lock()
-            RawConnectionLease(writeConnection) {
-                scope.launch {
-                    // When we've leased a write connection, we may have to update table update
-                    // flows after users ran their custom statements.
-                    // For internal queries, this happens with leaseWrite() and an asynchronous call
-                    // in internalWriteLock
-                    updates.fireTableUpdates()
-                }
-
-                writeLockMutex.unlock()
-            }
+            pool.write()
         }
-
-    private suspend fun leaseWrite(): SQLiteConnection {
-        writeLockMutex.lock()
-        return RawConnectionLease(writeConnection, writeLockMutex::unlock)
     }
 
     /**
      * Creates a read lock while providing an internal transactor for transactions
      */
     @OptIn(ExperimentalPowerSyncAPI::class)
-    private suspend fun <R> internalReadLock(callback: (SQLiteConnection) -> R): R =
+    private suspend fun <R> internalReadLock(callback: suspend (SQLiteConnectionLease) -> R): R =
         withContext(dbContext) {
             runWrapped {
                 val connection = leaseConnection(readOnly = true)
@@ -265,18 +195,14 @@ internal class InternalDatabaseImpl(
         }
 
     @OptIn(ExperimentalPowerSyncAPI::class)
-    private suspend fun <R> internalWriteLock(callback: (SQLiteConnection) -> R): R =
+    private suspend fun <R> internalWriteLock(callback: suspend (SQLiteConnectionLease) -> R): R =
         withContext(dbContext) {
-            val lease = leaseWrite()
+            val lease = pool.write()
             try {
                 runWrapped {
                     catchSwiftExceptions {
                         callback(lease)
                     }
-                }.also {
-                    // Trigger watched queries
-                    // Fire updates inside the write lock
-                    updates.fireTableUpdates()
                 }
             } finally {
                 // Returning the lease will unlock the writeLockMutex
@@ -291,6 +217,7 @@ internal class InternalDatabaseImpl(
 
     override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R =
         internalWriteLock {
+
             it.runTransaction { tx ->
                 // Need to catch Swift exceptions here for Rollback
                 catchSwiftExceptions {
@@ -300,7 +227,7 @@ internal class InternalDatabaseImpl(
         }
 
     // Register callback for table updates on a specific table
-    override fun updatesOnTables(): SharedFlow<Set<String>> = updates.updatesOnTables()
+    override fun updatesOnTables(): SharedFlow<Set<String>> = pool.updates
 
     // Unfortunately Errors can't be thrown from Swift SDK callbacks.
     // These are currently returned and should be thrown here.
@@ -351,8 +278,7 @@ internal class InternalDatabaseImpl(
 
     override suspend fun close() {
         runWrapped {
-            writeConnection.close()
-            readPool.close()
+            pool.close()
         }
     }
 

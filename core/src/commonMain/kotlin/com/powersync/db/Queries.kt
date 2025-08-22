@@ -1,8 +1,8 @@
 package com.powersync.db
 
-import androidx.sqlite.SQLiteConnection
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncException
+import com.powersync.db.driver.SQLiteConnectionLease
 import com.powersync.db.internal.ConnectionContext
 import com.powersync.db.internal.PowerSyncTransaction
 import kotlinx.coroutines.flow.Flow
@@ -192,9 +192,9 @@ public interface Queries {
      *
      * This is useful when you need full control over the raw statements to use.
      *
-     * The connection needs to be released by calling [SQLiteConnection.close] as soon as you're
-     * done with it, because the connection will occupy a read resource or the write lock while
-     * active.
+     * The connection needs to be released by calling [SQLiteConnectionLease.close] as soon as
+     * you're done with it, because the connection will occupy a read resource or the write lock
+     * while active.
      *
      * Misusing this API, for instance by not cleaning up transactions started on the underlying
      * connection with a `BEGIN` statement or forgetting to close it, can disrupt the rest of the
@@ -202,5 +202,5 @@ public interface Queries {
      */
     @ExperimentalPowerSyncAPI()
     @HiddenFromObjC()
-    public suspend fun leaseConnection(readOnly: Boolean = false): SQLiteConnection
+    public suspend fun leaseConnection(readOnly: Boolean = false): SQLiteConnectionLease
 }

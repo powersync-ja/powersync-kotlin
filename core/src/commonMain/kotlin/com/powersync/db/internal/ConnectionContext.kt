@@ -1,12 +1,15 @@
 package com.powersync.db.internal
 
-import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.SQLiteStatement
+import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncException
 import com.powersync.db.SqlCursor
 import com.powersync.db.StatementBasedCursor
+import com.powersync.db.driver.SQLiteConnectionLease
 
 public interface ConnectionContext {
+    // TODO (breaking): Make asynchronous, create shared superinterface with Queries
+
     @Throws(PowerSyncException::class)
     public fun execute(
         sql: String,
@@ -35,8 +38,9 @@ public interface ConnectionContext {
     ): RowType
 }
 
+@ExperimentalPowerSyncAPI
 internal class ConnectionContextImplementation(
-    private val rawConnection: SQLiteConnection,
+    private val rawConnection: SQLiteConnectionLease,
 ) : ConnectionContext {
     override fun execute(
         sql: String,
@@ -46,9 +50,11 @@ internal class ConnectionContextImplementation(
             while (it.step()) {
                 // Iterate through the statement
             }
+        }
 
-            // TODO: What is this even supposed to return
-            return 0L
+        return withStatement("SELECT changes()", null) {
+            check(it.step())
+            it.getLong(0)
         }
     }
 
@@ -88,36 +94,32 @@ internal class ConnectionContextImplementation(
     private inline fun <T> withStatement(
         sql: String,
         parameters: List<Any?>?,
-        block: (SQLiteStatement) -> T,
-    ): T = prepareStmt(sql, parameters).use(block)
+        crossinline block: (SQLiteStatement) -> T,
+    ): T {
+        return rawConnection.usePreparedSync(sql) { stmt ->
+            stmt.bind(parameters)
+            block(stmt)
+        }
+    }
+}
 
-    private fun prepareStmt(
-        sql: String,
-        parameters: List<Any?>?,
-    ): SQLiteStatement =
-        rawConnection.prepare(sql).apply {
-            try {
-                parameters?.forEachIndexed { i, parameter ->
-                    // SQLite parameters are 1-indexed
-                    val index = i + 1
+internal fun SQLiteStatement.bind(parameters: List<Any?>?) {
+    parameters?.forEachIndexed { i, parameter ->
+        // SQLite parameters are 1-indexed
+        val index = i + 1
 
-                    when (parameter) {
-                        is Boolean -> bindBoolean(index, parameter)
-                        is String -> bindText(index, parameter)
-                        is Long -> bindLong(index, parameter)
-                        is Int -> bindLong(index, parameter.toLong())
-                        is Double -> bindDouble(index, parameter)
-                        is ByteArray -> bindBlob(index, parameter)
-                        else -> {
-                            if (parameter != null) {
-                                throw IllegalArgumentException("Unsupported parameter type: ${parameter::class}, at index $index")
-                            }
-                        }
-                    }
+        when (parameter) {
+            is Boolean -> bindBoolean(index, parameter)
+            is String -> bindText(index, parameter)
+            is Long -> bindLong(index, parameter)
+            is Int -> bindLong(index, parameter.toLong())
+            is Double -> bindDouble(index, parameter)
+            is ByteArray -> bindBlob(index, parameter)
+            else -> {
+                if (parameter != null) {
+                    throw IllegalArgumentException("Unsupported parameter type: ${parameter::class}, at index $index")
                 }
-            } catch (e: Exception) {
-                close()
-                throw e
             }
         }
+    }
 }

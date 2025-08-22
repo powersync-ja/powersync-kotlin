@@ -1,20 +1,21 @@
 package com.powersync.db.internal
 
-import androidx.sqlite.SQLiteConnection
-import androidx.sqlite.execSQL
+import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncException
 import com.powersync.db.SqlCursor
+import com.powersync.db.driver.SQLiteConnectionLease
 
 public interface PowerSyncTransaction : ConnectionContext
 
+@ExperimentalPowerSyncAPI
 internal class PowerSyncTransactionImpl(
-    private val rawConnection: SQLiteConnection,
+    private val lease: SQLiteConnectionLease,
 ) : PowerSyncTransaction,
     ConnectionContext {
-    private val delegate = ConnectionContextImplementation(rawConnection)
+    private val delegate = ConnectionContextImplementation(lease)
 
     private fun checkInTransaction() {
-        if (!rawConnection.inTransaction()) {
+        if (!lease.isInTransactionSync()) {
             throw PowerSyncException("Tried executing statement on a transaction that has been rolled back", cause = null)
         }
     }
@@ -55,18 +56,19 @@ internal class PowerSyncTransactionImpl(
     }
 }
 
-internal inline fun <T> SQLiteConnection.runTransaction(cb: (PowerSyncTransaction) -> T): T {
+@ExperimentalPowerSyncAPI
+internal suspend fun <T> SQLiteConnectionLease.runTransaction(cb: suspend (PowerSyncTransaction) -> T): T {
     execSQL("BEGIN")
     var didComplete = false
     return try {
         val result = cb(PowerSyncTransactionImpl(this))
         didComplete = true
 
-        check(inTransaction())
+        check(isInTransaction())
         execSQL("COMMIT")
         result
     } catch (e: Throwable) {
-        if (!didComplete && inTransaction()) {
+        if (!didComplete && isInTransaction()) {
             execSQL("ROLLBACK")
         }
 

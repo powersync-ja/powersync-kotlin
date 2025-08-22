@@ -1,14 +1,20 @@
 package com.powersync
 
+import co.touchlab.kermit.Logger
 import com.powersync.bucket.BucketPriority
 import com.powersync.connectors.PowerSyncBackendConnector
+import com.powersync.db.ActiveDatabaseGroup
+import com.powersync.db.ActiveDatabaseResource
+import com.powersync.db.PowerSyncDatabaseImpl
 import com.powersync.db.Queries
 import com.powersync.db.crud.CrudBatch
 import com.powersync.db.crud.CrudTransaction
+import com.powersync.db.driver.SQLiteConnectionPool
 import com.powersync.db.schema.Schema
 import com.powersync.sync.SyncOptions
 import com.powersync.sync.SyncStatus
 import com.powersync.utils.JsonParam
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlin.coroutines.cancellation.CancellationException
@@ -203,4 +209,29 @@ public interface PowerSyncDatabase : Queries {
      */
     @Throws(PowerSyncException::class, CancellationException::class)
     public suspend fun close()
+
+    public companion object {
+        /**
+         * Creates a PowerSync database managed by an external connection pool.
+         *
+         * In this case, PowerSync will not open its own SQLite connections, but rather refer to
+         * connections in the [pool].
+         */
+        @ExperimentalPowerSyncAPI
+        public fun opened(
+            pool: SQLiteConnectionPool,
+            scope: CoroutineScope,
+            schema: Schema,
+            group: Pair<ActiveDatabaseResource, Any>,
+            logger: Logger,
+        ): PowerSyncDatabase {
+            return PowerSyncDatabaseImpl(
+                schema,
+                scope,
+                pool,
+                logger,
+                group,
+            )
+        }
+    }
 }

@@ -74,60 +74,6 @@ val downloadPowersyncDesktopBinaries by tasks.registering(Download::class) {
     onlyIfModified(true)
 }
 
-val sqliteJDBCFolder =
-    project.layout.buildDirectory
-        .dir("jdbc")
-        .get()
-
-val jniLibsFolder = layout.projectDirectory.dir("src/androidMain/jni")
-
-val downloadJDBCJar by tasks.registering(Download::class) {
-    val version =
-        libs.versions.sqlite.jdbc
-            .get()
-    val jar =
-        "https://github.com/xerial/sqlite-jdbc/releases/download/$version/sqlite-jdbc-$version.jar"
-
-    src(jar)
-    dest(sqliteJDBCFolder.file("jdbc.jar"))
-    onlyIfModified(true)
-}
-
-val extractJDBCJNI by tasks.registering(Copy::class) {
-    dependsOn(downloadJDBCJar)
-
-    from(
-        zipTree(downloadJDBCJar.get().dest).matching {
-            include("org/sqlite/native/Linux-Android/**")
-        },
-    )
-
-    into(sqliteJDBCFolder.dir("jni"))
-}
-
-val moveJDBCJNIFiles by tasks.registering(Copy::class) {
-    dependsOn(extractJDBCJNI)
-
-    val abiMapping =
-        mapOf(
-            "aarch64" to "arm64-v8a",
-            "arm" to "armeabi-v7a",
-            "x86_64" to "x86_64",
-            "x86" to "x86",
-        )
-
-    abiMapping.forEach { (sourceABI, androidABI) ->
-        from(sqliteJDBCFolder.dir("jni/org/sqlite/native/Linux-Android/$sourceABI")) {
-            include("*.so")
-            eachFile {
-                path = "$androidABI/$name"
-            }
-        }
-    }
-
-    into(jniLibsFolder) // Move everything into the base jniLibs folder
-}
-
 val generateVersionConstant by tasks.registering {
     val target = project.layout.buildDirectory.dir("generated/constants")
     val packageName = "com.powersync.build"
@@ -193,9 +139,6 @@ kotlin {
 
         val commonJava by creating {
             dependsOn(commonMain.get())
-            dependencies {
-                implementation(libs.sqlite.jdbc)
-            }
         }
 
         commonMain.configure {
@@ -204,7 +147,7 @@ kotlin {
             }
 
             dependencies {
-                api(libs.androidx.sqlite)
+                api(libs.androidx.sqlite.sqlite)
 
                 implementation(libs.uuid)
                 implementation(libs.kotlin.stdlib)
@@ -215,7 +158,7 @@ kotlin {
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.stately.concurrency)
                 implementation(libs.configuration.annotations)
-                api(projects.persistence)
+                implementation(libs.androidx.sqlite.bundled)
                 api(libs.ktor.client.core)
                 api(libs.kermit)
             }
@@ -236,8 +179,16 @@ kotlin {
 
         appleMain.dependencies {
             implementation(libs.ktor.client.darwin)
-            implementation(projects.staticSqliteDriver)
         }
+
+        // Common apple targets where we link the core extension dynamically
+        val appleNonWatchOsMain by creating {
+            dependsOn(appleMain.get())
+        }
+
+        macosMain.orNull?.dependsOn(appleNonWatchOsMain)
+        iosMain.orNull?.dependsOn(appleNonWatchOsMain)
+        tvosMain.orNull?.dependsOn(appleNonWatchOsMain)
 
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -296,12 +247,6 @@ android {
         }
     }
     ndkVersion = "27.1.12297006"
-}
-
-androidComponents.onVariants {
-    tasks.named("preBuild") {
-        dependsOn(moveJDBCJNIFiles)
-    }
 }
 
 tasks.named<ProcessResources>(kotlin.jvm().compilations["main"].processResourcesTaskName) {

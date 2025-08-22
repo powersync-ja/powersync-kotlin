@@ -510,8 +510,9 @@ class DatabaseTest {
                 listOf("a", "a@example.org"),
             )
 
+
             val raw = database.leaseConnection(readOnly = true)
-            raw.prepare("SELECT * FROM users").use { stmt ->
+            raw.usePrepared("SELECT * FROM users") { stmt ->
                 stmt.step() shouldBe true
                 stmt.getText(1) shouldBe "a"
                 stmt.getText(2) shouldBe "a@example.org"
@@ -524,7 +525,7 @@ class DatabaseTest {
     fun testLeaseWrite() =
         databaseTest {
             val raw = database.leaseConnection(readOnly = false)
-            raw.prepare("INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)").use { stmt ->
+            raw.usePrepared("INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)") { stmt ->
                 stmt.bindText(1, "name")
                 stmt.bindText(2, "email")
                 stmt.step() shouldBe false

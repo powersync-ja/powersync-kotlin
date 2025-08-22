@@ -1,6 +1,7 @@
-package com.powersync.db.internal
+package com.powersync.db.driver
 
 import androidx.sqlite.SQLiteConnection
+import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -11,7 +12,11 @@ import kotlinx.coroutines.channels.ClosedSendChannelException
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 
-internal class ConnectionPool(
+/**
+ * The read-part of a [SQLiteConnectionPool] backed by connections owned by the PowerSync SDK.
+ */
+@OptIn(ExperimentalPowerSyncAPI::class)
+internal class ReadPool(
     factory: () -> SQLiteConnection,
     size: Int = 5,
     private val scope: CoroutineScope,
@@ -83,6 +88,7 @@ internal class ConnectionPool(
         available.cancel(PoolClosedException)
         connections.joinAll()
     }
+
 }
 
 internal object PoolClosedException : CancellationException("Pool is closed")
