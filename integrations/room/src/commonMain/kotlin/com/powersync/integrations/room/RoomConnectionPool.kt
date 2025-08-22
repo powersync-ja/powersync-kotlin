@@ -6,13 +6,15 @@ import androidx.sqlite.SQLiteStatement
 import com.powersync.db.driver.SQLiteConnectionLease
 import com.powersync.db.driver.SQLiteConnectionPool
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 
-internal class RoomConnectionPool(
+public class RoomConnectionPool(
     private val db: RoomDatabase,
+    private val scope: CoroutineScope,
 ): SQLiteConnectionPool {
     private val _updates = MutableSharedFlow<Set<String>>()
 
@@ -32,17 +34,16 @@ internal class RoomConnectionPool(
 
     private suspend fun obtainLease(readonly: Boolean): SQLiteConnectionLease {
         val obtainedLease = CompletableDeferred<SQLiteConnectionLease>()
-        coroutineScope {
-            launch {
-                db.useConnection(readonly) { transactor ->
-                    val completer = CompletableDeferred<Unit>()
-                    obtainedLease.complete(RoomTransactionLease(transactor, completer))
-                    completer.await()
-                }
+        scope.launch {
+            db.useConnection(readonly) { transactor ->
+                val completer = CompletableDeferred<Unit>()
+                obtainedLease.complete(RoomTransactionLease(transactor, completer))
+                completer.await()
             }
         }
 
-        return obtainedLease.await()
+        val lease = obtainedLease.await()
+        return lease
     }
 
     override val updates: SharedFlow<Set<String>>

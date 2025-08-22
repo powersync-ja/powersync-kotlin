@@ -6,5 +6,4 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 
 actual fun createDatabaseBuilder(): RoomDatabase.Builder<TestDatabase> {
     return Room.inMemoryDatabaseBuilder<TestDatabase>()
-        .setDriver(BundledSQLiteDriver())
 }

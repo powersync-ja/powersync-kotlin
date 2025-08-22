@@ -1,32 +1,48 @@
 package com.powersync.integrations.room
 
+import androidx.room.ConstructedBy
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Delete
 import androidx.room.Entity
+import androidx.room.Insert
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.RoomDatabase
-
-@Database(entities = [User::class], version = 1)
-abstract class TestDatabase: RoomDatabase() {
-    abstract fun userDao(): UserDao
-}
-
-@Dao
-interface UserDao {
-    @Query("INSERT INTO user (id, name) VALUES (uuid(), :name)")
-    fun create(name: String)
-
-    @Query("SELECT * FROM user")
-    fun getAll(): List<User>
-
-    @Delete
-    fun delete(user: User)
-}
+import androidx.room.RoomDatabaseConstructor
+import com.powersync.db.schema.Schema
 
 @Entity
 data class User(
     @PrimaryKey val id: String,
     val name: String,
 )
+
+@Dao
+interface UserDao {
+    @Insert
+    suspend fun create(user: User)
+
+    @Query("SELECT * FROM user")
+    suspend fun getAll(): List<User>
+
+    @Delete
+    suspend fun delete(user: User)
+}
+
+
+@Database(entities = [User::class], version = 1)
+@ConstructedBy(TestDatabaseConstructor::class)
+abstract class TestDatabase: RoomDatabase() {
+    abstract fun userDao(): UserDao
+
+    companion object {
+        val schema = Schema()
+    }
+}
+
+// The Room compiler generates the `actual` implementations.
+@Suppress("KotlinNoActualForExpect")
+expect object TestDatabaseConstructor : RoomDatabaseConstructor<TestDatabase> {
+    override fun initialize(): TestDatabase
+}
