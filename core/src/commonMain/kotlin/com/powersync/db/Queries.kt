@@ -13,22 +13,15 @@ import kotlin.time.Duration.Companion.milliseconds
 
 public fun interface ThrowableTransactionCallback<R> {
     @Throws(PowerSyncException::class, kotlinx.coroutines.CancellationException::class)
-    public fun execute(transaction: PowerSyncTransaction): R
+    public suspend fun execute(transaction: PowerSyncTransaction): R
 }
 
 public fun interface ThrowableLockCallback<R> {
     @Throws(PowerSyncException::class, kotlinx.coroutines.CancellationException::class)
-    public fun execute(context: ConnectionContext): R
+    public suspend fun execute(context: ConnectionContext): R
 }
 
-public interface Queries {
-    public companion object {
-        /**
-         * The default throttle duration for  [onChange] and [watch] operations.
-         */
-        public val DEFAULT_THROTTLE: Duration = 30.milliseconds
-    }
-
+public interface QueryRunner {
     /**
      * Executes a write query (INSERT, UPDATE, DELETE).
      *
@@ -94,6 +87,15 @@ public interface Queries {
         parameters: List<Any?>? = listOf(),
         mapper: (SqlCursor) -> RowType,
     ): RowType?
+}
+
+public interface Queries : QueryRunner {
+    public companion object {
+        /**
+         * The default throttle duration for  [onChange] and [watch] operations.
+         */
+        public val DEFAULT_THROTTLE: Duration = 30.milliseconds
+    }
 
     /**
      * Returns a [Flow] that emits whenever the source tables are modified.

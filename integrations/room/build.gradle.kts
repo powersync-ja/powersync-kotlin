@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlinter)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlinSerialization)
     id("com.powersync.plugins.sonatype")
     id("dokka-convention")
 }
@@ -25,6 +26,8 @@ kotlin {
         commonMain.dependencies {
             api(project(":core"))
             api(libs.androidx.room.runtime)
+
+            implementation(libs.kotlinx.serialization.json)
         }
 
         commonTest.dependencies {

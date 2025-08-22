@@ -19,10 +19,6 @@ internal class RawConnectionLease(
     }
 
     override suspend fun isInTransaction(): Boolean {
-        return isInTransactionSync()
-    }
-
-    override fun isInTransactionSync(): Boolean {
         checkNotCompleted()
         return connection.inTransaction()
     }
@@ -31,10 +27,6 @@ internal class RawConnectionLease(
         sql: String,
         block: (SQLiteStatement) -> R
     ): R {
-        return usePreparedSync(sql, block)
-    }
-
-    override fun <R> usePreparedSync(sql: String, block: (SQLiteStatement) -> R): R {
         checkNotCompleted()
         return connection.prepare(sql).use(block)
     }

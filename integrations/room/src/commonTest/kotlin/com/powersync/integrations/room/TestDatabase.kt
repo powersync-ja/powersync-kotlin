@@ -11,6 +11,7 @@ import androidx.room.Query
 import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
 import com.powersync.db.schema.Schema
+import kotlinx.coroutines.flow.Flow
 
 @Entity
 data class User(
@@ -25,6 +26,9 @@ interface UserDao {
 
     @Query("SELECT * FROM user")
     suspend fun getAll(): List<User>
+
+    @Query("SELECT * FROM user")
+    fun watchAll(): Flow<List<User>>
 
     @Delete
     suspend fun delete(user: User)

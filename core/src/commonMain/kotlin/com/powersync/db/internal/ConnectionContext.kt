@@ -3,12 +3,16 @@ package com.powersync.db.internal
 import androidx.sqlite.SQLiteStatement
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncException
+import com.powersync.db.QueryRunner
 import com.powersync.db.SqlCursor
 import com.powersync.db.StatementBasedCursor
 import com.powersync.db.driver.SQLiteConnectionLease
+import kotlinx.coroutines.runBlocking
 
 public interface ConnectionContext {
     // TODO (breaking): Make asynchronous, create shared superinterface with Queries
+
+    public val async: QueryRunner
 
     @Throws(PowerSyncException::class)
     public fun execute(
@@ -38,13 +42,53 @@ public interface ConnectionContext {
     ): RowType
 }
 
-@ExperimentalPowerSyncAPI
-internal class ConnectionContextImplementation(
-    private val rawConnection: SQLiteConnectionLease,
-) : ConnectionContext {
+/**
+ * An implementation of a [ConnectionContext] that delegates to a [QueryRunner] via [runBlocking].
+ */
+internal abstract class BaseConnectionContextImplementation(): ConnectionContext {
     override fun execute(
         sql: String,
         parameters: List<Any?>?,
+    ): Long = runBlocking { async.execute(sql, parameters) }
+
+    override fun <RowType : Any> getOptional(
+        sql: String,
+        parameters: List<Any?>?,
+        mapper: (SqlCursor) -> RowType,
+    ): RowType? = runBlocking {
+        async.getOptional(sql, parameters, mapper)
+    }
+
+    override fun <RowType : Any> getAll(
+        sql: String,
+        parameters: List<Any?>?,
+        mapper: (SqlCursor) -> RowType,
+    ): List<RowType> =
+        runBlocking {
+            async.getAll(sql, parameters, mapper)
+        }
+
+    override fun <RowType : Any> get(
+        sql: String,
+        parameters: List<Any?>?,
+        mapper: (SqlCursor) -> RowType,
+    ): RowType = runBlocking {
+        async.get(sql, parameters, mapper)
+    }
+}
+
+@OptIn(ExperimentalPowerSyncAPI::class)
+internal class ConnectionContextImplementation(lease: SQLiteConnectionLease): BaseConnectionContextImplementation() {
+    override val async = ContextQueryRunner(lease)
+}
+
+@OptIn(ExperimentalPowerSyncAPI::class)
+internal class ContextQueryRunner(
+    private val rawConnection: SQLiteConnectionLease
+): QueryRunner {
+    override suspend fun execute(
+        sql: String,
+        parameters: List<Any?>?
     ): Long {
         withStatement(sql, parameters) {
             while (it.step()) {
@@ -58,45 +102,43 @@ internal class ConnectionContextImplementation(
         }
     }
 
-    override fun <RowType : Any> getOptional(
+    override suspend fun <RowType : Any> get(
         sql: String,
         parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType,
-    ): RowType? =
-        withStatement(sql, parameters) { stmt ->
-            if (stmt.step()) {
-                mapper(StatementBasedCursor(stmt))
-            } else {
-                null
-            }
-        }
-
-    override fun <RowType : Any> getAll(
-        sql: String,
-        parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType,
-    ): List<RowType> =
-        withStatement(sql, parameters) { stmt ->
-            buildList {
-                val cursor = StatementBasedCursor(stmt)
-                while (stmt.step()) {
-                    add(mapper(cursor))
-                }
-            }
-        }
-
-    override fun <RowType : Any> get(
-        sql: String,
-        parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType,
+        mapper: (SqlCursor) -> RowType
     ): RowType = getOptional(sql, parameters, mapper) ?: throw PowerSyncException("get() called with query that returned no rows", null)
 
-    private inline fun <T> withStatement(
+    override suspend fun <RowType : Any> getAll(
+        sql: String,
+        parameters: List<Any?>?,
+        mapper: (SqlCursor) -> RowType
+    ): List<RowType> = withStatement(sql, parameters) { stmt ->
+        buildList {
+            val cursor = StatementBasedCursor(stmt)
+            while (stmt.step()) {
+                add(mapper(cursor))
+            }
+        }
+    }
+
+    override suspend fun <RowType : Any> getOptional(
+        sql: String,
+        parameters: List<Any?>?,
+        mapper: (SqlCursor) -> RowType
+    ): RowType? = withStatement(sql, parameters) { stmt ->
+        if (stmt.step()) {
+            mapper(StatementBasedCursor(stmt))
+        } else {
+            null
+        }
+    }
+
+    private suspend inline fun <T> withStatement(
         sql: String,
         parameters: List<Any?>?,
         crossinline block: (SQLiteStatement) -> T,
     ): T {
-        return rawConnection.usePreparedSync(sql) { stmt ->
+        return rawConnection.usePrepared(sql) { stmt ->
             stmt.bind(parameters)
             block(stmt)
         }
