@@ -2,7 +2,9 @@ package com.powersync
 
 import co.touchlab.kermit.Logger
 import co.touchlab.skie.configuration.annotations.DefaultArgumentInterop
+import com.powersync.db.ActiveDatabaseGroup
 import com.powersync.db.PowerSyncDatabaseImpl
+import com.powersync.db.driver.InternalConnectionPool
 import com.powersync.db.schema.Schema
 import com.powersync.utils.generateLogger
 import kotlinx.coroutines.CoroutineScope
@@ -40,6 +42,7 @@ public fun PowerSyncDatabase(
     )
 }
 
+@OptIn(ExperimentalPowerSyncAPI::class)
 internal fun createPowerSyncDatabaseImpl(
     factory: DatabaseDriverFactory,
     schema: Schema,
@@ -47,12 +50,23 @@ internal fun createPowerSyncDatabaseImpl(
     scope: CoroutineScope,
     logger: Logger,
     dbDirectory: String?,
-): PowerSyncDatabaseImpl =
-    PowerSyncDatabaseImpl(
-        schema = schema,
-        factory = factory,
-        dbFilename = dbFilename,
-        scope = scope,
-        logger = logger,
-        dbDirectory = dbDirectory,
+): PowerSyncDatabaseImpl {
+    val identifier = dbDirectory + dbFilename
+    val activeDatabaseGroup = ActiveDatabaseGroup.referenceDatabase(logger, identifier)
+
+    val pool = InternalConnectionPool(
+        factory,
+        scope,
+        dbFilename,
+        dbDirectory,
+        activeDatabaseGroup.first.group.writeLockMutex
     )
+
+    return PowerSyncDatabase.opened(
+        pool,
+        scope,
+        schema,
+        activeDatabaseGroup,
+        logger,
+    ) as PowerSyncDatabaseImpl
+}
