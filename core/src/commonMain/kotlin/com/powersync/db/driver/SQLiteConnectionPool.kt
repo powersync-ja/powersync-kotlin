@@ -7,14 +7,13 @@ import kotlinx.coroutines.runBlocking
 
 @ExperimentalPowerSyncAPI()
 public interface SQLiteConnectionPool {
-    public suspend fun read(): SQLiteConnectionLease
+    public suspend fun <T> read(callback: suspend (SQLiteConnectionLease) -> T): T
+    public suspend fun <T> write(callback: suspend (SQLiteConnectionLease) -> T): T
 
     public suspend fun <R> withAllConnections(action: suspend (
         writer: SQLiteConnectionLease,
         readers: List<SQLiteConnectionLease>
     ) -> R)
-
-    public suspend fun write(): SQLiteConnectionLease
 
     public val updates: SharedFlow<Set<String>>
 
@@ -50,9 +49,4 @@ public interface SQLiteConnectionLease {
             it.step()
         }
     }
-
-    /**
-     * Returns the leased connection to the pool.
-     */
-    public suspend fun close()
 }

@@ -233,5 +233,9 @@ public interface PowerSyncDatabase : Queries {
                 group,
             )
         }
+
+        public fun databaseGroup(logger: Logger, identifier: String): Pair<ActiveDatabaseResource, Any> {
+            return ActiveDatabaseGroup.referenceDatabase(logger, identifier)
+        }
     }
 }

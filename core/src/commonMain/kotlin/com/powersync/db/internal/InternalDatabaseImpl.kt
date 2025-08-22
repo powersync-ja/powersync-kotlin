@@ -152,12 +152,14 @@ internal class InternalDatabaseImpl(
                 }
         }
 
-
-    override suspend fun leaseConnection(readOnly: Boolean): SQLiteConnectionLease {
+    override suspend fun <T> useConnection(
+        readOnly: Boolean,
+        block: suspend (SQLiteConnectionLease) -> T
+    ): T {
         return if (readOnly) {
-            pool.read()
+            pool.read(block)
         } else {
-            pool.write()
+            pool.write(block)
         }
     }
 
@@ -168,14 +170,10 @@ internal class InternalDatabaseImpl(
     private suspend fun <R> internalReadLock(callback: suspend (SQLiteConnectionLease) -> R): R =
         withContext(dbContext) {
             runWrapped {
-                val connection = leaseConnection(readOnly = true)
-                try {
+                useConnection(true) { connection ->
                     catchSwiftExceptions {
                         callback(connection)
                     }
-                } finally {
-                    // Closing the lease will release the connection back into the pool.
-                    connection.close()
                 }
             }
         }
@@ -197,16 +195,12 @@ internal class InternalDatabaseImpl(
     @OptIn(ExperimentalPowerSyncAPI::class)
     private suspend fun <R> internalWriteLock(callback: suspend (SQLiteConnectionLease) -> R): R =
         withContext(dbContext) {
-            val lease = pool.write()
-            try {
+            pool.write { writer ->
                 runWrapped {
                     catchSwiftExceptions {
-                        callback(lease)
+                        callback(writer)
                     }
                 }
-            } finally {
-                // Returning the lease will unlock the writeLockMutex
-                lease.close()
             }
         }
 

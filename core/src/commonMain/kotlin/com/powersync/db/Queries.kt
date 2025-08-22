@@ -192,15 +192,11 @@ public interface Queries {
      *
      * This is useful when you need full control over the raw statements to use.
      *
-     * The connection needs to be released by calling [SQLiteConnectionLease.close] as soon as
-     * you're done with it, because the connection will occupy a read resource or the write lock
-     * while active.
-     *
      * Misusing this API, for instance by not cleaning up transactions started on the underlying
      * connection with a `BEGIN` statement or forgetting to close it, can disrupt the rest of the
      * PowerSync SDK. For this reason, this method should only be used if absolutely necessary.
      */
     @ExperimentalPowerSyncAPI()
     @HiddenFromObjC()
-    public suspend fun leaseConnection(readOnly: Boolean = false): SQLiteConnectionLease
+    public suspend fun <T> useConnection(readOnly: Boolean = false, block: suspend (SQLiteConnectionLease) -> T): T
 }

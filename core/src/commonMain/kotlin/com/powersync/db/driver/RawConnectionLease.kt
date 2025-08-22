@@ -11,7 +11,6 @@ import com.powersync.ExperimentalPowerSyncAPI
 @OptIn(ExperimentalPowerSyncAPI::class)
 internal class RawConnectionLease(
     private val connection: SQLiteConnection,
-    private val returnConnection: () -> Unit,
 ) : SQLiteConnectionLease {
     private var isCompleted = false
 
@@ -38,13 +37,5 @@ internal class RawConnectionLease(
     override fun <R> usePreparedSync(sql: String, block: (SQLiteStatement) -> R): R {
         checkNotCompleted()
         return connection.prepare(sql).use(block)
-    }
-
-    override suspend fun close() {
-        // Note: This is a lease, don't close the underlying connection.
-        if (!isCompleted) {
-            isCompleted = true
-            returnConnection()
-        }
     }
 }

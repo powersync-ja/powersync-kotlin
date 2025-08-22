@@ -43,18 +43,21 @@ internal class ReadPool(
             }
         }
 
-    suspend fun obtainConnection(): RawConnectionLease {
-        val (connection, done) =
-            try {
-                available.receive()
-            } catch (e: PoolClosedException) {
-                throw PowerSyncException(
-                    message = "Cannot process connection pool request",
-                    cause = e,
-                )
-            }
+    suspend fun <T> read(block: suspend (SQLiteConnectionLease) -> T): T {
+        val (connection, done) = try {
+            available.receive()
+        } catch (e: PoolClosedException) {
+            throw PowerSyncException(
+                message = "Cannot process connection pool request",
+                cause = e,
+            )
+        }
 
-        return RawConnectionLease(connection) { done.complete(Unit) }
+        try {
+            return block(RawConnectionLease(connection))
+        } finally {
+            done.complete(Unit)
+        }
     }
 
     suspend fun <R> withAllConnections(action: suspend (connections: List<SQLiteConnection>) -> R): R {

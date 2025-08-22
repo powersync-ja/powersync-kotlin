@@ -22,6 +22,8 @@ import io.kotest.matchers.string.shouldContain
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
@@ -503,37 +505,45 @@ class DatabaseTest {
 
     @Test
     @OptIn(ExperimentalPowerSyncAPI::class)
-    fun testLeaseReadOnly() =
+    fun testUseRawReadOnly() =
         databaseTest {
             database.execute(
                 "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
                 listOf("a", "a@example.org"),
             )
 
-
-            val raw = database.leaseConnection(readOnly = true)
-            raw.usePrepared("SELECT * FROM users") { stmt ->
-                stmt.step() shouldBe true
-                stmt.getText(1) shouldBe "a"
-                stmt.getText(2) shouldBe "a@example.org"
+            database.useConnection(true) {
+                it.usePrepared("SELECT * FROM users") { stmt ->
+                    stmt.step() shouldBe true
+                    stmt.getText(1) shouldBe "a"
+                    stmt.getText(2) shouldBe "a@example.org"
+                }
             }
-            raw.close()
         }
 
     @Test
     @OptIn(ExperimentalPowerSyncAPI::class)
-    fun testLeaseWrite() =
+    fun testUseRawWrite() =
         databaseTest {
-            val raw = database.leaseConnection(readOnly = false)
-            raw.usePrepared("INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)") { stmt ->
-                stmt.bindText(1, "name")
-                stmt.bindText(2, "email")
-                stmt.step() shouldBe false
+            val didWrite = CompletableDeferred<Unit>()
 
-                stmt.reset()
-                stmt.step() shouldBe false
+            val job = scope.launch {
+                database.useConnection(readOnly = false) { raw ->
+                    raw.usePrepared("INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)") { stmt ->
+                        stmt.bindText(1, "name")
+                        stmt.bindText(2, "email")
+                        stmt.step() shouldBe false
+
+                        stmt.reset()
+                        stmt.step() shouldBe false
+                    }
+
+                    didWrite.complete(Unit)
+                    awaitCancellation()
+                }
             }
 
+            didWrite.await()
             database.getAll("SELECT * FROM users") { it.getString("name") } shouldHaveSize 2
 
             // Verify that the statement indeed holds a lock on the database.
@@ -548,7 +558,7 @@ class DatabaseTest {
 
             delay(100.milliseconds)
             hadOtherWrite.isCompleted shouldBe false
-            raw.close()
+            job.cancelAndJoin()
             hadOtherWrite.await()
         }
 }

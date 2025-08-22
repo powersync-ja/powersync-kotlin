@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 @OptIn(ExperimentalPowerSyncAPI::class)
 internal class InternalConnectionPool(
@@ -65,40 +66,37 @@ internal class InternalConnectionPool(
         return connection
     }
 
-    override suspend fun read(): SQLiteConnectionLease {
-        return readPool.obtainConnection()
+    override suspend fun <T> read(callback: suspend (SQLiteConnectionLease) -> T): T {
+        return readPool.read(callback)
     }
 
-    override suspend fun write(): SQLiteConnectionLease {
-        writeLockMutex.lock()
-        return RawConnectionLease(writeConnection) {
-            // When we've leased a write connection, we may have to update table update flows
-            // after users ran their custom statements.
-            writeConnection.prepare("SELECT powersync_update_hooks('get')").use {
-                check(it.step())
-                val updatedTables = JsonUtil.json.decodeFromString<Set<String>>(it.getText(0))
-                if (updatedTables.isNotEmpty()) {
-                    scope.launch {
-                        tableUpdatesFlow.emit(updatedTables)
+    override suspend fun <T> write(callback: suspend (SQLiteConnectionLease) -> T): T {
+        return writeLockMutex.withLock {
+            try {
+                callback(RawConnectionLease(writeConnection))
+            } finally {
+                // When we've leased a write connection, we may have to update table update flows
+                // after users ran their custom statements.
+                writeConnection.prepare("SELECT powersync_update_hooks('get')").use {
+                    check(it.step())
+                    val updatedTables = JsonUtil.json.decodeFromString<Set<String>>(it.getText(0))
+                    if (updatedTables.isNotEmpty()) {
+                        scope.launch {
+                            tableUpdatesFlow.emit(updatedTables)
+                        }
                     }
                 }
             }
-
-            writeLockMutex.unlock()
         }
     }
 
     override suspend fun <R> withAllConnections(action: suspend (SQLiteConnectionLease, List<SQLiteConnectionLease>) -> R) {
         // First get a lock on all read connections
         readPool.withAllConnections { rawReadConnections ->
-            val readers = rawReadConnections.map { RawConnectionLease(it) {} }
+            val readers = rawReadConnections.map { RawConnectionLease(it) }
             // Then get access to the write connection
-            val writer = write()
-
-            try {
+            write { writer ->
                 action(writer, readers)
-            } finally {
-                writer.close()
             }
         }
     }
