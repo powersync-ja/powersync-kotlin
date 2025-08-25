@@ -1,17 +1,17 @@
 [versions]
 ## SDK Versions
 android-minSdk = "24"
-android-targetSdk = "35"
-android-compileSdk = "35"
-configurationAnnotations = "0.10.4"
+android-targetSdk = "36"
+android-compileSdk = "36"
+configurationAnnotations = "0.10.6"
 dokkaBase = "2.0.0"
 gradleDownloadTask = "5.6.0"
 java = "17"
 idea = "243.22562.218" # Meerkat | 2024.3.1 (see https://plugins.jetbrains.com/docs/intellij/android-studio-releases-list.html)
 
 # Dependencies
-kermit = "2.0.6"
-kotlin = "2.2.0"
+kermit = "2.0.8"
+kotlin = "2.2.10"
 coroutines = "1.10.2"
 kotlinx-datetime = "0.7.1"
 kotlinx-io = "0.8.0"
@@ -21,7 +21,7 @@ powersync-core = "0.4.4"
 sqlite-jdbc = "3.50.3.0"
 sqliter = "1.3.3"
 turbine = "1.2.1"
-kotest = "5.9.1"
+kotest = "5.9.1" # we can't upgrade to 6.x because that requires Java 11 or above (we need Java 8 support)
 
 sqlDelight = "2.1.0"
 stately = "2.1.0"
@@ -29,36 +29,36 @@ supabase = "3.2.2"
 junit = "4.13.2"
 
 compose = "1.8.2" # This is for the multiplatform compose
-androidCompose = "2025.07.00"
-compose-preview = "1.8.3"
-compose-lifecycle = "2.9.1"
+androidCompose = "2025.08.00"
+compose-preview = "1.9.9"
+compose-lifecycle = "2.9.2"
 androidxSqlite = "2.5.2"
 androidxSplashscreen = "1.0.1"
 
 # plugins
-android-gradle-plugin = "8.11.1"
-skie = "0.10.5"
+android-gradle-plugin = "8.12.1"
+skie = "0.10.6"
 maven-publish = "0.34.0"
 download-plugin = "5.6.0"
 grammarkit-composer = "0.1.12"
 mokkery = "2.9.0"
-kotlinter = "5.1.1"
+kotlinter = "5.2.0"
 keeper = "0.16.1"
 atomicfu = "0.29.0"
 buildKonfig = "0.17.1"
 
 # Sample - Android
-androidx-core = "1.16.0"
+androidx-core = "1.17.0"
 androidx-activity-compose = "1.10.1"
 materialIconsExtended = "1.7.8"
 
 androidx-appcompat = "1.7.1"
-androidx-espresso-core = "3.6.1"
+androidx-espresso-core = "3.7.0"
 androidx-lifecycle = "2.9.2"
 androidx-material = "1.12.0"
-androidx-test-runner = "1.6.2"
-androidx-test-rules = "1.6.1"
-junitVersion = "1.2.1"
+androidx-test-runner = "1.7.0"
+androidx-test-rules = "1.7.0"
+junitVersion = "1.3.0"
 koin-bom = "4.1.0"
 
 [libraries]
