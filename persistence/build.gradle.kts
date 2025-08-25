@@ -1,7 +1,7 @@
 import com.powersync.plugins.sonatype.setupGithubRepository
 import com.powersync.plugins.utils.powersyncTargets
-import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jmailen.gradle.kotlinter.tasks.FormatTask
+import org.jmailen.gradle.kotlinter.tasks.LintTask
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -79,11 +79,11 @@ sqldelight {
     }
 }
 
-tasks.formatKotlinCommonMain {
+tasks.withType<FormatTask> {
     exclude { it.file.path.contains("generated/") }
 }
 
-tasks.lintKotlinCommonMain {
+tasks.withType<LintTask> {
     exclude { it.file.path.contains("generated/") }
 }
 

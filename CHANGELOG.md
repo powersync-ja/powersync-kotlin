@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.5.0 (unreleased)
+## 1.5.0
 
 * Add `PowerSyncDatabase.getCrudTransactions()`, returning a flow of transactions. This is useful
   to upload multiple transactions in a batch.
