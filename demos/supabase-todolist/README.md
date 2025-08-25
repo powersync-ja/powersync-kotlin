@@ -41,7 +41,7 @@ all items have been received.
 1. Clone this repo: ```git clone https://github.com/powersync-ja/powersync-kotlin.git```
 2. Open the repo in Android Studio. This creates a `local.properties` file in root and should contain a `sdk.dir=/path/to/android/sdk` line.
 3. Sync the project with Gradle (this should happen automatically, or choose File > Sync project with Gradle Files).
-4. Insert your Supabase project URL, Supabase Anon Key, and PowerSync instance URL into the `demos/supabase-todlist/local.properties` file:
+4. Insert your Supabase project URL, Supabase Anon Key, and PowerSync instance URL into the `demos/supabase-todolist/local.properties` file:
 
 ```bash
 # local.properties

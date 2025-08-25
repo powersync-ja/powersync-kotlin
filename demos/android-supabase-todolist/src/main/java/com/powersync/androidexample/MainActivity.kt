@@ -3,6 +3,7 @@ package com.powersync.androidexample
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.powersync.androidexample.ui.CameraService
 import com.powersync.demos.App
@@ -14,6 +15,9 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
 
         super.onCreate(savedInstanceState)
+
+        // Needed to render system bar properly
+        enableEdgeToEdge()
 
         setContent {
             App(
