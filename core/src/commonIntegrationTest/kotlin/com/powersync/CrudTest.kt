@@ -134,10 +134,11 @@ class CrudTest {
                 )
             batch.crud[0].previousValues shouldBe null
 
-            batch.crud[1].opData shouldBe mapOf(
-                "a" to "te\"xt",
-                "b" to null,
-            )
+            batch.crud[1].opData shouldBe
+                mapOf(
+                    "a" to "te\"xt",
+                    "b" to null,
+                )
             batch.crud[1].opData?.typed shouldBe
                 mapOf(
                     "a" to "te\"xt",
