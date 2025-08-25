@@ -6,6 +6,7 @@
   to upload multiple transactions in a batch.
 * Fix modifying severity of the global Kermit logger
 * Add `PowerSync` tag for the logs
+* Fix `null` values in CRUD entries being reported as `"null"` strings.
 * [INTERNAL] Added helpers for Swift read and write lock exception handling.
 
 ## 1.4.0
