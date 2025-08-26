@@ -2,10 +2,12 @@
 
 package com.powersync
 
+import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.sync.SyncClientConfiguration
 import com.powersync.sync.SyncOptions
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
+import kotlinx.coroutines.CancellationException
 import io.ktor.client.plugins.logging.Logger as KtorLogger
 
 /**
@@ -88,3 +90,26 @@ public fun createSyncOptions(
         userAgent = userAgent,
         clientConfiguration = createExtendedSyncClientConfiguration(loggingConfig),
     )
+
+/**
+ * Swift 6 Strict concurrency checking causes an error if our adapter tries to use the non-sendable [PowerSyncDatabase] in [uploadData].
+ * A small wrapper class which avoids the Swift SDK's Kotlin adapter from having to override the [uploadData] method.
+ * In Swift we provide a Swift wrapper of the `database` which is used by the Swift connector's [uploadData] method.
+ * We keep track of this adapter and provide it to the Swift handler automatically.
+ * The Swift adapter will override the [performUpload] method to perform the actual upload.
+ */
+public abstract class SwiftPowerSyncBackendConnector : PowerSyncBackendConnector() {
+    /**
+     * We don't want to use the [PowerSyncDatabase] here since we can't declare it
+     * as Sendable. Swift6 will complain.
+     * We currently adapt the database and provide a wrapped version of the Swift
+     * database there.
+     */
+    public override suspend fun uploadData(database: PowerSyncDatabase): Unit = performUpload()
+
+    /**
+     * This will be used to perform the actual uploads of the data
+     */
+    @Throws(PowerSyncException::class, CancellationException::class)
+    public abstract suspend fun performUpload(): Unit
+}
