@@ -95,12 +95,11 @@ internal class ConnectionContextImplementation(
         sql: String,
         parameters: List<Any?>?,
         crossinline block: (SQLiteStatement) -> T,
-    ): T {
-        return rawConnection.usePreparedSync(sql) { stmt ->
+    ): T =
+        rawConnection.usePreparedSync(sql) { stmt ->
             stmt.bind(parameters)
             block(stmt)
         }
-    }
 }
 
 internal fun SQLiteStatement.bind(parameters: List<Any?>?) {

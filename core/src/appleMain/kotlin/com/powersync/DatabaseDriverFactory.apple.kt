@@ -2,9 +2,11 @@ package com.powersync
 
 import kotlinx.cinterop.UnsafeNumber
 import platform.Foundation.NSApplicationSupportDirectory
+import platform.Foundation.NSBundle
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSSearchPathForDirectoriesInDomains
 import platform.Foundation.NSUserDomainMask
+import kotlin.getValue
 
 @OptIn(UnsafeNumber::class)
 internal fun appleDefaultDatabasePath(dbFilename: String): String {
@@ -21,4 +23,18 @@ internal fun appleDefaultDatabasePath(dbFilename: String): String {
     }; // Create folder
 
     return databaseDirectory
+}
+
+internal val powerSyncExtensionPath: String by lazy {
+    // Try and find the bundle path for the SQLite core extension.
+    val bundlePath =
+        NSBundle.bundleWithIdentifier("co.powersync.sqlitecore")?.bundlePath
+            ?: // The bundle is not installed in the project
+            throw PowerSyncException(
+                "Please install the PowerSync SQLite core extension",
+                cause = Exception("The `co.powersync.sqlitecore` bundle could not be found in the project."),
+            )
+
+    // Construct full path to the shared library inside the bundle
+    bundlePath.let { "$it/powersync-sqlite-core" }
 }

@@ -28,10 +28,12 @@ public interface SQLiteConnectionPool {
     /**
      * Invokes the callback with all connections leased from the pool.
      */
-    public suspend fun <R> withAllConnections(action: suspend (
-        writer: SQLiteConnectionLease,
-        readers: List<SQLiteConnectionLease>
-    ) -> R)
+    public suspend fun <R> withAllConnections(
+        action: suspend (
+            writer: SQLiteConnectionLease,
+            readers: List<SQLiteConnectionLease>,
+        ) -> R,
+    )
 
     /**
      * Returns a flow of table updates made on the [write] connection.
@@ -54,22 +56,25 @@ public interface SQLiteConnectionLease {
      */
     public suspend fun isInTransaction(): Boolean
 
-    public fun isInTransactionSync(): Boolean {
-        return runBlocking { isInTransaction() }
-    }
+    public fun isInTransactionSync(): Boolean = runBlocking { isInTransaction() }
 
     /**
      * Prepares [sql] as statement and runs [block] with it.
      *
      * Block most only run on a single-thread. The statement must not be used once [block] returns.
      */
-    public suspend fun <R> usePrepared(sql: String, block: (SQLiteStatement) -> R): R
+    public suspend fun <R> usePrepared(
+        sql: String,
+        block: (SQLiteStatement) -> R,
+    ): R
 
-    public fun <R> usePreparedSync(sql: String, block: (SQLiteStatement) -> R): R {
-        return runBlocking {
+    public fun <R> usePreparedSync(
+        sql: String,
+        block: (SQLiteStatement) -> R,
+    ): R =
+        runBlocking {
             usePrepared(sql, block)
         }
-    }
 
     public suspend fun execSQL(sql: String) {
         usePrepared(sql) {

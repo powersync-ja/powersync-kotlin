@@ -7,9 +7,7 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 public actual class DatabaseDriverFactory(
     private val context: Context,
 ) {
-    internal actual fun resolveDefaultDatabasePath(dbFilename: String): String {
-        return context.getDatabasePath(dbFilename).path
-    }
+    internal actual fun resolveDefaultDatabasePath(dbFilename: String): String = context.getDatabasePath(dbFilename).path
 }
 
 public actual fun BundledSQLiteDriver.addPowerSyncExtension() {

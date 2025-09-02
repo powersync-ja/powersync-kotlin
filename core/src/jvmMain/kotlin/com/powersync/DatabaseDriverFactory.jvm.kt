@@ -4,9 +4,7 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING", "SqlNoDataSourceInspection")
 public actual class DatabaseDriverFactory {
-    internal actual fun resolveDefaultDatabasePath(dbFilename: String): String {
-        return dbFilename
-    }
+    internal actual fun resolveDefaultDatabasePath(dbFilename: String): String = dbFilename
 }
 
 public actual fun BundledSQLiteDriver.addPowerSyncExtension() {

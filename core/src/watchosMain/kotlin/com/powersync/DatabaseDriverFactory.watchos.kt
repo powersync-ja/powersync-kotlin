@@ -5,9 +5,7 @@ import com.powersync.static.powersync_init_static
 
 @Suppress(names = ["EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING"])
 public actual class DatabaseDriverFactory {
-    internal actual fun resolveDefaultDatabasePath(dbFilename: String): String {
-        return appleDefaultDatabasePath(dbFilename)
-    }
+    internal actual fun resolveDefaultDatabasePath(dbFilename: String): String = appleDefaultDatabasePath(dbFilename)
 }
 
 public actual fun BundledSQLiteDriver.addPowerSyncExtension() {

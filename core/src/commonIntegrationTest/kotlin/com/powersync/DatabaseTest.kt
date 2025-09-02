@@ -1,8 +1,8 @@
 package com.powersync
 
-import app.cash.turbine.test
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
+import app.cash.turbine.test
 import app.cash.turbine.turbineScope
 import co.touchlab.kermit.ExperimentalKermitApi
 import com.powersync.db.ActiveDatabaseGroup
@@ -527,21 +527,22 @@ class DatabaseTest {
         databaseTest {
             val didWrite = CompletableDeferred<Unit>()
 
-            val job = scope.launch {
-                database.useConnection(readOnly = false) { raw ->
-                    raw.usePrepared("INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)") { stmt ->
-                        stmt.bindText(1, "name")
-                        stmt.bindText(2, "email")
-                        stmt.step() shouldBe false
+            val job =
+                scope.launch {
+                    database.useConnection(readOnly = false) { raw ->
+                        raw.usePrepared("INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)") { stmt ->
+                            stmt.bindText(1, "name")
+                            stmt.bindText(2, "email")
+                            stmt.step() shouldBe false
 
-                        stmt.reset()
-                        stmt.step() shouldBe false
+                            stmt.reset()
+                            stmt.step() shouldBe false
+                        }
+
+                        didWrite.complete(Unit)
+                        awaitCancellation()
                     }
-
-                    didWrite.complete(Unit)
-                    awaitCancellation()
                 }
-            }
 
             didWrite.await()
             database.getAll("SELECT * FROM users") { it.getString("name") } shouldHaveSize 2

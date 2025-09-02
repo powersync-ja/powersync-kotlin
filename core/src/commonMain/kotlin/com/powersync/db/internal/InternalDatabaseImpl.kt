@@ -24,7 +24,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalPowerSyncAPI::class)
 internal class InternalDatabaseImpl(
-    private val pool: SQLiteConnectionPool
+    private val pool: SQLiteConnectionPool,
 ) : InternalDatabase {
     // Could be scope.coroutineContext, but the default is GlobalScope, which seems like a bad idea. To discuss.
     private val dbContext = Dispatchers.IO
@@ -152,14 +152,13 @@ internal class InternalDatabaseImpl(
 
     override suspend fun <T> useConnection(
         readOnly: Boolean,
-        block: suspend (SQLiteConnectionLease) -> T
-    ): T {
-        return if (readOnly) {
+        block: suspend (SQLiteConnectionLease) -> T,
+    ): T =
+        if (readOnly) {
             pool.read(block)
         } else {
             pool.write(block)
         }
-    }
 
     /**
      * Creates a read lock while providing an internal transactor for transactions
@@ -203,7 +202,6 @@ internal class InternalDatabaseImpl(
 
     override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R =
         internalWriteLock {
-
             it.runTransaction { tx ->
                 callback.execute(tx)
             }

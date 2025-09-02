@@ -54,13 +54,14 @@ internal fun createPowerSyncDatabaseImpl(
     val identifier = dbDirectory + dbFilename
     val activeDatabaseGroup = ActiveDatabaseGroup.referenceDatabase(logger, identifier)
 
-    val pool = InternalConnectionPool(
-        factory,
-        scope,
-        dbFilename,
-        dbDirectory,
-        activeDatabaseGroup.first.group.writeLockMutex
-    )
+    val pool =
+        InternalConnectionPool(
+            factory,
+            scope,
+            dbFilename,
+            dbDirectory,
+            activeDatabaseGroup.first.group.writeLockMutex,
+        )
 
     return PowerSyncDatabase.opened(
         pool,

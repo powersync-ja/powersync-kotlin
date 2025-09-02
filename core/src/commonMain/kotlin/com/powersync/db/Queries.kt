@@ -198,5 +198,8 @@ public interface Queries {
      */
     @ExperimentalPowerSyncAPI()
     @HiddenFromObjC()
-    public suspend fun <T> useConnection(readOnly: Boolean = false, block: suspend (SQLiteConnectionLease) -> T): T
+    public suspend fun <T> useConnection(
+        readOnly: Boolean = false,
+        block: suspend (SQLiteConnectionLease) -> T,
+    ): T
 }

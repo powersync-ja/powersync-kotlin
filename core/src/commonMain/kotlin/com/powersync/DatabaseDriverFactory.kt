@@ -37,9 +37,12 @@ internal fun openDatabase(
         }
 
     driver.addPowerSyncExtension()
-    return driver.open(dbPath, if (readOnly) {
-        SQLITE_OPEN_READONLY
-    } else {
-        SQLITE_OPEN_READWRITE or SQLITE_OPEN_CREATE
-    })
+    return driver.open(
+        dbPath,
+        if (readOnly) {
+            SQLITE_OPEN_READONLY
+        } else {
+            SQLITE_OPEN_READWRITE or SQLITE_OPEN_CREATE
+        },
+    )
 }

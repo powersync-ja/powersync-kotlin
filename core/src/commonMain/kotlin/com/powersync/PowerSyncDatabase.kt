@@ -229,19 +229,19 @@ public interface PowerSyncDatabase : Queries {
             schema: Schema,
             group: Pair<ActiveDatabaseResource, Any>,
             logger: Logger,
-        ): PowerSyncDatabase {
-            return PowerSyncDatabaseImpl(
+        ): PowerSyncDatabase =
+            PowerSyncDatabaseImpl(
                 schema,
                 scope,
                 pool,
                 logger,
                 group,
             )
-        }
 
         @ExperimentalPowerSyncAPI
-        public fun databaseGroup(logger: Logger, identifier: String): Pair<ActiveDatabaseResource, Any> {
-            return ActiveDatabaseGroup.referenceDatabase(logger, identifier)
-        }
+        public fun databaseGroup(
+            logger: Logger,
+            identifier: String,
+        ): Pair<ActiveDatabaseResource, Any> = ActiveDatabaseGroup.referenceDatabase(logger, identifier)
     }
 }

@@ -325,12 +325,11 @@ internal class PowerSyncDatabaseImpl(
     @ExperimentalPowerSyncAPI
     override suspend fun <T> useConnection(
         readOnly: Boolean,
-        block: suspend (SQLiteConnectionLease) -> T
+        block: suspend (SQLiteConnectionLease) -> T,
     ): T {
         waitReady()
         return internalDb.useConnection(readOnly, block)
     }
-
 
     override suspend fun <RowType : Any> get(
         sql: String,

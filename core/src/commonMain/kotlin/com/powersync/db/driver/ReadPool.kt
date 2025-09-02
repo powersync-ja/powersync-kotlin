@@ -44,14 +44,15 @@ internal class ReadPool(
         }
 
     suspend fun <T> read(block: suspend (SQLiteConnectionLease) -> T): T {
-        val (connection, done) = try {
-            available.receive()
-        } catch (e: PoolClosedException) {
-            throw PowerSyncException(
-                message = "Cannot process connection pool request",
-                cause = e,
-            )
-        }
+        val (connection, done) =
+            try {
+                available.receive()
+            } catch (e: PoolClosedException) {
+                throw PowerSyncException(
+                    message = "Cannot process connection pool request",
+                    cause = e,
+                )
+            }
 
         try {
             return block(RawConnectionLease(connection))
@@ -91,7 +92,6 @@ internal class ReadPool(
         available.cancel(PoolClosedException)
         connections.joinAll()
     }
-
 }
 
 internal object PoolClosedException : CancellationException("Pool is closed")

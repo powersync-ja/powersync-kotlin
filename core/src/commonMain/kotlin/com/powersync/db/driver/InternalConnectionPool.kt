@@ -20,21 +20,21 @@ internal class InternalConnectionPool(
     private val dbFilename: String,
     private val dbDirectory: String?,
     private val writeLockMutex: Mutex,
-    ): SQLiteConnectionPool {
-
+) : SQLiteConnectionPool {
     private val writeConnection = newConnection(false)
-    private val readPool = ReadPool({ newConnection(true) },  scope=scope)
+    private val readPool = ReadPool({ newConnection(true) }, scope = scope)
 
     // MutableSharedFlow to emit batched table updates
     private val tableUpdatesFlow = MutableSharedFlow<Set<String>>(replay = 0)
 
     private fun newConnection(readOnly: Boolean): SQLiteConnection {
-        val connection = openDatabase(
-            factory = factory,
-            dbFilename = dbFilename,
-            dbDirectory = dbDirectory,
-            readOnly = false,
-        )
+        val connection =
+            openDatabase(
+                factory = factory,
+                dbFilename = dbFilename,
+                dbDirectory = dbDirectory,
+                readOnly = false,
+            )
 
         connection.execSQL("pragma journal_mode = WAL")
         connection.execSQL("pragma journal_size_limit = ${6 * 1024 * 1024}")
@@ -66,12 +66,10 @@ internal class InternalConnectionPool(
         return connection
     }
 
-    override suspend fun <T> read(callback: suspend (SQLiteConnectionLease) -> T): T {
-        return readPool.read(callback)
-    }
+    override suspend fun <T> read(callback: suspend (SQLiteConnectionLease) -> T): T = readPool.read(callback)
 
-    override suspend fun <T> write(callback: suspend (SQLiteConnectionLease) -> T): T {
-        return writeLockMutex.withLock {
+    override suspend fun <T> write(callback: suspend (SQLiteConnectionLease) -> T): T =
+        writeLockMutex.withLock {
             try {
                 callback(RawConnectionLease(writeConnection))
             } finally {
@@ -88,7 +86,6 @@ internal class InternalConnectionPool(
                 }
             }
         }
-    }
 
     override suspend fun <R> withAllConnections(action: suspend (SQLiteConnectionLease, List<SQLiteConnectionLease>) -> R) {
         // First get a lock on all read connections
