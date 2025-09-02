@@ -1,14 +1,19 @@
 # Changelog
 
-## 1.5.0 (unreleased)
+## 1.6.0 (unreleased)
+
+* Remove internal SQLDelight and SQLiter dependencies.
+* Add `rawConnection` getter to `ConnectionContext`, which is a `SQLiteConnection` instance from
+  `androidx.sqlite` that can be used to step through statements in a custom way.
+
+## 1.5.0
 
 * Add `PowerSyncDatabase.getCrudTransactions()`, returning a flow of transactions. This is useful
   to upload multiple transactions in a batch.
 * Fix modifying severity of the global Kermit logger
 * Add `PowerSync` tag for the logs
-* Remove internal SQLDelight and SQLiter dependencies.
-* Add `rawConnection` getter to `ConnectionContext`, which is a `SQLiteConnection` instance from
-  `androidx.sqlite` that can be used to step through statements in a custom way.
+* Fix `null` values in CRUD entries being reported as `"null"` strings.
+* [INTERNAL] Added helpers for Swift read and write lock exception handling.
 
 ## 1.4.0
 

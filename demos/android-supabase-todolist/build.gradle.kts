@@ -20,7 +20,7 @@ fun getLocalProperty(
 
 android {
     namespace = "com.powersync.androidexample"
-    compileSdk = 35
+    compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     buildFeatures {
         buildConfig = true
@@ -29,7 +29,7 @@ android {
     defaultConfig {
         applicationId = "com.powersync.androidexample"
         minSdk = 24
-        targetSdk = 35
+        targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
 

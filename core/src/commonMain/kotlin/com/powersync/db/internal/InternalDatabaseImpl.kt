@@ -1,6 +1,5 @@
 package com.powersync.db.internal
 
-import androidx.sqlite.SQLiteConnection
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncException
 import com.powersync.db.SqlCursor
@@ -29,7 +28,6 @@ internal class InternalDatabaseImpl(
 ) : InternalDatabase {
     // Could be scope.coroutineContext, but the default is GlobalScope, which seems like a bad idea. To discuss.
     private val dbContext = Dispatchers.IO
-
 
     override suspend fun execute(
         sql: String,
@@ -171,9 +169,7 @@ internal class InternalDatabaseImpl(
         withContext(dbContext) {
             runWrapped {
                 useConnection(true) { connection ->
-                    catchSwiftExceptions {
-                        callback(connection)
-                    }
+                    callback(connection)
                 }
             }
         }
@@ -186,9 +182,7 @@ internal class InternalDatabaseImpl(
     override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R =
         internalReadLock {
             it.runTransaction { tx ->
-                catchSwiftExceptions {
-                    callback.execute(tx)
-                }
+                callback.execute(tx)
             }
         }
 
@@ -197,9 +191,7 @@ internal class InternalDatabaseImpl(
         withContext(dbContext) {
             pool.write { writer ->
                 runWrapped {
-                    catchSwiftExceptions {
-                        callback(writer)
-                    }
+                    callback(writer)
                 }
             }
         }
@@ -213,10 +205,7 @@ internal class InternalDatabaseImpl(
         internalWriteLock {
 
             it.runTransaction { tx ->
-                // Need to catch Swift exceptions here for Rollback
-                catchSwiftExceptions {
-                    callback.execute(tx)
-                }
+                callback.execute(tx)
             }
         }
 

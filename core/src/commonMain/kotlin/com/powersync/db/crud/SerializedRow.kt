@@ -4,6 +4,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.experimental.ExperimentalObjCRefinement
 import kotlin.native.HiddenFromObjC
@@ -47,11 +48,11 @@ internal class SerializedRow(
 
 private data class ToStringEntry(
     val inner: Map.Entry<String, JsonElement>,
-) : Map.Entry<String, String> {
+) : Map.Entry<String, String?> {
     override val key: String
         get() = inner.key
-    override val value: String
-        get() = inner.value.jsonPrimitive.content
+    override val value: String?
+        get() = inner.value.jsonPrimitive.contentOrNull
 }
 
 private class TypedRow(
