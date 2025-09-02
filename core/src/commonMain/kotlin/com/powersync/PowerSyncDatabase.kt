@@ -216,6 +216,11 @@ public interface PowerSyncDatabase : Queries {
          *
          * In this case, PowerSync will not open its own SQLite connections, but rather refer to
          * connections in the [pool].
+         *
+         * The `group` parameter should likely be teh result of calling [databaseGroup] - this is
+         * responsible for ensuring two instances of the same database file don't sync at the same
+         * time. So, a value that uniquely identifies the database should be passed to
+         * [databaseGroup].
          */
         @ExperimentalPowerSyncAPI
         public fun opened(
@@ -234,6 +239,7 @@ public interface PowerSyncDatabase : Queries {
             )
         }
 
+        @ExperimentalPowerSyncAPI
         public fun databaseGroup(logger: Logger, identifier: String): Pair<ActiveDatabaseResource, Any> {
             return ActiveDatabaseGroup.referenceDatabase(logger, identifier)
         }
