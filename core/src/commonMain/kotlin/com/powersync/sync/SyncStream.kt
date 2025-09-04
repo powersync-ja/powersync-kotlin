@@ -536,8 +536,19 @@ internal class SyncStream(
             lateinit var receiveLines: Job
             receiveLines =
                 scope.launch {
+                    var hadLine = false
                     receiveTextLines(JsonUtil.json.encodeToJsonElement(req)).collect { value ->
                         val line = JsonUtil.json.decodeFromString<SyncLine>(value)
+
+                        if (!hadLine) {
+                            // Trigger a crud upload when receiving the first sync line: We could have
+                            // pending local writes made while disconnected, so in addition to listening on
+                            // updates to `ps_crud`, we also need to trigger a CRUD upload in some other
+                            // cases. We do this on the first sync line because the client is likely to be
+                            // online in that case.
+                            hadLine = true
+                            triggerCrudUploadAsync()
+                        }
 
                         state = handleInstruction(line, value, state)
 
