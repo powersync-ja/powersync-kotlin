@@ -118,6 +118,12 @@ kotlin {
                     headers(file("src/watchosMain/powersync_static.h"))
                 }
             }
+
+            cinterops.create("sqlite3") {
+                packageName("com.powersync.internal.sqlite3")
+                includeDirs.allHeaders("src/nativeMain/interop/")
+                definitionFile.set(project.file("src/nativeMain/interop/sqlite3.def"))
+            }
         }
     }
 
@@ -158,7 +164,6 @@ kotlin {
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.stately.concurrency)
                 implementation(libs.configuration.annotations)
-                implementation(libs.androidx.sqlite.bundled)
                 api(libs.ktor.client.core)
                 api(libs.kermit)
             }
@@ -166,7 +171,10 @@ kotlin {
 
         androidMain {
             dependsOn(commonJava)
-            dependencies.implementation(libs.ktor.client.okhttp)
+            dependencies {
+                implementation(libs.ktor.client.okhttp)
+                implementation(libs.androidx.sqlite.bundled)
+            }
         }
 
         jvmMain {
@@ -174,11 +182,17 @@ kotlin {
 
             dependencies {
                 implementation(libs.ktor.client.okhttp)
+                implementation(libs.androidx.sqlite.bundled)
             }
         }
 
         appleMain.dependencies {
             implementation(libs.ktor.client.darwin)
+
+            // We're not using the bundled SQLite library for Apple platforms. Instead, we depend on
+            // static-sqlite-driver to link SQLite and have our own bindings implementing the
+            // driver. The reason for this is that androidx.sqlite-bundled causes linker errors for
+            // our Swift SDK.
         }
 
         // Common apple targets where we link the core extension dynamically

@@ -1,15 +1,17 @@
 package com.powersync
 
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import androidx.sqlite.SQLiteConnection
+import com.powersync.sqlite.Database
 import com.powersync.static.powersync_init_static
 
 @Suppress(names = ["EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING"])
 public actual class DatabaseDriverFactory {
     internal actual fun resolveDefaultDatabasePath(dbFilename: String): String = appleDefaultDatabasePath(dbFilename)
-}
 
-public actual fun BundledSQLiteDriver.addPowerSyncExtension() {
-    didLoadExtension
+    internal actual fun openConnection(path: String, openFlags: Int): SQLiteConnection {
+        didLoadExtension
+        return Database.open(path, openFlags)
+    }
 }
 
 private val didLoadExtension by lazy {

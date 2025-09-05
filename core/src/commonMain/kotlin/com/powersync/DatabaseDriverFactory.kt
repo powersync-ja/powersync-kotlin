@@ -1,25 +1,19 @@
 package com.powersync
 
 import androidx.sqlite.SQLiteConnection
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
-import androidx.sqlite.driver.bundled.SQLITE_OPEN_CREATE
-import androidx.sqlite.driver.bundled.SQLITE_OPEN_READONLY
-import androidx.sqlite.driver.bundled.SQLITE_OPEN_READWRITE
+
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 public expect class DatabaseDriverFactory {
     internal fun resolveDefaultDatabasePath(dbFilename: String): String
-}
 
-/**
- * Registers the PowerSync core extension on connections opened by this [BundledSQLiteDriver].
- *
- * This method will be invoked by the PowerSync SDK when creating new databases. When using
- * [PowerSyncDatabase.opened] with an existing connection pool, you should configure the driver
- * backing that pool to load the extension.
- */
-@ExperimentalPowerSyncAPI()
-public expect fun BundledSQLiteDriver.addPowerSyncExtension()
+    /**
+     * Opens a SQLite connection on [path] with [openFlags].
+     *
+     * The connection should have the PowerSync core extension loaded.
+     */
+    internal fun openConnection(path: String, openFlags: Int): SQLiteConnection
+}
 
 @OptIn(ExperimentalPowerSyncAPI::class)
 internal fun openDatabase(
@@ -28,7 +22,6 @@ internal fun openDatabase(
     dbDirectory: String?,
     readOnly: Boolean = false,
 ): SQLiteConnection {
-    val driver = BundledSQLiteDriver()
     val dbPath =
         if (dbDirectory != null) {
             "$dbDirectory/$dbFilename"
@@ -36,13 +29,13 @@ internal fun openDatabase(
             factory.resolveDefaultDatabasePath(dbFilename)
         }
 
-    driver.addPowerSyncExtension()
-    return driver.open(
-        dbPath,
-        if (readOnly) {
-            SQLITE_OPEN_READONLY
-        } else {
-            SQLITE_OPEN_READWRITE or SQLITE_OPEN_CREATE
-        },
-    )
+    return factory.openConnection(dbPath, if (readOnly) {
+        SQLITE_OPEN_READONLY
+    } else {
+        SQLITE_OPEN_READWRITE or SQLITE_OPEN_CREATE
+    },)
 }
+
+private const val SQLITE_OPEN_READONLY = 0x01
+private const val SQLITE_OPEN_READWRITE = 0x02
+private const val SQLITE_OPEN_CREATE = 0x04
