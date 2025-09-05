@@ -4,8 +4,10 @@ import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.SQLiteStatement
 import cnames.structs.sqlite3
 import cnames.structs.sqlite3_stmt
+import com.powersync.PowerSyncException
 import com.powersync.internal.sqlite3.sqlite3_close_v2
 import com.powersync.internal.sqlite3.sqlite3_db_config
+import com.powersync.internal.sqlite3.sqlite3_extended_result_codes
 import com.powersync.internal.sqlite3.sqlite3_free
 import com.powersync.internal.sqlite3.sqlite3_get_autocommit
 import com.powersync.internal.sqlite3.sqlite3_initialize
@@ -24,6 +26,14 @@ import kotlinx.cinterop.toKStringFromUtf8
 import kotlinx.cinterop.utf16
 import kotlinx.cinterop.value
 
+/**
+ * A simple implementation of the [SQLiteConnection] interface backed by a synchronous `sqlite3*`
+ * database pointer and the SQLite C APIs called via cinterop.
+ *
+ * Multiple instances of this class are bundled into an
+ * [com.powersync.db.driver.InternalConnectionPool] and called from [kotlinx.coroutines.Dispatchers.IO]
+ * to make these APIs asynchronous.
+ */
 internal class Database(
     private val ptr: CPointer<sqlite3>,
 ) : SQLiteConnection {
@@ -55,7 +65,7 @@ internal class Database(
                 sqlite3_free(errorMessagePointer.value)
             }
 
-            throw SqliteException(resultCode, errorMessage ?: "unknown error")
+            throw PowerSyncException("Could not load extension ($resultCode): ${errorMessage ?: "unknown error"}", null)
         }
     }
 
@@ -65,7 +75,7 @@ internal class Database(
 
     private fun Int.checkResult(stmt: String? = null) {
         if (this != 0) {
-            throw SqliteException.createExceptionInDatabase(this, ptr, stmt)
+            throw createExceptionInDatabase(ptr, stmt)
         }
     }
 
@@ -77,17 +87,21 @@ internal class Database(
             memScoped {
                 var rc = sqlite3_initialize()
                 if (rc != 0) {
-                    throw SqliteException.createExceptionOutsideOfDatabase(rc)
+                    throw PowerSyncException("sqlite3_initialize() failed", null)
                 }
 
                 val encodedPath = path.cstr.getPointer(this)
                 val ptr = allocPointerTo<sqlite3>()
                 rc = sqlite3_open_v2(encodedPath, ptr.ptr, flags, null)
                 if (rc != 0) {
-                    throw SqliteException.createExceptionOutsideOfDatabase(rc)
+                    throw PowerSyncException("Could not open database $path with $flags", null)
                 }
 
                 val db = ptr.value!!
+
+                // Enable extended error codes.
+                sqlite3_extended_result_codes(db, 1)
+
                 // Enable extensions via the C API
                 sqlite3_db_config(db, DBCONFIG_ENABLE_LOAD_EXTENSION, 1, 0)
 

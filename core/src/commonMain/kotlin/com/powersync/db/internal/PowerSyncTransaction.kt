@@ -59,16 +59,14 @@ internal class PowerSyncTransactionImpl(
 @ExperimentalPowerSyncAPI
 internal suspend fun <T> SQLiteConnectionLease.runTransaction(cb: suspend (PowerSyncTransaction) -> T): T {
     execSQL("BEGIN")
-    var didComplete = false
     return try {
         val result = cb(PowerSyncTransactionImpl(this))
-        didComplete = true
 
         check(isInTransaction())
         execSQL("COMMIT")
         result
     } catch (e: Throwable) {
-        if (!didComplete && isInTransaction()) {
+        if (isInTransaction()) {
             execSQL("ROLLBACK")
         }
 

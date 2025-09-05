@@ -210,17 +210,6 @@ internal class InternalDatabaseImpl(
     // Register callback for table updates on a specific table
     override fun updatesOnTables(): SharedFlow<Set<String>> = pool.updates
 
-    // Unfortunately Errors can't be thrown from Swift SDK callbacks.
-    // These are currently returned and should be thrown here.
-    private inline fun <R> catchSwiftExceptions(action: () -> R): R {
-        val result = action()
-
-        if (result is PowerSyncException) {
-            throw result
-        }
-        return result
-    }
-
     private suspend fun getSourceTables(
         sql: String,
         parameters: List<Any?>?,

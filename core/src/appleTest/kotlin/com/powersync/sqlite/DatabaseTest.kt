@@ -2,6 +2,7 @@ package com.powersync.sqlite
 
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
+import com.powersync.PowerSyncException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import kotlin.test.Test
@@ -22,9 +23,9 @@ class DatabaseTest {
     @Test
     fun syntaxError() =
         inMemoryDatabase().use {
-            val exception = shouldThrow<SqliteException> { it.execSQL("bad syntax") }
+            val exception = shouldThrow<PowerSyncException> { it.execSQL("bad syntax") }
 
-            exception.toString() shouldBe "SqliteException(1): SQL logic error at offset 0, near \"bad\": syntax error for SQL: bad syntax"
+            exception.message shouldBe "SqliteException(1): SQL logic error at offset 0, near \"bad\": syntax error for SQL: bad syntax"
             Unit
         }
 

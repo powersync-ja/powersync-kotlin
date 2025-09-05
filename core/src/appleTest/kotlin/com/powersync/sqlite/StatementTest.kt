@@ -1,6 +1,7 @@
 package com.powersync.sqlite
 
 import androidx.sqlite.SQLiteConnection
+import com.powersync.PowerSyncException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import kotlin.test.Test
@@ -28,16 +29,16 @@ class StatementTest {
     fun testBindOutOfBounds() =
         inMemoryDatabase().use { db ->
             db.prepare("SELECT ?").use { stmt ->
-                shouldThrow<SqliteException> {
+                shouldThrow<PowerSyncException> {
                     stmt.bindText(-1, "foo")
                 }
-                shouldThrow<SqliteException> {
+                shouldThrow<PowerSyncException> {
                     stmt.bindText(0, "foo")
                 }
 
                 stmt.bindText(1, "foo")
 
-                shouldThrow<SqliteException> {
+                shouldThrow<PowerSyncException> {
                     stmt.bindText(2, "foo")
                 }
             }

@@ -150,7 +150,7 @@ internal class Statement(
         return this
     }
 
-    private fun throwException(errorCode: Int): Nothing = throw SqliteException.createExceptionInDatabase(errorCode, db, sql)
+    private fun throwException(errorCode: Int): Nothing = throw createExceptionInDatabase(db, sql)
 
     internal companion object {
         const val SQLITE_INTEGER = 1

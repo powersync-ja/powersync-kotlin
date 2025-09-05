@@ -5,6 +5,7 @@ import co.touchlab.skie.configuration.annotations.DefaultArgumentInterop
 import com.powersync.db.ActiveDatabaseGroup
 import com.powersync.db.PowerSyncDatabaseImpl
 import com.powersync.db.driver.InternalConnectionPool
+import com.powersync.db.driver.LazyPool
 import com.powersync.db.schema.Schema
 import com.powersync.utils.generateLogger
 import kotlinx.coroutines.CoroutineScope
@@ -55,13 +56,15 @@ internal fun createPowerSyncDatabaseImpl(
     val activeDatabaseGroup = ActiveDatabaseGroup.referenceDatabase(logger, identifier)
 
     val pool =
-        InternalConnectionPool(
-            factory,
-            scope,
-            dbFilename,
-            dbDirectory,
-            activeDatabaseGroup.first.group.writeLockMutex,
-        )
+        LazyPool {
+            InternalConnectionPool(
+                factory,
+                scope,
+                dbFilename,
+                dbDirectory,
+                activeDatabaseGroup.first.group.writeLockMutex,
+            )
+        }
 
     return PowerSyncDatabase.opened(
         pool,

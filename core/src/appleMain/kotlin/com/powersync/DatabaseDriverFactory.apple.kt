@@ -1,6 +1,7 @@
 package com.powersync
 
 import kotlinx.cinterop.UnsafeNumber
+import kotlinx.io.files.FileSystem
 import platform.Foundation.NSApplicationSupportDirectory
 import platform.Foundation.NSBundle
 import platform.Foundation.NSFileManager
@@ -10,7 +11,7 @@ import kotlin.getValue
 
 @OptIn(UnsafeNumber::class)
 internal fun appleDefaultDatabasePath(dbFilename: String): String {
-// This needs to be compatible with https://github.com/touchlab/SQLiter/blob/a37bbe7e9c65e6a5a94c5bfcaccdaae55ad2bac9/sqliter-driver/src/appleMain/kotlin/co/touchlab/sqliter/DatabaseFileContext.kt#L36-L51
+    // This needs to be compatible with https://github.com/touchlab/SQLiter/blob/a37bbe7e9c65e6a5a94c5bfcaccdaae55ad2bac9/sqliter-driver/src/appleMain/kotlin/co/touchlab/sqliter/DatabaseFileContext.kt#L36-L51
     val paths = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, true)
     val documentsDirectory = paths[0] as String
 
@@ -22,7 +23,7 @@ internal fun appleDefaultDatabasePath(dbFilename: String): String {
         fileManager.createDirectoryAtPath(databaseDirectory, true, null, null)
     }; // Create folder
 
-    return databaseDirectory
+    return "$databaseDirectory/$dbFilename"
 }
 
 internal val powerSyncExtensionPath: String by lazy {

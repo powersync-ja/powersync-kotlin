@@ -32,6 +32,7 @@ int sqlite3_load_extension(
         const char *zProc,    /* Entry point.  Derived from zFile if 0 */
         char **pzErrMsg       /* Put error message here if not 0 */
 );
+int sqlite3_extended_result_codes(sqlite3*, int onoff);
 
 // Statements
 int sqlite3_prepare16_v3(
