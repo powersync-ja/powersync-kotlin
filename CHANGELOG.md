@@ -6,6 +6,7 @@
   until a keepalive event was received. This could also cause downloaded updates to be delayed even
   further until all uploads were
   completed.
+* [Internal] Update core extension to 0.4.5
 
 ## 1.5.0
 
