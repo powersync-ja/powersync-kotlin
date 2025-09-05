@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.1 (unreleased)
+
+* Fix issue in legacy sync client where local writes made offline could have their upload delayed
+  until a keepalive event was received. This could also cause downloaded updates to be delayed even
+  further until all uploads were
+  completed.
+
 ## 1.5.0
 
 * Add `PowerSyncDatabase.getCrudTransactions()`, returning a flow of transactions. This is useful
