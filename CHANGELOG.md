@@ -1,11 +1,12 @@
 # Changelog
 
-## 1.5.1 (unreleased)
+## 1.5.1
 
 * Fix issue in legacy sync client where local writes made offline could have their upload delayed
   until a keepalive event was received. This could also cause downloaded updates to be delayed even
   further until all uploads were
   completed.
+* [Internal] Update core extension to 0.4.5
 
 ## 1.5.0
 
