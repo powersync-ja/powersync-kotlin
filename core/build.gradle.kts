@@ -193,6 +193,7 @@ kotlin {
             // static-sqlite-driver to link SQLite and have our own bindings implementing the
             // driver. The reason for this is that androidx.sqlite-bundled causes linker errors for
             // our Swift SDK.
+            implementation(projects.staticSqliteDriver)
         }
 
         // Common apple targets where we link the core extension dynamically

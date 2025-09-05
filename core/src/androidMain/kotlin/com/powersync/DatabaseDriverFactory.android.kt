@@ -12,9 +12,10 @@ public actual class DatabaseDriverFactory(
 
     internal actual fun resolveDefaultDatabasePath(dbFilename: String): String = context.getDatabasePath(dbFilename).path
 
-    internal actual fun openConnection(path: String, openFlags: Int): SQLiteConnection {
-        return driver.open(path, openFlags)
-    }
+    internal actual fun openConnection(
+        path: String,
+        openFlags: Int,
+    ): SQLiteConnection = driver.open(path, openFlags)
 }
 
 public fun BundledSQLiteDriver.addPowerSyncExtension() {

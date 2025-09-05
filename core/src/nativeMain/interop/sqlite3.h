@@ -34,9 +34,14 @@ int sqlite3_load_extension(
 );
 
 // Statements
-int sqlite3_prepare_v3(sqlite3 *db, const char *zSql, int nByte,
-        unsigned int prepFlags, sqlite3_stmt **ppStmt,
-        const char **pzTail);
+int sqlite3_prepare16_v3(
+        sqlite3 *db,            /* Database handle */
+        const void *zSql,       /* SQL statement, UTF-16 encoded */
+        int nByte,              /* Maximum length of zSql in bytes. */
+        unsigned int prepFlags, /* Zero or more SQLITE_PREPARE_ flags */
+        sqlite3_stmt **ppStmt,  /* OUT: Statement handle */
+        const void **pzTail     /* OUT: Pointer to unused portion of zSql */
+);
 int sqlite3_finalize(sqlite3_stmt *pStmt);
 int sqlite3_step(sqlite3_stmt *pStmt);
 int sqlite3_reset(sqlite3_stmt *pStmt);
@@ -57,7 +62,7 @@ int sqlite3_bind_text16(sqlite3_stmt *pStmt, int index, char *data,
 void *sqlite3_column_blob(sqlite3_stmt *pStmt, int iCol);
 double sqlite3_column_double(sqlite3_stmt *pStmt, int iCol);
 int64_t sqlite3_column_int64(sqlite3_stmt *pStmt, int iCol);
-char *sqlite3_column_text(sqlite3_stmt *pStmt, int iCol);
+void *sqlite3_column_text16(sqlite3_stmt *pStmt, int iCol);
 int sqlite3_column_bytes(sqlite3_stmt *pStmt, int iCol);
 int sqlite3_column_bytes16(sqlite3_stmt *pStmt, int iCol);
 int sqlite3_column_type(sqlite3_stmt *pStmt, int iCol);

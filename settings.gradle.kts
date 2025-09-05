@@ -30,6 +30,7 @@ rootProject.name = "powersync-root"
 include(":core")
 include(":core-tests-android")
 include(":connectors:supabase")
+include(":static-sqlite-driver")
 
 include(":PowerSyncKotlin")
 

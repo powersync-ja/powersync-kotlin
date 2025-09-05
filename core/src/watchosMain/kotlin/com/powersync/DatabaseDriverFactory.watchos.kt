@@ -8,7 +8,10 @@ import com.powersync.static.powersync_init_static
 public actual class DatabaseDriverFactory {
     internal actual fun resolveDefaultDatabasePath(dbFilename: String): String = appleDefaultDatabasePath(dbFilename)
 
-    internal actual fun openConnection(path: String, openFlags: Int): SQLiteConnection {
+    internal actual fun openConnection(
+        path: String,
+        openFlags: Int,
+    ): SQLiteConnection {
         didLoadExtension
         return Database.open(path, openFlags)
     }

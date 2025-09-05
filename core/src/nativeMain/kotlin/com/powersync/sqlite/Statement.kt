@@ -11,11 +11,11 @@ import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.UShortVar
 import kotlinx.cinterop.addressOf
-import kotlinx.cinterop.get
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.readBytes
 import kotlinx.cinterop.reinterpret
 import kotlinx.cinterop.toCPointer
+import kotlinx.cinterop.toKStringFromUtf16
 import kotlinx.cinterop.toKStringFromUtf8
 import kotlinx.cinterop.usePinned
 import kotlinx.cinterop.utf16
@@ -24,9 +24,12 @@ import kotlinx.cinterop.utf16
 internal class Statement(
     private val sql: String,
     private val db: CPointer<sqlite3>,
-    private val ptr: CPointer<sqlite3_stmt>
-): SQLiteStatement {
-    override fun bindBlob(index: Int, value: ByteArray) {
+    private val ptr: CPointer<sqlite3_stmt>,
+) : SQLiteStatement {
+    override fun bindBlob(
+        index: Int,
+        value: ByteArray,
+    ) {
         value.usePinned { pinned ->
             val valuePtr = pinned.addressOf(0)
             sqlite3_bind_blob64(
@@ -34,23 +37,32 @@ internal class Statement(
                 index,
                 valuePtr,
                 value.size.toULong(),
-                DESTRUCTOR_TRANSIENT
-            )
+                DESTRUCTOR_TRANSIENT,
+            ).checkResult()
         }
     }
 
-    override fun bindDouble(index: Int, value: Double) {
+    override fun bindDouble(
+        index: Int,
+        value: Double,
+    ) {
         sqlite3_bind_double(ptr, index, value).checkResult()
     }
 
-    override fun bindLong(index: Int, value: Long) {
+    override fun bindLong(
+        index: Int,
+        value: Long,
+    ) {
         sqlite3_bind_int64(ptr, index, value).checkResult()
     }
 
-    override fun bindText(index: Int, value: String) {
+    override fun bindText(
+        index: Int,
+        value: String,
+    ) {
         memScoped {
             val utf16 = value.utf16
-            sqlite3_bind_text16(ptr, index, utf16.ptr.reinterpret(), utf16.size, DESTRUCTOR_TRANSIENT)
+            sqlite3_bind_text16(ptr, index, utf16.ptr.reinterpret(), utf16.size - 1, DESTRUCTOR_TRANSIENT).checkResult()
         }
     }
 
@@ -59,7 +71,7 @@ internal class Statement(
     }
 
     override fun getBlob(index: Int): ByteArray {
-        val len = sqlite3_column_bytes(ptr, index)
+        val len = sqlite3_column_bytes(ptr, index.columnIndex())
         if (len == 0) {
             return byteArrayOf()
         }
@@ -68,51 +80,33 @@ internal class Statement(
         return buf.reinterpret<ByteVar>().readBytes(len) // Note: this copies
     }
 
-    override fun getDouble(index: Int): Double {
-        return sqlite3_column_double(ptr, index)
-    }
+    override fun getDouble(index: Int): Double = sqlite3_column_double(ptr, index.columnIndex())
 
-    override fun getLong(index: Int): Long {
-        return sqlite3_column_int64(ptr, index)
-    }
+    override fun getLong(index: Int): Long = sqlite3_column_int64(ptr, index.columnIndex())
 
     override fun getText(index: Int): String {
-        val len = sqlite3_column_bytes16(ptr, index)
-        if (len == 0) {
+        val value = sqlite3_column_text16(ptr, index.columnIndex())
+        if (value == null) {
             return ""
         }
 
-        val utf16Ptr: CPointer<UShortVar> = sqlite3_column_text(
-            ptr,
-            index
-        )!!.reinterpret()
-        val characters = CharArray(len) { utf16Ptr[it].toInt().toChar() }
-        return characters.concatToString()
+        return value.reinterpret<UShortVar>().toKStringFromUtf16()
     }
 
-    override fun isNull(index: Int): Boolean {
-        return sqlite3_column_type(ptr, index) == SQLITE_NULL
-    }
+    override fun isNull(index: Int): Boolean = sqlite3_column_type(ptr, index.columnIndex()) == SQLITE_NULL
 
-    override fun getColumnCount(): Int {
-        return sqlite3_column_count(ptr)
-    }
+    override fun getColumnCount(): Int = sqlite3_column_count(ptr)
 
-    override fun getColumnName(index: Int): String {
-        return sqlite3_column_name(ptr, index)!!.toKStringFromUtf8()
-    }
+    override fun getColumnName(index: Int): String = sqlite3_column_name(ptr, index.columnIndex())!!.toKStringFromUtf8()
 
-    override fun getColumnType(index: Int): Int {
-        return sqlite3_column_type(ptr, index)
-    }
+    override fun getColumnType(index: Int): Int = sqlite3_column_type(ptr, index.columnIndex())
 
-    override fun step(): Boolean {
-        return when (val rc = sqlite3_step(ptr)) {
+    override fun step(): Boolean =
+        when (val rc = sqlite3_step(ptr)) {
             SQLITE_ROW -> true
             SQLITE_DONE -> false
             else -> throwException(rc)
         }
-    }
 
     override fun reset() {
         sqlite3_reset(ptr).checkResult()
@@ -132,11 +126,17 @@ internal class Statement(
         }
     }
 
-    private fun throwException(errorCode: Int): Nothing {
-        throw SqliteException.createExceptionInDatabase(errorCode, db, sql)
+    private fun Int.columnIndex(): Int {
+        if (this < 0 || this >= getColumnCount()) {
+            throw IllegalArgumentException("Invalid column index: $this")
+        }
+
+        return this
     }
 
-    private companion object {
+    private fun throwException(errorCode: Int): Nothing = throw SqliteException.createExceptionInDatabase(errorCode, db, sql)
+
+    internal companion object {
         const val SQLITE_INTEGER = 1
         const val SQLITE_FLOAT = 2
         const val SQLITE_TEXT = 3

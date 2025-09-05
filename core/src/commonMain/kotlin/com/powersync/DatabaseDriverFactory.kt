@@ -2,7 +2,6 @@ package com.powersync
 
 import androidx.sqlite.SQLiteConnection
 
-
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 public expect class DatabaseDriverFactory {
     internal fun resolveDefaultDatabasePath(dbFilename: String): String
@@ -12,7 +11,10 @@ public expect class DatabaseDriverFactory {
      *
      * The connection should have the PowerSync core extension loaded.
      */
-    internal fun openConnection(path: String, openFlags: Int): SQLiteConnection
+    internal fun openConnection(
+        path: String,
+        openFlags: Int,
+    ): SQLiteConnection
 }
 
 @OptIn(ExperimentalPowerSyncAPI::class)
@@ -29,11 +31,14 @@ internal fun openDatabase(
             factory.resolveDefaultDatabasePath(dbFilename)
         }
 
-    return factory.openConnection(dbPath, if (readOnly) {
-        SQLITE_OPEN_READONLY
-    } else {
-        SQLITE_OPEN_READWRITE or SQLITE_OPEN_CREATE
-    },)
+    return factory.openConnection(
+        dbPath,
+        if (readOnly) {
+            SQLITE_OPEN_READONLY
+        } else {
+            SQLITE_OPEN_READWRITE or SQLITE_OPEN_CREATE
+        },
+    )
 }
 
 private const val SQLITE_OPEN_READONLY = 0x01
