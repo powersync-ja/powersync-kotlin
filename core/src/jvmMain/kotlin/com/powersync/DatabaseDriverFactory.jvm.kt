@@ -1,62 +1,22 @@
 package com.powersync
 
-import com.powersync.db.JdbcSqliteDriver
-import com.powersync.db.buildDefaultWalProperties
-import com.powersync.db.internal.InternalSchema
-import com.powersync.db.migrateDriver
-import kotlinx.coroutines.CoroutineScope
-import org.sqlite.SQLiteCommitListener
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING", "SqlNoDataSourceInspection")
 public actual class DatabaseDriverFactory {
-    internal actual fun createDriver(
-        scope: CoroutineScope,
-        dbFilename: String,
-        dbDirectory: String?,
-        readOnly: Boolean,
-    ): PsSqlDriver {
-        val schema = InternalSchema
+    private val driver = BundledSQLiteDriver().also { it.addPowerSyncExtension() }
 
-        val dbPath =
-            if (dbDirectory != null) {
-                "$dbDirectory/$dbFilename"
-            } else {
-                dbFilename
-            }
+    internal actual fun resolveDefaultDatabasePath(dbFilename: String): String = dbFilename
 
-        val driver =
-            JdbcSqliteDriver(
-                url = "jdbc:sqlite:$dbPath",
-                properties = buildDefaultWalProperties(readOnly = readOnly),
-            )
-
-        migrateDriver(driver, schema)
-
-        driver.loadExtensions(
-            powersyncExtension to "sqlite3_powersync_init",
-        )
-
-        val mappedDriver = PsSqlDriver(driver = driver)
-
-        driver.connection.database.addUpdateListener { _, _, table, _ ->
-            mappedDriver.updateTable(table)
-        }
-        driver.connection.database.addCommitListener(
-            object : SQLiteCommitListener {
-                override fun onCommit() {
-                    // We track transactions manually
-                }
-
-                override fun onRollback() {
-                    mappedDriver.clearTableUpdates()
-                }
-            },
-        )
-
-        return mappedDriver
-    }
-
-    public companion object {
-        private val powersyncExtension: String = extractLib("powersync")
-    }
+    internal actual fun openConnection(
+        path: String,
+        openFlags: Int,
+    ): SQLiteConnection = driver.open(path, openFlags)
 }
+
+public fun BundledSQLiteDriver.addPowerSyncExtension() {
+    addExtension(powersyncExtension, "sqlite3_powersync_init")
+}
+
+private val powersyncExtension: String by lazy { extractLib("powersync") }

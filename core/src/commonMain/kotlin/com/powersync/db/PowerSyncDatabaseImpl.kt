@@ -1,7 +1,7 @@
 package com.powersync.db
 
 import co.touchlab.kermit.Logger
-import com.powersync.DatabaseDriverFactory
+import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
 import com.powersync.PowerSyncException
 import com.powersync.bucket.BucketPriority
@@ -12,6 +12,8 @@ import com.powersync.db.crud.CrudBatch
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.CrudRow
 import com.powersync.db.crud.CrudTransaction
+import com.powersync.db.driver.SQLiteConnectionLease
+import com.powersync.db.driver.SQLiteConnectionPool
 import com.powersync.db.internal.InternalDatabaseImpl
 import com.powersync.db.internal.InternalTable
 import com.powersync.db.internal.PowerSyncVersion
@@ -55,13 +57,13 @@ import kotlin.time.Instant
  *
  * All changes to local tables are automatically recorded, whether connected or not. Once connected, the changes are uploaded.
  */
+@OptIn(ExperimentalPowerSyncAPI::class)
 internal class PowerSyncDatabaseImpl(
     var schema: Schema,
     val scope: CoroutineScope,
-    val factory: DatabaseDriverFactory,
-    private val dbFilename: String,
-    private val dbDirectory: String? = null,
-    val logger: Logger = Logger,
+    pool: SQLiteConnectionPool,
+    val logger: Logger,
+    private val activeDatabaseGroup: Pair<ActiveDatabaseResource, Any>,
 ) : PowerSyncDatabase {
     companion object {
         internal val streamConflictMessage =
@@ -74,20 +76,12 @@ internal class PowerSyncDatabaseImpl(
             """.trimIndent()
     }
 
-    override val identifier = dbDirectory + dbFilename
+    override val identifier: String
+        get() = activeDatabaseGroup.first.group.identifier
 
-    private val activeDatabaseGroup = ActiveDatabaseGroup.referenceDatabase(logger, identifier)
     private val resource = activeDatabaseGroup.first
-    private val clearResourceWhenDisposed = activeDatabaseGroup.second
 
-    private val internalDb =
-        InternalDatabaseImpl(
-            factory = factory,
-            scope = scope,
-            dbFilename = dbFilename,
-            dbDirectory = dbDirectory,
-            writeLockMutex = resource.group.writeLockMutex,
-        )
+    private val internalDb = InternalDatabaseImpl(pool)
 
     internal val bucketStorage: BucketStorage = BucketStorageImpl(internalDb, logger)
 
@@ -326,6 +320,15 @@ internal class PowerSyncDatabaseImpl(
         // The initialization sets powerSyncVersion.
         waitReady()
         return powerSyncVersion
+    }
+
+    @ExperimentalPowerSyncAPI
+    override suspend fun <T> useConnection(
+        readOnly: Boolean,
+        block: suspend (SQLiteConnectionLease) -> T,
+    ): T {
+        waitReady()
+        return internalDb.useConnection(readOnly, block)
     }
 
     override suspend fun <RowType : Any> get(

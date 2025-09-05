@@ -82,12 +82,12 @@ internal class ActiveDatabaseGroup(
     }
 }
 
-internal class ActiveDatabaseResource(
-    val group: ActiveDatabaseGroup,
+public class ActiveDatabaseResource internal constructor(
+    internal val group: ActiveDatabaseGroup,
 ) {
-    val disposed = AtomicBoolean(false)
+    internal val disposed = AtomicBoolean(false)
 
-    fun dispose() {
+    internal fun dispose() {
         if (disposed.compareAndSet(false, true)) {
             group.removeUsage()
         }

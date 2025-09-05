@@ -10,7 +10,7 @@ class DatabaseDriverFactoryTest {
         if (Platform.osFamily != OsFamily.WATCHOS) {
             // On watchOS targets, there's no special extension path because we expect to link the
             // PowerSync extension statically due to platform restrictions.
-            DatabaseDriverFactory.powerSyncExtensionPath
+            powerSyncExtensionPath
         }
     }
 }

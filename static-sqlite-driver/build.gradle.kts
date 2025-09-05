@@ -89,12 +89,6 @@ kotlin {
                 optIn("kotlinx.cinterop.BetaInteropApi")
             }
         }
-
-        nativeTest {
-            dependencies {
-                implementation(libs.sqliter)
-            }
-        }
     }
 
     targets.withType<KotlinNativeTarget> {
