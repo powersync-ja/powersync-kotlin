@@ -34,7 +34,7 @@ import kotlinx.cinterop.value
  * [com.powersync.db.driver.InternalConnectionPool] and called from [kotlinx.coroutines.Dispatchers.IO]
  * to make these APIs asynchronous.
  */
-internal class Database(
+public class Database(
     private val ptr: CPointer<sqlite3>,
 ) : SQLiteConnection {
     override fun inTransaction(): Boolean {
@@ -52,22 +52,27 @@ internal class Database(
             Statement(sql, ptr, stmtPtr.value!!)
         }
 
-    fun loadExtension(
+    public fun loadExtension(
         filename: String,
         entrypoint: String,
-    ) = memScoped {
-        val errorMessagePointer = alloc<CPointerVar<ByteVar>>()
-        val resultCode = sqlite3_load_extension(ptr, filename, entrypoint, errorMessagePointer.ptr)
+    ): Unit =
+        memScoped {
+            val errorMessagePointer = alloc<CPointerVar<ByteVar>>()
+            val resultCode =
+                sqlite3_load_extension(ptr, filename, entrypoint, errorMessagePointer.ptr)
 
-        if (resultCode != 0) {
-            val errorMessage = errorMessagePointer.value?.toKStringFromUtf8()
-            if (errorMessage != null) {
-                sqlite3_free(errorMessagePointer.value)
+            if (resultCode != 0) {
+                val errorMessage = errorMessagePointer.value?.toKStringFromUtf8()
+                if (errorMessage != null) {
+                    sqlite3_free(errorMessagePointer.value)
+                }
+
+                throw PowerSyncException(
+                    "Could not load extension ($resultCode): ${errorMessage ?: "unknown error"}",
+                    null,
+                )
             }
-
-            throw PowerSyncException("Could not load extension ($resultCode): ${errorMessage ?: "unknown error"}", null)
         }
-    }
 
     override fun close() {
         sqlite3_close_v2(ptr)
@@ -79,7 +84,7 @@ internal class Database(
         }
     }
 
-    companion object {
+    internal companion object {
         fun open(
             path: String,
             flags: Int,

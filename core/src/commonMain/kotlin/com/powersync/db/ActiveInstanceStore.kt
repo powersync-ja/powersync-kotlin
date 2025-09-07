@@ -20,15 +20,15 @@ internal expect fun disposeWhenDeallocated(resource: ActiveDatabaseResource): An
  * duplicate resources being used. For this reason, each active database group has a coroutine mutex guarding the
  * sync job.
  */
-internal class ActiveDatabaseGroup(
-    val identifier: String,
+public class ActiveDatabaseGroup(
+    public val identifier: String,
     private val collection: GroupsCollection,
 ) {
     internal var refCount = 0 // Guarded by companion object
     internal val syncMutex = Mutex()
     internal val writeLockMutex = Mutex()
 
-    fun removeUsage() {
+    internal fun removeUsage() {
         collection.synchronize {
             if (--refCount == 0) {
                 collection.allGroups.remove(this)
@@ -36,7 +36,7 @@ internal class ActiveDatabaseGroup(
         }
     }
 
-    internal open class GroupsCollection : Synchronizable() {
+    public open class GroupsCollection : Synchronizable() {
         internal val allGroups = mutableListOf<ActiveDatabaseGroup>()
 
         private fun findGroup(
@@ -61,7 +61,7 @@ internal class ActiveDatabaseGroup(
                 resolvedGroup
             }
 
-        internal fun referenceDatabase(
+        public fun referenceDatabase(
             warnOnDuplicate: Logger,
             identifier: String,
         ): Pair<ActiveDatabaseResource, Any> {
@@ -72,7 +72,7 @@ internal class ActiveDatabaseGroup(
         }
     }
 
-    companion object : GroupsCollection() {
+    public companion object : GroupsCollection() {
         internal val multipleInstancesMessage =
             """
             Multiple PowerSync instances for the same database have been detected.
