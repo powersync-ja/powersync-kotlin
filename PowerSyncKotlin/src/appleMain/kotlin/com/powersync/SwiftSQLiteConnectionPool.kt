@@ -67,6 +67,10 @@ public interface SwiftPoolAdapter {
     @Throws(PowerSyncException::class, CancellationException::class)
     public suspend fun leaseWrite(callback: (CPointer<sqlite3>) -> Unit)
 
+    @OptIn(ExperimentalForeignApi::class)
+    @Throws(PowerSyncException::class, CancellationException::class)
+    public suspend fun leaseAll(callback: (CPointer<sqlite3>, List<CPointer<sqlite3>>) -> Unit)
+
     public suspend fun closePool()
 }
 
@@ -106,7 +110,7 @@ public open class SwiftSQLiteConnectionPool
         @OptIn(ExperimentalForeignApi::class)
         override suspend fun <T> write(callback: suspend (SQLiteConnectionLease) -> T): T {
             var result: T? = null
-            adapter.leaseRead {
+            adapter.leaseWrite {
                 val lease = RawConnectionLease(it)
                 runBlocking {
                     result = callback(lease)
@@ -115,7 +119,13 @@ public open class SwiftSQLiteConnectionPool
             return result as T
         }
 
+        @OptIn(ExperimentalForeignApi::class)
         override suspend fun <R> withAllConnections(action: suspend (SQLiteConnectionLease, List<SQLiteConnectionLease>) -> R) {
+            adapter.leaseAll { writerPtr, readerPtrs ->
+                runBlocking {
+                    action(RawConnectionLease(writerPtr), readerPtrs.map { RawConnectionLease(it) })
+                }
+            }
         }
 
         override suspend fun close() {
