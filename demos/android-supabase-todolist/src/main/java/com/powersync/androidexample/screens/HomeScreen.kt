@@ -13,7 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.powersync.bucket.BucketPriority
+import com.powersync.bucket.StreamPriority
 import com.powersync.demos.Screen
 import com.powersync.demos.components.Input
 import com.powersync.demos.components.ListContent
@@ -66,7 +66,7 @@ internal fun HomeScreen(
             // When giving lists a higher priority than items, we can have a consistent snapshot of
             // lists without items. In the case where many items exist (that might take longer to
             // sync initially), this allows us to display lists earlier.
-            if (status.statusForPriority(BucketPriority(1)).hasSynced == true) {
+            if (status.statusForPriority(StreamPriority(1)).hasSynced == true) {
                 ListContent(
                     items = items,
                     onItemClicked = onItemClicked,

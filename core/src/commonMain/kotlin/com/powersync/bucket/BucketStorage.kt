@@ -1,6 +1,7 @@
 package com.powersync.bucket
 
 import com.powersync.db.SqlCursor
+import com.powersync.db.StreamKey
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.internal.PowerSyncTransaction
 import com.powersync.db.schema.SerializableSchema
@@ -8,6 +9,7 @@ import com.powersync.sync.Instruction
 import com.powersync.sync.LegacySyncImplementation
 import com.powersync.sync.SyncDataBatch
 import com.powersync.sync.SyncLocalDatabaseResult
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
@@ -48,7 +50,7 @@ internal interface BucketStorage {
     @LegacySyncImplementation
     suspend fun syncLocalDatabase(
         targetCheckpoint: Checkpoint,
-        partialPriority: BucketPriority? = null,
+        partialPriority: StreamPriority? = null,
     ): SyncLocalDatabaseResult
 
     suspend fun control(args: PowerSyncControlArguments): List<Instruction>
@@ -59,6 +61,10 @@ internal sealed interface PowerSyncControlArguments {
     class Start(
         val parameters: JsonObject,
         val schema: SerializableSchema,
+        @SerialName("include_defaults")
+        val includeDefaults: Boolean,
+        @SerialName("active_streams")
+        val activeStreams: List<StreamKey>,
     ) : PowerSyncControlArguments
 
     data object Stop : PowerSyncControlArguments
@@ -74,6 +80,10 @@ internal sealed interface PowerSyncControlArguments {
     }
 
     data object CompletedUpload : PowerSyncControlArguments
+
+    data class UpdateSubscriptions(
+        val activeStreams: List<StreamKey>,
+    ) : PowerSyncControlArguments
 }
 
 @Serializable
