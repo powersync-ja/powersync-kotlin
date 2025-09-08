@@ -1,8 +1,10 @@
 package com.powersync.sync
 
-import com.powersync.bucket.BucketPriority
 import com.powersync.bucket.Checkpoint
 import com.powersync.bucket.LocalOperationCounters
+import com.powersync.bucket.StreamPriority
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlin.math.min
 
 /**
@@ -41,8 +43,11 @@ public interface ProgressWithOperations {
     }
 }
 
+@Serializable
 internal data class ProgressInfo(
+    @SerialName("downloaded")
     override val downloadedOperations: Int,
+    @SerialName("total")
     override val totalOperations: Int,
 ) : ProgressWithOperations
 
@@ -73,7 +78,7 @@ public data class SyncDownloadProgress internal constructor(
     override val totalOperations: Int
 
     init {
-        val (target, completed) = targetAndCompletedCounts(BucketPriority.FULL_SYNC_PRIORITY)
+        val (target, completed) = targetAndCompletedCounts(StreamPriority.FULL_SYNC_PRIORITY)
         totalOperations = target
         downloadedOperations = completed
     }
@@ -127,7 +132,7 @@ public data class SyncDownloadProgress internal constructor(
      * The returned [ProgressWithOperations] instance tracks the target amount of operations that need to be downloaded
      * in total and how many of them have already been received.
      */
-    public fun untilPriority(priority: BucketPriority): ProgressWithOperations {
+    public fun untilPriority(priority: StreamPriority): ProgressWithOperations {
         val (total, completed) = targetAndCompletedCounts(priority)
         return ProgressInfo(totalOperations = total, downloadedOperations = completed)
     }
@@ -150,7 +155,7 @@ public data class SyncDownloadProgress internal constructor(
             },
         )
 
-    private fun targetAndCompletedCounts(priority: BucketPriority): Pair<Int, Int> =
+    private fun targetAndCompletedCounts(priority: StreamPriority): Pair<Int, Int> =
         buckets.values
             .asSequence()
             .filter { it.priority >= priority }

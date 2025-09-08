@@ -1,8 +1,8 @@
 package com.powersync.sync
 
 import com.powersync.bucket.BucketChecksum
-import com.powersync.bucket.BucketPriority
 import com.powersync.bucket.Checkpoint
+import com.powersync.bucket.StreamPriority
 import com.powersync.utils.JsonUtil
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -35,7 +35,7 @@ class SyncLineTest {
             SyncLine.FullCheckpoint(
                 Checkpoint(
                     lastOpId = "10",
-                    checksums = listOf(BucketChecksum(bucket = "a", priority = BucketPriority(3), checksum = 10)),
+                    checksums = listOf(BucketChecksum(bucket = "a", priority = StreamPriority(3), checksum = 10)),
                 ),
             ),
             """{"checkpoint": {"last_op_id": "10", "buckets": [{"bucket": "a", "checksum": 10}]}}""",
@@ -48,7 +48,7 @@ class SyncLineTest {
             SyncLine.FullCheckpoint(
                 Checkpoint(
                     lastOpId = "10",
-                    checksums = listOf(BucketChecksum(bucket = "a", priority = BucketPriority(1), checksum = 10)),
+                    checksums = listOf(BucketChecksum(bucket = "a", priority = StreamPriority(1), checksum = 10)),
                 ),
             ),
             """{"checkpoint": {"last_op_id": "10", "buckets": [{"bucket": "a", "priority": 1, "checksum": 10}]}}""",
@@ -77,7 +77,7 @@ class SyncLineTest {
         checkDeserializing(
             SyncLine.CheckpointPartiallyComplete(
                 lastOpId = "10",
-                priority = BucketPriority(1),
+                priority = StreamPriority(1),
             ),
             """{"partial_checkpoint_complete": {"last_op_id": "10", "priority": 1}}""",
         )

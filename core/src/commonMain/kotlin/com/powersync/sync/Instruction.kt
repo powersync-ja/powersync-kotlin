@@ -1,6 +1,7 @@
 package com.powersync.sync
 
-import com.powersync.bucket.BucketPriority
+import com.powersync.bucket.StreamPriority
+import com.powersync.db.crud.TypedRow
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -46,7 +47,11 @@ internal sealed interface Instruction {
 
     data object FlushSileSystem : Instruction
 
-    data object CloseSyncStream : Instruction
+    @Serializable
+    data class CloseSyncStream(
+        @SerialName("hide_disconnect")
+        val hideDisconnect: Boolean,
+    ) : Instruction
 
     data object DidCompleteSync : Instruction
 
@@ -60,7 +65,7 @@ internal sealed interface Instruction {
         private val establishSyncStream = serializer<EstablishSyncStream>()
         private val fetchCredentials = serializer<FetchCredentials>()
         private val flushFileSystem = serializer<JsonObject>()
-        private val closeSyncStream = serializer<JsonObject>()
+        private val closeSyncStream = serializer<CloseSyncStream>()
         private val didCompleteSync = serializer<JsonObject>()
 
         override val descriptor =
@@ -88,7 +93,6 @@ internal sealed interface Instruction {
                         }
                         5 -> {
                             decodeSerializableElement(descriptor, 5, closeSyncStream)
-                            CloseSyncStream
                         }
                         6 -> {
                             decodeSerializableElement(descriptor, 6, didCompleteSync)
@@ -127,7 +131,30 @@ internal data class CoreSyncStatus(
     val downloading: CoreDownloadProgress?,
     @SerialName("priority_status")
     val priorityStatus: List<CorePriorityStatus>,
+    val streams: List<CoreActiveStreamSubscription>,
 )
+
+@Serializable
+internal data class CoreActiveStreamSubscription(
+    override val name: String,
+    override val parameters: TypedRow?,
+    val priority: StreamPriority?,
+    val progress: ProgressInfo,
+    override val active: Boolean,
+    @SerialName("is_default")
+    override val isDefault: Boolean,
+    @SerialName("has_explicit_subscription")
+    override val hasExplicitSubscription: Boolean,
+    @SerialName("expires_at")
+    @Serializable(with = InstantTimestampSerializer::class)
+    override val expiresAt: Instant?,
+    @SerialName("last_synced_at")
+    @Serializable(with = InstantTimestampSerializer::class)
+    override val lastSyncedAt: Instant?,
+) : SyncSubscriptionDescription {
+    override val hasSynced: Boolean
+        get() = lastSyncedAt != null
+}
 
 @Serializable
 internal data class CoreDownloadProgress(
@@ -136,7 +163,7 @@ internal data class CoreDownloadProgress(
 
 @Serializable
 internal data class CoreBucketProgress(
-    val priority: BucketPriority,
+    val priority: StreamPriority,
     @SerialName("at_last")
     val atLast: Long,
     @SerialName("since_last")
@@ -147,7 +174,7 @@ internal data class CoreBucketProgress(
 
 @Serializable
 internal data class CorePriorityStatus(
-    val priority: BucketPriority,
+    val priority: StreamPriority,
     @SerialName("last_synced_at")
     @Serializable(with = InstantTimestampSerializer::class)
     val lastSyncedAt: Instant?,
