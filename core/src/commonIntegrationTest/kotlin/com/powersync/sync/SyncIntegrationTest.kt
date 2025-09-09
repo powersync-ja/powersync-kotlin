@@ -612,7 +612,6 @@ abstract class BaseSyncIntegrationTest(
                     database.watch("SELECT name FROM users") { it.getString(0)!! }.testIn(scope)
                 query.awaitItem() shouldBe listOf("local write")
 
-                syncLines.send(SyncLine.KeepAlive(tokenExpiresIn = 1234))
                 syncLines.send(
                     SyncLine.FullCheckpoint(
                         Checkpoint(
