@@ -21,7 +21,7 @@ internal class StreamTracker(
     val streamGroups = mutableMapOf<StreamKey, SubscriptionGroup>()
     val currentlyReferencedStreams = MutableStateFlow(listOf<SubscriptionGroup>())
 
-    private suspend fun subscriptionsCommand(command: RustSubscriptionChangeRequest) {
+    suspend fun subscriptionsCommand(command: RustSubscriptionChangeRequest) {
         db.writeTransaction { tx ->
             tx.execute("SELECT powersync_control(?,?)", listOf("subscriptions", jsonDontEncodeDefaults.encodeToString(command)))
         }
@@ -101,6 +101,7 @@ internal class PendingStream(
     override suspend fun unsubscribeAll() {
         tracker.groupMutex.withLock {
             tracker.removeStreamGroup(key)
+            tracker.subscriptionsCommand(RustSubscriptionChangeRequest(unsubscribe = key))
         }
     }
 }
