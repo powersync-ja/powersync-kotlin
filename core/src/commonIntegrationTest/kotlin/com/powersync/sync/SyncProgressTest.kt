@@ -3,7 +3,6 @@ package com.powersync.sync
 import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.turbineScope
 import com.powersync.bucket.BucketChecksum
-import com.powersync.bucket.BucketPriority
 import com.powersync.bucket.Checkpoint
 import com.powersync.bucket.OpType
 import com.powersync.bucket.OplogEntry
