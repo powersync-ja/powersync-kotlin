@@ -66,11 +66,11 @@ internal fun createPowerSyncDatabaseImpl(
             )
         }
 
-    return PowerSyncDatabase.opened(
+    return PowerSyncDatabase.openedWithGroup(
         pool,
         scope,
         schema,
-        activeDatabaseGroup,
         logger,
+        activeDatabaseGroup,
     ) as PowerSyncDatabaseImpl
 }
