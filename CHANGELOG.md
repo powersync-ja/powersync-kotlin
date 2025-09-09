@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.0 (unreleased)
+
+* Remove internal SQLDelight and SQLiter dependencies.
+* Add `rawConnection` getter to `ConnectionContext`, which is a `SQLiteConnection` instance from
+  `androidx.sqlite` that can be used to step through statements in a custom way.
+
 ## 1.5.1
 
 * Fix issue in legacy sync client where local writes made offline could have their upload delayed

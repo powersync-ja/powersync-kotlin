@@ -1,14 +1,20 @@
 package com.powersync
 
+import co.touchlab.kermit.Logger
 import com.powersync.bucket.BucketPriority
 import com.powersync.connectors.PowerSyncBackendConnector
+import com.powersync.db.ActiveDatabaseGroup
+import com.powersync.db.ActiveDatabaseResource
+import com.powersync.db.PowerSyncDatabaseImpl
 import com.powersync.db.Queries
 import com.powersync.db.crud.CrudBatch
 import com.powersync.db.crud.CrudTransaction
+import com.powersync.db.driver.SQLiteConnectionPool
 import com.powersync.db.schema.Schema
 import com.powersync.sync.SyncOptions
 import com.powersync.sync.SyncStatus
 import com.powersync.utils.JsonParam
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlin.coroutines.cancellation.CancellationException
@@ -203,4 +209,45 @@ public interface PowerSyncDatabase : Queries {
      */
     @Throws(PowerSyncException::class, CancellationException::class)
     public suspend fun close()
+
+    public companion object {
+        /**
+         * Creates a PowerSync database managed by an external connection pool.
+         *
+         * In this case, PowerSync will not open its own SQLite connections, but rather refer to
+         * connections in the [pool].
+         *
+         * The `identifier` parameter should be a name identifying the path of the database. The
+         * PowerSync SDK will emit a warning if multiple databases are opened with the same
+         * identifier, and uses internal locks to ensure these two databases are not synced at the
+         * same time (which would be inefficient and can cause consistency issues).
+         */
+        @ExperimentalPowerSyncAPI
+        public fun opened(
+            pool: SQLiteConnectionPool,
+            scope: CoroutineScope,
+            schema: Schema,
+            identifier: String,
+            logger: Logger,
+        ): PowerSyncDatabase {
+            val group = ActiveDatabaseGroup.referenceDatabase(logger, identifier)
+            return openedWithGroup(pool, scope, schema, logger, group)
+        }
+
+        @ExperimentalPowerSyncAPI
+        internal fun openedWithGroup(
+            pool: SQLiteConnectionPool,
+            scope: CoroutineScope,
+            schema: Schema,
+            logger: Logger,
+            group: Pair<ActiveDatabaseResource, Any>,
+        ): PowerSyncDatabase =
+            PowerSyncDatabaseImpl(
+                schema,
+                scope,
+                pool,
+                logger,
+                group,
+            )
+    }
 }

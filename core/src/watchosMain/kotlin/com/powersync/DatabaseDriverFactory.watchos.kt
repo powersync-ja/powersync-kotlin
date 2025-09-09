@@ -1,9 +1,23 @@
 package com.powersync
 
-import co.touchlab.sqliter.DatabaseConnection
+import androidx.sqlite.SQLiteConnection
+import com.powersync.sqlite.Database
 import com.powersync.static.powersync_init_static
 
-internal actual fun DatabaseConnection.loadPowerSyncSqliteCoreExtension() {
+@Suppress(names = ["EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING"])
+public actual class DatabaseDriverFactory {
+    internal actual fun resolveDefaultDatabasePath(dbFilename: String): String = appleDefaultDatabasePath(dbFilename)
+
+    internal actual fun openConnection(
+        path: String,
+        openFlags: Int,
+    ): SQLiteConnection {
+        didLoadExtension
+        return Database.open(path, openFlags)
+    }
+}
+
+private val didLoadExtension by lazy {
     val rc = powersync_init_static()
     if (rc != 0) {
         throw PowerSyncException(
@@ -14,4 +28,6 @@ internal actual fun DatabaseConnection.loadPowerSyncSqliteCoreExtension() {
                 ),
         )
     }
+
+    true
 }

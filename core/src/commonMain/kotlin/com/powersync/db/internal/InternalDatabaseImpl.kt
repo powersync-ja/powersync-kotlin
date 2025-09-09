@@ -1,15 +1,16 @@
 package com.powersync.db.internal
 
-import app.cash.sqldelight.db.SqlPreparedStatement
-import com.powersync.DatabaseDriverFactory
+import com.powersync.ExperimentalPowerSyncAPI
+import com.powersync.PowerSyncException
 import com.powersync.db.SqlCursor
 import com.powersync.db.ThrowableLockCallback
 import com.powersync.db.ThrowableTransactionCallback
+import com.powersync.db.driver.SQLiteConnectionLease
+import com.powersync.db.driver.SQLiteConnectionPool
 import com.powersync.db.runWrapped
 import com.powersync.utils.AtomicMutableSet
 import com.powersync.utils.JsonUtil
 import com.powersync.utils.throttle
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
@@ -18,37 +19,13 @@ import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.flow.transform
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
 
+@OptIn(ExperimentalPowerSyncAPI::class)
 internal class InternalDatabaseImpl(
-    private val factory: DatabaseDriverFactory,
-    private val scope: CoroutineScope,
-    private val dbFilename: String,
-    private val dbDirectory: String?,
-    private val writeLockMutex: Mutex,
+    private val pool: SQLiteConnectionPool,
 ) : InternalDatabase {
-    private val writeConnection =
-        TransactorDriver(
-            factory.createDriver(
-                scope = scope,
-                dbFilename = dbFilename,
-                dbDirectory = dbDirectory,
-            ),
-        )
-
-    private val readPool =
-        ConnectionPool(factory = {
-            factory.createDriver(
-                scope = scope,
-                dbFilename = dbFilename,
-                dbDirectory = dbDirectory,
-                readOnly = true,
-            )
-        }, scope = scope)
-
     // Could be scope.coroutineContext, but the default is GlobalScope, which seems like a bad idea. To discuss.
     private val dbContext = Dispatchers.IO
 
@@ -63,10 +40,8 @@ internal class InternalDatabaseImpl(
     override suspend fun updateSchema(schemaJson: String) {
         withContext(dbContext) {
             runWrapped {
-                // First get a lock on all read connections
-                readPool.withAllConnections { readConnections ->
-                    // Then get access to the write connection
-                    writeTransaction { tx ->
+                pool.withAllConnections { writer, readers ->
+                    writer.runTransaction { tx ->
                         tx.getOptional(
                             "SELECT powersync_replace_schema(?);",
                             listOf(schemaJson),
@@ -74,7 +49,9 @@ internal class InternalDatabaseImpl(
                     }
 
                     // Update the schema on all read connections
-                    readConnections.forEach { it.driver.getAll("pragma table_info('sqlite_master')") {} }
+                    for (readConnection in readers) {
+                        readConnection.execSQL("pragma table_info('sqlite_master')")
+                    }
                 }
             }
         }
@@ -173,65 +150,65 @@ internal class InternalDatabaseImpl(
                 }
         }
 
+    override suspend fun <T> useConnection(
+        readOnly: Boolean,
+        block: suspend (SQLiteConnectionLease) -> T,
+    ): T =
+        if (readOnly) {
+            pool.read(block)
+        } else {
+            pool.write(block)
+        }
+
     /**
      * Creates a read lock while providing an internal transactor for transactions
      */
-    private suspend fun <R> internalReadLock(callback: (TransactorDriver) -> R): R =
+    @OptIn(ExperimentalPowerSyncAPI::class)
+    private suspend fun <R> internalReadLock(callback: suspend (SQLiteConnectionLease) -> R): R =
         withContext(dbContext) {
             runWrapped {
-                readPool.withConnection {
-                    callback(it)
+                useConnection(true) { connection ->
+                    callback(connection)
                 }
             }
         }
 
     override suspend fun <R> readLock(callback: ThrowableLockCallback<R>): R =
         internalReadLock {
-            callback.execute(it.driver)
+            callback.execute(ConnectionContextImplementation(it))
         }
 
     override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R =
         internalReadLock {
-            it.transactor.transactionWithResult(noEnclosing = true) {
-                callback.execute(
-                    PowerSyncTransactionImpl(
-                        it.driver,
-                    ),
-                )
+            it.runTransaction { tx ->
+                callback.execute(tx)
             }
         }
 
-    private suspend fun <R> internalWriteLock(callback: (TransactorDriver) -> R): R =
+    @OptIn(ExperimentalPowerSyncAPI::class)
+    private suspend fun <R> internalWriteLock(callback: suspend (SQLiteConnectionLease) -> R): R =
         withContext(dbContext) {
-            writeLockMutex.withLock {
+            pool.write { writer ->
                 runWrapped {
-                    callback(writeConnection)
-                }.also {
-                    // Trigger watched queries
-                    // Fire updates inside the write lock
-                    writeConnection.driver.fireTableUpdates()
+                    callback(writer)
                 }
             }
         }
 
     override suspend fun <R> writeLock(callback: ThrowableLockCallback<R>): R =
         internalWriteLock {
-            callback.execute(it.driver)
+            callback.execute(ConnectionContextImplementation(it))
         }
 
     override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R =
         internalWriteLock {
-            it.transactor.transactionWithResult(noEnclosing = true) {
-                callback.execute(
-                    PowerSyncTransactionImpl(
-                        it.driver,
-                    ),
-                )
+            it.runTransaction { tx ->
+                callback.execute(tx)
             }
         }
 
     // Register callback for table updates on a specific table
-    override fun updatesOnTables(): SharedFlow<Set<String>> = writeConnection.driver.updatesOnTables()
+    override fun updatesOnTables(): SharedFlow<Set<String>> = pool.updates
 
     private suspend fun getSourceTables(
         sql: String,
@@ -271,8 +248,7 @@ internal class InternalDatabaseImpl(
 
     override suspend fun close() {
         runWrapped {
-            writeConnection.driver.close()
-            readPool.close()
+            pool.close()
         }
     }
 
@@ -295,27 +271,4 @@ private fun friendlyTableName(table: String): String {
     val re2 = Regex("^ps_data_local__(.+)$")
     val match = re.matchEntire(table) ?: re2.matchEntire(table)
     return match?.groupValues?.get(1) ?: table
-}
-
-internal fun getBindersFromParams(parameters: List<Any?>?): (SqlPreparedStatement.() -> Unit)? {
-    if (parameters.isNullOrEmpty()) {
-        return null
-    }
-    return {
-        parameters.forEachIndexed { index, parameter ->
-            when (parameter) {
-                is Boolean -> bindBoolean(index, parameter)
-                is String -> bindString(index, parameter)
-                is Long -> bindLong(index, parameter)
-                is Int -> bindLong(index, parameter.toLong())
-                is Double -> bindDouble(index, parameter)
-                is ByteArray -> bindBytes(index, parameter)
-                else -> {
-                    if (parameter != null) {
-                        throw IllegalArgumentException("Unsupported parameter type: ${parameter::class}, at index $index")
-                    }
-                }
-            }
-        }
-    }
 }

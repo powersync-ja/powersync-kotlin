@@ -1,0 +1,3 @@
+headers = sqlite3.h
+
+noStringConversion = sqlite3_prepare_v3
