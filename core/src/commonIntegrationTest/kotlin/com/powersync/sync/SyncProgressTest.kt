@@ -3,12 +3,12 @@ package com.powersync.sync
 import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.turbineScope
 import com.powersync.bucket.BucketChecksum
+import com.powersync.bucket.BucketPriority
 import com.powersync.bucket.Checkpoint
 import com.powersync.bucket.OpType
 import com.powersync.bucket.OplogEntry
 import com.powersync.bucket.StreamPriority
 import com.powersync.testutils.ActiveDatabaseTest
-import com.powersync.testutils.bucket
 import com.powersync.testutils.databaseTest
 import com.powersync.testutils.waitFor
 import io.kotest.assertions.withClue
@@ -32,6 +32,18 @@ abstract class BaseSyncProgressTest(
     fun resetOpId() {
         lastOpId = 0
     }
+
+    private fun bucket(
+        name: String,
+        count: Int,
+        priority: StreamPriority = StreamPriority(3),
+    ): BucketChecksum =
+        BucketChecksum(
+            bucket = name,
+            priority = priority,
+            checksum = 0,
+            count = count,
+        )
 
     private suspend fun ActiveDatabaseTest.addDataLine(
         bucket: String,

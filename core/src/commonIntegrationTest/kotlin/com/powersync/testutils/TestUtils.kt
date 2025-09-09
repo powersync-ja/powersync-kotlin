@@ -11,8 +11,6 @@ import com.powersync.DatabaseDriverFactory
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncTestLogWriter
 import com.powersync.TestConnector
-import com.powersync.bucket.BucketChecksum
-import com.powersync.bucket.StreamPriority
 import com.powersync.bucket.WriteCheckpointData
 import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.createPowerSyncDatabaseImpl
@@ -28,7 +26,6 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.files.Path
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 
 expect val factory: DatabaseDriverFactory
@@ -156,18 +153,3 @@ internal class ActiveDatabaseTest(
         cleanup(path)
     }
 }
-
-internal fun bucket(
-    name: String,
-    count: Int,
-    priority: StreamPriority = StreamPriority(3),
-    checksum: Int = 0,
-    subscriptions: JsonArray? = null,
-): BucketChecksum =
-    BucketChecksum(
-        bucket = name,
-        priority = priority,
-        checksum = checksum,
-        count = count,
-        subscriptions = subscriptions,
-    )
