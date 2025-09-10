@@ -3,6 +3,7 @@ package com.powersync.db.driver
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.SQLiteStatement
 import com.powersync.ExperimentalPowerSyncAPI
+import com.powersync.db.runWrapped
 
 /**
  * A temporary view / lease of an inner [androidx.sqlite.SQLiteConnection] managed by the PowerSync
@@ -22,7 +23,9 @@ internal class RawConnectionLease(
 
     override fun isInTransactionSync(): Boolean {
         checkNotCompleted()
-        return connection.inTransaction()
+        return runWrapped {
+            connection.inTransaction()
+        }
     }
 
     override suspend fun <R> usePrepared(
@@ -35,6 +38,8 @@ internal class RawConnectionLease(
         block: (SQLiteStatement) -> R,
     ): R {
         checkNotCompleted()
-        return connection.prepare(sql).use(block)
+        return runWrapped {
+            connection.prepare(sql).use(block)
+        }
     }
 }

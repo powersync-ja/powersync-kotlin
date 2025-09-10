@@ -2,12 +2,12 @@ package com.powersync.bucket
 
 import co.touchlab.kermit.Logger
 import co.touchlab.stately.concurrency.AtomicBoolean
+import com.powersync.db.ScopedWriteQueries
 import com.powersync.db.SqlCursor
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.CrudRow
 import com.powersync.db.internal.InternalDatabase
 import com.powersync.db.internal.InternalTable
-import com.powersync.db.internal.PowerSyncTransaction
 import com.powersync.sync.Instruction
 import com.powersync.sync.LegacySyncImplementation
 import com.powersync.sync.SyncDataBatch
@@ -37,7 +37,7 @@ internal class BucketStorageImpl(
 
     override suspend fun nextCrudItem(): CrudEntry? = db.getOptional(sql = nextCrudQuery, mapper = ::mapCrudEntry)
 
-    override fun nextCrudItem(transaction: PowerSyncTransaction): CrudEntry? =
+    override suspend fun nextCrudItem(transaction: ScopedWriteQueries): CrudEntry? =
         transaction.getOptional(sql = nextCrudQuery, mapper = ::mapCrudEntry)
 
     private val nextCrudQuery = "SELECT id, tx_id, data FROM ${InternalTable.CRUD} ORDER BY id ASC LIMIT 1"
@@ -56,7 +56,7 @@ internal class BucketStorageImpl(
         return res == 1L
     }
 
-    override fun hasCrud(transaction: PowerSyncTransaction): Boolean {
+    override suspend fun hasCrud(transaction: ScopedWriteQueries): Boolean {
         val res = transaction.getOptional(sql = hasCrudQuery, mapper = hasCrudMapper)
         return res == 1L
     }
@@ -85,10 +85,10 @@ internal class BucketStorageImpl(
 
         logger.i { "[updateLocalTarget] Updating target to checkpoint $opId" }
 
-        return db.writeTransaction { tx ->
+        return db.writeTransactionAsync { tx ->
             if (hasCrud(tx)) {
                 logger.w { "[updateLocalTarget] ps crud is not empty" }
-                return@writeTransaction false
+                return@writeTransactionAsync false
             }
 
             val seqAfter =
@@ -101,7 +101,7 @@ internal class BucketStorageImpl(
             if (seqAfter != seqBefore) {
                 logger.d("seqAfter != seqBefore seqAfter: $seqAfter seqBefore: $seqBefore")
                 // New crud data may have been uploaded since we got the checkpoint. Abort.
-                return@writeTransaction false
+                return@writeTransactionAsync false
             }
 
             tx.execute(
@@ -109,13 +109,13 @@ internal class BucketStorageImpl(
                 listOf(opId),
             )
 
-            return@writeTransaction true
+            return@writeTransactionAsync true
         }
     }
 
     @LegacySyncImplementation
     override suspend fun saveSyncData(syncDataBatch: SyncDataBatch) {
-        db.writeTransaction { tx ->
+        db.writeTransactionAsync { tx ->
             val jsonString = JsonUtil.json.encodeToString(syncDataBatch)
             tx.execute(
                 "INSERT INTO powersync_operations(op, data) VALUES(?, ?)",
@@ -155,7 +155,7 @@ internal class BucketStorageImpl(
 
     @LegacySyncImplementation
     private suspend fun deleteBucket(bucketName: String) {
-        db.writeTransaction { tx ->
+        db.writeTransactionAsync { tx ->
             tx.execute(
                 "INSERT INTO powersync_operations(op, data) VALUES(?, ?)",
                 listOf("delete_bucket", bucketName),
@@ -219,7 +219,7 @@ internal class BucketStorageImpl(
                     }
                 }.map { it.bucket }
 
-        db.writeTransaction { tx ->
+        db.writeTransactionAsync { tx ->
             tx.execute(
                 "UPDATE ps_buckets SET last_op = ? WHERE name IN (SELECT json_each.value FROM json_each(?))",
                 listOf(targetCheckpoint.lastOpId, JsonUtil.json.encodeToString(bucketNames)),
@@ -306,7 +306,7 @@ internal class BucketStorageImpl(
                 ""
             }
 
-        return db.writeTransaction { tx ->
+        return db.writeTransactionAsync { tx ->
             tx.execute(
                 "INSERT INTO powersync_operations(op, data) VALUES(?, ?)",
                 listOf("sync_local", args),
@@ -338,7 +338,7 @@ internal class BucketStorageImpl(
                 )
             }
 
-            return@writeTransaction didApply
+            return@writeTransactionAsync didApply
         }
     }
 
@@ -355,7 +355,7 @@ internal class BucketStorageImpl(
     }
 
     override suspend fun control(args: PowerSyncControlArguments): List<Instruction> =
-        db.writeTransaction { tx ->
+        db.writeTransactionAsync { tx ->
             logger.v { "powersync_control: $args" }
 
             val (op: String, data: Any?) =

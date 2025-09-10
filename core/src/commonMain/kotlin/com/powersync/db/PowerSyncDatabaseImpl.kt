@@ -106,7 +106,7 @@ internal class PowerSyncDatabaseImpl(
         checkVersion(powerSyncVersion)
         logger.d { "PowerSyncVersion: $powerSyncVersion" }
 
-        internalDb.writeTransaction { tx ->
+        internalDb.writeTransactionAsync { tx ->
             tx.getOptional("SELECT powersync_init()") {}
         }
 
@@ -331,33 +331,6 @@ internal class PowerSyncDatabaseImpl(
         return internalDb.useConnection(readOnly, block)
     }
 
-    override suspend fun <RowType : Any> get(
-        sql: String,
-        parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType,
-    ): RowType {
-        waitReady()
-        return internalDb.get(sql, parameters, mapper)
-    }
-
-    override suspend fun <RowType : Any> getAll(
-        sql: String,
-        parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType,
-    ): List<RowType> {
-        waitReady()
-        return internalDb.getAll(sql, parameters, mapper)
-    }
-
-    override suspend fun <RowType : Any> getOptional(
-        sql: String,
-        parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType,
-    ): RowType? {
-        waitReady()
-        return internalDb.getOptional(sql, parameters, mapper)
-    }
-
     override fun onChange(
         tables: Set<String>,
         throttleMs: Long,
@@ -381,39 +354,11 @@ internal class PowerSyncDatabaseImpl(
             emitAll(internalDb.watch(sql, parameters, throttleMs, mapper))
         }
 
-    override suspend fun <R> readLock(callback: ThrowableLockCallback<R>): R {
-        waitReady()
-        return internalDb.readLock(callback)
-    }
-
-    override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R {
-        waitReady()
-        return internalDb.writeTransaction(callback)
-    }
-
-    override suspend fun <R> writeLock(callback: ThrowableLockCallback<R>): R {
-        waitReady()
-        return internalDb.writeLock(callback)
-    }
-
-    override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R {
-        waitReady()
-        return internalDb.writeTransaction(callback)
-    }
-
-    override suspend fun execute(
-        sql: String,
-        parameters: List<Any?>?,
-    ): Long {
-        waitReady()
-        return internalDb.execute(sql, parameters)
-    }
-
     private suspend fun handleWriteCheckpoint(
         lastTransactionId: Int,
         writeCheckpoint: String?,
     ) {
-        internalDb.writeTransaction { transaction ->
+        internalDb.writeTransactionAsync { transaction ->
             transaction.execute(
                 "DELETE FROM ps_crud WHERE id <= ?",
                 listOf(lastTransactionId.toLong()),
@@ -460,7 +405,7 @@ internal class PowerSyncDatabaseImpl(
     override suspend fun disconnectAndClear(clearLocal: Boolean) {
         disconnect()
 
-        internalDb.writeTransaction { tx ->
+        internalDb.writeTransactionAsync { tx ->
             tx.getOptional("SELECT powersync_clear(?)", listOf(if (clearLocal) "1" else "0")) {}
         }
         currentStatus.update { copy(lastSyncedAt = null, hasSynced = false) }
