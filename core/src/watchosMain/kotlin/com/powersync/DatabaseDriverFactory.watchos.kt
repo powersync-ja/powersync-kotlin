@@ -31,3 +31,9 @@ private val didLoadExtension by lazy {
 
     true
 }
+
+@ExperimentalPowerSyncAPI
+public actual fun resolvePowerSyncLoadableExtensionPath(): String? {
+    didLoadExtension
+    return null
+}

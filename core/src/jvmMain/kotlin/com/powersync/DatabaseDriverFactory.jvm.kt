@@ -20,3 +20,6 @@ public fun BundledSQLiteDriver.addPowerSyncExtension() {
 }
 
 private val powersyncExtension: String by lazy { extractLib("powersync") }
+
+@ExperimentalPowerSyncAPI
+public actual fun resolvePowerSyncLoadableExtensionPath(): String? = powersyncExtension
