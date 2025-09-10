@@ -30,6 +30,7 @@ compose-preview = "1.9.0"
 compose-lifecycle = "2.9.2"
 androidxSqlite = "2.6.0-rc02"
 androidxSplashscreen = "1.0.1"
+sqldelight = "2.1.0"
 
 # plugins
 android-gradle-plugin = "8.12.1"
@@ -97,6 +98,9 @@ supabase-auth = { module = "io.github.jan-tennert.supabase:auth-kt", version.ref
 supabase-storage = { module = "io.github.jan-tennert.supabase:storage-kt", version.ref = "supabase" }
 androidx-sqlite-sqlite = { module = "androidx.sqlite:sqlite", version.ref = "androidxSqlite" }
 androidx-sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "androidxSqlite" }
+sqldelight-coroutines = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
+sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }
+sqldelight-dialect-sqlite38 = { module = "app.cash.sqldelight:sqlite-3-38-dialect", version.ref = "sqldelight" }
 
 # Sample - Android
 androidx-core = { group = "androidx.core", name = "core-ktx", version.ref = "androidx-core" }
@@ -143,3 +147,4 @@ keeper = { id = "com.slack.keeper", version.ref = "keeper" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version.ref = "atomicfu" }
 buildKonfig = { id = "com.codingfeline.buildkonfig", version.ref = "buildKonfig" }
+sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }

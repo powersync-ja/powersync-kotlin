@@ -32,6 +32,9 @@ include(":core-tests-android")
 include(":connectors:supabase")
 include(":static-sqlite-driver")
 
+include(":integrations:sqldelight")
+include(":integrations:sqldelight-test-database")
+
 include(":PowerSyncKotlin")
 
 include(":compose")
