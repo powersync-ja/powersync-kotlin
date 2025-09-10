@@ -108,7 +108,7 @@ class CrudTest {
                 ),
             )
 
-            database.writeTransaction { tx ->
+            database.writeTransactionAsync { tx ->
                 tx.execute(
                     "INSERT INTO foo (id,a,b,c) VALUES (uuid(), ?, ?, ?)",
                     listOf(

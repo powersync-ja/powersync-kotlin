@@ -4,45 +4,33 @@ import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncException
 import com.powersync.db.driver.SQLiteConnectionLease
 import com.powersync.db.internal.ConnectionContext
+import com.powersync.db.internal.ConnectionContextImplementation
 import com.powersync.db.internal.PowerSyncTransaction
+import com.powersync.db.internal.ScopedWriteQueriesImplementation
+import com.powersync.db.internal.runTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.native.HiddenFromObjC
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
+@Deprecated(message = "Use suspending callback instead", level = DeprecationLevel.WARNING)
 public fun interface ThrowableTransactionCallback<R> {
     @Throws(PowerSyncException::class, kotlinx.coroutines.CancellationException::class)
     public fun execute(transaction: PowerSyncTransaction): R
 }
 
+@Deprecated(message = "Use suspending callback instead", level = DeprecationLevel.WARNING)
 public fun interface ThrowableLockCallback<R> {
     @Throws(PowerSyncException::class, kotlinx.coroutines.CancellationException::class)
     public fun execute(context: ConnectionContext): R
 }
 
-public interface Queries {
-    public companion object {
-        /**
-         * The default throttle duration for  [onChange] and [watch] operations.
-         */
-        public val DEFAULT_THROTTLE: Duration = 30.milliseconds
+public interface ScopedReadQueries {
+    public fun interface Callback<R> {
+        @Throws(PowerSyncException::class, kotlinx.coroutines.CancellationException::class)
+        public suspend fun execute(context: ScopedReadQueries): R
     }
-
-    /**
-     * Executes a write query (INSERT, UPDATE, DELETE).
-     *
-     * @param sql The SQL query to execute.
-     * @param parameters The parameters for the query, or an empty list if none.
-     * @return The number of rows affected by the query.
-     * @throws PowerSyncException If a database error occurs.
-     * @throws CancellationException If the operation is cancelled.
-     */
-    @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun execute(
-        sql: String,
-        parameters: List<Any?>? = listOf(),
-    ): Long
 
     /**
      * Executes a read-only (SELECT) query and returns a single result.
@@ -94,6 +82,61 @@ public interface Queries {
         parameters: List<Any?>? = listOf(),
         mapper: (SqlCursor) -> RowType,
     ): RowType?
+}
+
+public interface ScopedWriteQueries : ScopedReadQueries {
+    public fun interface Callback<R> {
+        @Throws(PowerSyncException::class, kotlinx.coroutines.CancellationException::class)
+        public suspend fun execute(context: ScopedWriteQueries): R
+    }
+
+    /**
+     * Executes a write query (INSERT, UPDATE, DELETE).
+     *
+     * @param sql The SQL query to execute.
+     * @param parameters The parameters for the query, or an empty list if none.
+     * @return The number of rows affected by the query.
+     * @throws PowerSyncException If a database error occurs.
+     * @throws CancellationException If the operation is cancelled.
+     */
+    @Throws(PowerSyncException::class, CancellationException::class)
+    public suspend fun execute(
+        sql: String,
+        parameters: List<Any?>? = listOf(),
+    ): Long
+}
+
+@OptIn(ExperimentalPowerSyncAPI::class)
+public interface Queries : ScopedWriteQueries {
+    public companion object {
+        /**
+         * The default throttle duration for  [onChange] and [watch] operations.
+         */
+        public val DEFAULT_THROTTLE: Duration = 30.milliseconds
+    }
+
+    override suspend fun execute(
+        sql: String,
+        parameters: List<Any?>?,
+    ): Long = writeLockAsync { it.execute(sql, parameters) }
+
+    override suspend fun <RowType : Any> get(
+        sql: String,
+        parameters: List<Any?>?,
+        mapper: (SqlCursor) -> RowType,
+    ): RowType = readLockAsync { it.get(sql, parameters, mapper) }
+
+    override suspend fun <RowType : Any> getAll(
+        sql: String,
+        parameters: List<Any?>?,
+        mapper: (SqlCursor) -> RowType,
+    ): List<RowType> = readLockAsync { it.getAll(sql, parameters, mapper) }
+
+    override suspend fun <RowType : Any> getOptional(
+        sql: String,
+        parameters: List<Any?>?,
+        mapper: (SqlCursor) -> RowType,
+    ): RowType? = readLockAsync { it.getOptional(sql, parameters, mapper) }
 
     /**
      * Returns a [Flow] that emits whenever the source tables are modified.
@@ -131,6 +174,13 @@ public interface Queries {
         mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>>
 
+    @Throws(PowerSyncException::class, CancellationException::class)
+    @Deprecated(message = "Use suspending callback instead", replaceWith = ReplaceWith("writeLockAsync"))
+    public suspend fun <R> writeLock(callback: ThrowableLockCallback<R>): R =
+        useConnection(readOnly = false) { conn ->
+            callback.execute(ConnectionContextImplementation(conn))
+        }
+
     /**
      * Takes a global lock without starting a transaction.
      *
@@ -144,7 +194,17 @@ public interface Queries {
      * @throws CancellationException If the operation is cancelled.
      */
     @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun <R> writeLock(callback: ThrowableLockCallback<R>): R
+    public suspend fun <R> writeLockAsync(callback: ScopedWriteQueries.Callback<R>): R =
+        asyncCallback(readonly = false, transaction = false) { callback.execute(it) }
+
+    @Throws(PowerSyncException::class, CancellationException::class)
+    @Deprecated(message = "Use suspending callback instead", replaceWith = ReplaceWith("writeTransactionAsync"))
+    public suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R =
+        useConnection(readOnly = false) { conn ->
+            conn.runTransaction {
+                callback.execute(it)
+            }
+        }
 
     /**
      * Opens a read-write transaction.
@@ -159,7 +219,15 @@ public interface Queries {
      * @throws CancellationException If the operation is cancelled.
      */
     @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R
+    public suspend fun <R> writeTransactionAsync(callback: ScopedWriteQueries.Callback<R>): R =
+        asyncCallback(readonly = false, transaction = true) { callback.execute(it) }
+
+    @Throws(PowerSyncException::class, CancellationException::class)
+    @Deprecated(message = "Use suspending callback instead", replaceWith = ReplaceWith("readLockAsync"))
+    public suspend fun <R> readLock(callback: ThrowableLockCallback<R>): R =
+        useConnection(readOnly = true) { conn ->
+            callback.execute(ConnectionContextImplementation(conn))
+        }
 
     /**
      * Takes a read lock without starting a transaction.
@@ -172,7 +240,15 @@ public interface Queries {
      * @throws CancellationException If the operation is cancelled.
      */
     @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun <R> readLock(callback: ThrowableLockCallback<R>): R
+    public suspend fun <R> readLockAsync(callback: ScopedReadQueries.Callback<R>): R =
+        asyncCallback(readonly = true, transaction = false) { callback.execute(it) }
+
+    @Throws(PowerSyncException::class, CancellationException::class)
+    @Deprecated(message = "Use suspending callback instead", replaceWith = ReplaceWith("readTransactionAsync"))
+    public suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R =
+        useConnection(readOnly = true) { conn ->
+            conn.runTransaction { callback.execute(it) }
+        }
 
     /**
      * Opens a read-only transaction.
@@ -185,7 +261,23 @@ public interface Queries {
      * @throws CancellationException If the operation is cancelled.
      */
     @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R
+    public suspend fun <R> readTransactionAsync(callback: ScopedReadQueries.Callback<R>): R =
+        asyncCallback(readonly = false, transaction = true) { callback.execute(it) }
+
+    private suspend fun <R> asyncCallback(
+        readonly: Boolean,
+        transaction: Boolean,
+        callback: suspend (ScopedWriteQueries) -> R,
+    ): R =
+        useConnection(readonly) { conn ->
+            if (transaction) {
+                conn.runTransaction { tx ->
+                    callback(ScopedWriteQueriesImplementation(tx.lease, true))
+                }
+            } else {
+                callback(ScopedWriteQueriesImplementation(conn, false))
+            }
+        }
 
     /**
      * Obtains a connection from the read pool or an exclusive reference on the write connection.

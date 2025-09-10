@@ -5,11 +5,13 @@ import com.powersync.PowerSyncException
 import com.powersync.db.SqlCursor
 import com.powersync.db.driver.SQLiteConnectionLease
 
+@Deprecated("Use suspending callback instead")
 public interface PowerSyncTransaction : ConnectionContext
 
 @ExperimentalPowerSyncAPI
+@Deprecated("Use suspending callback instead")
 internal class PowerSyncTransactionImpl(
-    private val lease: SQLiteConnectionLease,
+    val lease: SQLiteConnectionLease,
 ) : PowerSyncTransaction,
     ConnectionContext {
     private val delegate = ConnectionContextImplementation(lease)
@@ -57,7 +59,7 @@ internal class PowerSyncTransactionImpl(
 }
 
 @ExperimentalPowerSyncAPI
-internal suspend fun <T> SQLiteConnectionLease.runTransaction(cb: suspend (PowerSyncTransaction) -> T): T {
+internal suspend fun <T> SQLiteConnectionLease.runTransaction(cb: suspend (PowerSyncTransactionImpl) -> T): T {
     execSQL("BEGIN")
     return try {
         val result = cb(PowerSyncTransactionImpl(this))

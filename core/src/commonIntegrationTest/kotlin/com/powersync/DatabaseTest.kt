@@ -1,7 +1,5 @@
 package com.powersync
 
-import androidx.sqlite.SQLiteConnection
-import androidx.sqlite.execSQL
 import app.cash.turbine.test
 import app.cash.turbine.turbineScope
 import co.touchlab.kermit.ExperimentalKermitApi
@@ -80,7 +78,59 @@ class DatabaseTest {
             // Start a long running writeTransaction
             val transactionJob =
                 scope.async {
+                    @Suppress("DEPRECATION")
                     database.writeTransaction { tx ->
+                        // Create another user
+                        // External readers should not see this user while the transaction is open
+                        tx.execute(
+                            "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                            listOf(
+                                "steven",
+                                "s@journeyapps.com",
+                            ),
+                        )
+
+                        transactionItemCreated.complete(Unit)
+
+                        // Block this transaction until we free it
+                        runBlocking {
+                            pausedTransaction.await()
+                        }
+                    }
+                }
+
+            // Make sure to wait for the item to have been created in the transaction
+            transactionItemCreated.await()
+            // Try and read while the write transaction is busy
+            val result = database.getAll("SELECT * FROM users") { UserRow.from(it) }
+            // The transaction is not commited yet, we should only read 1 user
+            assertEquals(result.size, 1)
+
+            // Let the transaction complete
+            pausedTransaction.complete(Unit)
+            transactionJob.await()
+
+            val afterTx = database.getAll("SELECT * FROM users") { UserRow.from(it) }
+            assertEquals(afterTx.size, 2)
+        }
+
+    @Test
+    fun testConcurrentReadsAsync() =
+        databaseTest {
+            database.execute(
+                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                listOf(
+                    "steven",
+                    "s@journeyapps.com",
+                ),
+            )
+
+            val pausedTransaction = CompletableDeferred<Unit>()
+            val transactionItemCreated = CompletableDeferred<Unit>()
+            // Start a long running writeTransaction
+            val transactionJob =
+                scope.async {
+                    database.writeTransactionAsync { tx ->
                         // Create another user
                         // External readers should not see this user while the transaction is open
                         tx.execute(
@@ -126,7 +176,39 @@ class DatabaseTest {
                 ),
             )
 
+            @Suppress("DEPRECATION")
             database.writeTransaction { tx ->
+                val userCount =
+                    tx.getAll("SELECT COUNT(*) as count FROM users") { cursor -> cursor.getLong(0)!! }
+                assertEquals(userCount[0], 1)
+
+                tx.execute(
+                    "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                    listOf(
+                        "steven",
+                        "s@journeyapps.com",
+                    ),
+                )
+
+                // Getters inside the transaction should be able to see the latest update
+                val userCount2 =
+                    tx.getAll("SELECT COUNT(*) as count FROM users") { cursor -> cursor.getLong(0)!! }
+                assertEquals(userCount2[0], 2)
+            }
+        }
+
+    @Test
+    fun testTransactionReadsAsync() =
+        databaseTest {
+            database.execute(
+                "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+                listOf(
+                    "steven",
+                    "s@journeyapps.com",
+                ),
+            )
+
+            database.writeTransactionAsync { tx ->
                 val userCount =
                     tx.getAll("SELECT COUNT(*) as count FROM users") { cursor -> cursor.getLong(0)!! }
                 assertEquals(userCount[0], 1)
@@ -161,7 +243,7 @@ class DatabaseTest {
                 )
                 query.awaitItem() shouldHaveSize 1
 
-                database.writeTransaction {
+                database.writeTransactionAsync {
                     it.execute(
                         "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
                         listOf("Test2", "test2@example.org"),
@@ -175,11 +257,11 @@ class DatabaseTest {
                 query.awaitItem() shouldHaveSize 3
 
                 try {
-                    database.writeTransaction {
+                    database.writeTransactionAsync {
                         it.execute("DELETE FROM users;")
                         it.execute("syntax error, revert please (this is intentional from the unit test)")
                     }
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     // Ignore
                 }
 
@@ -229,7 +311,7 @@ class DatabaseTest {
             // Request a lock
             val lockJob =
                 scope.async {
-                    database.readLock {
+                    database.readLockAsync {
                         inLock.complete(Unit)
                         runBlocking {
                             pausedLock.await()
@@ -255,7 +337,7 @@ class DatabaseTest {
             assertEquals(actual = database.closed, expected = false)
 
             // Any new readLocks should throw
-            val exception = shouldThrow<PowerSyncException> { database.readLock {} }
+            val exception = shouldThrow<PowerSyncException> { database.readLockAsync {} }
             exception.message shouldBe "Cannot process connection pool request"
 
             // Release the lock
@@ -327,7 +409,7 @@ class DatabaseTest {
     fun basicReadTransaction() =
         databaseTest {
             val count =
-                database.readTransaction { it ->
+                database.readTransactionAsync { it ->
                     it.get("SELECT COUNT(*) from users") { it.getLong(0)!! }
                 }
             count shouldBe 0
@@ -416,7 +498,7 @@ class DatabaseTest {
                 listOf("a", "a@example.org"),
             )
 
-            database.writeTransaction {
+            database.writeTransactionAsync {
                 it.execute(
                     "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
                     listOf("b", "b@example.org"),
@@ -442,7 +524,7 @@ class DatabaseTest {
     fun testCrudTransactions() =
         databaseTest {
             suspend fun insertInTransaction(size: Int) {
-                database.writeTransaction { tx ->
+                database.writeTransactionAsync { tx ->
                     repeat(size) {
                         tx.execute("INSERT INTO users (id, name, email) VALUES (uuid(), null, null)")
                     }
@@ -478,7 +560,7 @@ class DatabaseTest {
                 listOf("a", "a@example.org"),
             )
 
-            database.writeTransaction {
+            database.writeTransactionAsync {
                 it.execute(
                     "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
                     listOf("b", "b@example.org"),

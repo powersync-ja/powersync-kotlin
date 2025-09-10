@@ -136,7 +136,7 @@ class BucketStorageTest {
                             any(),
                         )
                     } returns 1L
-                    everySuspend { writeTransaction<Boolean>(any()) } returns true
+                    everySuspend { writeTransactionAsync<Boolean>(any()) } returns true
                 }
             bucketStorage = BucketStorageImpl(mockDb, Logger)
 

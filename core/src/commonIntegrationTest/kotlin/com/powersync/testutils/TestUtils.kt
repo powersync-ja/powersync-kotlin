@@ -117,7 +117,7 @@ internal class ActiveDatabaseTest(
         return db
     }
 
-    suspend fun openDatabaseAndInitialize(): PowerSyncDatabaseImpl = openDatabase().also { it.readLock { } }
+    suspend fun openDatabaseAndInitialize(): PowerSyncDatabaseImpl = openDatabase().also { it.readLockAsync { } }
 
     @OptIn(ExperimentalPowerSyncAPI::class)
     fun createSyncClient(): HttpClient {

@@ -1,8 +1,8 @@
 package com.powersync.bucket
 
+import com.powersync.db.ScopedWriteQueries
 import com.powersync.db.SqlCursor
 import com.powersync.db.crud.CrudEntry
-import com.powersync.db.internal.PowerSyncTransaction
 import com.powersync.db.schema.SerializableSchema
 import com.powersync.sync.Instruction
 import com.powersync.sync.LegacySyncImplementation
@@ -18,11 +18,11 @@ internal interface BucketStorage {
 
     suspend fun nextCrudItem(): CrudEntry?
 
-    fun nextCrudItem(transaction: PowerSyncTransaction): CrudEntry?
+    suspend fun nextCrudItem(transaction: ScopedWriteQueries): CrudEntry?
 
     suspend fun hasCrud(): Boolean
 
-    fun hasCrud(transaction: PowerSyncTransaction): Boolean
+    suspend fun hasCrud(transaction: ScopedWriteQueries): Boolean
 
     fun mapCrudEntry(row: SqlCursor): CrudEntry
 
