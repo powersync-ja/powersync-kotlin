@@ -29,7 +29,7 @@ import kotlin.coroutines.CoroutineContext
  */
 public class RoomConnectionPool(
     private val db: RoomDatabase,
-): SQLiteConnectionPool {
+) : SQLiteConnectionPool {
     private val _updates = MutableSharedFlow<Set<String>>()
     private var hasInstalledUpdateHook = false
 
@@ -41,11 +41,10 @@ public class RoomConnectionPool(
         }
     }
 
-    override suspend fun <T> read(callback: suspend (SQLiteConnectionLease) -> T): T {
-        return db.useReaderConnection {
+    override suspend fun <T> read(callback: suspend (SQLiteConnectionLease) -> T): T =
+        db.useReaderConnection {
             callback(RoomTransactionLease(it, currentCoroutineContext()))
         }
-    }
 
     /**
      * Makes pending updates tracked by Room's invalidation tracker available to the PowerSync
@@ -57,8 +56,8 @@ public class RoomConnectionPool(
         }
     }
 
-    override suspend fun <T> write(callback: suspend (SQLiteConnectionLease) -> T): T {
-        return db.useWriterConnection {
+    override suspend fun <T> write(callback: suspend (SQLiteConnectionLease) -> T): T =
+        db.useWriterConnection {
             if (!hasInstalledUpdateHook) {
                 hasInstalledUpdateHook = true
                 it.execSQL("SELECT powersync_update_hooks('install')")
@@ -67,14 +66,17 @@ public class RoomConnectionPool(
             try {
                 callback(RoomTransactionLease(it, currentCoroutineContext()))
             } finally {
-                val changed = it.usePrepared("SELECT powersync_update_hooks('get')") { stmt ->
-                    check(stmt.step())
-                    json.decodeFromString<Set<String>>(stmt.getText(0))
-                }
+                val changed =
+                    it.usePrepared("SELECT powersync_update_hooks('get')") { stmt ->
+                        check(stmt.step())
+                        json.decodeFromString<Set<String>>(stmt.getText(0))
+                    }
 
-                val userTables = changed.filter { tbl ->
-                    !tbl.startsWith("ps_") && !tbl.startsWith("room_")
-                }.toTypedArray()
+                val userTables =
+                    changed
+                        .filter { tbl ->
+                            !tbl.startsWith("ps_") && !tbl.startsWith("room_")
+                        }.toTypedArray()
 
                 if (userTables.isNotEmpty()) {
                     db.invalidationTracker.refresh(*userTables)
@@ -83,7 +85,6 @@ public class RoomConnectionPool(
                 _updates.emit(changed)
             }
         }
-    }
 
     override val updates: SharedFlow<Set<String>>
         get() = _updates
@@ -103,28 +104,25 @@ private class RoomTransactionLease(
      * The context to use for [runBlocking] calls to avoid the "Attempted to use connection on a
      * different coroutine" error.
      */
-    private val context: CoroutineContext
-): SQLiteConnectionLease {
-    override suspend fun isInTransaction(): Boolean {
-        return transactor.inTransaction()
-    }
+    private val context: CoroutineContext,
+) : SQLiteConnectionLease {
+    override suspend fun isInTransaction(): Boolean = transactor.inTransaction()
 
     override suspend fun <R> usePrepared(
         sql: String,
-        block: (SQLiteStatement) -> R
-    ): R {
-        return transactor.usePrepared(sql, block)
-    }
+        block: (SQLiteStatement) -> R,
+    ): R = transactor.usePrepared(sql, block)
 
-    override fun isInTransactionSync(): Boolean {
-        return runBlocking(context) {
+    override fun isInTransactionSync(): Boolean =
+        runBlocking(context) {
             isInTransaction()
         }
-    }
 
-    override fun <R> usePreparedSync(sql: String, block: (SQLiteStatement) -> R): R {
-        return runBlocking(context) {
+    override fun <R> usePreparedSync(
+        sql: String,
+        block: (SQLiteStatement) -> R,
+    ): R =
+        runBlocking(context) {
             usePrepared(sql, block)
         }
-    }
 }

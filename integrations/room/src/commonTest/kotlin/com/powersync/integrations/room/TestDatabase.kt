@@ -34,10 +34,9 @@ interface UserDao {
     suspend fun delete(user: User)
 }
 
-
 @Database(entities = [User::class], version = 1)
 @ConstructedBy(TestDatabaseConstructor::class)
-abstract class TestDatabase: RoomDatabase() {
+abstract class TestDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
 
     companion object {

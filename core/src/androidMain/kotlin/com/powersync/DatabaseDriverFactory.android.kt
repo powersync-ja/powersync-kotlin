@@ -22,4 +22,5 @@ public fun BundledSQLiteDriver.addPowerSyncExtension() {
     addExtension("libpowersync.so", "sqlite3_powersync_init")
 }
 
+@ExperimentalPowerSyncAPI
 public actual fun resolvePowerSyncLoadableExtensionPath(): String? = "libpowersync.so"
