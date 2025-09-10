@@ -9,6 +9,9 @@ Room support, meaning that:
 
 ## Setup
 
+Add a dependency on `com.powersync:integration-room` with the same version you use for the main
+PowerSync SDK.
+
 PowerSync can use an existing Room database, provided that the PowerSync core SQLite extension has
 been loaded. To do that:
 

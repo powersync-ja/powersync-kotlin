@@ -43,15 +43,16 @@ class SharedBuildPlugin : Plugin<Project> {
 
                         linkTaskProvider.configure {
                             inputs.files(sharedFiles)
+
+                            val frameworkRoot = sharedFiles.singleFile
+                                .resolve("powersync-sqlite-core.xcframework/$abiName")
+                                .path
+
+                            linkerOpts("-F", frameworkRoot)
+                            linkerOpts("-rpath", frameworkRoot)
                         }
                         linkerOpts("-framework", "powersync-sqlite-core")
 
-                        val frameworkRoot = sharedFiles.singleFile
-                            .resolve("powersync-sqlite-core.xcframework/$abiName")
-                            .path
-
-                        linkerOpts("-F", frameworkRoot)
-                        linkerOpts("-rpath", frameworkRoot)
                     }
             }
     }

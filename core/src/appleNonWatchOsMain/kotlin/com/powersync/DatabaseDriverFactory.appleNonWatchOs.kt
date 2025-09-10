@@ -23,6 +23,4 @@ public actual class DatabaseDriverFactory {
 }
 
 @ExperimentalPowerSyncAPI
-public actual fun resolvePowerSyncLoadableExtensionPath(): String? {
-    return powerSyncExtensionPath
-}
+public actual fun resolvePowerSyncLoadableExtensionPath(): String? = powerSyncExtensionPath
