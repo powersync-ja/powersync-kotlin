@@ -43,6 +43,18 @@ kotlin {
 
             implementation(libs.androidx.sqlite.bundled)
         }
+
+        val commonIntegrationTest by creating {
+            dependsOn(commonTest.get())
+        }
+
+        // We're putting the native libraries into our JAR, so integration tests for the JVM can run as part of the unit
+        // tests.
+        jvmTest.get().dependsOn(commonIntegrationTest)
+
+        // We have special setup in this build configuration to make these tests link the PowerSync extension, so they
+        // can run integration tests along with the executable for unit testing.
+        appleTest.orNull?.dependsOn(commonIntegrationTest)
     }
 }
 
