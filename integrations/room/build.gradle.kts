@@ -1,5 +1,7 @@
 import com.powersync.plugins.sonatype.setupGithubRepository
 import com.powersync.plugins.utils.powersyncTargets
+import org.jmailen.gradle.kotlinter.tasks.FormatTask
+import org.jmailen.gradle.kotlinter.tasks.LintTask
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -86,4 +88,12 @@ setupGithubRepository()
 
 dokka {
     moduleName.set("PowerSync Room Integration")
+}
+
+tasks.withType<LintTask> {
+    exclude { it.file.path.contains("build/generated") }
+}
+
+tasks.withType<FormatTask> {
+    exclude { it.file.path.contains("build/generated") }
 }
