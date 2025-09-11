@@ -57,6 +57,11 @@ public class SyncOptions
          * Allows configuring the [HttpClient] used for connecting to the PowerSync service.
          */
         public val clientConfiguration: SyncClientConfiguration? = null,
+        /**
+         * Whether streams that have been defined with `auto_subscribe: true` should be synced even
+         * when they don't have an explicit subscription.
+         */
+        public val includeDefaultStreams: Boolean = true,
     ) {
         public companion object {
             /**

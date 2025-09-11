@@ -27,6 +27,7 @@ import io.ktor.utils.io.writer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.consume
+import kotlinx.serialization.json.JsonElement
 
 /**
  * A mock HTTP engine providing sync lines read from a coroutines [ReceiveChannel].
@@ -66,6 +67,10 @@ internal class MockSyncService(
                             val line = receive()
                             when (line) {
                                 is SyncLine -> {
+                                    val serializedLine = JsonUtil.json.encodeToString(line)
+                                    channel.writeStringUtf8("$serializedLine\n")
+                                }
+                                is JsonElement -> {
                                     val serializedLine = JsonUtil.json.encodeToString(line)
                                     channel.writeStringUtf8("$serializedLine\n")
                                 }

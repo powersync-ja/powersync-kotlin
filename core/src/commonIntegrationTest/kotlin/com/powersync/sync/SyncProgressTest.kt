@@ -3,10 +3,10 @@ package com.powersync.sync
 import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.turbineScope
 import com.powersync.bucket.BucketChecksum
-import com.powersync.bucket.BucketPriority
 import com.powersync.bucket.Checkpoint
 import com.powersync.bucket.OpType
 import com.powersync.bucket.OplogEntry
+import com.powersync.bucket.StreamPriority
 import com.powersync.testutils.ActiveDatabaseTest
 import com.powersync.testutils.databaseTest
 import com.powersync.testutils.waitFor
@@ -35,7 +35,7 @@ abstract class BaseSyncProgressTest(
     private fun bucket(
         name: String,
         count: Int,
-        priority: BucketPriority = BucketPriority(3),
+        priority: StreamPriority = StreamPriority(3),
     ): BucketChecksum =
         BucketChecksum(
             bucket = name,
@@ -68,7 +68,7 @@ abstract class BaseSyncProgressTest(
         )
     }
 
-    private suspend fun ActiveDatabaseTest.addCheckpointComplete(priority: BucketPriority? = null) {
+    private suspend fun ActiveDatabaseTest.addCheckpointComplete(priority: StreamPriority? = null) {
         if (priority != null) {
             syncLines.send(
                 SyncLine.CheckpointPartiallyComplete(
@@ -93,7 +93,7 @@ abstract class BaseSyncProgressTest(
 
     private suspend fun ReceiveTurbine<SyncStatusData>.expectProgress(
         total: Pair<Int, Int>,
-        priorities: Map<BucketPriority, Pair<Int, Int>> = emptyMap(),
+        priorities: Map<StreamPriority, Pair<Int, Int>> = emptyMap(),
     ) {
         val item = awaitItem()
         val progress = item.downloadProgress ?: error("Expected download progress on $item")
@@ -357,7 +357,7 @@ abstract class BaseSyncProgressTest(
                 ) {
                     turbine.expectProgress(
                         prio2,
-                        mapOf(BucketPriority(0) to prio0, BucketPriority(2) to prio2),
+                        mapOf(StreamPriority(0) to prio0, StreamPriority(2) to prio2),
                     )
                 }
 
@@ -367,8 +367,8 @@ abstract class BaseSyncProgressTest(
                             lastOpId = "10",
                             checksums =
                                 listOf(
-                                    bucket("a", 5, BucketPriority(0)),
-                                    bucket("b", 5, BucketPriority(2)),
+                                    bucket("a", 5, StreamPriority(0)),
+                                    bucket("b", 5, StreamPriority(2)),
                                 ),
                         ),
                     ),
@@ -378,7 +378,7 @@ abstract class BaseSyncProgressTest(
                 addDataLine("a", 5)
                 expectProgress(5 to 5, 5 to 10)
 
-                addCheckpointComplete(BucketPriority(0))
+                addCheckpointComplete(StreamPriority(0))
                 expectProgress(5 to 5, 5 to 10)
 
                 addDataLine("b", 2)
@@ -390,8 +390,8 @@ abstract class BaseSyncProgressTest(
                         lastOpId = "14",
                         updatedBuckets =
                             listOf(
-                                bucket("a", 8, BucketPriority(0)),
-                                bucket("b", 6, BucketPriority(2)),
+                                bucket("a", 8, StreamPriority(0)),
+                                bucket("b", 6, StreamPriority(2)),
                             ),
                         removedBuckets = emptyList(),
                     ),

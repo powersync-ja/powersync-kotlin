@@ -13,7 +13,7 @@ import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.UpdateType
 import com.powersync.db.schema.Schema
-import com.powersync.sync.SyncStream.Companion.bsonObjects
+import com.powersync.sync.StreamingSyncClient.Companion.bsonObjects
 import dev.mokkery.answering.returns
 import dev.mokkery.everySuspend
 import dev.mokkery.mock
@@ -24,6 +24,7 @@ import io.ktor.client.engine.mock.MockEngine
 import io.ktor.utils.io.ByteChannel
 import io.ktor.utils.io.writeByteArray
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
@@ -34,10 +35,10 @@ import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
 @OptIn(ExperimentalKermitApi::class, ExperimentalPowerSyncAPI::class)
-class SyncStreamTest {
+class StreamingSyncClientTest {
     private lateinit var bucketStorage: BucketStorage
     private lateinit var connector: PowerSyncBackendConnector
-    private lateinit var syncStream: SyncStream
+    private lateinit var streamingSyncClient: StreamingSyncClient
     private val testLogWriter =
         TestLogWriter(
             loggable = Severity.Verbose,
@@ -66,8 +67,8 @@ class SyncStreamTest {
     @Test
     fun testInvalidateCredentials() =
         runTest {
-            syncStream =
-                SyncStream(
+            streamingSyncClient =
+                StreamingSyncClient(
                     bucketStorage = bucketStorage,
                     connector = connector,
                     uploadCrud = {},
@@ -84,10 +85,11 @@ class SyncStreamTest {
                                 ),
                         ),
                     schema = Schema(),
+                    activeSubscriptions = MutableStateFlow(emptyList()),
                 )
 
             connector.cachedCredentials = TestConnector.testCredentials
-            syncStream.invalidateCredentials()
+            streamingSyncClient.invalidateCredentials()
             connector.cachedCredentials shouldBe null
         }
 
@@ -109,8 +111,8 @@ class SyncStreamTest {
                     everySuspend { nextCrudItem() } returns mockCrudEntry
                 }
 
-            syncStream =
-                SyncStream(
+            streamingSyncClient =
+                StreamingSyncClient(
                     bucketStorage = bucketStorage,
                     connector = connector,
                     uploadCrud = { },
@@ -128,10 +130,11 @@ class SyncStreamTest {
                                 ),
                         ),
                     schema = Schema(),
+                    activeSubscriptions = MutableStateFlow(emptyList()),
                 )
 
-            syncStream.status.update { copy(connected = true) }
-            syncStream.triggerCrudUploadAsync().join()
+            streamingSyncClient.status.update { copy(connected = true) }
+            streamingSyncClient.triggerCrudUploadAsync().join()
 
             testLogWriter.assertCount(2)
 
@@ -160,8 +163,8 @@ class SyncStreamTest {
                     everySuspend { getClientId() } returns "test-client-id"
                 }
 
-            syncStream =
-                SyncStream(
+            streamingSyncClient =
+                StreamingSyncClient(
                     bucketStorage = bucketStorage,
                     connector = connector,
                     uploadCrud = { },
@@ -179,24 +182,25 @@ class SyncStreamTest {
                                 ),
                         ),
                     schema = Schema(),
+                    activeSubscriptions = MutableStateFlow(emptyList()),
                 )
 
             // Launch streaming sync in a coroutine that we'll cancel after verification
             val job =
                 launch {
-                    syncStream.streamingSync()
+                    streamingSyncClient.streamingSync()
                 }
 
             // Wait for status to update
             withTimeout(1000) {
-                while (!syncStream.status.connecting) {
+                while (!streamingSyncClient.status.connecting) {
                     delay(10)
                 }
             }
 
             // Verify initial state
-            assertEquals(true, syncStream.status.connecting)
-            assertEquals(false, syncStream.status.connected)
+            assertEquals(true, streamingSyncClient.status.connecting)
+            assertEquals(false, streamingSyncClient.status.connected)
 
             // Clean up
             job.cancel()
