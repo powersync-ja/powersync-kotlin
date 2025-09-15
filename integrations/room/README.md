@@ -48,8 +48,9 @@ sync operation) will automatically trigger updates in Room.
 
 To also transfer local writes to PowerSync, you need to
 
-1. Create triggers on your Room tables to insert into `ps_crud` (see the PowerSync documentation on
-   raw tables for details).
+1. Create triggers on your Room tables to insert into `ps_crud` (see the
+   [PowerSync documentation on raw tables](https://docs.powersync.com/usage/use-case-examples/raw-tables#capture-local-writes-with-triggers)
+   for details).
 2. Listen for Room changes and invoke a helper method to transfer them to PowerSync:
     ```Kotlin
     yourRoomDatabase.getCoroutineScope().launch {
