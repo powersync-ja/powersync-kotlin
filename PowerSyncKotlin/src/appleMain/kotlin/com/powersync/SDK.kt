@@ -93,14 +93,15 @@ public fun createSyncOptions(
         clientConfiguration = createExtendedSyncClientConfiguration(loggingConfig),
     )
 
-public fun errorHandledCrudTransactions(db: PowerSyncDatabase): Flow<PowerSyncResult> {
-    return db.getCrudTransactions().map<CrudTransaction, PowerSyncResult> {
-        PowerSyncResult.Success(it)
-    }.catch {
-        if (it is PowerSyncException) {
-            emit(PowerSyncResult.Failure(it))
-        } else {
-            throw it
+public fun errorHandledCrudTransactions(db: PowerSyncDatabase): Flow<PowerSyncResult> =
+    db
+        .getCrudTransactions()
+        .map<CrudTransaction, PowerSyncResult> {
+            PowerSyncResult.Success(it)
+        }.catch {
+            if (it is PowerSyncException) {
+                emit(PowerSyncResult.Failure(it))
+            } else {
+                throw it
+            }
         }
-    }
-}
