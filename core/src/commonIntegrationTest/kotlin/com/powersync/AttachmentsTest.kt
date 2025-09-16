@@ -17,7 +17,6 @@ import com.powersync.testutils.MockedRemoteStorage
 import com.powersync.testutils.UserRow
 import com.powersync.testutils.databaseTest
 import com.powersync.testutils.getTempDir
-import com.powersync.testutils.waitFor
 import dev.mokkery.answering.throws
 import dev.mokkery.everySuspend
 import dev.mokkery.matcher.ArgMatchersScope
@@ -289,10 +288,13 @@ class AttachmentsTest {
                          """,
                 )
 
-                waitFor {
-                    var nextRecord: Attachment? = attachmentQuery.awaitItem().firstOrNull()
-                    // The record should have been deleted
-                    nextRecord shouldBe null
+                while (true) {
+                    val item = attachmentQuery.awaitItem()
+                    if (item.isEmpty()) {
+                        break
+                    }
+
+                    logger.v { "Waiting for attachment record to be deleted (current $item)" }
                 }
 
                 // The file should have been deleted from storage
@@ -357,10 +359,13 @@ class AttachmentsTest {
                     database.get("SELECT photo_id FROM users") { it.getString("photo_id") }
 
                 // Wait for the record to be synced (mocked backend will allow it)
-                waitFor {
-                    val record = attachmentQuery.awaitItem().first()
-                    record shouldNotBe null
-                    record.state shouldBe AttachmentState.SYNCED
+                while (true) {
+                    val item = attachmentQuery.awaitItem().firstOrNull()
+                    if (item != null && item.state == AttachmentState.SYNCED) {
+                        break
+                    }
+
+                    logger.v { "Waiting for attachment record to be synced (current $item)" }
                 }
 
                 queue.deleteFile(
@@ -380,10 +385,14 @@ class AttachmentsTest {
                     )
                 }
 
-                waitFor {
-                    // Record should be deleted
-                    val record = attachmentQuery.awaitItem().firstOrNull()
-                    record shouldBe null
+                // Record should be deleted
+                while (true) {
+                    val item = attachmentQuery.awaitItem()
+                    if (item.isEmpty()) {
+                        break
+                    }
+
+                    logger.v { "Waiting for attachment record to be deleted (current $item)" }
                 }
 
                 // A delete should have been attempted for this file
