@@ -1,6 +1,5 @@
 package com.powersync.db.internal
 
-import co.touchlab.kermit.Logger
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.db.SqlCursor
 import com.powersync.db.ThrowableLockCallback
@@ -11,7 +10,6 @@ import com.powersync.db.runWrapped
 import com.powersync.utils.AtomicMutableSet
 import com.powersync.utils.JsonUtil
 import com.powersync.utils.throttle
-import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
@@ -27,7 +25,6 @@ import kotlin.time.Duration.Companion.milliseconds
 @OptIn(ExperimentalPowerSyncAPI::class)
 internal class InternalDatabaseImpl(
     private val pool: SQLiteConnectionPool,
-    private val logger: Logger,
 ) : InternalDatabase {
     // Could be scope.coroutineContext, but the default is GlobalScope, which seems like a bad idea. To discuss.
     private val dbContext = Dispatchers.IO
@@ -118,13 +115,10 @@ internal class InternalDatabaseImpl(
         triggerImmediately: Boolean,
     ): Flow<Set<String>> =
         flow {
-            val id = debugFlowId.getAndIncrement()
             val batchedUpdates = AtomicMutableSet<String>()
 
             updatesOnTables()
                 .onSubscription {
-                    logger.v { "rawChangedTables($id): Start with $tableNames" }
-
                     if (triggerImmediately) {
                         // Emit an initial event (if requested). No changes would be detected at this point
                         emit(initialUpdateSentinel)
@@ -149,9 +143,7 @@ internal class InternalDatabaseImpl(
                 .throttle(throttleMs.milliseconds)
                 .collect {
                     val entries = batchedUpdates.toSetAndClear()
-                    logger.v { "rawChangedTables($id): Emitting with $entries" }
                     emit(entries)
-                    logger.v { "rawChangedTables($id): Done emitting" }
                 }
         }
 
@@ -267,7 +259,6 @@ internal class InternalDatabaseImpl(
 
     private companion object {
         val initialUpdateSentinel = emptySet<String>()
-        private val debugFlowId = atomic(0L)
     }
 }
 

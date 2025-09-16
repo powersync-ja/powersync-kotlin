@@ -81,7 +81,7 @@ internal class PowerSyncDatabaseImpl(
 
     private val resource = activeDatabaseGroup.first
 
-    private val internalDb = InternalDatabaseImpl(pool, logger)
+    private val internalDb = InternalDatabaseImpl(pool)
 
     internal val bucketStorage: BucketStorage = BucketStorageImpl(internalDb, logger)
 
