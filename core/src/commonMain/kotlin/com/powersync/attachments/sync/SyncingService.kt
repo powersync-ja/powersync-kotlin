@@ -96,6 +96,8 @@ public open class SyncingService(
                                      */
                                     try {
                                         val attachments = context.getActiveAttachments()
+                                        logger.v { "Processing active attachments: $attachments" }
+
                                         // Performs pending operations and updates attachment states
                                         handleSync(attachments, context)
 
@@ -298,6 +300,8 @@ public open class SyncingService(
      */
     public suspend fun deleteArchivedAttachments(context: AttachmentContext): Boolean =
         context.deleteArchivedAttachments { pendingDelete ->
+            logger.v { "Deleting archived attachments: $pendingDelete" }
+
             for (attachment in pendingDelete) {
                 if (attachment.localUri == null) {
                     continue
