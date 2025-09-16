@@ -58,7 +58,7 @@ class AttachmentsTest {
 
     private fun ActiveDatabaseTest.watchAttachmentsTable(): Flow<List<Attachment>> =
         database
-            .watch("SELECT * FROM attachments -- test") {
+            .watch("SELECT * FROM attachments") {
                 Attachment.fromCursor(it)
             }
             // Because tests run on slow machines, it's possible for a schedule like the following
