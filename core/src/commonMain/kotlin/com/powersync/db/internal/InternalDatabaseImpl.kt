@@ -1,5 +1,6 @@
 package com.powersync.db.internal
 
+import co.touchlab.kermit.Logger
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.db.SqlCursor
 import com.powersync.db.ThrowableLockCallback
@@ -25,6 +26,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @OptIn(ExperimentalPowerSyncAPI::class)
 internal class InternalDatabaseImpl(
     private val pool: SQLiteConnectionPool,
+    private val logger: Logger,
 ) : InternalDatabase {
     // Could be scope.coroutineContext, but the default is GlobalScope, which seems like a bad idea. To discuss.
     private val dbContext = Dispatchers.IO
@@ -104,7 +106,10 @@ internal class InternalDatabaseImpl(
 
             val queries =
                 rawChangedTables(tables, throttleMs, triggerImmediately = true).map {
-                    getAll(sql, parameters = parameters, mapper = mapper)
+                    logger.v { "Fetching watch() query: $sql" }
+                    val rows = getAll(sql, parameters = parameters, mapper = mapper)
+                    logger.v { "watch query $sql done, emitting downstream" }
+                    rows
                 }
             emitAll(queries)
         }
