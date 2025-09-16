@@ -1,7 +1,6 @@
 package com.powersync.db.internal
 
 import com.powersync.ExperimentalPowerSyncAPI
-import com.powersync.PowerSyncException
 import com.powersync.db.SqlCursor
 import com.powersync.db.ThrowableLockCallback
 import com.powersync.db.ThrowableTransactionCallback
@@ -15,8 +14,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.channelFlow
-import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.withContext
@@ -79,41 +79,15 @@ internal class InternalDatabaseImpl(
         tables: Set<String>,
         throttleMs: Long,
         triggerImmediately: Boolean,
-    ): Flow<Set<String>> =
-        channelFlow {
-            // Match all possible internal table combinations
-            val watchedTables =
-                tables.flatMap { listOf(it, "ps_data__$it", "ps_data_local__$it") }.toSet()
+    ): Flow<Set<String>> {
+        // Match all possible internal table combinations
+        val watchedTables =
+            tables.flatMap { listOf(it, "ps_data__$it", "ps_data_local__$it") }.toSet()
 
-            // Accumulate updates between throttles
-            val batchedUpdates = AtomicMutableSet<String>()
-
-            updatesOnTables()
-                .onSubscription {
-                    if (triggerImmediately) {
-                        // Emit an initial event (if requested). No changes would be detected at this point
-                        send(setOf())
-                    }
-                }.transform { updates ->
-                    val intersection = updates.intersect(watchedTables)
-                    if (intersection.isNotEmpty()) {
-                        // Transform table names using friendlyTableName
-                        val friendlyTableNames = intersection.map { friendlyTableName(it) }.toSet()
-                        batchedUpdates.addAll(friendlyTableNames)
-                        emit(Unit)
-                    }
-                }
-                // Throttling here is a feature which prevents watch queries from spamming updates.
-                // Throttling by design discards and delays events within the throttle window. Discarded events
-                // still trigger a trailing edge update.
-                // Backpressure is avoided on the throttling and consumer level by buffering the last upstream value.
-                .throttle(throttleMs.milliseconds)
-                .collect {
-                    // Emit the transformed tables which have changed
-                    val copy = batchedUpdates.toSetAndClear()
-                    send(copy)
-                }
+        return rawChangedTables(watchedTables, throttleMs, triggerImmediately).map {
+            it.mapTo(mutableSetOf(), ::friendlyTableName)
         }
+    }
 
     override fun <RowType : Any> watch(
         sql: String,
@@ -121,33 +95,53 @@ internal class InternalDatabaseImpl(
         throttleMs: Long,
         mapper: (SqlCursor) -> RowType,
     ): Flow<List<RowType>> =
-        // Use a channel flow here since we throttle (buffer used under the hood)
-        // This causes some emissions to be from different scopes.
-        channelFlow {
+        flow {
             // Fetch the tables asynchronously with getAll
             val tables =
                 getSourceTables(sql, parameters)
                     .filter { it.isNotBlank() }
                     .toSet()
 
+            val queries =
+                rawChangedTables(tables, throttleMs, triggerImmediately = true).map {
+                    getAll(sql, parameters = parameters, mapper = mapper)
+                }
+            emitAll(queries)
+        }
+
+    private fun rawChangedTables(
+        tableNames: Set<String>,
+        throttleMs: Long,
+        triggerImmediately: Boolean,
+    ): Flow<Set<String>> =
+        flow {
+            val batchedUpdates = AtomicMutableSet<String>()
+
             updatesOnTables()
-                // onSubscription here is very important.
-                // This ensures that the initial result and all updates are emitted.
                 .onSubscription {
-                    send(getAll(sql, parameters = parameters, mapper = mapper))
-                }.filter {
-                    // Only trigger updates on relevant tables
-                    it.intersect(tables).isNotEmpty()
+                    if (triggerImmediately) {
+                        // Emit an initial event (if requested). No changes would be detected at this point
+                        emit(initialUpdateSentinel)
+                    }
+                }.transform { updates ->
+                    if (updates === initialUpdateSentinel) {
+                        // This should always be emitted despite being empty and not intersecting with
+                        // the tables we care about.
+                        emit(Unit)
+                    } else {
+                        val intersection = updates.intersect(tableNames)
+                        if (intersection.isNotEmpty()) {
+                            batchedUpdates.addAll(intersection)
+                            emit(Unit)
+                        }
+                    }
                 }
                 // Throttling here is a feature which prevents watch queries from spamming updates.
                 // Throttling by design discards and delays events within the throttle window. Discarded events
                 // still trigger a trailing edge update.
                 // Backpressure is avoided on the throttling and consumer level by buffering the last upstream value.
-                // Note that the buffered upstream "value" only serves to trigger the getAll query. We don't buffer watch results.
                 .throttle(throttleMs.milliseconds)
-                .collect {
-                    send(getAll(sql, parameters = parameters, mapper = mapper))
-                }
+                .collect { emit(batchedUpdates.toSetAndClear()) }
         }
 
     override suspend fun <T> useConnection(
@@ -259,6 +253,10 @@ internal class InternalDatabaseImpl(
         val p2: Long,
         val p3: Long,
     )
+
+    private companion object {
+        val initialUpdateSentinel = emptySet<String>()
+    }
 }
 
 /**

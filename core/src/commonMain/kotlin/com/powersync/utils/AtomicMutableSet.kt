@@ -11,7 +11,7 @@ public class AtomicMutableSet<T> : SynchronizedObject() {
             return set.add(element)
         }
 
-    public fun addAll(elements: Set<T>): Boolean =
+    public fun addAll(elements: Collection<T>): Boolean =
         synchronized(this) {
             return set.addAll(elements)
         }
