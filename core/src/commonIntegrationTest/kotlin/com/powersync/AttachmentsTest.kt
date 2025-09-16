@@ -93,6 +93,7 @@ class AttachmentsTest {
                          * immediately be deleted.
                          */
                         archivedCacheLimit = 0,
+                        logger = logger,
                     )
 
                 doOnCleanup {
@@ -204,6 +205,7 @@ class AttachmentsTest {
                          * immediately be deleted.
                          */
                         archivedCacheLimit = 0,
+                        logger = logger,
                     )
 
                 doOnCleanup {
@@ -314,6 +316,7 @@ class AttachmentsTest {
                          */
                         archivedCacheLimit = 0,
                         syncThrottleDuration = 0.seconds,
+                        logger = logger,
                     )
 
                 doOnCleanup {
@@ -411,6 +414,7 @@ class AttachmentsTest {
                          * Keep some items in the cache
                          */
                         archivedCacheLimit = 10,
+                        logger = logger,
                     )
 
                 doOnCleanup {
@@ -537,6 +541,7 @@ class AttachmentsTest {
                                     exception: Exception,
                                 ): Boolean = false
                             },
+                        logger = logger,
                     )
                 doOnCleanup {
                     queue.stopSyncing()
