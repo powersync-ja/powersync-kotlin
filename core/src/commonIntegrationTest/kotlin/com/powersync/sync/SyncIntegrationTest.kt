@@ -915,16 +915,17 @@ class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
         }
 
     @Test
-    fun `ends iteration on http close`() = databaseTest {
-        turbineScope(timeout = 10.0.seconds) {
-            val turbine = database.currentStatus.asFlow().testIn(this)
-            database.connect(TestConnector(), options = getOptions())
-            turbine.waitFor { it.connected }
+    fun `ends iteration on http close`() =
+        databaseTest {
+            turbineScope(timeout = 10.0.seconds) {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                database.connect(TestConnector(), options = getOptions())
+                turbine.waitFor { it.connected }
 
-            syncLines.close()
-            turbine.waitFor { !it.connected }
+                syncLines.close()
+                turbine.waitFor { !it.connected }
 
-            turbine.cancelAndIgnoreRemainingEvents()
+                turbine.cancelAndIgnoreRemainingEvents()
+            }
         }
-    }
 }
