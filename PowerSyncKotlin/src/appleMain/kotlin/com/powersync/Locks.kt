@@ -15,7 +15,7 @@ import com.powersync.db.internal.PowerSyncTransaction
  */
 public sealed class PowerSyncResult {
     public data class Success(
-        val value: Any,
+        val value: Any?,
     ) : PowerSyncResult()
 
     public data class Failure(
@@ -26,7 +26,7 @@ public sealed class PowerSyncResult {
 // Throws the [PowerSyncException] if the result is a failure, or returns the value if it is a success.
 // We throw the exception on behalf of the Swift SDK.
 @Throws(PowerSyncException::class)
-private fun handleLockResult(result: PowerSyncResult): Any {
+internal fun handleLockResult(result: PowerSyncResult): Any? {
     when (result) {
         is PowerSyncResult.Failure -> {
             throw result.exception
@@ -41,13 +41,13 @@ private fun handleLockResult(result: PowerSyncResult): Any {
 public class LockContextWrapper(
     private val handler: (context: ConnectionContext) -> PowerSyncResult,
 ) : ThrowableLockCallback<Any> {
-    override fun execute(context: ConnectionContext): Any = handleLockResult(handler(context))
+    override fun execute(context: ConnectionContext): Any = handleLockResult(handler(context))!!
 }
 
 public class TransactionContextWrapper(
     private val handler: (context: PowerSyncTransaction) -> PowerSyncResult,
 ) : ThrowableTransactionCallback<Any> {
-    override fun execute(transaction: PowerSyncTransaction): Any = handleLockResult(handler(transaction))
+    override fun execute(transaction: PowerSyncTransaction): Any = handleLockResult(handler(transaction))!!
 }
 
 public fun wrapContextHandler(handler: (context: ConnectionContext) -> PowerSyncResult): ThrowableLockCallback<Any> =

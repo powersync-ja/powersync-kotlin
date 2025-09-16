@@ -173,8 +173,7 @@ public interface PowerSyncDatabase : Queries {
      *
      * If there is no local data to upload, returns an empty flow.
      */
-    @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun getCrudTransactions(): Flow<CrudTransaction>
+    public fun getCrudTransactions(): Flow<CrudTransaction>
 
     /**
      * Convenience method to get the current version of PowerSync.
