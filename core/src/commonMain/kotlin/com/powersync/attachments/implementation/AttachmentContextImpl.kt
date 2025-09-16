@@ -66,6 +66,8 @@ public open class AttachmentContextImpl(
         }
 
         db.writeTransaction { tx ->
+            logger.v { "saveAttachments($attachments)" }
+
             for (attachment in attachments) {
                 upsertAttachment(attachment, tx)
             }
