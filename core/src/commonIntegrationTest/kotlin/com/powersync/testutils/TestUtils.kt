@@ -112,6 +112,8 @@ internal class ActiveDatabaseTest(
                 dbDirectory = testDirectory,
                 logger = logger,
                 scope = scope,
+                // We want to reduce concurrency in tests to make their output more predictable.
+                readPoolSize = 1,
             )
         doOnCleanup { db.close() }
         return db

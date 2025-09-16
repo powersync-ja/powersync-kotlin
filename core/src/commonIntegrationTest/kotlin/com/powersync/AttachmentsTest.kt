@@ -29,6 +29,7 @@ import dev.mokkery.verifySuspend
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.onEach
 import kotlinx.io.files.Path
@@ -60,7 +61,17 @@ class AttachmentsTest {
         database
             .watch("SELECT * FROM attachments") {
                 Attachment.fromCursor(it)
-            }.onEach { logger.i { "attachments table results: $it" } }
+            }
+            // Because tests run on slow machines, it's possible for a schedule like the following
+            // to happen:
+            //  1. the attachment is initially saved with QUEUED_DOWNLOAD, triggering a query.
+            //  2. the attachment is downloaded fast, but the query flow is paused.
+            //  3. only now is the query scheduled by 1 actually running, reporting SYNCED.
+            //  4. we delete the attachment.
+            //  5. thanks to 2, the query runs again, again reporting SYNCED.
+            //  6. Our test now fails because the second event should be ARCHIVED.
+            .distinctUntilChanged()
+            .onEach { logger.i { "attachments table results: $it" } }
 
     suspend fun updateSchema(db: PowerSyncDatabase) {
         db.updateSchema(
