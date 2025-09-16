@@ -3,7 +3,6 @@ package com.powersync
 import androidx.sqlite.SQLiteStatement
 import cnames.structs.sqlite3
 import co.touchlab.kermit.Logger
-import com.powersync.PowerSyncDatabase.Companion.databaseGroup
 import com.powersync.db.driver.SQLiteConnectionLease
 import com.powersync.db.driver.SQLiteConnectionPool
 import com.powersync.db.schema.Schema
@@ -139,13 +138,11 @@ public fun openPowerSyncWithPool(
     identifier: String,
     schema: Schema,
     logger: Logger,
-): PowerSyncDatabase {
-    val activeDatabaseGroup = databaseGroup(logger, identifier)
-    return PowerSyncDatabase.opened(
+): PowerSyncDatabase =
+    PowerSyncDatabase.opened(
         pool = pool,
         scope = GlobalScope,
         schema = schema,
-        group = activeDatabaseGroup,
+        identifier = identifier,
         logger = logger,
     )
-}
