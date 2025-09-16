@@ -327,6 +327,8 @@ public open class AttachmentQueue(
              * Use a lock here to prevent conflicting state updates.
              */
             attachmentsService.withContext { attachmentsContext ->
+                logger.v { "processWatchedAttachments($items)" }
+
                 /**
                  * Need to get all the attachments which are tracked in the DB.
                  * We might need to restore an archived attachment.

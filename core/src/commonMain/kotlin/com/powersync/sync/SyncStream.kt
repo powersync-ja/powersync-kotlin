@@ -299,7 +299,6 @@ internal class SyncStream(
                 throw RuntimeException("Received error when connecting to sync stream: ${httpResponse.bodyAsText()}")
             }
 
-            status.update { copy(connected = true, connecting = false) }
             block(isBson, httpResponse)
         }
     }
@@ -307,6 +306,7 @@ internal class SyncStream(
     private fun receiveTextLines(req: JsonElement): Flow<String> =
         flow {
             connectToSyncEndpoint(req, supportBson = false) { isBson, response ->
+                status.update { copy(connected = true, connecting = false) }
                 check(!isBson)
 
                 emitAll(response.body<ByteReadChannel>().lines())
@@ -316,6 +316,7 @@ internal class SyncStream(
     private fun receiveTextOrBinaryLines(req: JsonElement): Flow<PowerSyncControlArguments> =
         flow {
             connectToSyncEndpoint(req, supportBson = false) { isBson, response ->
+                emit(PowerSyncControlArguments.ConnectionEstablished)
                 val body = response.body<ByteReadChannel>()
 
                 if (isBson) {
@@ -323,6 +324,8 @@ internal class SyncStream(
                 } else {
                     emitAll(body.lines().map { PowerSyncControlArguments.TextLine(it) })
                 }
+
+                emit(PowerSyncControlArguments.ResponseStreamEnd)
             }
         }
 

@@ -78,7 +78,7 @@ public open class SyncingService(
                         merge(
                             // Handles manual triggers for sync events
                             syncTriggerFlow.asSharedFlow(),
-                            // Triggers the sync process whenever an underlaying change to the
+                            // Triggers the sync process whenever an underlying change to the
                             // attachments table happens
                             attachmentsService
                                 .watchActiveAttachments(),

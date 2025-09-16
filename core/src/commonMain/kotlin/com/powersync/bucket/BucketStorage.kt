@@ -8,6 +8,7 @@ import com.powersync.sync.Instruction
 import com.powersync.sync.LegacySyncImplementation
 import com.powersync.sync.SyncDataBatch
 import com.powersync.sync.SyncLocalDatabaseResult
+import com.powersync.utils.JsonUtil
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
@@ -55,25 +56,49 @@ internal interface BucketStorage {
 }
 
 internal sealed interface PowerSyncControlArguments {
+    /**
+     * Returns the arguments for the `powersync_control` SQL invocation.
+     */
+    val sqlArguments: Pair<String, Any?>
+
     @Serializable
     class Start(
         val parameters: JsonObject,
         val schema: SerializableSchema,
-    ) : PowerSyncControlArguments
+    ) : PowerSyncControlArguments {
+        override val sqlArguments: Pair<String, Any?>
+            get() = "start" to JsonUtil.json.encodeToString(this)
+    }
 
-    data object Stop : PowerSyncControlArguments
+    data object Stop : PowerSyncControlArguments {
+        override val sqlArguments: Pair<String, Any?> = "stop" to null
+    }
 
     data class TextLine(
         val line: String,
-    ) : PowerSyncControlArguments
-
-    class BinaryLine(
-        val line: ByteArray,
     ) : PowerSyncControlArguments {
-        override fun toString(): String = "BinaryLine"
+        override val sqlArguments: Pair<String, Any?> = "line_text" to line
     }
 
-    data object CompletedUpload : PowerSyncControlArguments
+    class BinaryLine(
+        line: ByteArray,
+    ) : PowerSyncControlArguments {
+        override fun toString(): String = "BinaryLine"
+
+        override val sqlArguments: Pair<String, Any?> = "line_binary" to line
+    }
+
+    data object CompletedUpload : PowerSyncControlArguments {
+        override val sqlArguments: Pair<String, Any?> = "completed_upload" to null
+    }
+
+    data object ConnectionEstablished : PowerSyncControlArguments {
+        override val sqlArguments: Pair<String, Any?> = "connection" to "established"
+    }
+
+    data object ResponseStreamEnd : PowerSyncControlArguments {
+        override val sqlArguments: Pair<String, Any?> = "connection" to "end"
+    }
 }
 
 @Serializable
