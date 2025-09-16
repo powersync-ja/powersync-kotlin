@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalPowerSyncAPI::class)
 internal class ReadPool(
     factory: () -> SQLiteConnection,
-    size: Int,
+    size: Int = 5,
     private val scope: CoroutineScope,
 ) {
     private val available = Channel<Pair<SQLiteConnection, CompletableDeferred<Unit>>>()

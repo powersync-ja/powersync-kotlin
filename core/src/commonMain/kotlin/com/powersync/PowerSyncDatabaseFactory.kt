@@ -40,7 +40,6 @@ public fun PowerSyncDatabase(
         scope = scope,
         logger = generatedLogger,
         dbDirectory = dbDirectory,
-        readPoolSize = 5,
     )
 }
 
@@ -52,7 +51,6 @@ internal fun createPowerSyncDatabaseImpl(
     scope: CoroutineScope,
     logger: Logger,
     dbDirectory: String?,
-    readPoolSize: Int,
 ): PowerSyncDatabaseImpl {
     val identifier = dbDirectory + dbFilename
     val activeDatabaseGroup = ActiveDatabaseGroup.referenceDatabase(logger, identifier)
@@ -65,7 +63,6 @@ internal fun createPowerSyncDatabaseImpl(
                 dbFilename,
                 dbDirectory,
                 activeDatabaseGroup.first.group.writeLockMutex,
-                readPoolSize = readPoolSize,
             )
         }
 

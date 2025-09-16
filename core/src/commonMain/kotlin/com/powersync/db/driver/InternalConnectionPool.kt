@@ -20,10 +20,9 @@ internal class InternalConnectionPool(
     private val dbFilename: String,
     private val dbDirectory: String?,
     private val writeLockMutex: Mutex,
-    readPoolSize: Int,
 ) : SQLiteConnectionPool {
     private val writeConnection = newConnection(false)
-    private val readPool = ReadPool({ newConnection(true) }, size = readPoolSize, scope = scope)
+    private val readPool = ReadPool({ newConnection(true) }, scope = scope)
 
     // MutableSharedFlow to emit batched table updates
     private val tableUpdatesFlow = MutableSharedFlow<Set<String>>(replay = 0)
