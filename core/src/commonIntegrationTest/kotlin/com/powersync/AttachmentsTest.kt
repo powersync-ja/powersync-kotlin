@@ -176,7 +176,7 @@ class AttachmentsTest {
                 val exists = queue.localStorage.fileExists(localUri)
                 exists shouldBe false
 
-                attachmentQuery.cancel()
+                attachmentQuery.cancelAndIgnoreRemainingEvents()
             }
         }
 
@@ -286,7 +286,7 @@ class AttachmentsTest {
                 // The file should have been deleted from storage
                 queue.localStorage.fileExists(localUri) shouldBe false
 
-                attachmentQuery.cancel()
+                attachmentQuery.cancelAndIgnoreRemainingEvents()
             }
         }
 
@@ -385,7 +385,7 @@ class AttachmentsTest {
                     )
                 }
 
-                attachmentQuery.cancel()
+                attachmentQuery.cancelAndIgnoreRemainingEvents()
             }
         }
 
@@ -497,7 +497,7 @@ class AttachmentsTest {
                 attachmentRecord = attachmentQuery.awaitItem().first()
                 attachmentRecord.state shouldBe AttachmentState.SYNCED
 
-                attachmentQuery.cancel()
+                attachmentQuery.cancelAndIgnoreRemainingEvents()
             }
         }
 
@@ -579,7 +579,7 @@ class AttachmentsTest {
 
                 attachmentRecord.state shouldBe AttachmentState.ARCHIVED
 
-                attachmentQuery.cancel()
+                attachmentQuery.cancelAndIgnoreRemainingEvents()
             }
         }
 }
