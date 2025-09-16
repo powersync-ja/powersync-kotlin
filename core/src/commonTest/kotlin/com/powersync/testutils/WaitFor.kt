@@ -15,11 +15,12 @@ internal suspend inline fun waitFor(
         try {
             test()
             return
-        } catch (_: Error) {
+        } catch (e: Error) {
             // Treat exceptions as failed
+            println("waitFor: failed with $e")
         }
         delay(interval)
     } while (begin.elapsedNow() < timeout)
 
-    throw Exception("Timeout reached")
+    throw Exception("waitFor() Timeout reached")
 }
