@@ -2,10 +2,14 @@
 
 package com.powersync
 
+import com.powersync.db.crud.CrudTransaction
 import com.powersync.sync.SyncClientConfiguration
 import com.powersync.sync.SyncOptions
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
 import io.ktor.client.plugins.logging.Logger as KtorLogger
 
 /**
@@ -88,3 +92,15 @@ public fun createSyncOptions(
         userAgent = userAgent,
         clientConfiguration = createExtendedSyncClientConfiguration(loggingConfig),
     )
+
+public fun errorHandledCrudTransactions(db: PowerSyncDatabase): Flow<PowerSyncResult> {
+    return db.getCrudTransactions().map<CrudTransaction, PowerSyncResult> {
+        PowerSyncResult.Success(it)
+    }.catch {
+        if (it is PowerSyncException) {
+            emit(PowerSyncResult.Failure(it))
+        } else {
+            throw it
+        }
+    }
+}

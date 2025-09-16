@@ -270,7 +270,7 @@ internal class PowerSyncDatabaseImpl(
         })
     }
 
-    override suspend fun getCrudTransactions(): Flow<CrudTransaction> =
+    override fun getCrudTransactions(): Flow<CrudTransaction> =
         flow {
             waitReady()
             var lastItemId = -1
