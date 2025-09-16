@@ -12,6 +12,7 @@ import com.powersync.attachments.createAttachmentsTable
 import com.powersync.db.getString
 import com.powersync.db.schema.Schema
 import com.powersync.db.schema.Table
+import com.powersync.testutils.ActiveDatabaseTest
 import com.powersync.testutils.MockedRemoteStorage
 import com.powersync.testutils.UserRow
 import com.powersync.testutils.databaseTest
@@ -27,7 +28,9 @@ import dev.mokkery.spy
 import dev.mokkery.verifySuspend
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.onEach
 import kotlinx.io.files.Path
 import kotlin.test.Test
 import kotlin.time.Duration.Companion.seconds
@@ -53,6 +56,12 @@ class AttachmentsTest {
             )
         }
 
+    private fun ActiveDatabaseTest.watchAttachmentsTable(): Flow<List<Attachment>> =
+        database
+            .watch("SELECT * FROM attachments") {
+                Attachment.fromCursor(it)
+            }.onEach { logger.i { "attachments table results: $it" } }
+
     suspend fun updateSchema(db: PowerSyncDatabase) {
         db.updateSchema(
             Schema(
@@ -76,11 +85,7 @@ class AttachmentsTest {
                 val remote = spy<RemoteStorage>(MockedRemoteStorage())
 
                 // Monitor the attachments table for testing
-                val attachmentQuery =
-                    database
-                        // language=SQL
-                        .watch("SELECT * FROM attachments") { Attachment.fromCursor(it) }
-                        .testIn(this)
+                val attachmentQuery = watchAttachmentsTable().testIn(this)
 
                 val queue =
                     AttachmentQueue(
@@ -93,6 +98,7 @@ class AttachmentsTest {
                          * immediately be deleted.
                          */
                         archivedCacheLimit = 0,
+                        logger = logger,
                     )
 
                 doOnCleanup {
@@ -175,7 +181,7 @@ class AttachmentsTest {
                 val exists = queue.localStorage.fileExists(localUri)
                 exists shouldBe false
 
-                attachmentQuery.cancel()
+                attachmentQuery.cancelAndIgnoreRemainingEvents()
             }
         }
 
@@ -187,11 +193,7 @@ class AttachmentsTest {
                 val remote = spy<RemoteStorage>(MockedRemoteStorage())
 
                 // Monitor the attachments table for testing
-                val attachmentQuery =
-                    database
-                        // language=SQL
-                        .watch("SELECT * FROM attachments") { Attachment.fromCursor(it) }
-                        .testIn(this)
+                val attachmentQuery = watchAttachmentsTable().testIn(this)
 
                 val queue =
                     AttachmentQueue(
@@ -204,6 +206,7 @@ class AttachmentsTest {
                          * immediately be deleted.
                          */
                         archivedCacheLimit = 0,
+                        logger = logger,
                     )
 
                 doOnCleanup {
@@ -284,7 +287,7 @@ class AttachmentsTest {
                 // The file should have been deleted from storage
                 queue.localStorage.fileExists(localUri) shouldBe false
 
-                attachmentQuery.cancel()
+                attachmentQuery.cancelAndIgnoreRemainingEvents()
             }
         }
 
@@ -296,11 +299,7 @@ class AttachmentsTest {
                 val remote = spy<RemoteStorage>(MockedRemoteStorage())
 
                 // Monitor the attachments table for testing
-                val attachmentQuery =
-                    database
-                        // language=SQL
-                        .watch("SELECT * FROM attachments") { Attachment.fromCursor(it) }
-                        .testIn(this)
+                val attachmentQuery = watchAttachmentsTable().testIn(this)
 
                 val queue =
                     AttachmentQueue(
@@ -314,6 +313,7 @@ class AttachmentsTest {
                          */
                         archivedCacheLimit = 0,
                         syncThrottleDuration = 0.seconds,
+                        logger = logger,
                     )
 
                 doOnCleanup {
@@ -382,7 +382,7 @@ class AttachmentsTest {
                     )
                 }
 
-                attachmentQuery.cancel()
+                attachmentQuery.cancelAndIgnoreRemainingEvents()
             }
         }
 
@@ -395,11 +395,7 @@ class AttachmentsTest {
                 val remote = spy<RemoteStorage>(MockedRemoteStorage())
 
                 // Monitor the attachments table for testing
-                val attachmentQuery =
-                    database
-                        // language=SQL
-                        .watch("SELECT * FROM attachments") { Attachment.fromCursor(it) }
-                        .testIn(this)
+                val attachmentQuery = watchAttachmentsTable().testIn(this)
 
                 val queue =
                     AttachmentQueue(
@@ -411,6 +407,7 @@ class AttachmentsTest {
                          * Keep some items in the cache
                          */
                         archivedCacheLimit = 10,
+                        logger = logger,
                     )
 
                 doOnCleanup {
@@ -493,7 +490,7 @@ class AttachmentsTest {
                 attachmentRecord = attachmentQuery.awaitItem().first()
                 attachmentRecord.state shouldBe AttachmentState.SYNCED
 
-                attachmentQuery.cancel()
+                attachmentQuery.cancelAndIgnoreRemainingEvents()
             }
         }
 
@@ -509,10 +506,7 @@ class AttachmentsTest {
                     }
 
                 // Monitor the attachments table for testing
-                val attachmentQuery =
-                    database
-                        .watch("SELECT * FROM attachments") { Attachment.fromCursor(it) }
-                        .testIn(this)
+                val attachmentQuery = watchAttachmentsTable().testIn(this)
 
                 val queue =
                     AttachmentQueue(
@@ -537,6 +531,7 @@ class AttachmentsTest {
                                     exception: Exception,
                                 ): Boolean = false
                             },
+                        logger = logger,
                     )
                 doOnCleanup {
                     queue.stopSyncing()
@@ -574,7 +569,7 @@ class AttachmentsTest {
 
                 attachmentRecord.state shouldBe AttachmentState.ARCHIVED
 
-                attachmentQuery.cancel()
+                attachmentQuery.cancelAndIgnoreRemainingEvents()
             }
         }
 }

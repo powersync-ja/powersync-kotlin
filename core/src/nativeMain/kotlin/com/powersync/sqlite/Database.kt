@@ -52,27 +52,22 @@ public class Database(
             Statement(sql, ptr, stmtPtr.value!!)
         }
 
-    public fun loadExtension(
+    fun loadExtension(
         filename: String,
         entrypoint: String,
-    ): Unit =
-        memScoped {
-            val errorMessagePointer = alloc<CPointerVar<ByteVar>>()
-            val resultCode =
-                sqlite3_load_extension(ptr, filename, entrypoint, errorMessagePointer.ptr)
+    ) = memScoped {
+        val errorMessagePointer = alloc<CPointerVar<ByteVar>>()
+        val resultCode = sqlite3_load_extension(ptr, filename, entrypoint, errorMessagePointer.ptr)
 
-            if (resultCode != 0) {
-                val errorMessage = errorMessagePointer.value?.toKStringFromUtf8()
-                if (errorMessage != null) {
-                    sqlite3_free(errorMessagePointer.value)
-                }
-
-                throw PowerSyncException(
-                    "Could not load extension ($resultCode): ${errorMessage ?: "unknown error"}",
-                    null,
-                )
+        if (resultCode != 0) {
+            val errorMessage = errorMessagePointer.value?.toKStringFromUtf8()
+            if (errorMessage != null) {
+                sqlite3_free(errorMessagePointer.value)
             }
+
+            throw PowerSyncException("Could not load extension ($resultCode): ${errorMessage ?: "unknown error"}", null)
         }
+    }
 
     override fun close() {
         sqlite3_close_v2(ptr)

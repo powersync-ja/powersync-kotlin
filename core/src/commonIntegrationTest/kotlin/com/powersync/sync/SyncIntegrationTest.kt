@@ -612,7 +612,6 @@ abstract class BaseSyncIntegrationTest(
                     database.watch("SELECT name FROM users") { it.getString(0)!! }.testIn(scope)
                 query.awaitItem() shouldBe listOf("local write")
 
-                syncLines.send(SyncLine.KeepAlive(tokenExpiresIn = 1234))
                 syncLines.send(
                     SyncLine.FullCheckpoint(
                         Checkpoint(
@@ -912,6 +911,21 @@ class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
 
                 query.awaitItem() shouldBe listOf("username")
                 query.cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `ends iteration on http close`() =
+        databaseTest {
+            turbineScope(timeout = 10.0.seconds) {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                database.connect(TestConnector(), options = getOptions())
+                turbine.waitFor { it.connected }
+
+                syncLines.close()
+                turbine.waitFor { !it.connected }
+
+                turbine.cancelAndIgnoreRemainingEvents()
             }
         }
 }

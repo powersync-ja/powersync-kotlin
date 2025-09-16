@@ -1,13 +1,14 @@
 package com.powersync.attachments.implementation
 
 import co.touchlab.kermit.Logger
+import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
 import com.powersync.attachments.Attachment
 import com.powersync.attachments.AttachmentContext
 import com.powersync.attachments.AttachmentState
 import com.powersync.db.getString
 import com.powersync.db.internal.ConnectionContext
-import kotlinx.serialization.json.Json
+import com.powersync.db.runWrapped
 import kotlin.time.Clock
 
 /**
@@ -65,6 +66,8 @@ public open class AttachmentContextImpl(
         }
 
         db.writeTransaction { tx ->
+            logger.v { "saveAttachments($attachments)" }
+
             for (attachment in attachments) {
                 upsertAttachment(attachment, tx)
             }
@@ -131,6 +134,7 @@ public open class AttachmentContextImpl(
      * @returns true if all items have been deleted. Returns false if there might be more archived
      * items remaining.
      */
+    @OptIn(ExperimentalPowerSyncAPI::class)
     public override suspend fun deleteArchivedAttachments(callback: suspend (attachments: List<Attachment>) -> Unit): Boolean {
         // First fetch the attachments in order to allow other cleanup
         val limit = 1000
@@ -154,12 +158,21 @@ public open class AttachmentContextImpl(
                 ),
             ) { Attachment.fromCursor(it) }
         callback(attachments)
-        db.execute(
-            "DELETE FROM $table WHERE id IN (SELECT value FROM json_each(?));",
-            listOf(
-                Json.encodeToString(attachments.map { it.id }),
-            ),
-        )
+
+        runWrapped {
+            db.useConnection(readOnly = false) { conn ->
+                conn.usePrepared("DELETE FROM $table WHERE id = ?") { stmt ->
+                    for (attachment in attachments) {
+                        stmt.bindText(1, attachment.id)
+                        stmt.step()
+
+                        stmt.reset()
+                        stmt.clearBindings()
+                    }
+                }
+            }
+        }
+
         return attachments.size < limit
     }
 

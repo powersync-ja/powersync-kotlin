@@ -299,7 +299,6 @@ internal class SyncStream(
                 throw RuntimeException("Received error when connecting to sync stream: ${httpResponse.bodyAsText()}")
             }
 
-            status.update { copy(connected = true, connecting = false) }
             block(isBson, httpResponse)
         }
     }
@@ -307,6 +306,7 @@ internal class SyncStream(
     private fun receiveTextLines(req: JsonElement): Flow<String> =
         flow {
             connectToSyncEndpoint(req, supportBson = false) { isBson, response ->
+                status.update { copy(connected = true, connecting = false) }
                 check(!isBson)
 
                 emitAll(response.body<ByteReadChannel>().lines())
@@ -316,6 +316,7 @@ internal class SyncStream(
     private fun receiveTextOrBinaryLines(req: JsonElement): Flow<PowerSyncControlArguments> =
         flow {
             connectToSyncEndpoint(req, supportBson = false) { isBson, response ->
+                emit(PowerSyncControlArguments.ConnectionEstablished)
                 val body = response.body<ByteReadChannel>()
 
                 if (isBson) {
@@ -323,6 +324,8 @@ internal class SyncStream(
                 } else {
                     emitAll(body.lines().map { PowerSyncControlArguments.TextLine(it) })
                 }
+
+                emit(PowerSyncControlArguments.ResponseStreamEnd)
             }
         }
 
@@ -536,8 +539,19 @@ internal class SyncStream(
             lateinit var receiveLines: Job
             receiveLines =
                 scope.launch {
+                    var hadLine = false
                     receiveTextLines(JsonUtil.json.encodeToJsonElement(req)).collect { value ->
                         val line = JsonUtil.json.decodeFromString<SyncLine>(value)
+
+                        if (!hadLine) {
+                            // Trigger a crud upload when receiving the first sync line: We could have
+                            // pending local writes made while disconnected, so in addition to listening on
+                            // updates to `ps_crud`, we also need to trigger a CRUD upload in some other
+                            // cases. We do this on the first sync line because the client is likely to be
+                            // online in that case.
+                            hadLine = true
+                            triggerCrudUploadAsync()
+                        }
 
                         state = handleInstruction(line, value, state)
 

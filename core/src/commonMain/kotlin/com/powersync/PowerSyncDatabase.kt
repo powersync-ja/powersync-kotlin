@@ -173,8 +173,7 @@ public interface PowerSyncDatabase : Queries {
      *
      * If there is no local data to upload, returns an empty flow.
      */
-    @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun getCrudTransactions(): Flow<CrudTransaction>
+    public fun getCrudTransactions(): Flow<CrudTransaction>
 
     /**
      * Convenience method to get the current version of PowerSync.
@@ -217,18 +216,30 @@ public interface PowerSyncDatabase : Queries {
          * In this case, PowerSync will not open its own SQLite connections, but rather refer to
          * connections in the [pool].
          *
-         * The `group` parameter should likely be teh result of calling [databaseGroup] - this is
-         * responsible for ensuring two instances of the same database file don't sync at the same
-         * time. So, a value that uniquely identifies the database should be passed to
-         * [databaseGroup].
+         * The `identifier` parameter should be a name identifying the path of the database. The
+         * PowerSync SDK will emit a warning if multiple databases are opened with the same
+         * identifier, and uses internal locks to ensure these two databases are not synced at the
+         * same time (which would be inefficient and can cause consistency issues).
          */
         @ExperimentalPowerSyncAPI
         public fun opened(
             pool: SQLiteConnectionPool,
             scope: CoroutineScope,
             schema: Schema,
-            group: Pair<ActiveDatabaseResource, Any>,
+            identifier: String,
             logger: Logger,
+        ): PowerSyncDatabase {
+            val group = ActiveDatabaseGroup.referenceDatabase(logger, identifier)
+            return openedWithGroup(pool, scope, schema, logger, group)
+        }
+
+        @ExperimentalPowerSyncAPI
+        internal fun openedWithGroup(
+            pool: SQLiteConnectionPool,
+            scope: CoroutineScope,
+            schema: Schema,
+            logger: Logger,
+            group: Pair<ActiveDatabaseResource, Any>,
         ): PowerSyncDatabase =
             PowerSyncDatabaseImpl(
                 schema,
@@ -237,11 +248,5 @@ public interface PowerSyncDatabase : Queries {
                 logger,
                 group,
             )
-
-        @ExperimentalPowerSyncAPI
-        public fun databaseGroup(
-            logger: Logger,
-            identifier: String,
-        ): Pair<ActiveDatabaseResource, Any> = ActiveDatabaseGroup.referenceDatabase(logger, identifier)
     }
 }
