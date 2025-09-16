@@ -559,14 +559,16 @@ class AttachmentsTest {
                     """,
                 )
 
+                // Depending on when the query updates, we'll see the attachment as queued for
+                // download or archived.
                 var attachmentRecord = attachmentQuery.awaitItem().first()
                 attachmentRecord shouldNotBe null
 
-                attachmentRecord.state shouldBe AttachmentState.QUEUED_DOWNLOAD
+                if (attachmentRecord.state == AttachmentState.QUEUED_DOWNLOAD) {
+                    attachmentRecord = attachmentQuery.awaitItem().first()
+                }
 
                 // The download should fail. We don't specify a retry. The record should be archived.
-                attachmentRecord = attachmentQuery.awaitItem().first()
-
                 attachmentRecord.state shouldBe AttachmentState.ARCHIVED
 
                 attachmentQuery.cancelAndIgnoreRemainingEvents()
