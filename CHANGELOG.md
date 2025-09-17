@@ -7,6 +7,8 @@
   `androidx.sqlite` that can be used to step through statements in a custom way.
 * Fix an issue where `watch()` would run queries more often than intended.
 * Add an integration for the Room database library ([readme](integrations/room/README.md)).
+* Add the `com.powersync:integration-sqldelight` module providing a SQLDelight driver based on open
+  PowerSync instances. See [the readme](integrations/sqldelight/README.md) for details.
 
 ## 1.5.1
 
