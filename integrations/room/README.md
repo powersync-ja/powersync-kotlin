@@ -54,12 +54,6 @@ To also transfer local writes to PowerSync, you need to
 1. Create triggers on your Room tables to insert into `ps_crud` (see the
    [PowerSync documentation on raw tables](https://docs.powersync.com/usage/use-case-examples/raw-tables#capture-local-writes-with-triggers)
    for details).
-2. Listen for Room changes and invoke a helper method to transfer them to PowerSync:
-    ```Kotlin
-    yourRoomDatabase.getCoroutineScope().launch {
-        // list all your tables here
-        yourRoomDatabase.invalidationTracker.createFlow("users", "groups", /*...*/).collect {
-            pool.transferRoomUpdatesToPowerSync()
-        }
-    }
-    ```
+2. Pass the schema as a second parameter to the `RoomConnectionPool` constructor. This will make the
+   pool notify PowerSync on Room writes for every raw table mentioned in the schema.
+   Alternatively, call `transferPendingRoomUpdatesToPowerSync` after writes in Room.
