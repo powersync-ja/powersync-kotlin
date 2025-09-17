@@ -2,7 +2,7 @@ name: Gradle build & test
 
 on:
   push:
-    branches: [ "main" ]
+#    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
   workflow_call:
@@ -16,12 +16,22 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            targets: iosSimulatorArm64Test macosArm64Test watchosSimulatorArm64Test tvosSimulatorArm64Test jvmTest
+            name: macos-watchos-tvos
+            targets: watchosSimulatorArm64Test tvosSimulatorArm64Test
+          - os: macos-latest
+            name: mac-ios-macos
+            targets: iosSimulatorArm64Test macosArm64Test
+          - os: macos-latest
+            name: mac-jvm
+            targets: jvmTest
           - os: ubuntu-latest
+            name: ubuntu
             targets: testDebugUnitTest testReleaseUnitTest jvmTest lintKotlin
           - os: windows-latest
+            name: windows
             targets: jvmTest
     runs-on: ${{ matrix.os }}
+    name: Test ${{ matrix.name }}
     timeout-minutes: 20
 
     steps:
