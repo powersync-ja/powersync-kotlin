@@ -28,6 +28,7 @@ public expect class DatabaseDriverFactory {
  * SDK.
  */
 @ExperimentalPowerSyncAPI
+@Throws(PowerSyncException::class)
 public expect fun resolvePowerSyncLoadableExtensionPath(): String?
 
 @OptIn(ExperimentalPowerSyncAPI::class)

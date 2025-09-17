@@ -28,18 +28,21 @@ been loaded. To do that:
 3. Configure raw tables for your Room databases.
 
 After these steps, you can open your Room database like you normally would. Then, you can use the
-following method to obtain  a `PowerSyncDatabase` instance that is backed by Room:
+following method to obtain  a `PowerSyncDatabase` instance which is backed by Room:
 
 ```Kotlin
-val pool = RoomConnectionPool(yourRoomDatabase)
+// With Room, you need to use raw tables (https://docs.powersync.com/usage/use-case-examples/raw-tables).
+// This is because Room verifies your schema at runtime, and PowerSync-managed views will not
+// pass those checks.
+val schema = Schema(...)
+val pool = RoomConnectionPool(yourRoomDatabase, schema)
 val powersync = PowerSyncDatabase.opened(
     pool = pool,
     scope = this,
-    schema = Schema(...), // With Room, you need to use raw tables
+    schema = schema,
     identifier = "databaseName", // Prefer to use the same path/name as your Room database
     logger = Logger,
 )
-
 powersync.connect(...)
 ```
 

@@ -10,6 +10,9 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
+import com.powersync.db.schema.PendingStatement
+import com.powersync.db.schema.PendingStatementParameter
+import com.powersync.db.schema.RawTable
 import com.powersync.db.schema.Schema
 import kotlinx.coroutines.flow.Flow
 
@@ -40,7 +43,25 @@ abstract class TestDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
 
     companion object {
-        val schema = Schema()
+        val schema =
+            Schema(
+                RawTable(
+                    name = "user",
+                    put =
+                        PendingStatement(
+                            "INSERT INTO user (id, name) VALUES (?, ?)",
+                            listOf(
+                                PendingStatementParameter.Id,
+                                PendingStatementParameter.Column("name"),
+                            ),
+                        ),
+                    delete =
+                        PendingStatement(
+                            "DELETE FROM user WHERE id = ?",
+                            listOf(PendingStatementParameter.Id),
+                        ),
+                ),
+            )
     }
 }
 

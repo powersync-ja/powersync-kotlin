@@ -39,7 +39,7 @@ class PowerSyncRoomTest {
 
             val powersync =
                 PowerSyncDatabase.opened(
-                    pool = RoomConnectionPool(database),
+                    pool = RoomConnectionPool(database, TestDatabase.schema),
                     scope = this,
                     schema = TestDatabase.schema,
                     identifier = "test",
@@ -62,7 +62,7 @@ class PowerSyncRoomTest {
     fun roomWritePowerSyncWatch() =
         runTest {
             val logger = Logger(loggerConfigInit())
-            val pool = RoomConnectionPool(database)
+            val pool = RoomConnectionPool(database, TestDatabase.schema)
 
             val powersync =
                 PowerSyncDatabase.opened(
@@ -85,7 +85,6 @@ class PowerSyncRoomTest {
 
                 turbine.awaitItem() shouldHaveSize 0
                 database.userDao().create(User("id", "name"))
-                pool.transferRoomUpdatesToPowerSync() // TODO: Would be cool if this wasn't necessary
                 turbine.awaitItem() shouldHaveSize 1
                 turbine.cancel()
             }
@@ -95,7 +94,7 @@ class PowerSyncRoomTest {
     fun powersyncWriteRoomRead() =
         runTest {
             val logger = Logger(loggerConfigInit())
-            val pool = RoomConnectionPool(database)
+            val pool = RoomConnectionPool(database, TestDatabase.schema)
 
             val powersync =
                 PowerSyncDatabase.opened(
@@ -115,7 +114,7 @@ class PowerSyncRoomTest {
     fun powersyncWriteRoomWatch() =
         runTest {
             val logger = Logger(loggerConfigInit())
-            val pool = RoomConnectionPool(database)
+            val pool = RoomConnectionPool(database, TestDatabase.schema)
 
             val powersync =
                 PowerSyncDatabase.opened(

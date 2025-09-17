@@ -8,9 +8,11 @@ import androidx.room.useWriterConnection
 import androidx.sqlite.SQLiteStatement
 import com.powersync.db.driver.SQLiteConnectionLease
 import com.powersync.db.driver.SQLiteConnectionPool
+import com.powersync.db.schema.Schema
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlin.coroutines.CoroutineContext
@@ -23,15 +25,22 @@ import kotlin.coroutines.CoroutineContext
  *
  * Writes made from the wrapped PowerSync database, including writes made for the sync process, are
  * forwarded to Room and will update your flows automatically.
- * On the other hand, the PowerSync SDK needs to be notified about updates in Room. For that, use
- * the [transferRoomUpdatesToPowerSync] method as a collector of a Room flow listening on all your
- * tables.
+ *
+ * On the other hand, the PowerSync SDK needs to be notified about updates in Room. For that, a
+ * schema parameter can be used in the constructor. It will call [syncRoomUpdatesToPowerSync] to
+ * collect a Room flow on all tables. Alternatively, [transferPendingRoomUpdatesToPowerSync] can be
+ * called after issuing writes in Room to transfer them to PowerSync.
  */
 public class RoomConnectionPool(
     private val db: RoomDatabase,
+    schema: Schema? = null,
 ) : SQLiteConnectionPool {
     private val _updates = MutableSharedFlow<Set<String>>()
     private var hasInstalledUpdateHook = false
+
+    init {
+        schema?.let { syncRoomUpdatesToPowerSync(it) }
+    }
 
     override suspend fun <R> withAllConnections(action: suspend (SQLiteConnectionLease, List<SQLiteConnectionLease>) -> R) {
         // We can't obtain a list of all connections on Room. That's fine though, we expect this to
@@ -50,9 +59,22 @@ public class RoomConnectionPool(
      * Makes pending updates tracked by Room's invalidation tracker available to the PowerSync
      * database, updating flows and triggering CRUD uploads.
      */
-    public suspend fun transferRoomUpdatesToPowerSync() {
+    public suspend fun transferPendingRoomUpdatesToPowerSync() {
         write {
             // The end of the write callback invokes powersync_update_hooks('get') for this
+        }
+    }
+
+    /**
+     * Registers a Room listener on all tables mentioned in the [schema] and invokes
+     * [transferPendingRoomUpdatesToPowerSync] when they change.
+     */
+    public fun syncRoomUpdatesToPowerSync(schema: Schema) {
+        db.getCoroutineScope().launch {
+            val tables = schema.rawTables.map { it.name }.toTypedArray()
+            db.invalidationTracker.createFlow(*tables, emitInitialState = false).collect {
+                transferPendingRoomUpdatesToPowerSync()
+            }
         }
     }
 
