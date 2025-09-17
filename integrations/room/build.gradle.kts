@@ -16,8 +16,8 @@ plugins {
 
 kotlin {
     powersyncTargets()
-
     explicitApi()
+    applyDefaultHierarchyTemplate()
 
     sourceSets {
         all {
@@ -54,7 +54,7 @@ kotlin {
 
         // We have special setup in this build configuration to make these tests link the PowerSync extension, so they
         // can run integration tests along with the executable for unit testing.
-        appleTest.orNull?.dependsOn(commonIntegrationTest)
+        nativeTest.orNull?.dependsOn(commonIntegrationTest)
     }
 }
 
