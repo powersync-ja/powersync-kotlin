@@ -6,6 +6,7 @@
 * Add `rawConnection` getter to `ConnectionContext`, which is a `SQLiteConnection` instance from
   `androidx.sqlite` that can be used to step through statements in a custom way.
 * Fix an issue where `watch()` would run queries more often than intended.
+* Add an integration for the Room database library ([readme](integrations/room/README.md)).
 
 ## 1.5.1
 
