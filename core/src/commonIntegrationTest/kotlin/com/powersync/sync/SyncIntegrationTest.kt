@@ -105,10 +105,11 @@ abstract class BaseSyncIntegrationTest(
 
                 database.close()
                 turbine.waitFor { !it.connected }
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
 
             // Closing the database should have closed the channel.
+            logger.v { "Database is closed, waiting to close HTTP stream" }
             waitFor { syncLines.isClosedForSend shouldBe true }
         }
 

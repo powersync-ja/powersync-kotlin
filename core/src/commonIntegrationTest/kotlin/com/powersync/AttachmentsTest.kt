@@ -17,7 +17,6 @@ import com.powersync.testutils.MockedRemoteStorage
 import com.powersync.testutils.UserRow
 import com.powersync.testutils.databaseTest
 import com.powersync.testutils.getTempDir
-import com.powersync.testutils.waitFor
 import dev.mokkery.answering.throws
 import dev.mokkery.everySuspend
 import dev.mokkery.matcher.ArgMatchersScope
@@ -29,6 +28,7 @@ import dev.mokkery.verifySuspend
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.onEach
 import kotlinx.io.files.Path
@@ -60,7 +60,17 @@ class AttachmentsTest {
         database
             .watch("SELECT * FROM attachments") {
                 Attachment.fromCursor(it)
-            }.onEach { logger.i { "attachments table results: $it" } }
+            }
+            // Because tests run on slow machines, it's possible for a schedule like the following
+            // to happen:
+            //  1. the attachment is initially saved with QUEUED_DOWNLOAD, triggering a query.
+            //  2. the attachment is downloaded fast, but the query flow is paused.
+            //  3. only now is the query scheduled by 1 actually running, reporting SYNCED.
+            //  4. we delete the attachment.
+            //  5. thanks to 2, the query runs again, again reporting SYNCED.
+            //  6. Our test now fails because the second event should be ARCHIVED.
+            .distinctUntilChanged()
+            .onEach { logger.i { "attachments table results: $it" } }
 
     suspend fun updateSchema(db: PowerSyncDatabase) {
         db.updateSchema(
@@ -278,10 +288,13 @@ class AttachmentsTest {
                          """,
                 )
 
-                waitFor {
-                    var nextRecord: Attachment? = attachmentQuery.awaitItem().firstOrNull()
-                    // The record should have been deleted
-                    nextRecord shouldBe null
+                while (true) {
+                    val item = attachmentQuery.awaitItem()
+                    if (item.isEmpty()) {
+                        break
+                    }
+
+                    logger.v { "Waiting for attachment record to be deleted (current $item)" }
                 }
 
                 // The file should have been deleted from storage
@@ -346,10 +359,13 @@ class AttachmentsTest {
                     database.get("SELECT photo_id FROM users") { it.getString("photo_id") }
 
                 // Wait for the record to be synced (mocked backend will allow it)
-                waitFor {
-                    val record = attachmentQuery.awaitItem().first()
-                    record shouldNotBe null
-                    record.state shouldBe AttachmentState.SYNCED
+                while (true) {
+                    val item = attachmentQuery.awaitItem().firstOrNull()
+                    if (item != null && item.state == AttachmentState.SYNCED) {
+                        break
+                    }
+
+                    logger.v { "Waiting for attachment record to be synced (current $item)" }
                 }
 
                 queue.deleteFile(
@@ -369,10 +385,14 @@ class AttachmentsTest {
                     )
                 }
 
-                waitFor {
-                    // Record should be deleted
-                    val record = attachmentQuery.awaitItem().firstOrNull()
-                    record shouldBe null
+                // Record should be deleted
+                while (true) {
+                    val item = attachmentQuery.awaitItem()
+                    if (item.isEmpty()) {
+                        break
+                    }
+
+                    logger.v { "Waiting for attachment record to be deleted (current $item)" }
                 }
 
                 // A delete should have been attempted for this file
@@ -559,14 +579,16 @@ class AttachmentsTest {
                     """,
                 )
 
+                // Depending on when the query updates, we'll see the attachment as queued for
+                // download or archived.
                 var attachmentRecord = attachmentQuery.awaitItem().first()
                 attachmentRecord shouldNotBe null
 
-                attachmentRecord.state shouldBe AttachmentState.QUEUED_DOWNLOAD
+                if (attachmentRecord.state == AttachmentState.QUEUED_DOWNLOAD) {
+                    attachmentRecord = attachmentQuery.awaitItem().first()
+                }
 
                 // The download should fail. We don't specify a retry. The record should be archived.
-                attachmentRecord = attachmentQuery.awaitItem().first()
-
                 attachmentRecord.state shouldBe AttachmentState.ARCHIVED
 
                 attachmentQuery.cancelAndIgnoreRemainingEvents()
