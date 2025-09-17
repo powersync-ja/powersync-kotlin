@@ -5,6 +5,7 @@
 * Remove internal SQLDelight and SQLiter dependencies.
 * Add `rawConnection` getter to `ConnectionContext`, which is a `SQLiteConnection` instance from
   `androidx.sqlite` that can be used to step through statements in a custom way.
+* Support asynchronous transactions and locks.
 
 ## 1.5.1
 

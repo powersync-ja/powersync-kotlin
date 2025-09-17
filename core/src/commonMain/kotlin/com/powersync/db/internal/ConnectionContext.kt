@@ -7,9 +7,8 @@ import com.powersync.db.SqlCursor
 import com.powersync.db.StatementBasedCursor
 import com.powersync.db.driver.SQLiteConnectionLease
 
+@Deprecated("Use suspending callback instead")
 public interface ConnectionContext {
-    // TODO (breaking): Make asynchronous, create shared superinterface with Queries
-
     @Throws(PowerSyncException::class)
     public fun execute(
         sql: String,
@@ -38,6 +37,7 @@ public interface ConnectionContext {
     ): RowType
 }
 
+@Deprecated("Use suspending callback instead")
 @ExperimentalPowerSyncAPI
 internal class ConnectionContextImplementation(
     private val rawConnection: SQLiteConnectionLease,
