@@ -36,6 +36,8 @@ and API documentation [here](https://powersync-ja.github.io/powersync-kotlin/).
 - [integrations](./integrations/)
    - [room](./integrations/room/README.md): Allows using the [Room database library](https://developer.android.com/jetpack/androidx/releases/room)
      with PowerSync, making it easier to run typed queries on the database.
+  - [sqldelight](./integrations/sqldelight/README.md): Allows using [SQLDelight](https://sqldelight.github.io/sqldelight)
+    with PowerSync, also enabling typed statements on the database.
 
 
 ## Demo Apps / Example Projects

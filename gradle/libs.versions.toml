@@ -33,6 +33,7 @@ compose-lifecycle = "2.9.2"
 androidxSqlite = "2.6.0-rc02"
 androidxSplashscreen = "1.0.1"
 room = "2.8.0-rc02"
+sqldelight = "2.1.0"
 
 # plugins
 android-gradle-plugin = "8.12.1"
@@ -103,6 +104,9 @@ androidx-sqlite-sqlite = { module = "androidx.sqlite:sqlite", version.ref = "and
 androidx-sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "androidxSqlite" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+sqldelight-coroutines = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
+sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }
+sqldelight-dialect-sqlite38 = { module = "app.cash.sqldelight:sqlite-3-38-dialect", version.ref = "sqldelight" }
 
 # Sample - Android
 androidx-core = { group = "androidx.core", name = "core-ktx", version.ref = "androidx-core" }
@@ -151,3 +155,4 @@ kotlin-atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version.ref = "atomic
 buildKonfig = { id = "com.codingfeline.buildkonfig", version.ref = "buildKonfig" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 androidx-room = { id = "androidx.room", version.ref = "room" }
+sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }

@@ -1,0 +1,14 @@
+CREATE TABLE todos (
+    id TEXT NOT NULL DEFAULT '',
+    title TEXT,
+    content TEXT
+);
+
+all:
+SELECT * FROM todos;
+
+create:
+INSERT INTO todos (id, title, content) VALUES (uuid(), ?, ?);
+
+update:
+UPDATE todos SET content = content || title RETURNING *;
