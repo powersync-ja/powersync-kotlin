@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.6.0 (unreleased)
+## 1.6.0
 
 * Remove internal SQLDelight and SQLiter dependencies.
 * Add `rawConnection` getter to `ConnectionContext`, which is a `SQLiteConnection` instance from

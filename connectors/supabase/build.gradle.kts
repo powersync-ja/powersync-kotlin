@@ -1,4 +1,3 @@
-import com.powersync.plugins.sonatype.setupGithubRepository
 import com.powersync.plugins.utils.powersyncTargets
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 
@@ -51,8 +50,6 @@ android {
         jvmToolchain(17)
     }
 }
-
-setupGithubRepository()
 
 dokka {
     moduleName.set("PowerSync Supabase Connector")

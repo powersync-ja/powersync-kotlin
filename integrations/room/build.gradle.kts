@@ -1,4 +1,3 @@
-import com.powersync.plugins.sonatype.setupGithubRepository
 import com.powersync.plugins.utils.powersyncTargets
 import org.jmailen.gradle.kotlinter.tasks.FormatTask
 import org.jmailen.gradle.kotlinter.tasks.LintTask
@@ -95,8 +94,6 @@ android {
         jvmToolchain(17)
     }
 }
-
-setupGithubRepository()
 
 dokka {
     moduleName.set("PowerSync Room Integration")

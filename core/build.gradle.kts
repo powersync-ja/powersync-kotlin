@@ -1,4 +1,3 @@
-import com.powersync.plugins.sonatype.setupGithubRepository
 import com.powersync.plugins.utils.powersyncTargets
 import de.undercouch.gradle.tasks.download.Download
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
@@ -294,7 +293,6 @@ tasks.withType<KotlinTest> {
         showStackTraces = true
     }
 }
-setupGithubRepository()
 
 dokka {
     moduleName.set("PowerSync Core")
