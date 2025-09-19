@@ -1,11 +1,16 @@
 # PowerSync Room integration
 
+> [!NOTE]
+> Note that this package is currently in alpha.
+
 This module provides the ability to use PowerSync with Room databases. This module aims for complete
 Room support, meaning that:
 
 1. Changes synced from PowerSync automatically update your Room `Flow`s.
 2. Room and PowerSync cooperate on the write connection, avoiding "database is locked errors".
 3. Changes from Room trigger a CRUD upload.
+
+For more details on using this module, see its page on the [PowerSync documentation](https://docs.powersync.com/client-sdk-references/kotlin-multiplatform/libraries/room).
 
 ## Setup
 

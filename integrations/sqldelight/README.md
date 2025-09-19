@@ -1,7 +1,12 @@
 ## PowerSync SQLDelight driver
 
+> [!NOTE]
+> Note that this package is currently in beta.
+
 This library provides the `PowerSyncDriver` class, which implements an `SqlDriver` for `SQLDelight`
 backed by PowerSync.
+
+For more details on using this module, see its page on the [PowerSync documentation](https://docs.powersync.com/client-sdk-references/kotlin-multiplatform/libraries/sqldelight).
 
 ## Setup
 

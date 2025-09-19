@@ -1,3 +1,5 @@
+import java.net.URI
+
 plugins {
     id("org.jetbrains.dokka")
 }
@@ -28,7 +30,7 @@ dokka {
         sourceLink {
             localDirectory.set(project.rootDir)
             remoteUrl.set(commit.map { commit ->
-                uri("https://github.com/powersync-ja/powersync-kotlin/tree/${commit.trim()}/")
+                URI.create("https://github.com/powersync-ja/powersync-kotlin/tree/${commit.trim()}/")
             })
             remoteLineSuffix.set("#L")
         }
