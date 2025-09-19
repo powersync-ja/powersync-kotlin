@@ -1,4 +1,3 @@
-import com.powersync.plugins.sonatype.setupGithubRepository
 import com.powersync.plugins.utils.powersyncTargets
 
 plugins {
@@ -8,6 +7,7 @@ plugins {
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.kotlinter)
     id("com.powersync.plugins.sonatype")
+    id("com.powersync.plugins.sharedbuild")
     id("dokka-convention")
 }
 
@@ -48,8 +48,6 @@ android {
         jvmToolchain(17)
     }
 }
-
-setupGithubRepository()
 
 dokka {
     moduleName.set("PowerSync Compose")

@@ -13,6 +13,7 @@ This is the PowerSync client SDK for Kotlin. This SDK currently supports the fol
 - iOS
 - macOS
 - watchOS
+- tvOS
 
 If you need support for additional targets, please reach out!
 
@@ -32,6 +33,13 @@ and API documentation [here](https://powersync-ja.github.io/powersync-kotlin/).
         1. Retrieve a token to connect to the PowerSync service.
         2. Apply local changes on your backend application server (and from there, to your backend database).
 
+- [integrations](./integrations/)
+   - [room](./integrations/room/README.md): Allows using the [Room database library](https://developer.android.com/jetpack/androidx/releases/room)
+     with PowerSync, making it easier to run typed queries on the database.
+  - [sqldelight](./integrations/sqldelight/README.md): Allows using [SQLDelight](https://sqldelight.github.io/sqldelight)
+    with PowerSync, also enabling typed statements on the database.
+
+
 ## Demo Apps / Example Projects
 
 The easiest way to test the PowerSync KMP SDK is to run one of our demo applications.
@@ -40,12 +48,6 @@ Demo applications are located in the [`demos/`](./demos) directory. See their re
 
 - [demos/supabase-todolist](./demos/supabase-todolist/README.md): A simple to-do list application demonstrating the use of the PowerSync Kotlin Multiplatform SDK and the Supabase connector.
 - [demos/android-supabase-todolist](./demos/android-supabase-todolist/README.md): A simple to-do list application demonstrating the use of the PowerSync Kotlin Multiplatform SDK and the Supabase connector in an Android application.
-
-## Current Limitations / Future work
-
-Current limitations:
-
-- Integration with SQLDelight schema and API generation (ORM) is not yet supported.
 
 ## Installation
 

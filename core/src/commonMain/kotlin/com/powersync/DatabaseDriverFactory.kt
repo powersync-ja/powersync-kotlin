@@ -17,6 +17,20 @@ public expect class DatabaseDriverFactory {
     ): SQLiteConnection
 }
 
+/**
+ * Resolves a path to the loadable PowerSync core extension library.
+ *
+ * This library must be loaded on all databases using the PowerSync SDK. On platforms where the
+ * extension is linked statically (only watchOS at the moment), this returns `null`.
+ *
+ * When using the PowerSync SDK directly, there is no need to invoke this method. It is intended for
+ * configuring external database connections not managed by PowerSync to work with the PowerSync
+ * SDK.
+ */
+@ExperimentalPowerSyncAPI
+@Throws(PowerSyncException::class)
+public expect fun resolvePowerSyncLoadableExtensionPath(): String?
+
 @OptIn(ExperimentalPowerSyncAPI::class)
 internal fun openDatabase(
     factory: DatabaseDriverFactory,

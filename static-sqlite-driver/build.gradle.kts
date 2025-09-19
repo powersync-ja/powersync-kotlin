@@ -3,7 +3,6 @@ import com.powersync.compile.CreateSqliteCInterop
 import com.powersync.compile.CreateStaticLibrary
 import com.powersync.compile.UnzipSqlite
 import java.io.File
-import com.powersync.plugins.sonatype.setupGithubRepository
 import com.powersync.plugins.utils.powersyncTargets
 import de.undercouch.gradle.tasks.download.Download
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
@@ -103,5 +102,3 @@ kotlin {
         }
     }
 }
-
-setupGithubRepository()

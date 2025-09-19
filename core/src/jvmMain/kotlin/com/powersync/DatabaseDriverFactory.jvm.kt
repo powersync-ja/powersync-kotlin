@@ -2,6 +2,7 @@ package com.powersync
 
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import com.powersync.db.runWrapped
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING", "SqlNoDataSourceInspection")
 public actual class DatabaseDriverFactory {
@@ -20,3 +21,7 @@ public fun BundledSQLiteDriver.addPowerSyncExtension() {
 }
 
 private val powersyncExtension: String by lazy { extractLib("powersync") }
+
+@ExperimentalPowerSyncAPI
+@Throws(PowerSyncException::class)
+public actual fun resolvePowerSyncLoadableExtensionPath(): String? = runWrapped { powersyncExtension }

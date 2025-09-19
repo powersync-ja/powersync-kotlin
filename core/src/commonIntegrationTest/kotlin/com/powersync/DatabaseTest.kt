@@ -211,11 +211,10 @@ class DatabaseTest {
 
                 var changeSet = query.awaitItem()
                 // The initial result
-                changeSet.count() shouldBe 0
+                changeSet shouldHaveSize 0
 
                 changeSet = query.awaitItem()
-                changeSet.count() shouldBe 1
-                changeSet.contains("users") shouldBe true
+                changeSet shouldBe setOf("users")
 
                 query.cancel()
             }

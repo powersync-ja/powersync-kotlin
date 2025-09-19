@@ -6,13 +6,21 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.flow
 import kotlin.time.Duration
+import kotlin.time.TimeSource
 
 /**
- * Throttles a flow with emissions on the leading and trailing edge.
- * Events, from the incoming flow, during the throttle window are discarded.
- * Events are discarded by using a conflated buffer.
- * This throttle method acts as a slow consumer, but backpressure is not a concern
- * due to the conflated buffer dropping events during the throttle window.
+ * Throttles an upstream flow.
+ *
+ * When a new event is emitted on this (upstream) flow, it is passed on downstream. For each value
+ * passed downstream, the resulting flow will pause for at least [window] (or longer if emitting
+ * the value downstream takes longer).
+ *
+ * While this flow is paused, no further events are passed downstream. The latest upstream event
+ * emitted during the pause state is buffered and handled once the pause is over.
+ *
+ * In other words, this flow will _drop events_, so it should only be used when the upstream flow
+ * serves as a notification marker (meaning that something downstream needs to run in response to
+ * events, but the actual event does not matter).
  */
 internal fun <T> Flow<T>.throttle(window: Duration): Flow<T> =
     flow {
@@ -20,11 +28,12 @@ internal fun <T> Flow<T>.throttle(window: Duration): Flow<T> =
         val bufferedFlow = this@throttle.buffer(Channel.CONFLATED)
 
         bufferedFlow.collect { value ->
-            // Emit the event immediately (leading edge)
+            // Pause for the downstream emit or the delay window, whatever is longer
+            val pauseUntil = TimeSource.Monotonic.markNow() + window
             emit(value)
 
-            // Delay for the throttle window to avoid emitting too frequently
-            delay(window)
+            // Negating the duration because we want to pause until pauseUntil has passed.
+            delay(-pauseUntil.elapsedNow())
 
             // The next incoming event will be provided from the buffer.
             // The next collect will emit the trailing edge
