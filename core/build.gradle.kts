@@ -171,6 +171,7 @@ kotlin {
         androidMain {
             dependsOn(commonJava)
             dependencies {
+                api(libs.powersync.sqlite.core.android)
                 implementation(libs.ktor.client.okhttp)
                 implementation(libs.androidx.sqlite.bundled)
             }
@@ -255,11 +256,6 @@ android {
         consumerProguardFiles("proguard-rules.pro")
     }
 
-    sourceSets {
-        getByName("main") {
-            jniLibs.srcDirs("src/androidMain/jni", "src/main/jni", "src/jniLibs")
-        }
-    }
     ndkVersion = "27.1.12297006"
 }
 
