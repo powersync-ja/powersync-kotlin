@@ -30,7 +30,28 @@ been loaded. To do that:
     
     Room.databaseBuilder(...).setDriver(driver).build()
     ```
-3. Configure raw tables for your Room databases.
+3. Configure raw tables for your Room databases, for example:
+
+```Kotlin
+val schema = Schema(
+    RawTable(
+        name = "todo",
+        put = PendingStatement(
+            sql = "INSERT OR REPLACE INTO todo VALUES (id, title, content) VALUES (?, ?, ?)",
+            parameters = listOf(
+                PendingStatementParameter.Id,
+                PendingStatementParameter.Column("title"),
+                PendingStatementParameter.Column("content")
+            )
+        ),
+        delete = PendingStatement(
+            sql = "DELETE FROM todo WHERE id = ?",
+            parameters = listOf(PendingStatementParameter.Id)
+        )
+    ),
+)
+
+```
 
 After these steps, you can open your Room database like you normally would. Then, you can use the
 following method to obtain  a `PowerSyncDatabase` instance which is backed by Room:
@@ -39,16 +60,18 @@ following method to obtain  a `PowerSyncDatabase` instance which is backed by Ro
 // With Room, you need to use raw tables (https://docs.powersync.com/usage/use-case-examples/raw-tables).
 // This is because Room verifies your schema at runtime, and PowerSync-managed views will not
 // pass those checks.
-val schema = Schema(...)
 val pool = RoomConnectionPool(yourRoomDatabase, schema)
 val powersync = PowerSyncDatabase.opened(
-    pool = pool,
-    scope = this,
-    schema = schema,
-    identifier = "databaseName", // Prefer to use the same path/name as your Room database
-    logger = Logger,
+   pool = pool,
+   scope = this,
+   schema = schema,
+   identifier = "databaseName", // Prefer to use the same path/name as your Room database
+   logger = Logger,
 )
-powersync.connect(...)
+powersync.connect(
+   connector = yourConnector,
+   options = SyncOptions(newClientImplementation = true)
+)
 ```
 
 Changes from PowerSync (regardless of whether they've been made with `powersync.execute` or from a
