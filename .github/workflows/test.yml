@@ -77,6 +77,9 @@ jobs:
 
   android_emulator:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      AVD_NAME: ubuntu-avd-x86_64-31
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -96,6 +99,14 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+      - name: AVD Cache
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-31
 
       # https://github.com/ReactiveCircus/android-emulator-runner?tab=readme-ov-file#usage--examples
       - name: Enable KVM
@@ -107,5 +118,16 @@ jobs:
       - name: run tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
-          script: ./gradlew core-tests-android:connectedCheck
+          api-level: 31
+          force-avd-creation: false
+          target: google_apis
+          arch: x86_64
+          disable-animations: false
+          avd-name: $AVD_NAME
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: echo "Generated AVD snapshot for caching."
+
+      - name: Build and run tests with Gradle
+        run: |
+          ./gradlew --scan core-tests-android:connectedCheck
+        shell: bash
