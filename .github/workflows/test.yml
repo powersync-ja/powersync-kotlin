@@ -115,7 +115,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: run tests
+      - name: emulator tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 31
@@ -125,9 +125,4 @@ jobs:
           disable-animations: false
           avd-name: $AVD_NAME
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: echo "Generated AVD snapshot for caching."
-
-      - name: Build and run tests with Gradle
-        run: |
-          ./gradlew --scan core-tests-android:connectedCheck
-        shell: bash
+          script: ./gradlew --scan core-tests-android:connectedCheck
