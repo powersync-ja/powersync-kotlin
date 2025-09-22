@@ -34,8 +34,7 @@ and API documentation [here](https://powersync-ja.github.io/powersync-kotlin/).
         2. Apply local changes on your backend application server (and from there, to your backend database).
 
 - [integrations](./integrations/)
-   - [room](./integrations/room/README.md): Allows using the [Room database library](https://developer.android.com/jetpack/androidx/releases/room)
-     with PowerSync, making it easier to run typed queries on the database.
+  - [room](./integrations/room/README.md): Allows using the [Room database library](https://developer.android.com/jetpack/androidx/releases/room) with PowerSync, making it easier to run typed queries on the database.
   - [sqldelight](./integrations/sqldelight/README.md): Allows using [SQLDelight](https://sqldelight.github.io/sqldelight)
     with PowerSync, also enabling typed statements on the database.
 
