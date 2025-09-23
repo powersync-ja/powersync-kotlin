@@ -7,10 +7,10 @@ import com.powersync.PowerSyncDatabase
 import com.powersync.PowerSyncException
 import com.powersync.TestConnector
 import com.powersync.bucket.BucketChecksum
-import com.powersync.bucket.BucketPriority
 import com.powersync.bucket.Checkpoint
 import com.powersync.bucket.OpType
 import com.powersync.bucket.OplogEntry
+import com.powersync.bucket.StreamPriority
 import com.powersync.bucket.WriteCheckpointData
 import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.connectors.PowerSyncBackendConnector
@@ -165,7 +165,7 @@ abstract class BaseSyncIntegrationTest(
                         add(
                             BucketChecksum(
                                 bucket = "bucket$prio",
-                                priority = BucketPriority(prio),
+                                priority = StreamPriority(prio),
                                 checksum = 10 + prio,
                             ),
                         )
@@ -218,7 +218,7 @@ abstract class BaseSyncIntegrationTest(
 
                 // Emit a partial sync complete for each priority but the last.
                 for (priorityNo in 0..<3) {
-                    val priority = BucketPriority(priorityNo)
+                    val priority = StreamPriority(priorityNo)
                     pushData(priorityNo)
                     syncLines.send(
                         SyncLine.CheckpointPartiallyComplete(
@@ -258,7 +258,7 @@ abstract class BaseSyncIntegrationTest(
                             listOf(
                                 BucketChecksum(
                                     bucket = "bkt",
-                                    priority = BucketPriority(1),
+                                    priority = StreamPriority(1),
                                     checksum = 0,
                                 ),
                             ),
@@ -268,17 +268,17 @@ abstract class BaseSyncIntegrationTest(
             syncLines.send(
                 SyncLine.CheckpointPartiallyComplete(
                     lastOpId = "0",
-                    priority = BucketPriority(1),
+                    priority = StreamPriority(1),
                 ),
             )
 
-            database.waitForFirstSync(BucketPriority(1))
+            database.waitForFirstSync(StreamPriority(1))
             database.close()
 
             // Connect to the same database again
             database = openDatabaseAndInitialize()
             database.currentStatus.hasSynced shouldBe false
-            database.currentStatus.statusForPriority(BucketPriority(1)).hasSynced shouldBe true
+            database.currentStatus.statusForPriority(StreamPriority(1)).hasSynced shouldBe true
         }
 
     @Test

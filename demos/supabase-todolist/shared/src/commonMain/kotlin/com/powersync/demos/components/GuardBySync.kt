@@ -15,7 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.powersync.PowerSyncDatabase
-import com.powersync.bucket.BucketPriority
+import com.powersync.bucket.StreamPriority
 import com.powersync.compose.composeState
 import com.powersync.sync.SyncStatusData
 import org.koin.compose.koinInject
@@ -28,7 +28,7 @@ import org.koin.compose.koinInject
 @Composable
 fun GuardBySync(
     db: PowerSyncDatabase = koinInject(),
-    priority: BucketPriority? = null,
+    priority: StreamPriority? = null,
     content: @Composable () -> Unit
 ) {
     val state: SyncStatusData by db.currentStatus.composeState()
