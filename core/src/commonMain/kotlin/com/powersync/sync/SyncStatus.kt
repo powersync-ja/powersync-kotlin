@@ -1,5 +1,6 @@
 package com.powersync.sync
 
+import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.bucket.StreamPriority
 import com.powersync.connectors.PowerSyncBackendConnector
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -119,12 +120,14 @@ public sealed class SyncStatusData {
      * This returns null when the database is currently being opened and we don't have reliable
      * information about included streams yet.
      */
+    @ExperimentalPowerSyncAPI
     public val syncStreams: List<SyncStreamStatus>? get() = internalSubscriptions?.map(this::exposeStreamStatus)
 
     /**
      * Status information for [stream], if it's a stream that is currently tracked by the sync
      * client.
      */
+    @ExperimentalPowerSyncAPI
     public fun forStream(stream: SyncStreamDescription): SyncStreamStatus? {
         val raw = internalSubscriptions?.firstOrNull { it.name == stream.name && it.parameters == stream.parameters } ?: return null
         return exposeStreamStatus(raw)

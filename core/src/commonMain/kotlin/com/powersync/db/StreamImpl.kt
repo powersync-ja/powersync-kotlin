@@ -1,5 +1,6 @@
 package com.powersync.db
 
+import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.bucket.StreamPriority
 import com.powersync.db.crud.TypedRow
 import com.powersync.sync.SyncStream
@@ -136,6 +137,7 @@ private class SubscriptionImplementation(
 
     override val parameters: Map<String, Any?>? = group.key.params?.let { TypedRow(it) }
 
+    @OptIn(ExperimentalPowerSyncAPI::class)
     override suspend fun waitForFirstSync() {
         group.tracker.db.waitForStatusMatching { it.forStream(this)?.subscription?.hasSynced == true }
     }

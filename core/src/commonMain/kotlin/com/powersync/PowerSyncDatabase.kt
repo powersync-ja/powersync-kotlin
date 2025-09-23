@@ -183,10 +183,11 @@ public interface PowerSyncDatabase : Queries {
     public suspend fun getPowerSyncVersion(): String
 
     /**
-     * Create a [SyncStream]  instance for the given [name] and [parameters].
+     * Create a [SyncStream] instance for the given [name] and [parameters].
      *
      * Use [SyncStream.subscribe] on the returned instance to subscribe to the stream.
      */
+    @ExperimentalPowerSyncAPI
     public fun syncStream(
         name: String,
         parameters: Map<String, JsonParam>? = null,
