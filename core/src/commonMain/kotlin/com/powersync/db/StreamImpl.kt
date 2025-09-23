@@ -130,7 +130,7 @@ private class SubscriptionImplementation(
         group.refcount++
     }
 
-    private var subscribed = false
+    private var subscribed = true
 
     override val name: String
         get() = group.key.name
