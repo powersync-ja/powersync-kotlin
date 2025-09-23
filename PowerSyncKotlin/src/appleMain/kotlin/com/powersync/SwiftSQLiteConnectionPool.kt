@@ -5,6 +5,7 @@ import cnames.structs.sqlite3
 import co.touchlab.kermit.Logger
 import com.powersync.db.driver.SQLiteConnectionLease
 import com.powersync.db.driver.SQLiteConnectionPool
+import com.powersync.db.runWrapped
 import com.powersync.db.schema.Schema
 import com.powersync.sqlite.Database
 import io.ktor.utils.io.CancellationException
@@ -20,12 +21,12 @@ import kotlinx.coroutines.runBlocking
 internal class RawConnectionLease
     @OptIn(ExperimentalForeignApi::class)
     constructor(
-        connectionPointer: CPointer<sqlite3>,
+        private val lease: SwiftLeaseAdapter,
     ) : SQLiteConnectionLease {
         private var isCompleted = false
 
         @OptIn(ExperimentalForeignApi::class)
-        private var db = Database(connectionPointer)
+        private var db = Database(lease.pointer)
 
         private fun checkNotCompleted() {
             check(!isCompleted) { "Connection lease already closed" }
@@ -52,6 +53,24 @@ internal class RawConnectionLease
         }
     }
 
+public fun interface LeaseCallback {
+    @Throws(PowerSyncException::class, CancellationException::class)
+    public fun execute(lease: SwiftLeaseAdapter)
+}
+
+public fun interface AllLeaseCallback {
+    @Throws(PowerSyncException::class, CancellationException::class)
+    public fun execute(
+        writeLease: SwiftLeaseAdapter,
+        readLeases: List<SwiftLeaseAdapter>,
+    )
+}
+
+public interface SwiftLeaseAdapter {
+    @OptIn(ExperimentalForeignApi::class)
+    public val pointer: CPointer<sqlite3>
+}
+
 /**
  *  We only allow synchronous callbacks on the Swift side for leased READ/WRITE connections.
  *  We also get a SQLite connection pointer (sqlite3*) from Swift side. which is used in a [Database]
@@ -60,15 +79,17 @@ internal class RawConnectionLease
 public interface SwiftPoolAdapter {
     @OptIn(ExperimentalForeignApi::class)
     @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun leaseRead(callback: (CPointer<sqlite3>) -> Unit)
+    public suspend fun leaseRead(callback: LeaseCallback)
 
     @OptIn(ExperimentalForeignApi::class)
     @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun leaseWrite(callback: (CPointer<sqlite3>) -> Unit)
+    public suspend fun leaseWrite(callback: LeaseCallback)
 
     @OptIn(ExperimentalForeignApi::class)
     @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun leaseAll(callback: (CPointer<sqlite3>, List<CPointer<sqlite3>>) -> Unit)
+    public suspend fun leaseAll(callback: AllLeaseCallback)
+
+    public fun linkUpdates(callback: suspend (Set<String>) -> Unit)
 
     public suspend fun closePool()
 }
@@ -82,25 +103,30 @@ public open class SwiftSQLiteConnectionPool
         private val _updates = MutableSharedFlow<Set<String>>(replay = 0)
         override val updates: SharedFlow<Set<String>> get() = _updates
 
-        public fun pushUpdate(update: Set<String>) {
-            _updates.tryEmit(update)
+        init {
+            adapter.linkUpdates { tables ->
+                _updates.emit(tables)
+            }
         }
 
         @OptIn(ExperimentalForeignApi::class)
         override suspend fun <T> read(callback: suspend (SQLiteConnectionLease) -> T): T {
             var result: T? = null
             adapter.leaseRead {
-                /**
-                 * For GRDB, this should be running inside the callback
-                 * ```swift
-                 * db.write {
-                 *  // should be here
-                 * }
-                 * ```
-                 */
-                val lease = RawConnectionLease(it)
-                runBlocking {
-                    result = callback(lease)
+                runWrapped {
+                    /**
+                     * For GRDB, this should be running inside the callback
+                     * ```swift
+                     * db.write {
+                     *  // should be here
+                     * }
+                     * ```
+                     */
+                    val lease =
+                        RawConnectionLease(it)
+                    runBlocking {
+                        result = callback(lease)
+                    }
                 }
             }
             return result as T
@@ -109,10 +135,13 @@ public open class SwiftSQLiteConnectionPool
         @OptIn(ExperimentalForeignApi::class)
         override suspend fun <T> write(callback: suspend (SQLiteConnectionLease) -> T): T {
             var result: T? = null
-            adapter.leaseWrite {
-                val lease = RawConnectionLease(it)
-                runBlocking {
-                    result = callback(lease)
+            adapter.leaseWrite { lease ->
+                runWrapped {
+                    val lease = RawConnectionLease(lease)
+
+                    runBlocking {
+                        result = callback(lease)
+                    }
                 }
             }
             return result as T
@@ -120,9 +149,16 @@ public open class SwiftSQLiteConnectionPool
 
         @OptIn(ExperimentalForeignApi::class)
         override suspend fun <R> withAllConnections(action: suspend (SQLiteConnectionLease, List<SQLiteConnectionLease>) -> R) {
-            adapter.leaseAll { writerPtr, readerPtrs ->
-                runBlocking {
-                    action(RawConnectionLease(writerPtr), readerPtrs.map { RawConnectionLease(it) })
+            adapter.leaseAll { writerLease, readerLeases ->
+                runWrapped {
+                    runBlocking {
+                        action(
+                            RawConnectionLease(writerLease),
+                            readerLeases.map {
+                                RawConnectionLease(it)
+                            },
+                        )
+                    }
                 }
             }
         }
