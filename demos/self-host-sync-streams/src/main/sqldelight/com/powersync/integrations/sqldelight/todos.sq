@@ -1,0 +1,22 @@
+CREATE TABLE lists (
+    id TEXT NOT NULL PRIMARY KEY,
+    created_at TEXT NOT NULL,
+    name TEXT NOT NULL,
+    owner_id TEXT NOT NULL
+);
+
+CREATE TABLE todos (
+    id TEXT NOT NULL PRIMARY KEY,
+    description TEXT NOT NULL,
+    completed INTEGER NOT NULL,
+    list_id TEXT NOT NULL
+);
+
+allLists: SELECT * FROM lists;
+entrySummary: SELECT
+    (SELECT COUNT(*) FROM todos WHERE list_id = l.id AND completed == 1) AS completed_entries,
+    (SELECT COUNT(*) FROM todos WHERE list_id = l.id AND completed == 0) AS pending_entries
+FROM lists l WHERE l.id = ?;
+
+allEntries: SELECT * FROM todos WHERE list_id = ?;
+toggleEntry: UPDATE todos SET completed = ? WHERE id = ?;

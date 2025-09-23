@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
@@ -33,13 +34,13 @@ public fun PowerSyncDatabase.composeSyncStream(
     priority: StreamPriority? = null,
 ): SyncStreamStatus? {
     val syncStatus by currentStatus.composeState()
-    var subscriptionHandle by mutableStateOf<SyncStreamSubscription?>(null)
+    val (resolvedHandle, changeHandle) = remember { mutableStateOf<SyncStreamSubscription?>(null) }
 
     LaunchedEffect(name, parameters) {
         var sub: SyncStreamSubscription? = null
         try {
             sub = syncStream(name, parameters).subscribe(ttl, priority)
-            subscriptionHandle = sub
+            changeHandle(sub)
             // Wait for the composable to unmount
             awaitCancellation()
         } finally {
@@ -47,9 +48,9 @@ public fun PowerSyncDatabase.composeSyncStream(
                 sub?.unsubscribe()
             }
 
-            subscriptionHandle = null
+            changeHandle(null)
         }
     }
 
-    return subscriptionHandle?.let { syncStatus.forStream(it) }
+    return resolvedHandle?.let { syncStatus.forStream(it) }
 }
