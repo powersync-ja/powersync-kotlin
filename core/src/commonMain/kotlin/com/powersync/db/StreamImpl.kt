@@ -24,7 +24,7 @@ internal class StreamTracker(
 
     suspend fun subscriptionsCommand(command: RustSubscriptionChangeRequest) {
         db.writeTransaction { tx ->
-            tx.get("SELECT powersync_control(?,?)", listOf("subscriptions", jsonDontEncodeDefaults.encodeToString(command))) {}
+            tx.execute("SELECT powersync_control(?,?)", listOf("subscriptions", jsonDontEncodeDefaults.encodeToString(command)))
         }
         db.resolveOfflineSyncStatusIfNotConnected()
     }
