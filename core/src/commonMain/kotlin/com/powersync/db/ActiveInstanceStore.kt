@@ -82,7 +82,7 @@ internal class ActiveDatabaseGroup(
     }
 }
 
-internal class ActiveDatabaseResource constructor(
+internal class ActiveDatabaseResource(
     val group: ActiveDatabaseGroup,
 ) {
     val disposed = AtomicBoolean(false)

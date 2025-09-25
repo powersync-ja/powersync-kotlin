@@ -18,7 +18,7 @@ import kotlinx.coroutines.runBlocking
  * Accepts a [SwiftPoolAdapter] to implement a [SQLiteConnectionPool] which
  * is usable by PowerSync.
  */
-public open class SwiftSQLiteConnectionPool(
+public class SwiftSQLiteConnectionPool(
     private val adapter: SwiftPoolAdapter,
 ) : SQLiteConnectionPool {
     private val _updates = MutableSharedFlow<Set<String>>(replay = 0)
@@ -30,7 +30,6 @@ public open class SwiftSQLiteConnectionPool(
         }
     }
 
-    @OptIn(ExperimentalForeignApi::class)
     override suspend fun <T> read(callback: suspend (SQLiteConnectionLease) -> T): T {
         var result: T? = null
         adapter.leaseRead {
@@ -50,10 +49,10 @@ public open class SwiftSQLiteConnectionPool(
                 }
             }
         }
+        @Suppress("UNCHECKED_CAST")
         return result as T
     }
 
-    @OptIn(ExperimentalForeignApi::class)
     override suspend fun <T> write(callback: suspend (SQLiteConnectionLease) -> T): T {
         var result: T? = null
         var updates: Set<String> = emptySet()
@@ -71,10 +70,10 @@ public open class SwiftSQLiteConnectionPool(
         // Inform the external adapter about the changes
         adapter.processPowerSyncUpdates(updates)
         // The adapter can pass these updates back to the shared flow
+        @Suppress("UNCHECKED_CAST")
         return result as T
     }
 
-    @OptIn(ExperimentalForeignApi::class)
     override suspend fun <R> withAllConnections(action: suspend (SQLiteConnectionLease, List<SQLiteConnectionLease>) -> R) {
         adapter.leaseAll { writerLease, readerLeases ->
             runWrapped {
@@ -95,7 +94,6 @@ public open class SwiftSQLiteConnectionPool(
     }
 }
 
-@OptIn(ExperimentalPowerSyncAPI::class, DelicateCoroutinesApi::class)
 public fun openPowerSyncWithPool(
     pool: SQLiteConnectionPool,
     identifier: String,

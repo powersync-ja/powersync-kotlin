@@ -32,7 +32,6 @@ public fun interface AllLeaseCallback {
  * The Swift lease will provide a SQLite connection pointer (sqlite3*) which is used in a [Database]
  */
 public interface SwiftLeaseAdapter {
-    @OptIn(ExperimentalForeignApi::class)
     public val pointer: CPointer<sqlite3>
 }
 

@@ -14,7 +14,6 @@ import com.powersync.internal.sqlite3.sqlite3session_attach
 import com.powersync.internal.sqlite3.sqlite3session_changeset
 import com.powersync.internal.sqlite3.sqlite3session_create
 import com.powersync.internal.sqlite3.sqlite3session_delete
-import kotlinx.cinterop.*
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.COpaquePointerVar
 import kotlinx.cinterop.CPointer
@@ -22,7 +21,9 @@ import kotlinx.cinterop.CPointerVar
 import kotlinx.cinterop.IntVar
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.memScoped
+import kotlinx.cinterop.ptr
 import kotlinx.cinterop.toKString
+import kotlinx.cinterop.value
 
 /**
  * We typically have a few options for table update hooks:

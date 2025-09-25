@@ -52,13 +52,14 @@ public class Database(
             Statement(sql, ptr, stmtPtr.value!!)
         }
 
-    public fun loadExtension(
+    internal fun loadExtension(
         filename: String,
         entrypoint: String,
     ): Unit =
         memScoped {
             val errorMessagePointer = alloc<CPointerVar<ByteVar>>()
-            val resultCode = sqlite3_load_extension(ptr, filename, entrypoint, errorMessagePointer.ptr)
+            val resultCode =
+                sqlite3_load_extension(ptr, filename, entrypoint, errorMessagePointer.ptr)
 
             if (resultCode != 0) {
                 val errorMessage = errorMessagePointer.value?.toKStringFromUtf8()
