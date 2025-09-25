@@ -30,9 +30,9 @@ compose = "1.8.2" # This is for the multiplatform compose
 androidCompose = "2025.08.00"
 compose-preview = "1.9.0"
 compose-lifecycle = "2.9.2"
-androidxSqlite = "2.6.0-rc02"
+androidxSqlite = "2.6.0"
 androidxSplashscreen = "1.0.1"
-room = "2.8.0-rc02"
+room = "2.8.0"
 sqldelight = "2.1.0"
 
 # plugins

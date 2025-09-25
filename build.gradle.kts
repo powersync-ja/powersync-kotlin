@@ -70,6 +70,8 @@ dependencies {
     dokka(project(":core:"))
     dokka(project(":connectors:supabase"))
     dokka(project(":compose:"))
+    dokka(project(":integrations:room"))
+    dokka(project(":integrations:sqldelight"))
 }
 
 dokka {
@@ -97,9 +99,11 @@ develocity {
 tasks.register("serveDokka") {
     group = "dokka"
     dependsOn("dokkaGenerate")
+    val rootProvider = layout.buildDirectory.dir("dokka/html")
+
     doLast {
+        val root = rootProvider.get().asFile
         val server = HttpServer.create(InetSocketAddress(0), 0)
-        val root = file("build/dokka/html")
 
         val handler =
             com.sun.net.httpserver.HttpHandler { exchange: HttpExchange ->

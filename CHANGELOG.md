@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.1
+
+* Fix `dlopen failed: library "libpowersync.so.so" not found` errors on Android.
+
 ## 1.6.0
 
 * Remove internal SQLDelight and SQLiter dependencies.
