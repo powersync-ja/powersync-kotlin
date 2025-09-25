@@ -99,7 +99,12 @@ abstract class ClangCompile : DefaultTask() {
                     "-DSQLITE_ENABLE_DBSTAT_VTAB",
                     "-DSQLITE_ENABLE_FTS5",
                     "-DSQLITE_ENABLE_RTREE",
+                    // Used by GRDB
                     "-DSQLITE_ENABLE_SNAPSHOT",
+                    // Used for GRDB update hook like functionality
+                    "-DSQLITE_ENABLE_SESSION",
+                    "-DSQLITE_ENABLE_PREUPDATE_HOOK",
+                    //
                     "-O3",
                     "-o",
                     output.asFile.toPath().name,
