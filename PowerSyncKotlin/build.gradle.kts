@@ -48,6 +48,13 @@ kotlin {
             api(project(":core"))
             implementation(libs.ktor.client.logging)
         }
+
+        all {
+            languageSettings {
+                optIn("kotlinx.cinterop.ExperimentalForeignApi")
+                optIn("com.powersync.ExperimentalPowerSyncAPI")
+            }
+        }
     }
 }
 
