@@ -31,6 +31,12 @@ kotlin {
             api(libs.supabase.auth)
             api(libs.supabase.storage)
         }
+
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.test.coroutines)
+            implementation(libs.test.kotest.assertions)
+        }
     }
 }
 
