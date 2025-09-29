@@ -52,12 +52,6 @@ public interface SwiftPoolAdapter {
     public suspend fun leaseAll(callback: AllLeaseCallback)
 
     /**
-     * Passes PowerSync operations to external logic.
-     */
-    @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun processPowerSyncUpdates(updates: Set<String>)
-
-    /**
      * Links updates from external mutations to PowerSync.
      */
     public fun linkExternalUpdates(callback: suspend (Set<String>) -> Unit)

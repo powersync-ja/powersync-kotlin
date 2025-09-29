@@ -4,6 +4,7 @@ import cnames.structs.sqlite3
 import cnames.structs.sqlite3_changeset_iter
 import cnames.structs.sqlite3_session
 import com.powersync.PowerSyncException
+import com.powersync.PowerSyncResult
 import com.powersync.db.runWrapped
 import com.powersync.internal.sqlite3.sqlite3_free
 import com.powersync.internal.sqlite3.sqlite3changeset_finalize
@@ -50,8 +51,9 @@ import kotlinx.cinterop.value
 @Throws(PowerSyncException::class)
 public fun withSession(
     db: CPointer<sqlite3>,
-    block: () -> Unit,
-): Set<String> =
+    onComplete: (PowerSyncResult, Set<String>) -> Unit,
+    block: () -> PowerSyncResult,
+): Unit =
     runWrapped {
         memScoped {
             val sessionPtr = alloc<CPointerVar<sqlite3_session>>()
@@ -77,41 +79,41 @@ public fun withSession(
                 ).checkResult("Could not attach all tables to session") // null means all tables
 
                 // Execute the block where changes happen
-                block()
+                val result = block()
 
                 // Get the changeset
                 val changesetSizePtr = alloc<IntVar>()
                 val changesetPtr = alloc<COpaquePointerVar>()
 
-                val changesetRc =
-                    sqlite3session_changeset(
-                        session,
-                        changesetSizePtr.ptr,
-                        changesetPtr.ptr,
-                    ).checkResult("Could not get changeset from session")
+                sqlite3session_changeset(
+                    session,
+                    changesetSizePtr.ptr,
+                    changesetPtr.ptr,
+                ).checkResult("Could not get changeset from session")
 
                 val changesetSize = changesetSizePtr.value
                 val changeset = changesetPtr.value
 
                 if (changesetSize == 0 || changeset == null) {
-                    return@memScoped emptySet<String>()
+                    onComplete(result, emptySet())
+                    return@memScoped
                 }
 
                 // Parse the changeset to extract table names
                 val changedTables = mutableSetOf<String>()
                 val iterPtr = alloc<CPointerVar<sqlite3_changeset_iter>>()
 
-                val startRc =
-                    sqlite3changeset_start(
-                        iterPtr.ptr,
-                        changesetSize,
-                        changeset,
-                    ).checkResult("Could not start changeset iterator")
+                sqlite3changeset_start(
+                    iterPtr.ptr,
+                    changesetSize,
+                    changeset,
+                ).checkResult("Could not start changeset iterator")
 
                 val iter = iterPtr.value
 
                 if (iter == null) {
-                    return@memScoped emptySet<String>()
+                    onComplete(result, emptySet())
+                    return@memScoped
                 }
 
                 try {
@@ -145,7 +147,8 @@ public fun withSession(
                     sqlite3_free(changeset)
                 }
 
-                return@memScoped changedTables.toSet()
+                onComplete(result, changedTables.toSet())
+                return@memScoped
             } finally {
                 // Clean up the session
                 sqlite3session_delete(session)

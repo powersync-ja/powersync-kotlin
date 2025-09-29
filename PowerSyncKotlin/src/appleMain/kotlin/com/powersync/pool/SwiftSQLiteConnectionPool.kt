@@ -55,21 +55,14 @@ public class SwiftSQLiteConnectionPool(
 
     override suspend fun <T> write(callback: suspend (SQLiteConnectionLease) -> T): T {
         var result: T? = null
-        var updates: Set<String> = emptySet()
         adapter.leaseWrite { lease ->
             runWrapped {
                 val connectionLease = RawConnectionLease(lease)
-                updates =
-                    withSession(lease.pointer) {
-                        runBlocking {
-                            result = callback(connectionLease)
-                        }
-                    }
+                runBlocking {
+                    result = callback(connectionLease)
+                }
             }
         }
-        // Inform the external adapter about the changes
-        adapter.processPowerSyncUpdates(updates)
-        // The adapter can pass these updates back to the shared flow
         @Suppress("UNCHECKED_CAST")
         return result as T
     }
