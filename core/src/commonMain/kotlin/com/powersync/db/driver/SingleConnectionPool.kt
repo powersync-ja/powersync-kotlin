@@ -38,7 +38,6 @@ internal class SingleConnectionPool(
                     tableUpdatesFlow.emit(updates)
                 }
             }
-
         }
 
     override suspend fun <R> withAllConnections(
