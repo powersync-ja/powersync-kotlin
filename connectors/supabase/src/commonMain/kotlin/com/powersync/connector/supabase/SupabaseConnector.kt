@@ -5,6 +5,7 @@ import com.powersync.PowerSyncDatabase
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.db.crud.CrudEntry
+import com.powersync.db.crud.CrudTransaction
 import com.powersync.db.crud.UpdateType
 import com.powersync.db.runWrapped
 import io.github.jan.supabase.SupabaseClient
@@ -27,12 +28,13 @@ import io.ktor.utils.io.InternalAPI
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
+import kotlin.toString
 
 /**
  * Get a Supabase token to authenticate against the PowerSync instance.
  */
 @OptIn(SupabaseInternal::class, InternalAPI::class)
-public class SupabaseConnector(
+public open class SupabaseConnector(
     public val supabaseClient: SupabaseClient,
     public val powerSyncEndpoint: String,
     private val storageBucket: String? = null,
@@ -40,7 +42,7 @@ public class SupabaseConnector(
     private val json = Json { coerceInputValues = true }
     private var errorCode: String? = null
 
-    private object PostgresFatalCodes {
+    public companion object PostgresFatalCodes {
         // Using Regex patterns for Postgres error codes
         private val FATAL_RESPONSE_CODES =
             listOf(
@@ -52,7 +54,7 @@ public class SupabaseConnector(
                 "^42501$".toRegex(),
             )
 
-        fun isFatalError(code: String): Boolean =
+        public fun isFatalError(code: String): Boolean =
             FATAL_RESPONSE_CODES.any { pattern ->
                 pattern.matches(code)
             }
@@ -173,6 +175,73 @@ public class SupabaseConnector(
         }
 
     /**
+     * Uses the PostgREST APIs to upload a given [entry] to the backend database.
+     *
+     * This method should report errors during the upload as an exception that would be caught by [uploadData].
+     */
+    public open suspend fun uploadCrudEntry(entry: CrudEntry) {
+        val table = supabaseClient.from(entry.table)
+
+        when (entry.op) {
+            UpdateType.PUT -> {
+                val data =
+                    buildMap {
+                        put("id", JsonPrimitive(entry.id))
+                        entry.opData?.jsonValues?.let { putAll(it) }
+                    }
+                table.upsert(data)
+            }
+            UpdateType.PATCH -> {
+                table.update(entry.opData!!.jsonValues) {
+                    filter {
+                        eq("id", entry.id)
+                    }
+                }
+            }
+            UpdateType.DELETE -> {
+                table.delete {
+                    filter {
+                        eq("id", entry.id)
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Handles an error during the upload. This method can be overridden to log errors or customize error handling.
+     *
+     * By default, it throws the rest of a transaction away when the error code indicates that this is a fatal postgres
+     * error that can't be retried. Otherwise, it rethrows the exception so that the PowerSync SDK will retry.
+     *
+     * @param tx The full [CrudTransaction] we're in the process of uploading.
+     * @param entry The [CrudEntry] for which an upload has failed.
+     * @param exception The [Exception] thrown by the Supabase client.
+     * @param [errorCode] The postgres error code, if any.
+     * @throws Exception If the upload should be retried. If this method doesn't throw, it should mark [tx] as complete
+     * by invoking [CrudTransaction.complete]. In that case, the local write would be lost.
+     */
+    public open suspend fun handleError(tx: CrudTransaction, entry: CrudEntry, exception: Exception, errorCode: String?) {
+        if (errorCode != null && isFatalError(errorCode)) {
+            /**
+             * Instead of blocking the queue with these errors,
+             * discard the (rest of the) transaction.
+             *
+             * Note that these errors typically indicate a bug in the application.
+             * If protecting against data loss is important, save the failing records
+             * elsewhere instead of discarding, and/or notify the user.
+             */
+            Logger.e("Data upload error: ${exception.message}")
+            Logger.e("Discarding entry: $entry")
+            tx.complete(null)
+            return
+        }
+
+        Logger.e("Data upload error - retrying last entry: $entry, $exception")
+        throw exception
+    }
+
+    /**
      * Upload local changes to the app backend (in this case Supabase).
      *
      * This function is called whenever there is data to upload, whether the device is online or offline.
@@ -186,54 +255,16 @@ public class SupabaseConnector(
             try {
                 for (entry in transaction.crud) {
                     lastEntry = entry
-
-                    val table = supabaseClient.from(entry.table)
-
-                    when (entry.op) {
-                        UpdateType.PUT -> {
-                            val data =
-                                buildMap {
-                                    put("id", JsonPrimitive(entry.id))
-                                    entry.opData?.jsonValues?.let { putAll(it) }
-                                }
-                            table.upsert(data)
-                        }
-                        UpdateType.PATCH -> {
-                            table.update(entry.opData!!.jsonValues) {
-                                filter {
-                                    eq("id", entry.id)
-                                }
-                            }
-                        }
-                        UpdateType.DELETE -> {
-                            table.delete {
-                                filter {
-                                    eq("id", entry.id)
-                                }
-                            }
-                        }
-                    }
+                    uploadCrudEntry(entry)
                 }
 
                 transaction.complete(null)
             } catch (e: Exception) {
-                if (errorCode != null && PostgresFatalCodes.isFatalError(errorCode.toString())) {
-                    /**
-                     * Instead of blocking the queue with these errors,
-                     * discard the (rest of the) transaction.
-                     *
-                     * Note that these errors typically indicate a bug in the application.
-                     * If protecting against data loss is important, save the failing records
-                     * elsewhere instead of discarding, and/or notify the user.
-                     */
-                    Logger.e("Data upload error: ${e.message}")
-                    Logger.e("Discarding entry: $lastEntry")
-                    transaction.complete(null)
-                    return@runWrapped
+                if (lastEntry != null) {
+                    handleError(transaction, lastEntry, e, errorCode)
+                } else {
+                    throw e
                 }
-
-                Logger.e("Data upload error - retrying last entry: $lastEntry, $e")
-                throw e
             }
         }
     }
