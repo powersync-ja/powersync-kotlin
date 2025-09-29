@@ -34,17 +34,6 @@ kotlin {
 
             implementation(libs.sqldelight.coroutines)
         }
-
-        val commonIntegrationTest by creating {
-            dependsOn(commonTest.get())
-        }
-
-        // The PowerSync SDK links the core extension, so we can just run tests as-is.
-        jvmTest.get().dependsOn(commonIntegrationTest)
-
-        // We have special setup in this build configuration to make these tests link the PowerSync extension, so they
-        // can run integration tests along with the executable for unit testing.
-        nativeTest.orNull?.dependsOn(commonIntegrationTest)
     }
 }
 

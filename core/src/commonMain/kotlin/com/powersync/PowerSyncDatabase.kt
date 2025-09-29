@@ -10,10 +10,12 @@ import com.powersync.db.Queries
 import com.powersync.db.crud.CrudBatch
 import com.powersync.db.crud.CrudTransaction
 import com.powersync.db.driver.SQLiteConnectionPool
+import com.powersync.db.driver.SingleConnectionPool
 import com.powersync.db.schema.Schema
 import com.powersync.sync.SyncOptions
 import com.powersync.sync.SyncStatus
 import com.powersync.utils.JsonParam
+import com.powersync.utils.generateLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
@@ -231,6 +233,29 @@ public interface PowerSyncDatabase : Queries {
         ): PowerSyncDatabase {
             val group = ActiveDatabaseGroup.referenceDatabase(logger, identifier)
             return openedWithGroup(pool, scope, schema, logger, group)
+        }
+
+        /**
+         * Creates an in-memory PowerSync database instance, useful for testing.
+         */
+        @OptIn(ExperimentalPowerSyncAPI::class)
+        public fun inMemory(
+            schema: Schema,
+            scope: CoroutineScope,
+            logger: Logger? = null,
+        ): PowerSyncDatabase {
+            val logger = generateLogger(logger)
+            // Since this returns a fresh in-memory database every time, use a fresh group to avoid warnings about the
+            // same database being opened multiple times.
+            val collection = ActiveDatabaseGroup.GroupsCollection().referenceDatabase(logger, "test")
+
+            return openedWithGroup(
+                SingleConnectionPool(openInMemoryConnection()),
+                scope,
+                schema,
+                logger,
+                collection,
+            )
         }
 
         @ExperimentalPowerSyncAPI
