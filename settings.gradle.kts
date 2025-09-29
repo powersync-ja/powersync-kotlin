@@ -32,12 +32,12 @@ include(":internal:PowerSyncKotlin")
 
 include(":core")
 include(":core-tests-android")
-include(":connectors:supabase")
 include(":integrations:room")
 include(":static-sqlite-driver")
 
 include(":integrations:sqldelight")
 include(":integrations:sqldelight-test-database")
+include(":integrations:supabase")
 
 include(":compose")
 

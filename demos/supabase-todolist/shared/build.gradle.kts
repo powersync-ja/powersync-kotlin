@@ -42,7 +42,7 @@ kotlin {
             // When copying this example, use the current version available
             // at: https://central.sonatype.com/artifact/com.powersync/core
             api(projects.core) // "com.powersync:core"
-            implementation(projects.connectors.supabase) // "com.powersync:connector-supabase"
+            implementation(projects.integrations.supabase) // "com.powersync:connector-supabase"
             implementation(projects.compose) // "com.powersync:compose"
             implementation(libs.uuid)
             implementation(compose.runtime)
