@@ -33,7 +33,7 @@ class InMemoryTest {
     @Test
     fun createsSchema() =
         runTest {
-            val db = PowerSyncDatabase.inMemory(this, schema, logger)
+            val db = PowerSyncDatabase.inMemory(schema, this, logger)
             try {
                 db.getAll("SELECT * FROM users") { } shouldHaveSize 0
             } finally {
@@ -44,7 +44,7 @@ class InMemoryTest {
     @Test
     fun watch() =
         runTest {
-            val db = PowerSyncDatabase.inMemory(this, schema, logger)
+            val db = PowerSyncDatabase.inMemory(schema, this, logger)
             try {
                 turbineScope {
                     val turbine =
