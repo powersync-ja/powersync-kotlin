@@ -9,6 +9,7 @@ import androidx.sqlite.SQLiteStatement
 import com.powersync.db.driver.SQLiteConnectionLease
 import com.powersync.db.driver.SQLiteConnectionPool
 import com.powersync.db.schema.Schema
+import io.ktor.serialization.kotlinx.json.DefaultJson
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -116,7 +117,7 @@ public class RoomConnectionPool(
     }
 
     private companion object {
-        val json = Json {}
+        val json = DefaultJson
     }
 }
 

@@ -48,5 +48,6 @@ include(":demos:supabase-todolist:androidBackgroundSync")
 include(":demos:supabase-todolist:desktopApp")
 include(":demos:supabase-todolist:iosApp")
 include(":demos:supabase-todolist:shared")
+include(":demos:self-host-sync-streams")
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
