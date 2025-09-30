@@ -22,21 +22,21 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
         }
 
-        commonTest.dependencies {
-            // Separate project because SQLDelight can't generate code in test source sets.
-            implementation(projects.integrations.sqldelightTestDatabase)
-
-            implementation(libs.kotlin.test)
-            implementation(libs.kotlinx.io)
-            implementation(libs.test.turbine)
-            implementation(libs.test.coroutines)
-            implementation(libs.test.kotest.assertions)
-
-            implementation(libs.sqldelight.coroutines)
-        }
-
         val commonIntegrationTest by creating {
             dependsOn(commonTest.get())
+
+            dependencies {
+                // Separate project because SQLDelight can't generate code in test source sets.
+                implementation(projects.integrations.sqldelightTestDatabase)
+
+                implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.io)
+                implementation(libs.test.turbine)
+                implementation(libs.test.coroutines)
+                implementation(libs.test.kotest.assertions)
+
+                implementation(libs.sqldelight.coroutines)
+            }
         }
 
         // The PowerSync SDK links the core extension, so we can just run tests as-is.

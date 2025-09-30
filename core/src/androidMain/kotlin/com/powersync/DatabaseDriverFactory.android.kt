@@ -26,3 +26,5 @@ public fun BundledSQLiteDriver.addPowerSyncExtension() {
 @ExperimentalPowerSyncAPI
 @Throws(PowerSyncException::class)
 public actual fun resolvePowerSyncLoadableExtensionPath(): String? = "libpowersync.so"
+
+internal actual fun openInMemoryConnection(): SQLiteConnection = BundledSQLiteDriver().also { it.addPowerSyncExtension() }.open(":memory:")

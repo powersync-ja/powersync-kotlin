@@ -17,6 +17,8 @@ public expect class DatabaseDriverFactory {
     ): SQLiteConnection
 }
 
+internal expect fun openInMemoryConnection(): SQLiteConnection
+
 /**
  * Resolves a path to the loadable PowerSync core extension library.
  *

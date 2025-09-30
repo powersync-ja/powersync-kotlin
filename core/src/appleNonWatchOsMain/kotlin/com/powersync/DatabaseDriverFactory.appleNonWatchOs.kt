@@ -25,3 +25,5 @@ public actual class DatabaseDriverFactory {
 @ExperimentalPowerSyncAPI
 @Throws(PowerSyncException::class)
 public actual fun resolvePowerSyncLoadableExtensionPath(): String? = powerSyncExtensionPath
+
+internal actual fun openInMemoryConnection(): SQLiteConnection = DatabaseDriverFactory().openConnection(":memory:", 0x02)

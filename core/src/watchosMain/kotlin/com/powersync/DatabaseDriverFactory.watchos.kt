@@ -38,3 +38,5 @@ public actual fun resolvePowerSyncLoadableExtensionPath(): String? {
     didLoadExtension
     return null
 }
+
+internal actual fun openInMemoryConnection(): SQLiteConnection = DatabaseDriverFactory().openConnection(":memory:", 0x02)

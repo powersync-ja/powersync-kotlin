@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.0 (unreleased)
+
+- Add `PowerSyncDatabase.inMemory` to create an in-memory SQLite database with PowerSync.
+  This may be useful for testing.
+
 ## 1.6.1
 
 * Fix `dlopen failed: library "libpowersync.so.so" not found` errors on Android.
