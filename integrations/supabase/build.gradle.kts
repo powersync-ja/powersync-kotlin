@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlinter)
     id("com.powersync.plugins.sonatype")
+    id("com.powersync.plugins.sharedbuild")
     id("dokka-convention")
 }
 
@@ -22,10 +23,11 @@ kotlin {
     }
 
     explicitApi()
+    applyDefaultHierarchyTemplate()
 
     sourceSets {
         commonMain.dependencies {
-            api(project(":core"))
+            api(projects.core)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.supabase.client)
             api(libs.supabase.auth)
