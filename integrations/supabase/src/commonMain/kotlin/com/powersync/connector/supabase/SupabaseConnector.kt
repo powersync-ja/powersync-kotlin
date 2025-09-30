@@ -221,7 +221,12 @@ public open class SupabaseConnector(
      * @throws Exception If the upload should be retried. If this method doesn't throw, it should mark [tx] as complete
      * by invoking [CrudTransaction.complete]. In that case, the local write would be lost.
      */
-    public open suspend fun handleError(tx: CrudTransaction, entry: CrudEntry, exception: Exception, errorCode: String?) {
+    public open suspend fun handleError(
+        tx: CrudTransaction,
+        entry: CrudEntry,
+        exception: Exception,
+        errorCode: String?,
+    ) {
         if (errorCode != null && isFatalError(errorCode)) {
             /**
              * Instead of blocking the queue with these errors,
