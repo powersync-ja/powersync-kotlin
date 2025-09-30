@@ -1,5 +1,13 @@
 package com.powersync.db.crud
 
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.serialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -8,6 +16,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.experimental.ExperimentalObjCRefinement
 import kotlin.native.HiddenFromObjC
+import kotlin.time.Instant
 
 /**
  * A named collection of values as they appear in a SQLite row.
@@ -55,14 +64,29 @@ private data class ToStringEntry(
         get() = inner.value.jsonPrimitive.contentOrNull
 }
 
-private class TypedRow(
-    inner: JsonObject,
+@Serializable(with = TypedRow.Serializer::class)
+internal class TypedRow(
+    private val inner: JsonObject,
 ) : AbstractMap<String, Any?>() {
     override val entries: Set<Map.Entry<String, Any?>> =
         inner.entries.mapTo(
             mutableSetOf(),
             ::ToTypedEntry,
         )
+
+    private object Serializer : KSerializer<TypedRow> {
+        override val descriptor: SerialDescriptor
+            get() = serialDescriptor<JsonObject>()
+
+        override fun deserialize(decoder: Decoder): TypedRow = TypedRow(JsonObject.serializer().deserialize(decoder))
+
+        override fun serialize(
+            encoder: Encoder,
+            value: TypedRow,
+        ) {
+            encoder.encodeSerializableValue(JsonObject.serializer(), value.inner)
+        }
+    }
 }
 
 private data class ToTypedEntry(

@@ -1,7 +1,7 @@
 package com.powersync
 
 import co.touchlab.kermit.Logger
-import com.powersync.bucket.BucketPriority
+import com.powersync.bucket.StreamPriority
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.ActiveDatabaseGroup
 import com.powersync.db.ActiveDatabaseResource
@@ -13,6 +13,7 @@ import com.powersync.db.driver.SQLiteConnectionPool
 import com.powersync.db.schema.Schema
 import com.powersync.sync.SyncOptions
 import com.powersync.sync.SyncStatus
+import com.powersync.sync.SyncStream
 import com.powersync.utils.JsonParam
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -66,7 +67,7 @@ public interface PowerSyncDatabase : Queries {
      * given [priority] (or a higher one, since those would be synchronized first) has completed.
      */
     @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun waitForFirstSync(priority: BucketPriority)
+    public suspend fun waitForFirstSync(priority: StreamPriority)
 
     /**
      *  Connect to the PowerSync service, and keep the databases in sync.
@@ -180,6 +181,17 @@ public interface PowerSyncDatabase : Queries {
      */
     @Throws(PowerSyncException::class, CancellationException::class)
     public suspend fun getPowerSyncVersion(): String
+
+    /**
+     * Create a [SyncStream] instance for the given [name] and [parameters].
+     *
+     * Use [SyncStream.subscribe] on the returned instance to subscribe to the stream.
+     */
+    @ExperimentalPowerSyncAPI
+    public fun syncStream(
+        name: String,
+        parameters: Map<String, JsonParam>? = null,
+    ): SyncStream
 
     /**
      * Close the sync connection.

@@ -12,10 +12,11 @@ import com.powersync.bucket.Checkpoint
 import com.powersync.bucket.PowerSyncControlArguments
 import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.connectors.PowerSyncBackendConnector
+import com.powersync.db.SubscriptionGroup
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.schema.Schema
 import com.powersync.db.schema.toSerializable
-import com.powersync.sync.SyncStream.Companion.SOCKET_TIMEOUT
+import com.powersync.sync.StreamingSyncClient.Companion.SOCKET_TIMEOUT
 import com.powersync.utils.JsonUtil
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
@@ -52,6 +53,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -102,7 +104,7 @@ public fun HttpClientConfig<*>.configureSyncHttpClient(userAgent: String = userA
 }
 
 @OptIn(ExperimentalPowerSyncAPI::class)
-internal class SyncStream(
+internal class StreamingSyncClient(
     private val bucketStorage: BucketStorage,
     private val connector: PowerSyncBackendConnector,
     private val uploadCrud: suspend () -> Unit,
@@ -112,6 +114,7 @@ internal class SyncStream(
     private val uploadScope: CoroutineScope,
     private val options: SyncOptions,
     private val schema: Schema,
+    private val activeSubscriptions: StateFlow<List<SubscriptionGroup>>,
 ) {
     private var isUploadingCrud = AtomicReference<PendingCrudUpload?>(null)
     private var completedCrudUploads = Channel<Unit>(onBufferOverflow = BufferOverflow.DROP_OLDEST)
@@ -148,8 +151,14 @@ internal class SyncStream(
     suspend fun streamingSync() {
         var invalidCredentials = false
         clientId = bucketStorage.getClientId()
+        var result = SyncIterationResult()
+
         while (true) {
-            status.update { copy(connecting = true) }
+            if (!result.hideDisconnectStateAndReconnectImmediately) {
+                status.update { copy(connecting = true) }
+            }
+            result = SyncIterationResult()
+
             try {
                 if (invalidCredentials) {
                     // This may error. In that case it will be retried again on the next
@@ -157,7 +166,7 @@ internal class SyncStream(
                     connector.invalidateCredentials()
                     invalidCredentials = false
                 }
-                streamingSyncIteration()
+                result = streamingSyncIteration()
             } catch (e: Exception) {
                 if (e is CancellationException) {
                     throw e
@@ -166,8 +175,10 @@ internal class SyncStream(
                 logger.e("Error in streamingSync: ${e.message}")
                 status.update { copy(downloadError = e) }
             } finally {
-                status.update { copy(connected = false, connecting = true, downloading = false) }
-                delay(retryDelayMs)
+                if (!result.hideDisconnectStateAndReconnectImmediately) {
+                    status.update { copy(connected = false, connecting = true, downloading = false) }
+                    delay(retryDelayMs)
+                }
             }
         }
     }
@@ -329,7 +340,7 @@ internal class SyncStream(
             }
         }
 
-    private suspend fun streamingSyncIteration() {
+    private suspend fun streamingSyncIteration(): SyncIterationResult =
         coroutineScope {
             if (options.newClientImplementation) {
                 val iteration = ActiveIteration(this)
@@ -345,9 +356,9 @@ internal class SyncStream(
                 }
             } else {
                 legacySyncIteration()
+                SyncIterationResult()
             }
         }
-    }
 
     @OptIn(LegacySyncImplementation::class)
     private suspend fun CoroutineScope.legacySyncIteration() {
@@ -363,25 +374,41 @@ internal class SyncStream(
      */
     private inner class ActiveIteration(
         val scope: CoroutineScope,
-        var fetchLinesJob: Job? = null,
-        var credentialsInvalidation: Job? = null,
     ) {
+        var fetchLinesJob: Job? = null
+        var credentialsInvalidation: Job? = null
+
         // Using a channel for control invocations so that they're handled by a single coroutine,
         // avoiding races between concurrent jobs like fetching credentials.
         private val controlInvocations = Channel<PowerSyncControlArguments>()
+        private var result = SyncIterationResult()
 
         private suspend fun invokeControl(args: PowerSyncControlArguments) {
             val instructions = bucketStorage.control(args)
             instructions.forEach { handleInstruction(it) }
         }
 
-        suspend fun start() {
+        suspend fun start(): SyncIterationResult {
+            var subscriptions = activeSubscriptions.value
+
             invokeControl(
                 PowerSyncControlArguments.Start(
                     parameters = params,
                     schema = schema.toSerializable(),
+                    includeDefaults = options.includeDefaultStreams,
+                    activeStreams = subscriptions.map { it.key },
                 ),
             )
+
+            val listenForUpdatedSubscriptions =
+                scope.launch {
+                    activeSubscriptions.collect {
+                        if (subscriptions !== it) {
+                            subscriptions = it
+                            controlInvocations.send(PowerSyncControlArguments.UpdateSubscriptions(activeSubscriptions.value.map { it.key }))
+                        }
+                    }
+                }
 
             var hadSyncLine = false
             for (line in controlInvocations) {
@@ -398,6 +425,9 @@ internal class SyncStream(
                     triggerCrudUploadAsync()
                 }
             }
+
+            listenForUpdatedSubscriptions.cancel()
+            return result
         }
 
         suspend fun stop() {
@@ -429,8 +459,10 @@ internal class SyncStream(
                             }
                 }
 
-                Instruction.CloseSyncStream -> {
-                    logger.v { "Closing sync stream connection" }
+                is Instruction.CloseSyncStream -> {
+                    val hideDisconnect = instruction.hideDisconnect
+                    logger.v { "Closing sync stream connection. Hide disconnect: $hideDisconnect" }
+                    result = SyncIterationResult(hideDisconnect)
                     fetchLinesJob!!.cancelAndJoin()
                     fetchLinesJob = null
                     logger.v { "Sync stream connection shut down" }
@@ -771,7 +803,7 @@ internal class SyncStream(
         }
     }
 
-    internal companion object {
+    internal companion object Companion {
         // The sync service sends a token keepalive message roughly every 20 seconds. So if we don't receive a message
         // in twice that time, assume the connection is broken.
         internal const val SOCKET_TIMEOUT: Long = 40_000
@@ -853,4 +885,8 @@ internal data class SyncStreamState(
 
 private class PendingCrudUpload(
     val done: CompletableDeferred<Unit>,
+)
+
+private class SyncIterationResult(
+    val hideDisconnectStateAndReconnectImmediately: Boolean = false,
 )

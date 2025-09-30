@@ -196,7 +196,7 @@ internal class BucketStorageImpl(
     @LegacySyncImplementation
     override suspend fun syncLocalDatabase(
         targetCheckpoint: Checkpoint,
-        partialPriority: BucketPriority?,
+        partialPriority: StreamPriority?,
     ): SyncLocalDatabaseResult {
         val result = validateChecksums(targetCheckpoint, partialPriority)
 
@@ -250,7 +250,7 @@ internal class BucketStorageImpl(
     @LegacySyncImplementation
     private suspend fun validateChecksums(
         checkpoint: Checkpoint,
-        priority: BucketPriority? = null,
+        priority: StreamPriority? = null,
     ): SyncLocalDatabaseResult {
         val serializedCheckpoint =
             JsonUtil.json.encodeToString(
@@ -286,11 +286,11 @@ internal class BucketStorageImpl(
     @LegacySyncImplementation
     private suspend fun updateObjectsFromBuckets(
         checkpoint: Checkpoint,
-        priority: BucketPriority? = null,
+        priority: StreamPriority? = null,
     ): Boolean {
         @Serializable
         data class SyncLocalArgs(
-            val priority: BucketPriority,
+            val priority: StreamPriority,
             val buckets: List<String>,
         )
 
