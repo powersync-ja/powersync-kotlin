@@ -38,9 +38,6 @@ kotlin {
             dependsOn(commonTest.get())
 
             dependencies {
-                // Separate project because SQLDelight can't generate code in test source sets.
-                implementation(projects.integrations.sqldelightTestDatabase)
-
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlinx.io)
                 implementation(libs.test.turbine)

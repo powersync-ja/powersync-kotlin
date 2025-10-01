@@ -1,4 +1,4 @@
-# PowerSync Supabase connector
+# PowerSync Supabase Connector
 
 Convenience implementation of a backend connector that provide the connection between your application backend and the PowerSync managed database
 by delegating to Supabase.

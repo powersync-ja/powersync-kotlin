@@ -211,7 +211,7 @@ public open class SupabaseConnector(
     /**
      * Handles an error during the upload. This method can be overridden to log errors or customize error handling.
      *
-     * By default, it throws the rest of a transaction away when the error code indicates that this is a fatal postgres
+     * By default, it discards the rest of a transaction when the error code indicates that this is a fatal postgres
      * error that can't be retried. Otherwise, it rethrows the exception so that the PowerSync SDK will retry.
      *
      * @param tx The full [CrudTransaction] we're in the process of uploading.
