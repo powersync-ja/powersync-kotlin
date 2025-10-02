@@ -86,7 +86,6 @@ public class RoomConnectionPool(
 
                     throw e
                 }
-
             }
         }
     }
