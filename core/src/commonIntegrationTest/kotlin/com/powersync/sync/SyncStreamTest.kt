@@ -163,9 +163,10 @@ class SyncStreamTest : AbstractSyncTest(true) {
                 requestedSyncStreams.clear()
 
                 val subscription = database.syncStream("a").subscribe()
+                waitForSyncLinesChannelClosed()
 
                 // Adding the subscription should reconnect
-                turbine.waitFor { it.connected && !it.downloading }
+                turbine.waitFor { it.connected }
                 requestedSyncStreams shouldHaveSingleElement {
                     val streams = it.jsonObject["streams"]!!.jsonObject
                     val subscriptions = streams["subscriptions"]!!.jsonArray

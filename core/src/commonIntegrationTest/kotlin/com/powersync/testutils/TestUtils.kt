@@ -23,10 +23,12 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.toByteArray
 import io.ktor.http.ContentType
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.files.Path
 import kotlinx.serialization.json.JsonElement
+import kotlin.coroutines.resume
 
 expect val factory: DatabaseDriverFactory
 
@@ -102,6 +104,23 @@ internal class ActiveDatabaseTest(
 
     var connector = TestConnector()
 
+    suspend fun waitForSyncLinesChannelClosed() {
+        suspendCancellableCoroutine { continuation ->
+            var cancelled = false
+            continuation.invokeOnCancellation {
+                cancelled = true
+            }
+
+            syncLines.invokeOnClose {
+                if (!cancelled) {
+                    continuation.resume(Unit)
+                }
+
+                syncLines = Channel()
+            }
+        }
+    }
+
     fun openDatabase(schema: Schema = Schema(UserRow.table)): PowerSyncDatabaseImpl {
         logger.d { "Opening database $databaseName in directory $testDirectory" }
         val db =
@@ -123,7 +142,7 @@ internal class ActiveDatabaseTest(
     fun createSyncClient(): HttpClient {
         val engine =
             MockSyncService(
-                lines = syncLines,
+                lines = { syncLines },
                 generateCheckpoint = { checkpointResponse() },
                 syncLinesContentType = { syncLinesContentType },
                 trackSyncRequest = {

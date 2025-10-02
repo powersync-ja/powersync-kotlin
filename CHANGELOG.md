@@ -5,6 +5,7 @@
 - Add `PowerSyncDatabase.inMemory` to create an in-memory SQLite database with PowerSync.
   This may be useful for testing.
 - The Supabase connector can now be subclassed to customize how rows are uploaded and how errors are handled.
+- Experimental support for sync streams.
 
 ## 1.6.1
 
