@@ -127,7 +127,7 @@ dependencies {
     // When adopting the PowerSync dependencies into your project, use the latest version available at
     // https://central.sonatype.com/artifact/com.powersync/core
     implementation(projects.core) // "com.powersync:core:latest.release"
-    implementation(projects.connectors.supabase) // "com.powersync:connector-supabase:latest.release"
+    implementation(projects.integrations.supabase) // "com.powersync:connector-supabase:latest.release"
     implementation(projects.compose) // "com.powersync:compose:latest.release"
     implementation(libs.uuid)
     implementation(libs.kermit)

@@ -1,7 +1,5 @@
 package com.powersync
 
-import androidx.sqlite.SQLiteConnection
-import androidx.sqlite.execSQL
 import app.cash.turbine.test
 import app.cash.turbine.turbineScope
 import co.touchlab.kermit.ExperimentalKermitApi

@@ -38,7 +38,7 @@ import kotlinx.serialization.json.JsonElement
  */
 @OptIn(LegacySyncImplementation::class)
 internal class MockSyncService(
-    private val lines: ReceiveChannel<Any>,
+    private val lines: () -> ReceiveChannel<Any>,
     private val syncLinesContentType: () -> ContentType,
     private val generateCheckpoint: () -> WriteCheckpointResponse,
     private val trackSyncRequest: suspend (HttpRequestData) -> Unit,
@@ -60,12 +60,11 @@ internal class MockSyncService(
             trackSyncRequest(data)
             val job =
                 scope.writer {
-                    lines.consume {
+                    lines().consume {
                         while (true) {
                             // Wait for a downstream listener being ready before requesting a sync line
                             channel.awaitFreeSpace()
-                            val line = receive()
-                            when (line) {
+                            when (val line = receive()) {
                                 is SyncLine -> {
                                     val serializedLine = JsonUtil.json.encodeToString(line)
                                     channel.writeStringUtf8("$serializedLine\n")

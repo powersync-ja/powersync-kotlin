@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlinter)
     id("com.powersync.plugins.sonatype")
+    id("com.powersync.plugins.sharedbuild")
     id("dokka-convention")
 }
 
@@ -22,15 +23,37 @@ kotlin {
     }
 
     explicitApi()
+    applyDefaultHierarchyTemplate()
 
     sourceSets {
         commonMain.dependencies {
-            api(project(":core"))
+            api(projects.core)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.supabase.client)
             api(libs.supabase.auth)
             api(libs.supabase.storage)
         }
+
+        val commonIntegrationTest by creating {
+            dependsOn(commonTest.get())
+
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.io)
+                implementation(libs.test.turbine)
+                implementation(libs.test.coroutines)
+                implementation(libs.test.kotest.assertions)
+
+                implementation(libs.sqldelight.coroutines)
+            }
+        }
+
+        // The PowerSync SDK links the core extension, so we can just run tests as-is.
+        jvmTest.get().dependsOn(commonIntegrationTest)
+
+        // We have special setup in this build configuration to make these tests link the PowerSync extension, so they
+        // can run integration tests along with the executable for unit testing.
+        nativeTest.orNull?.dependsOn(commonIntegrationTest)
     }
 }
 
