@@ -5,6 +5,7 @@ import androidx.room.Transactor
 import androidx.room.execSQL
 import androidx.room.useReaderConnection
 import androidx.room.useWriterConnection
+import androidx.sqlite.SQLiteException
 import androidx.sqlite.SQLiteStatement
 import com.powersync.db.driver.SQLiteConnectionLease
 import com.powersync.db.driver.SQLiteConnectionPool
@@ -73,7 +74,19 @@ public class RoomConnectionPool(
         db.getCoroutineScope().launch {
             val tables = schema.rawTables.map { it.name }.toTypedArray()
             db.invalidationTracker.createFlow(*tables, emitInitialState = false).collect {
-                transferPendingRoomUpdatesToPowerSync()
+                try {
+                    transferPendingRoomUpdatesToPowerSync()
+                } catch (e: SQLiteException) {
+                    // It can happen that we get an update shortly before the database is closed. Since this is
+                    // asynchronous, we'd then be using the database in a closed state, which fails. We handle that by
+                    // stopping the flow collection.
+                    if (e.message == "Connection pool is closed") {
+                        return@collect
+                    }
+
+                    throw e
+                }
+
             }
         }
     }
