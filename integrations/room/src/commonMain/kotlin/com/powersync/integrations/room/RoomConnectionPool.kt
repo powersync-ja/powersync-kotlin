@@ -91,7 +91,7 @@ public class RoomConnectionPool(
                 val changed =
                     it.usePrepared("SELECT powersync_update_hooks('get')") { stmt ->
                         check(stmt.step())
-                        json.decodeFromString<Set<String>>(stmt.getText(0))
+                        Json.decodeFromString<Set<String>>(stmt.getText(0))
                     }
 
                 val userTables =
@@ -113,10 +113,6 @@ public class RoomConnectionPool(
 
     override suspend fun close() {
         // Noop, Room database managed independently
-    }
-
-    private companion object {
-        val json = Json {}
     }
 }
 

@@ -88,6 +88,8 @@ class PowerSyncRoomTest {
                 turbine.awaitItem() shouldHaveSize 1
                 turbine.cancel()
             }
+
+            powersync.close()
         }
 
     @Test
@@ -108,6 +110,7 @@ class PowerSyncRoomTest {
             database.userDao().getAll() shouldHaveSize 0
             powersync.execute("insert into user values (uuid(), ?)", listOf("PowerSync user"))
             database.userDao().getAll() shouldHaveSize 1
+            powersync.close()
         }
 
     @Test
@@ -133,5 +136,7 @@ class PowerSyncRoomTest {
                 turbine.awaitItem() shouldHaveSize 1
                 turbine.cancel()
             }
+
+            powersync.close()
         }
 }
