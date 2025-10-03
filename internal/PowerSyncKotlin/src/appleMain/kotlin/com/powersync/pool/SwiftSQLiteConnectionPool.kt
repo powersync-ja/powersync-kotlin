@@ -32,6 +32,12 @@ public class SwiftSQLiteConnectionPool(
 
     override suspend fun <T> read(callback: suspend (SQLiteConnectionLease) -> T): T {
         var result: T? = null
+        /**
+         * The leaseRead and leaseWrite callbacks don't return values
+         * since the SKIEE generated version maps to returning Any? Which Swift
+         * will warn when overriding the method since it's throwable and nil typically
+         * represents an error in Objective C.
+         */
         adapter.leaseRead {
             runWrapped {
                 /**
