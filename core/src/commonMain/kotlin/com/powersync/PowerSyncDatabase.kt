@@ -1,7 +1,7 @@
 package com.powersync
 
 import co.touchlab.kermit.Logger
-import com.powersync.bucket.BucketPriority
+import com.powersync.bucket.StreamPriority
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.ActiveDatabaseGroup
 import com.powersync.db.ActiveDatabaseResource
@@ -10,10 +10,13 @@ import com.powersync.db.Queries
 import com.powersync.db.crud.CrudBatch
 import com.powersync.db.crud.CrudTransaction
 import com.powersync.db.driver.SQLiteConnectionPool
+import com.powersync.db.driver.SingleConnectionPool
 import com.powersync.db.schema.Schema
 import com.powersync.sync.SyncOptions
 import com.powersync.sync.SyncStatus
+import com.powersync.sync.SyncStream
 import com.powersync.utils.JsonParam
+import com.powersync.utils.generateLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
@@ -66,7 +69,7 @@ public interface PowerSyncDatabase : Queries {
      * given [priority] (or a higher one, since those would be synchronized first) has completed.
      */
     @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun waitForFirstSync(priority: BucketPriority)
+    public suspend fun waitForFirstSync(priority: StreamPriority)
 
     /**
      *  Connect to the PowerSync service, and keep the databases in sync.
@@ -182,6 +185,17 @@ public interface PowerSyncDatabase : Queries {
     public suspend fun getPowerSyncVersion(): String
 
     /**
+     * Create a [SyncStream] instance for the given [name] and [parameters].
+     *
+     * Use [SyncStream.subscribe] on the returned instance to subscribe to the stream.
+     */
+    @ExperimentalPowerSyncAPI
+    public fun syncStream(
+        name: String,
+        parameters: Map<String, JsonParam>? = null,
+    ): SyncStream
+
+    /**
      * Close the sync connection.
      *
      * Use [connect] to connect again.
@@ -231,6 +245,29 @@ public interface PowerSyncDatabase : Queries {
         ): PowerSyncDatabase {
             val group = ActiveDatabaseGroup.referenceDatabase(logger, identifier)
             return openedWithGroup(pool, scope, schema, logger, group)
+        }
+
+        /**
+         * Creates an in-memory PowerSync database instance, useful for testing.
+         */
+        @OptIn(ExperimentalPowerSyncAPI::class)
+        public fun inMemory(
+            schema: Schema,
+            scope: CoroutineScope,
+            logger: Logger? = null,
+        ): PowerSyncDatabase {
+            val logger = generateLogger(logger)
+            // Since this returns a fresh in-memory database every time, use a fresh group to avoid warnings about the
+            // same database being opened multiple times.
+            val collection = ActiveDatabaseGroup.GroupsCollection().referenceDatabase(logger, "test")
+
+            return openedWithGroup(
+                SingleConnectionPool(openInMemoryConnection()),
+                scope,
+                schema,
+                logger,
+                collection,
+            )
         }
 
         @ExperimentalPowerSyncAPI

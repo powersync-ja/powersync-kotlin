@@ -26,18 +26,14 @@ and API documentation [here](https://powersync-ja.github.io/powersync-kotlin/).
 
     - This is the Kotlin Multiplatform SDK implementation.
 
-- [connectors](./connectors/)
-
-    - [SupabaseConnector.kt](./connectors/supabase/src/commonMain/kotlin/com/powersync/connector/supabase/SupabaseConnector.kt) An example connector implementation for Supabase (Postgres). The backend
-      connector provides the connection between your application backend and the PowerSync managed database. It is used to:
-        1. Retrieve a token to connect to the PowerSync service.
-        2. Apply local changes on your backend application server (and from there, to your backend database).
-
 - [integrations](./integrations/)
   - [room](./integrations/room/README.md): Allows using the [Room database library](https://developer.android.com/jetpack/androidx/releases/room) with PowerSync, making it easier to run typed queries on the database.
   - [sqldelight](./integrations/sqldelight/README.md): Allows using [SQLDelight](https://sqldelight.github.io/sqldelight)
     with PowerSync, also enabling typed statements on the database.
-
+  - [SupabaseConnector.kt](./integrations/supabase/src/commonMain/kotlin/com/powersync/connector/supabase/SupabaseConnector.kt) An example connector implementation for Supabase (Postgres). The backend
+    connector provides the connection between your application backend and the PowerSync managed database. It is used to:
+      1. Retrieve a token to connect to the PowerSync service.
+      2. Apply local changes on your backend application server (and from there, to your backend database).
 
 ## Demo Apps / Example Projects
 

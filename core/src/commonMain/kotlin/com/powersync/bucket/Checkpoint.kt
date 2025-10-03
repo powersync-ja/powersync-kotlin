@@ -3,6 +3,7 @@ package com.powersync.bucket
 import com.powersync.sync.LegacySyncImplementation
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
 @LegacySyncImplementation
 @Serializable

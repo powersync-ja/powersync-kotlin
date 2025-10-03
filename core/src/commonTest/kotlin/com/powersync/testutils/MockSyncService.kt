@@ -27,6 +27,7 @@ import io.ktor.utils.io.writer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.consume
+import kotlinx.serialization.json.JsonElement
 
 /**
  * A mock HTTP engine providing sync lines read from a coroutines [ReceiveChannel].
@@ -37,7 +38,7 @@ import kotlinx.coroutines.channels.consume
  */
 @OptIn(LegacySyncImplementation::class)
 internal class MockSyncService(
-    private val lines: ReceiveChannel<Any>,
+    private val lines: () -> ReceiveChannel<Any>,
     private val syncLinesContentType: () -> ContentType,
     private val generateCheckpoint: () -> WriteCheckpointResponse,
     private val trackSyncRequest: suspend (HttpRequestData) -> Unit,
@@ -59,13 +60,16 @@ internal class MockSyncService(
             trackSyncRequest(data)
             val job =
                 scope.writer {
-                    lines.consume {
+                    lines().consume {
                         while (true) {
                             // Wait for a downstream listener being ready before requesting a sync line
                             channel.awaitFreeSpace()
-                            val line = receive()
-                            when (line) {
+                            when (val line = receive()) {
                                 is SyncLine -> {
+                                    val serializedLine = JsonUtil.json.encodeToString(line)
+                                    channel.writeStringUtf8("$serializedLine\n")
+                                }
+                                is JsonElement -> {
                                     val serializedLine = JsonUtil.json.encodeToString(line)
                                     channel.writeStringUtf8("$serializedLine\n")
                                 }

@@ -144,12 +144,9 @@ class SqlDelightTest {
 
 private fun databaseTest(body: suspend TestScope.(PowerSyncDatabase) -> Unit) {
     runTest {
-        val allowedChars = ('A'..'Z') + ('a'..'z') + ('0'..'9')
-        val suffix = CharArray(8) { allowedChars.random() }.concatToString()
-
         val db =
-            PowerSyncDatabase(
-                databaseDriverFactory(),
+            PowerSyncDatabase.inMemory(
+                scope = this,
                 schema =
                     Schema(
                         Table(
@@ -160,13 +157,9 @@ private fun databaseTest(body: suspend TestScope.(PowerSyncDatabase) -> Unit) {
                             ),
                         ),
                     ),
-                dbFilename = "db-$suffix",
-                dbDirectory = SystemTemporaryDirectory.toString(),
             )
 
         body(db)
         db.close()
     }
 }
-
-expect fun databaseDriverFactory(): DatabaseDriverFactory

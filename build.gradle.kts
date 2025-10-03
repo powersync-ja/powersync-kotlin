@@ -68,10 +68,10 @@ tasks.getByName<Delete>("clean") {
 // Merges individual module docs into a single HTML output
 dependencies {
     dokka(project(":core:"))
-    dokka(project(":connectors:supabase"))
     dokka(project(":compose:"))
     dokka(project(":integrations:room"))
     dokka(project(":integrations:sqldelight"))
+    dokka(project(":integrations:supabase"))
 }
 
 dokka {

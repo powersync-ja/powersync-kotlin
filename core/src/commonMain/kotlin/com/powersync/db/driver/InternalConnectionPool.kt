@@ -36,33 +36,7 @@ internal class InternalConnectionPool(
                 readOnly = false,
             )
 
-        connection.execSQL("pragma journal_mode = WAL")
-        connection.execSQL("pragma journal_size_limit = ${6 * 1024 * 1024}")
-        connection.execSQL("pragma busy_timeout = 30000")
-        connection.execSQL("pragma cache_size = ${50 * 1024}")
-
-        if (readOnly) {
-            connection.execSQL("pragma query_only = TRUE")
-        }
-
-        // Older versions of the SDK used to set up an empty schema and raise the user version to 1.
-        // Keep doing that for consistency.
-        if (!readOnly) {
-            val version =
-                connection.prepare("pragma user_version").use {
-                    require(it.step())
-                    if (it.isNull(0)) 0L else it.getLong(0)
-                }
-            if (version < 1L) {
-                connection.execSQL("pragma user_version = 1")
-            }
-
-            // Also install a commit, rollback and update hooks in the core extension to implement
-            // the updates flow here (not all our driver implementations support hooks, so this is
-            // a more reliable fallback).
-            connection.execSQL("select powersync_update_hooks('install');")
-        }
-
+        connection.setupDefaultPragmas(readOnly)
         return connection
     }
 
@@ -75,13 +49,10 @@ internal class InternalConnectionPool(
             } finally {
                 // When we've leased a write connection, we may have to update table update flows
                 // after users ran their custom statements.
-                writeConnection.prepare("SELECT powersync_update_hooks('get')").use {
-                    check(it.step())
-                    val updatedTables = JsonUtil.json.decodeFromString<Set<String>>(it.getText(0))
-                    if (updatedTables.isNotEmpty()) {
-                        scope.launch {
-                            tableUpdatesFlow.emit(updatedTables)
-                        }
+                val updatedTables = writeConnection.readPendingUpdates()
+                if (updatedTables.isNotEmpty()) {
+                    scope.launch {
+                        tableUpdatesFlow.emit(updatedTables)
                     }
                 }
             }
@@ -106,3 +77,39 @@ internal class InternalConnectionPool(
         readPool.close()
     }
 }
+
+internal fun SQLiteConnection.setupDefaultPragmas(readOnly: Boolean) {
+    execSQL("pragma journal_mode = WAL")
+    execSQL("pragma journal_size_limit = ${6 * 1024 * 1024}")
+    execSQL("pragma busy_timeout = 30000")
+    execSQL("pragma cache_size = ${50 * 1024}")
+
+    if (readOnly) {
+        execSQL("pragma query_only = TRUE")
+    }
+
+    // Older versions of the SDK used to set up an empty schema and raise the user version to 1.
+    // Keep doing that for consistency.
+    if (!readOnly) {
+        val version =
+            prepare("pragma user_version").use {
+                require(it.step())
+                if (it.isNull(0)) 0L else it.getLong(0)
+            }
+        if (version < 1L) {
+            execSQL("pragma user_version = 1")
+        }
+
+        // Also install a commit, rollback and update hooks in the core extension to implement
+        // the updates flow here (not all our driver implementations support hooks, so this is
+        // a more reliable fallback).
+        execSQL("select powersync_update_hooks('install');")
+    }
+}
+
+internal fun SQLiteConnection.readPendingUpdates(): Set<String> =
+    prepare("SELECT powersync_update_hooks('get')").use {
+        check(it.step())
+        val updatedTables = JsonUtil.json.decodeFromString<Set<String>>(it.getText(0))
+        updatedTables
+    }

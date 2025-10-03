@@ -28,17 +28,16 @@ plugins {
 rootProject.name = "powersync-root"
 
 include(":internal:download-core-extension")
+include(":internal:PowerSyncKotlin")
 
 include(":core")
 include(":core-tests-android")
-include(":connectors:supabase")
 include(":integrations:room")
 include(":static-sqlite-driver")
 
 include(":integrations:sqldelight")
 include(":integrations:sqldelight-test-database")
-
-include(":PowerSyncKotlin")
+include(":integrations:supabase")
 
 include(":compose")
 

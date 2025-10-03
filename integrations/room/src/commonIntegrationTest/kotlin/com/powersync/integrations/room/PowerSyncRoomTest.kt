@@ -2,7 +2,9 @@ package com.powersync.integrations.room
 
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import app.cash.turbine.turbineScope
+import co.touchlab.kermit.CommonWriter
 import co.touchlab.kermit.Logger
+import co.touchlab.kermit.Severity
 import co.touchlab.kermit.loggerConfigInit
 import com.powersync.PowerSyncDatabase
 import com.powersync.db.getString
@@ -28,6 +30,7 @@ class PowerSyncRoomTest {
 
     @AfterTest
     fun tearDown() {
+        logger.i { "Closing Room database" }
         database.close()
     }
 
@@ -35,7 +38,6 @@ class PowerSyncRoomTest {
     fun roomWritePowerSyncRead() =
         runTest {
             database.userDao().create(User(id = "test", name = "Test user"))
-            val logger = Logger(loggerConfigInit())
 
             val powersync =
                 PowerSyncDatabase.opened(
@@ -61,7 +63,6 @@ class PowerSyncRoomTest {
     @Test
     fun roomWritePowerSyncWatch() =
         runTest {
-            val logger = Logger(loggerConfigInit())
             val pool = RoomConnectionPool(database, TestDatabase.schema)
 
             val powersync =
@@ -88,12 +89,13 @@ class PowerSyncRoomTest {
                 turbine.awaitItem() shouldHaveSize 1
                 turbine.cancel()
             }
+
+            powersync.close()
         }
 
     @Test
     fun powersyncWriteRoomRead() =
         runTest {
-            val logger = Logger(loggerConfigInit())
             val pool = RoomConnectionPool(database, TestDatabase.schema)
 
             val powersync =
@@ -108,12 +110,12 @@ class PowerSyncRoomTest {
             database.userDao().getAll() shouldHaveSize 0
             powersync.execute("insert into user values (uuid(), ?)", listOf("PowerSync user"))
             database.userDao().getAll() shouldHaveSize 1
+            powersync.close()
         }
 
     @Test
     fun powersyncWriteRoomWatch() =
         runTest {
-            val logger = Logger(loggerConfigInit())
             val pool = RoomConnectionPool(database, TestDatabase.schema)
 
             val powersync =
@@ -133,5 +135,11 @@ class PowerSyncRoomTest {
                 turbine.awaitItem() shouldHaveSize 1
                 turbine.cancel()
             }
+
+            powersync.close()
         }
+
+    companion object {
+        private val logger = Logger(loggerConfigInit(CommonWriter()))
+    }
 }

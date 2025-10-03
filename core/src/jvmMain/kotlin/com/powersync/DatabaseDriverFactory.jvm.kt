@@ -1,6 +1,7 @@
 package com.powersync
 
 import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.driver.bundled.BundledSQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.powersync.db.runWrapped
 
@@ -25,3 +26,5 @@ private val powersyncExtension: String by lazy { extractLib("powersync") }
 @ExperimentalPowerSyncAPI
 @Throws(PowerSyncException::class)
 public actual fun resolvePowerSyncLoadableExtensionPath(): String? = runWrapped { powersyncExtension }
+
+internal actual fun openInMemoryConnection(): SQLiteConnection = DatabaseDriverFactory().openConnection(":memory:", 0x02)

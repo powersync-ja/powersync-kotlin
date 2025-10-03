@@ -11,7 +11,7 @@ jobs:
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -32,7 +32,7 @@ jobs:
   maven_publish:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Validate Gradle Wrapper
         uses: gradle/wrapper-validation-action@v1
       - uses: actions/cache@v3
@@ -81,14 +81,14 @@ jobs:
         with:
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
       - name: Build frameworks
-        run: "./gradlew PowerSyncKotlin:buildRelease"
+        run: "./gradlew internal:PowerSyncKotlin:buildRelease"
 
       - uses: actions/upload-artifact@v4
         with:
           name: XCFramework
           retention-days: 1 # Only used temporarily
           compression-level: 0 # We're already uploading a compressed file
-          path: PowerSyncKotlin/build/FrameworkArchives/PowersyncKotlinRelease.zip
+          path: internal/PowerSyncKotlin/build/FrameworkArchives/PowersyncKotlinRelease.zip
           if-no-files-found: error
 
   add_assets:
