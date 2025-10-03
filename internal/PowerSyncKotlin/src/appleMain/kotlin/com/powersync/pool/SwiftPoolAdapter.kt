@@ -8,6 +8,13 @@ import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.ExperimentalForeignApi
 
 /**
+ * The Swift lease will provide a SQLite connection pointer (sqlite3*) which is used in a [Database]
+ */
+public interface SwiftLeaseAdapter {
+    public val pointer: CPointer<sqlite3>
+}
+
+/**
  * A small functional interface to provide a callback with a leased connection.
  * We use this structure in order to annotate the callback with exceptions that can be thrown.
  */
@@ -26,13 +33,6 @@ public fun interface AllLeaseCallback {
         writeLease: SwiftLeaseAdapter,
         readLeases: List<SwiftLeaseAdapter>,
     )
-}
-
-/**
- * The Swift lease will provide a SQLite connection pointer (sqlite3*) which is used in a [Database]
- */
-public interface SwiftLeaseAdapter {
-    public val pointer: CPointer<sqlite3>
 }
 
 /**
