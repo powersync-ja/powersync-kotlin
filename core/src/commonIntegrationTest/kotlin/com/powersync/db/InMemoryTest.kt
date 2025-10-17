@@ -10,6 +10,7 @@ import com.powersync.PowerSyncDatabase
 import com.powersync.db.schema.Column
 import com.powersync.db.schema.Schema
 import com.powersync.db.schema.Table
+import com.powersync.inMemory
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.test.runTest
@@ -33,7 +34,7 @@ class InMemoryTest {
     @Test
     fun createsSchema() =
         runTest {
-            val db = PowerSyncDatabase.Companion.inMemory(schema, this, logger)
+            val db = PowerSyncDatabase.inMemory(schema, this, logger)
             try {
                 db.getAll("SELECT * FROM users") { } shouldHaveSize 0
             } finally {
@@ -44,7 +45,7 @@ class InMemoryTest {
     @Test
     fun watch() =
         runTest {
-            val db = PowerSyncDatabase.Companion.inMemory(schema, this, logger)
+            val db = PowerSyncDatabase.inMemory(schema, this, logger)
             try {
                 turbineScope {
                     val turbine =

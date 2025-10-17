@@ -8,15 +8,18 @@ import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import co.touchlab.kermit.TestConfig
 import com.powersync.ExperimentalPowerSyncAPI
-import com.powersync.PersistentDriverFactory
-import com.powersync.PowerSyncTestLogWriter
-import com.powersync.TestConnector
+import com.powersync.test.PowerSyncTestLogWriter
+import com.powersync.test.TestConnector
 import com.powersync.bucket.WriteCheckpointData
 import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.createPowerSyncDatabaseImpl
+import com.powersync.db.PowerSyncDatabaseImpl
 import com.powersync.db.schema.Schema
 import com.powersync.sync.LegacySyncImplementation
 import com.powersync.sync.configureSyncHttpClient
+import com.powersync.test.cleanup
+import com.powersync.test.factory
+import com.powersync.test.getTempDir
 import com.powersync.utils.JsonUtil
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.toByteArray
@@ -28,14 +31,6 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.io.files.Path
 import kotlinx.serialization.json.JsonElement
 import kotlin.coroutines.resume
-
-expect val factory: PersistentDriverFactory
-
-expect fun cleanup(path: String)
-
-expect fun getTempDir(): String
-
-expect fun isIOS(): Boolean
 
 fun generatePrintLogWriter() =
     object : LogWriter() {

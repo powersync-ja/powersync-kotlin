@@ -16,7 +16,7 @@ import com.powersync.testutils.ActiveDatabaseTest
 import com.powersync.testutils.MockedRemoteStorage
 import com.powersync.testutils.UserRow
 import com.powersync.testutils.databaseTest
-import com.powersync.testutils.getTempDir
+import com.powersync.test.getTempDir
 import dev.mokkery.answering.throws
 import dev.mokkery.everySuspend
 import dev.mokkery.matcher.ArgMatchersScope

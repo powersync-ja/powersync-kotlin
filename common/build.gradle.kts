@@ -205,13 +205,7 @@ kotlin {
         tvosMain.orNull?.dependsOn(appleNonWatchOsMain)
 
         commonTest.dependencies {
-            implementation(libs.kotlin.test)
-            implementation(libs.test.coroutines)
-            implementation(libs.test.turbine)
-            implementation(libs.test.kotest.assertions)
-            implementation(libs.kermit.test)
-            implementation(libs.ktor.client.mock)
-            implementation(libs.test.turbine)
+            implementation(projects.internal.testutils)
         }
 
         // We're putting the native libraries into our JAR, so integration tests for the JVM can run as part of the unit

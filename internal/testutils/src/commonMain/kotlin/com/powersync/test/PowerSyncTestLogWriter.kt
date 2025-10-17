@@ -1,9 +1,9 @@
-package com.powersync
+package com.powersync.test
 
 import co.touchlab.kermit.ExperimentalKermitApi
 import co.touchlab.kermit.LogWriter
 import co.touchlab.kermit.Severity
-import co.touchlab.kermit.TestLogWriter.LogEntry
+import co.touchlab.kermit.TestLogWriter
 import kotlinx.atomicfu.locks.reentrantLock
 import kotlinx.atomicfu.locks.withLock
 
@@ -16,9 +16,9 @@ class PowerSyncTestLogWriter(
     private val loggable: Severity,
 ) : LogWriter() {
     private val lock = reentrantLock()
-    private val _logs = mutableListOf<LogEntry>()
+    private val _logs = mutableListOf<TestLogWriter.LogEntry>()
 
-    val logs: List<LogEntry>
+    val logs: List<TestLogWriter.LogEntry>
         get() = lock.withLock { _logs.toList() }
 
     override fun isLoggable(
@@ -33,7 +33,7 @@ class PowerSyncTestLogWriter(
         throwable: Throwable?,
     ) {
         lock.withLock {
-            _logs.add(LogEntry(severity, message, tag, throwable))
+            _logs.add(TestLogWriter.LogEntry(severity, message, tag, throwable))
         }
     }
 }

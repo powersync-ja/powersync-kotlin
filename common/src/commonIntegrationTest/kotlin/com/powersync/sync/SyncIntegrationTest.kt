@@ -4,7 +4,8 @@ import app.cash.turbine.turbineScope
 import co.touchlab.kermit.ExperimentalKermitApi
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
-import com.powersync.TestConnector
+import com.powersync.PowerSyncException
+import com.powersync.test.TestConnector
 import com.powersync.bucket.BucketChecksum
 import com.powersync.bucket.Checkpoint
 import com.powersync.bucket.OpType
@@ -14,10 +15,12 @@ import com.powersync.bucket.WriteCheckpointData
 import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.connectors.PowerSyncCredentials
+import com.powersync.db.PowerSyncDatabaseImpl
 import com.powersync.db.schema.PendingStatement
 import com.powersync.db.schema.PendingStatementParameter
 import com.powersync.db.schema.RawTable
 import com.powersync.db.schema.Schema
+import com.powersync.test.waitFor
 import com.powersync.testutils.UserRow
 import com.powersync.testutils.databaseTest
 import com.powersync.testutils.waitFor

@@ -10,9 +10,9 @@ import com.powersync.db.getString
 import com.powersync.db.schema.Schema
 import com.powersync.testutils.UserRow
 import com.powersync.testutils.databaseTest
-import com.powersync.testutils.getTempDir
-import com.powersync.testutils.isIOS
-import com.powersync.testutils.waitFor
+import com.powersync.test.getTempDir
+import com.powersync.test.isIOS
+import com.powersync.test.waitFor
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe

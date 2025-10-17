@@ -1,11 +1,11 @@
-package com.powersync.testutils
+package com.powersync.test
 
 import kotlinx.coroutines.delay
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.TimeSource
 
-internal suspend inline fun waitFor(
+suspend inline fun waitFor(
     timeout: Duration = 500.milliseconds,
     interval: Duration = 100.milliseconds,
     test: () -> Unit,

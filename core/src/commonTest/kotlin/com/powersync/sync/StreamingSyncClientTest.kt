@@ -7,7 +7,6 @@ import co.touchlab.kermit.Severity
 import co.touchlab.kermit.TestConfig
 import co.touchlab.kermit.TestLogWriter
 import com.powersync.ExperimentalPowerSyncAPI
-import com.powersync.TestConnector
 import com.powersync.bucket.BucketStorage
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.crud.CrudEntry

@@ -1,5 +1,6 @@
-package com.powersync
+package com.powersync.test
 
+import com.powersync.PowerSyncDatabase
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.connectors.PowerSyncCredentials
 
