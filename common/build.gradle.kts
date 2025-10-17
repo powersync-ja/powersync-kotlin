@@ -3,6 +3,7 @@ import de.undercouch.gradle.tasks.download.Download
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.internal.os.OperatingSystem
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+import org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest
 import org.jetbrains.kotlin.gradle.tasks.KotlinTest
 import org.jetbrains.kotlin.konan.target.Family
 import java.nio.file.Path
@@ -189,11 +190,14 @@ kotlin {
 
         commonTest.dependencies {
             implementation(projects.internal.testutils)
+            implementation(libs.kotlin.test)
         }
 
         // We're putting the native libraries into our JAR, so integration tests for the JVM can run as part of the unit
         // tests.
-        jvmTest.get().dependsOn(commonIntegrationTest)
+        jvmTest {
+            dependsOn(commonIntegrationTest)
+        }
 
         // We have special setup in this build configuration to make these tests link the PowerSync extension, so they
         // can run integration tests along with the executable for unit testing.
@@ -238,6 +242,23 @@ android {
 tasks.named<ProcessResources>(kotlin.jvm().compilations["main"].processResourcesTaskName) {
     from(downloadPowersyncDesktopBinaries)
 }
+
+// We want to build with recent JDKs, but need to make sure we support Java 8. https://jakewharton.com/build-on-latest-java-test-through-lowest-java/
+val testWithJava8 by tasks.registering(KotlinJvmTest::class) {
+    javaLauncher =
+        javaToolchains.launcherFor {
+            languageVersion = JavaLanguageVersion.of(8)
+        }
+
+    description = "Run tests with Java 8"
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+
+    // Copy inputs from the normal test task
+    val testTask = tasks.getByName("jvmTest") as KotlinJvmTest
+    classpath = testTask.classpath
+    testClassesDirs = testTask.testClassesDirs
+}
+tasks.named("check").configure { dependsOn(testWithJava8) }
 
 tasks.withType<KotlinTest> {
     testLogging {

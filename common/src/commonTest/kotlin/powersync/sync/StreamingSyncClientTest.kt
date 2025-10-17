@@ -17,6 +17,7 @@ import com.powersync.sync.StreamingSyncClient.Companion.bsonObjects
 import com.powersync.sync.SyncClientConfiguration
 import com.powersync.sync.SyncOptions
 import com.powersync.sync.configureSyncHttpClient
+import com.powersync.test.TestConnector
 import dev.mokkery.answering.returns
 import dev.mokkery.everySuspend
 import dev.mokkery.mock

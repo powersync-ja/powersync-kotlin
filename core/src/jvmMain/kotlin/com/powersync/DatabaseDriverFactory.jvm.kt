@@ -11,13 +11,22 @@ public actual class DatabaseDriverFactory: PersistentConnectionFactory, DriverBa
         path: String,
         openFlags: Int,
     ): SQLiteConnection = driver.open(path, openFlags)
-}
 
-private fun newDriver() = BundledSQLiteDriver().also { it.addPowerSyncExtension() }
+    internal companion object {
+        fun newDriver(): BundledSQLiteDriver {
+            return BundledSQLiteDriver().also { addPowerSyncExtension(it) }
+        }
+
+        @OptIn(ExperimentalPowerSyncAPI::class)
+        fun addPowerSyncExtension(driver: BundledSQLiteDriver) {
+            driver.addExtension(resolvePowerSyncLoadableExtensionPath()!!, "sqlite3_powersync_init")
+        }
+    }
+}
 
 @OptIn(ExperimentalPowerSyncAPI::class)
 public fun BundledSQLiteDriver.addPowerSyncExtension() {
-    addExtension(resolvePowerSyncLoadableExtensionPath()!!, "sqlite3_powersync_init")
+    DatabaseDriverFactory.addPowerSyncExtension(this)
 }
 
-internal actual val inMemoryDriver: InMemoryConnectionFactory = DriverBasedInMemoryFactory(newDriver())
+internal actual val inMemoryDriver: InMemoryConnectionFactory = DriverBasedInMemoryFactory(DatabaseDriverFactory.newDriver())
