@@ -1,5 +1,9 @@
-package com.powersync.db.schema
+package powersync.db.schema
 
+import com.powersync.db.schema.Column
+import com.powersync.db.schema.ColumnType
+import com.powersync.db.schema.Schema
+import com.powersync.db.schema.Table
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

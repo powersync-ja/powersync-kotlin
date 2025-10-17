@@ -1,5 +1,13 @@
-package com.powersync.db.schema
+package powersync.db.schema
 
+import com.powersync.db.schema.Column
+import com.powersync.db.schema.ColumnType
+import com.powersync.db.schema.Index
+import com.powersync.db.schema.IndexedColumn
+import com.powersync.db.schema.SerializableTable
+import com.powersync.db.schema.Table
+import com.powersync.db.schema.TrackPreviousValuesOptions
+import com.powersync.db.schema.toSerializable
 import com.powersync.utils.JsonUtil
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
@@ -33,7 +41,7 @@ class TableTest {
     @Test
     fun testLocalOnlyTable() {
         val columns = listOf(Column("content", ColumnType.TEXT))
-        val table = Table.localOnly("notes", columns)
+        val table = Table.Companion.localOnly("notes", columns)
 
         assertTrue(table.internalName.startsWith("ps_data_local__"))
         assertEquals("notes", table.viewName)
@@ -42,7 +50,7 @@ class TableTest {
     @Test
     fun testInsertOnlyTable() {
         val columns = listOf(Column("event", ColumnType.TEXT))
-        val table = Table.insertOnly("logs", columns)
+        val table = Table.Companion.insertOnly("logs", columns)
 
         assertTrue(table.internalName.startsWith("ps_data__"))
         assertEquals("logs", table.viewName)
@@ -166,7 +174,10 @@ class TableTest {
     @Test
     fun testValidationFailsDuplicateIndexColumn() {
         val columns = listOf(Column("name", ColumnType.TEXT))
-        val indexes = listOf(Index("name_index", listOf(IndexedColumn("name"))), Index("name_index", listOf(IndexedColumn("name"))))
+        val indexes = listOf(
+            Index("name_index", listOf(IndexedColumn("name"))),
+            Index("name_index", listOf(IndexedColumn("name")))
+        )
         val table = Table("users", columns, indexes)
 
         val exception =
@@ -192,7 +203,7 @@ class TableTest {
 
     @Test
     fun testValidationLocalOnlyWithMetadata() {
-        val table = Table("foo", listOf(Column.text("bar")), localOnly = true, trackMetadata = true)
+        val table = Table("foo", listOf(Column.Companion.text("bar")), localOnly = true, trackMetadata = true)
 
         val exception = shouldThrow<IllegalStateException> { table.validate() }
         exception.message shouldBe "Can't track metadata for local-only tables."
@@ -200,7 +211,12 @@ class TableTest {
 
     @Test
     fun testValidationLocalOnlyWithIncludeOld() {
-        val table = Table("foo", listOf(Column.text("bar")), localOnly = true, trackPreviousValues = TrackPreviousValuesOptions())
+        val table = Table(
+            "foo",
+            listOf(Column.Companion.text("bar")),
+            localOnly = true,
+            trackPreviousValues = TrackPreviousValuesOptions()
+        )
 
         val exception = shouldThrow<IllegalStateException> { table.validate() }
         exception.message shouldBe "Can't track old values for local-only tables."
@@ -219,7 +235,13 @@ class TableTest {
             it["include_old_only_when_changed"]!!.jsonPrimitive.boolean shouldBe false
         }
 
-        serialize(Table("foo", emptyList(), trackPreviousValues = TrackPreviousValuesOptions(columnFilter = listOf("foo", "bar")))).let {
+        serialize(
+            Table(
+                "foo",
+                emptyList(),
+                trackPreviousValues = TrackPreviousValuesOptions(columnFilter = listOf("foo", "bar"))
+            )
+        ).let {
             it["include_old"]!!.jsonArray.map { e -> e.jsonPrimitive.content } shouldBe listOf("foo", "bar")
             it["include_old_only_when_changed"]!!.jsonPrimitive.boolean shouldBe false
         }

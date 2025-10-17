@@ -1,5 +1,6 @@
-package com.powersync.sync
+package powersync.sync
 
+import com.powersync.sync.ProgressInfo
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

@@ -1,4 +1,4 @@
-package com.powersync.sync
+package powersync.sync
 
 import app.cash.turbine.turbineScope
 import co.touchlab.kermit.ExperimentalKermitApi
@@ -12,7 +12,11 @@ import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.UpdateType
 import com.powersync.db.schema.Schema
+import com.powersync.sync.StreamingSyncClient
 import com.powersync.sync.StreamingSyncClient.Companion.bsonObjects
+import com.powersync.sync.SyncClientConfiguration
+import com.powersync.sync.SyncOptions
+import com.powersync.sync.configureSyncHttpClient
 import dev.mokkery.answering.returns
 import dev.mokkery.everySuspend
 import dev.mokkery.mock

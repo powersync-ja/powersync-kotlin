@@ -171,28 +171,11 @@ kotlin {
             dependsOn(commonJava)
             dependencies {
                 api(libs.powersync.sqlite.core.android)
-                implementation(libs.ktor.client.okhttp)
-                implementation(libs.androidx.sqlite.bundled)
             }
         }
 
         jvmMain {
             dependsOn(commonJava)
-
-            dependencies {
-                implementation(libs.ktor.client.okhttp)
-                implementation(libs.androidx.sqlite.bundled)
-            }
-        }
-
-        appleMain.dependencies {
-            implementation(libs.ktor.client.darwin)
-
-            // We're not using the bundled SQLite library for Apple platforms. Instead, we depend on
-            // static-sqlite-driver to link SQLite and have our own bindings implementing the
-            // driver. The reason for this is that androidx.sqlite-bundled causes linker errors for
-            // our Swift SDK.
-            implementation(projects.staticSqliteDriver)
         }
 
         // Common apple targets where we link the core extension dynamically

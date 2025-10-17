@@ -8,12 +8,7 @@ import kotlin.Throws
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 public actual class DatabaseDriverFactory(
     private val context: Context,
-): PersistentDriverFactory {
-    private val driver = BundledSQLiteDriver().also { it.addPowerSyncExtension() }
-
-    actual override val platform: PowerSyncPlatform
-        get() = BuiltinPlatform
-
+): PersistentConnectionFactory, DriverBasedInMemoryFactory<BundledSQLiteDriver>(newDriver()) {
     actual override fun resolveDefaultDatabasePath(dbFilename: String): String = context.getDatabasePath(dbFilename).path
 
     actual override fun openConnection(
@@ -22,8 +17,10 @@ public actual class DatabaseDriverFactory(
     ): SQLiteConnection = driver.open(path, openFlags)
 }
 
+private fun newDriver() = BundledSQLiteDriver().also { it.addPowerSyncExtension() }
+
 public fun BundledSQLiteDriver.addPowerSyncExtension() {
     addExtension("libpowersync.so", "sqlite3_powersync_init")
 }
 
-internal actual fun openInMemoryConnection(): SQLiteConnection = BundledSQLiteDriver().also { it.addPowerSyncExtension() }.open(":memory:")
+internal actual val inMemoryDriver: InMemoryConnectionFactory = DriverBasedInMemoryFactory(newDriver())

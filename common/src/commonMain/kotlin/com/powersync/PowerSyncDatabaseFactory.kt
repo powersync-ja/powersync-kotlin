@@ -20,7 +20,7 @@ public const val DEFAULT_DB_FILENAME: String = "powersync.db"
 @OptIn(DelicateCoroutinesApi::class)
 @DefaultArgumentInterop.Enabled
 public fun PowerSyncDatabase(
-    factory: PersistentDriverFactory,
+    factory: PersistentConnectionFactory,
     schema: Schema,
     dbFilename: String = DEFAULT_DB_FILENAME,
     scope: CoroutineScope = GlobalScope,
@@ -45,7 +45,7 @@ public fun PowerSyncDatabase(
 
 @OptIn(ExperimentalPowerSyncAPI::class)
 internal fun createPowerSyncDatabaseImpl(
-    factory: PersistentDriverFactory,
+    factory: PersistentConnectionFactory,
     schema: Schema,
     dbFilename: String,
     scope: CoroutineScope,

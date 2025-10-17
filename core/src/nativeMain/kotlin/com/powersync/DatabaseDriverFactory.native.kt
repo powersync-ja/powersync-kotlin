@@ -4,10 +4,7 @@ import androidx.sqlite.SQLiteConnection
 import com.powersync.sqlite.Database
 
 @Suppress(names = ["EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING"])
-public actual class DatabaseDriverFactory: PersistentDriverFactory {
-    actual override val platform: PowerSyncPlatform
-        get() = BuiltinPlatform
-
+public actual class DatabaseDriverFactory: PersistentConnectionFactory {
     actual override fun resolveDefaultDatabasePath(dbFilename: String): String = appleDefaultDatabasePath(dbFilename)
 
     @OptIn(ExperimentalPowerSyncAPI::class)
@@ -24,6 +21,10 @@ public actual class DatabaseDriverFactory: PersistentDriverFactory {
         }
         return db
     }
+
+    actual override fun openInMemoryConnection(): SQLiteConnection {
+        return openConnection(":memory:", 0x02)
+    }
 }
 
-internal actual fun openInMemoryConnection(): SQLiteConnection = DatabaseDriverFactory().openConnection(":memory:", 0x02)
+internal actual val inMemoryDriver: InMemoryConnectionFactory = DatabaseDriverFactory()

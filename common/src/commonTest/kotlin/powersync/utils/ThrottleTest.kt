@@ -1,5 +1,6 @@
-package com.powersync.utils
+package powersync.utils
 
+import com.powersync.utils.throttle
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow

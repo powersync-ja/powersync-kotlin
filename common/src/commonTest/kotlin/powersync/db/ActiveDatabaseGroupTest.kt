@@ -1,10 +1,11 @@
-package com.powersync.db
+package powersync.db
 
 import co.touchlab.kermit.ExperimentalKermitApi
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import co.touchlab.kermit.TestConfig
 import co.touchlab.kermit.TestLogWriter
+import com.powersync.db.ActiveDatabaseGroup
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -52,7 +53,7 @@ class ActiveDatabaseGroupTest {
         val another = collection.referenceDatabase(logger, "test")
         assertNotNull(
             logWriter.logs.find {
-                it.message == ActiveDatabaseGroup.multipleInstancesMessage
+                it.message == ActiveDatabaseGroup.Companion.multipleInstancesMessage
             },
         )
 

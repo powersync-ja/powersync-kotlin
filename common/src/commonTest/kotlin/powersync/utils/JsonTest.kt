@@ -1,5 +1,7 @@
-package com.powersync.utils
+package powersync.utils
 
+import com.powersync.utils.JsonParam
+import com.powersync.utils.toJsonObject
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject

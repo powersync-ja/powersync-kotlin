@@ -1,18 +1,13 @@
 package com.powersync
 
 import androidx.sqlite.SQLiteConnection
-import io.ktor.client.HttpClient
-import io.ktor.client.HttpClientConfig
+import androidx.sqlite.SQLiteDriver
 
-public interface PowerSyncPlatform {
+public interface InMemoryConnectionFactory {
     public fun openInMemoryConnection(): SQLiteConnection
-
-    public fun configureHttpClient(block: HttpClientConfig<*>.() -> Unit): HttpClient
 }
 
-public interface PersistentDriverFactory {
-    public val platform: PowerSyncPlatform
-
+public interface PersistentConnectionFactory: InMemoryConnectionFactory {
     public fun resolveDefaultDatabasePath(dbFilename: String): String
 
     /**
@@ -48,6 +43,14 @@ public interface PersistentDriverFactory {
     }
 }
 
+public open class DriverBasedInMemoryFactory<D: SQLiteDriver>(
+    protected val driver: D,
+): InMemoryConnectionFactory {
+    override fun openInMemoryConnection(): SQLiteConnection {
+        return driver.open(":memory:")
+    }
+}
+
 /**
  * Resolves a path to the loadable PowerSync core extension library.
  *
@@ -65,4 +68,3 @@ public expect fun resolvePowerSyncLoadableExtensionPath(): String?
 private const val SQLITE_OPEN_READONLY = 0x01
 private const val SQLITE_OPEN_READWRITE = 0x02
 private const val SQLITE_OPEN_CREATE = 0x04
-

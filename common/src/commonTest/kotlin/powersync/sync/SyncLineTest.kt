@@ -1,8 +1,10 @@
-package com.powersync.sync
+package powersync.sync
 
 import com.powersync.bucket.BucketChecksum
 import com.powersync.bucket.Checkpoint
 import com.powersync.bucket.StreamPriority
+import com.powersync.sync.LegacySyncImplementation
+import com.powersync.sync.SyncLine
 import com.powersync.utils.JsonUtil
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -27,6 +27,12 @@ kotlin {
 
         val platformMain by creating {
             dependsOn(commonMain.get())
+
+            dependencies {
+                // :core links SQLite, which is what we want for tests even in the :common project where the public API
+                // does not require linking SQLite.
+                api(projects.core)
+            }
         }
 
         jvmMain.get().dependsOn(platformMain)

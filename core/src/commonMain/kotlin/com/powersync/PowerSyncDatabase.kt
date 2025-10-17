@@ -22,7 +22,7 @@ public fun PowerSyncDatabase.PowerSyncOpenFactory.inMemory(
     val collection = ActiveDatabaseGroup.GroupsCollection().referenceDatabase(logger, "test")
 
     return openedWithGroup(
-        SingleConnectionPool(openInMemoryConnection()),
+        SingleConnectionPool(inMemoryDriver.openInMemoryConnection()),
         scope,
         schema,
         logger,

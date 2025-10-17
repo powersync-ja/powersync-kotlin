@@ -13,7 +13,6 @@ plugins {
     id("com.powersync.plugins.sonatype")
     id("com.powersync.plugins.sharedbuild")
     alias(libs.plugins.mokkery)
-    alias(libs.plugins.kotlin.atomicfu)
     id("dokka-convention")
 }
 
@@ -74,15 +73,6 @@ kotlin {
             // our Swift SDK.
             implementation(projects.staticSqliteDriver)
         }
-
-        // Common apple targets where we link the core extension dynamically
-        val appleNonWatchOsMain by creating {
-            dependsOn(appleMain.get())
-        }
-
-        macosMain.orNull?.dependsOn(appleNonWatchOsMain)
-        iosMain.orNull?.dependsOn(appleNonWatchOsMain)
-        tvosMain.orNull?.dependsOn(appleNonWatchOsMain)
 
         commonTest.dependencies {
             implementation(projects.internal.testutils)

@@ -3,7 +3,7 @@ package com.powersync.db.driver
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
 import com.powersync.ExperimentalPowerSyncAPI
-import com.powersync.PersistentDriverFactory
+import com.powersync.PersistentConnectionFactory
 import com.powersync.utils.JsonUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -14,7 +14,7 @@ import kotlinx.coroutines.sync.withLock
 
 @OptIn(ExperimentalPowerSyncAPI::class)
 internal class InternalConnectionPool(
-    private val factory: PersistentDriverFactory,
+    private val factory: PersistentConnectionFactory,
     private val scope: CoroutineScope,
     private val dbFilename: String,
     private val dbDirectory: String?,
