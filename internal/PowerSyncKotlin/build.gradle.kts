@@ -25,7 +25,7 @@ kotlin {
             baseName = "PowerSyncKotlin"
             xcf.add(this)
 
-            export(project(":core"))
+            export(projects.common)
             isStatic = true
 
             binaryOption("bundleId", "PowerSyncKotlin")
@@ -45,8 +45,9 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            api(project(":core"))
+            api(projects.common)
             implementation(libs.ktor.client.logging)
+            implementation(libs.ktor.client.darwin)
         }
 
         all {
