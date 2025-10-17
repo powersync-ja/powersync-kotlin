@@ -1,7 +1,10 @@
-# PowerSync core module
+# PowerSync common
 
-The PowerSync core module provides the core functionality for the PowerSync Kotlin Multiplatform
-SDK.
+This module contains core definitions for the PowerSync SDK, without linking or bundling a SQLite dependency.
+
+This allows the module to be used as a building block for PowerSync SDKs with and without encryption support.
+
+Users should typically depend on `:core` instead.
 
 ## Structure
 
@@ -11,10 +14,10 @@ structure:
 - `commonMain` - Shared code for all targets, which includes the `PowerSyncBackendConnector`
   interface and `PowerSyncBuilder` for building a `PowerSync` instance. It also defines
   the `DatabaseDriverFactory` class to be implemented in each platform.
-- `androidMain` - Android specific code, which includes an implementation of
-  `PersistentConnectionFactory`.
-- `jvmMain` - JVM specific code which includes an implementation of `PersistentConnectionFactory`.
-- `nativeMain` - iOS specific code, which includes am implementation of `PersistentConnectionFactory`.
+- `commonJava` - Shared logic for Android and Java targets.
+- `androidMain` - Android-specific code for loading the core extension.
+- `jvmMain` - Java-specific code for loading the core extension.
+- `nativeMain` - A SQLite driver implemented with cinterop calls to sqlite3.
 
 ## Attachment Helpers
 

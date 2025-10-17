@@ -128,3 +128,8 @@ public abstract class PowerSyncBackendConnector {
     @Throws(PowerSyncException::class, CancellationException::class)
     public abstract suspend fun uploadData(database: PowerSyncDatabase)
 }
+
+// Not using this indirection causes linker errors in tests: https://youtrack.jetbrains.com/issue/CMP-3318
+internal fun PowerSyncBackendConnector.readCachedCredentials(): PowerSyncCredentials? {
+    return this.cachedCredentials
+}

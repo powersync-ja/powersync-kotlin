@@ -76,6 +76,7 @@ kotlin {
 
         commonTest.dependencies {
             implementation(projects.internal.testutils)
+            implementation(libs.kotlin.test)
         }
 
         // We're putting the native libraries into our JAR, so integration tests for the JVM can run as part of the unit

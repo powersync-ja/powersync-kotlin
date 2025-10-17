@@ -15,6 +15,7 @@ import com.powersync.bucket.WriteCheckpointData
 import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.connectors.PowerSyncCredentials
+import com.powersync.connectors.readCachedCredentials
 import com.powersync.db.PowerSyncDatabaseImpl
 import com.powersync.db.schema.PendingStatement
 import com.powersync.db.schema.PendingStatementParameter
@@ -123,7 +124,7 @@ abstract class BaseSyncIntegrationTest(
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
                 turbine.waitFor { it.connected }
-                connector.cachedCredentials shouldNotBe null
+                connector.readCachedCredentials() shouldNotBe null
 
                 database.disconnect()
                 turbine.waitFor { !it.connected }
@@ -134,7 +135,7 @@ abstract class BaseSyncIntegrationTest(
             waitFor { syncLines.isClosedForSend shouldBe true }
 
             // And called invalidateCredentials on the connector
-            connector.cachedCredentials shouldBe null
+            connector.readCachedCredentials() shouldBe null
         }
 
     @Test
@@ -674,7 +675,7 @@ abstract class BaseSyncIntegrationTest(
                 // Should invalidate credentials when token expires
                 syncLines.send(SyncLine.KeepAlive(tokenExpiresIn = 0))
                 turbine.waitFor { !it.connected }
-                connector.cachedCredentials shouldBe null
+                connector.readCachedCredentials() shouldBe null
 
                 turbine.cancelAndIgnoreRemainingEvents()
             }
