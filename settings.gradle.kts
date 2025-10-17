@@ -30,6 +30,7 @@ rootProject.name = "powersync-root"
 include(":internal:download-core-extension")
 include(":internal:PowerSyncKotlin")
 
+include(":common")
 include(":core")
 include(":core-tests-android")
 include(":integrations:room")

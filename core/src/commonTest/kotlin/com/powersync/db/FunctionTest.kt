@@ -1,6 +1,5 @@
 package com.powersync.db
 
-import com.powersync.PowerSyncException
 import io.kotest.assertions.throwables.shouldThrow
 import kotlinx.coroutines.CancellationException
 import kotlin.test.Test
