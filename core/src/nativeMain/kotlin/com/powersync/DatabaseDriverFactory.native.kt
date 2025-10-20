@@ -12,13 +12,20 @@ public actual class DatabaseDriverFactory : PersistentConnectionFactory {
         path: String,
         openFlags: Int,
     ): SQLiteConnection {
+        // On some platforms, most notably watchOS, there's no dynamic extension loading and the core extension is
+        // registered via sqlite3_auto_extension.
+        val extensionPath = resolvePowerSyncLoadableExtensionPath()
+
         val db = Database.open(path, openFlags)
-        try {
-            db.loadExtension(resolvePowerSyncLoadableExtensionPath()!!, "sqlite3_powersync_init")
-        } catch (e: PowerSyncException) {
-            db.close()
-            throw e
+        extensionPath?.let { path ->
+            try {
+                db.loadExtension(path, "sqlite3_powersync_init")
+            } catch (e: PowerSyncException) {
+                db.close()
+                throw e
+            }
         }
+
         return db
     }
 

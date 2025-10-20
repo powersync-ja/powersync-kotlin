@@ -12,7 +12,7 @@ import kotlinx.coroutines.sync.Mutex
 internal expect fun disposeWhenDeallocated(resource: ActiveDatabaseResource): Any
 
 /**
- * A collection of PowerSync databases with the same path / identifier.
+ * An collection of PowerSync databases with the same path / identifier.
  *
  * We expect that each group will only ever have one database because we encourage users to write their databases as
  * singletons. We print a warning when two databases are part of the same group.
@@ -20,15 +20,15 @@ internal expect fun disposeWhenDeallocated(resource: ActiveDatabaseResource): An
  * duplicate resources being used. For this reason, each active database group has a coroutine mutex guarding the
  * sync job.
  */
-public class ActiveDatabaseGroup internal constructor(
-    internal val identifier: String,
+internal class ActiveDatabaseGroup(
+    val identifier: String,
     private val collection: GroupsCollection,
 ) {
     internal var refCount = 0 // Guarded by companion object
     internal val syncMutex = Mutex()
     internal val writeLockMutex = Mutex()
 
-    internal fun removeUsage() {
+    fun removeUsage() {
         collection.synchronize {
             if (--refCount == 0) {
                 collection.allGroups.remove(this)
@@ -36,13 +36,7 @@ public class ActiveDatabaseGroup internal constructor(
         }
     }
 
-    /**
-     * A collection of [ActiveDatabaseGroup]s.
-     *
-     * Typically, one uses the singleton instance that is the companion object of that class, but separate groups can be
-     * used for testing.
-     */
-    public open class GroupsCollection : Synchronizable() {
+    internal open class GroupsCollection : Synchronizable() {
         internal val allGroups = mutableListOf<ActiveDatabaseGroup>()
 
         private fun findGroup(
@@ -67,7 +61,7 @@ public class ActiveDatabaseGroup internal constructor(
                 resolvedGroup
             }
 
-        public fun referenceDatabase(
+        internal fun referenceDatabase(
             warnOnDuplicate: Logger,
             identifier: String,
         ): Pair<ActiveDatabaseResource, Any> {
@@ -78,7 +72,7 @@ public class ActiveDatabaseGroup internal constructor(
         }
     }
 
-    public companion object : GroupsCollection() {
+    companion object : GroupsCollection() {
         internal val multipleInstancesMessage =
             """
             Multiple PowerSync instances for the same database have been detected.
@@ -88,13 +82,13 @@ public class ActiveDatabaseGroup internal constructor(
     }
 }
 
-public class ActiveDatabaseResource(
-    internal val group: ActiveDatabaseGroup,
+internal class ActiveDatabaseResource(
+    val group: ActiveDatabaseGroup,
 ) {
-    internal val disposed = AtomicBoolean(false)
+    val disposed = AtomicBoolean(false)
 
-    public fun dispose() {
-        if (disposed.compareAndSet(expected = false, new = true)) {
+    fun dispose() {
+        if (disposed.compareAndSet(false, true)) {
             group.removeUsage()
         }
     }

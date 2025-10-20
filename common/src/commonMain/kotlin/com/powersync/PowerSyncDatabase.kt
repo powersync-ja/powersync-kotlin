@@ -247,8 +247,35 @@ public interface PowerSyncDatabase : Queries {
             return openedWithGroup(pool, scope, schema, logger, group)
         }
 
+        /**
+         * Creates a PowerSync database backed by a single in-memory database connection opened from the
+         * [InMemoryConnectionFactory].
+         *
+         * This can be useful for writing tests relying on PowerSync databases.
+         */
         @ExperimentalPowerSyncAPI
-        public fun openedWithGroup(
+        public fun openInMemory(
+            factory: InMemoryConnectionFactory,
+            schema: Schema,
+            scope: CoroutineScope,
+            logger: Logger? = null,
+        ): PowerSyncDatabase {
+            val logger = generateLogger(logger)
+            // Since this returns a fresh in-memory database every time, use a fresh group to avoid warnings about the
+            // same database being opened multiple times.
+            val collection = ActiveDatabaseGroup.GroupsCollection().referenceDatabase(logger, "test")
+
+            return openedWithGroup(
+                SingleConnectionPool(factory.openInMemoryConnection()),
+                scope,
+                schema,
+                logger,
+                collection,
+            )
+        }
+
+        @ExperimentalPowerSyncAPI
+        internal fun openedWithGroup(
             pool: SQLiteConnectionPool,
             scope: CoroutineScope,
             schema: Schema,
