@@ -8,7 +8,8 @@ import kotlin.Throws
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 public actual class DatabaseDriverFactory(
     private val context: Context,
-): PersistentConnectionFactory, DriverBasedInMemoryFactory<BundledSQLiteDriver>(newDriver()) {
+) : DriverBasedInMemoryFactory<BundledSQLiteDriver>(newDriver()),
+    PersistentConnectionFactory {
     actual override fun resolveDefaultDatabasePath(dbFilename: String): String = context.getDatabasePath(dbFilename).path
 
     actual override fun openConnection(

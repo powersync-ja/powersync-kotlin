@@ -8,10 +8,10 @@ import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.CrudTransaction
 import com.powersync.db.getString
 import com.powersync.db.schema.Schema
-import com.powersync.testutils.UserRow
-import com.powersync.testutils.databaseTest
 import com.powersync.test.getTempDir
 import com.powersync.test.waitFor
+import com.powersync.testutils.UserRow
+import com.powersync.testutils.databaseTest
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe

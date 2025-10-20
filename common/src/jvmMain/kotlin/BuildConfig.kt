@@ -8,5 +8,5 @@ internal actual object BuildConfig {
      */
     actual val isDebug: Boolean =
         System.getProperty("com.powersync.debug") == "true" ||
-                System.getenv("POWERSYNC_JVM_DEBUG") == "true"
+            System.getenv("POWERSYNC_JVM_DEBUG") == "true"
 }

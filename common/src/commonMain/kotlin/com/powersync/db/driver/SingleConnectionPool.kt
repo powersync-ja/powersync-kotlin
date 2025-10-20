@@ -42,9 +42,10 @@ public class SingleConnectionPool(
 
     override suspend fun <R> withAllConnections(
         action: suspend (writer: SQLiteConnectionLease, readers: List<SQLiteConnectionLease>) -> R,
-    ): Unit = write { writer ->
-        action(writer, emptyList())
-    }
+    ): Unit =
+        write { writer ->
+            action(writer, emptyList())
+        }
 
     override val updates: SharedFlow<Set<String>>
         get() = tableUpdatesFlow

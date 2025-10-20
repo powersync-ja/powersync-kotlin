@@ -14,6 +14,4 @@ fun cleanup(path: String) {
     }
 }
 
-fun getTempDir(): String {
-    return SystemTemporaryDirectory.toString()
-}
+fun getTempDir(): String = SystemTemporaryDirectory.toString()

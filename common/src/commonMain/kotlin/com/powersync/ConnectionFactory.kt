@@ -7,7 +7,7 @@ public interface InMemoryConnectionFactory {
     public fun openInMemoryConnection(): SQLiteConnection
 }
 
-public interface PersistentConnectionFactory: InMemoryConnectionFactory {
+public interface PersistentConnectionFactory : InMemoryConnectionFactory {
     public fun resolveDefaultDatabasePath(dbFilename: String): String
 
     /**
@@ -43,12 +43,10 @@ public interface PersistentConnectionFactory: InMemoryConnectionFactory {
     }
 }
 
-public open class DriverBasedInMemoryFactory<D: SQLiteDriver>(
+public open class DriverBasedInMemoryFactory<D : SQLiteDriver>(
     protected val driver: D,
-): InMemoryConnectionFactory {
-    override fun openInMemoryConnection(): SQLiteConnection {
-        return driver.open(":memory:")
-    }
+) : InMemoryConnectionFactory {
+    override fun openInMemoryConnection(): SQLiteConnection = driver.open(":memory:")
 }
 
 /**

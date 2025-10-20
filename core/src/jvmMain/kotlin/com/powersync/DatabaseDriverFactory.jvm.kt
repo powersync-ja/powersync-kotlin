@@ -4,7 +4,9 @@ import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING", "SqlNoDataSourceInspection")
-public actual class DatabaseDriverFactory: PersistentConnectionFactory, DriverBasedInMemoryFactory<BundledSQLiteDriver>(newDriver()) {
+public actual class DatabaseDriverFactory :
+    DriverBasedInMemoryFactory<BundledSQLiteDriver>(newDriver()),
+    PersistentConnectionFactory {
     actual override fun resolveDefaultDatabasePath(dbFilename: String): String = dbFilename
 
     actual override fun openConnection(

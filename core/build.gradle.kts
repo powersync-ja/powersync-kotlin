@@ -94,19 +94,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    buildFeatures {
-        buildConfig = true
-    }
-
-    buildTypes {
-        release {
-            buildConfigField("boolean", "DEBUG", "false")
-        }
-        debug {
-            buildConfigField("boolean", "DEBUG", "true")
-        }
-    }
-
     namespace = "com.powersync"
     compileSdk =
         libs.versions.android.compileSdk

@@ -130,6 +130,4 @@ public abstract class PowerSyncBackendConnector {
 }
 
 // Not using this indirection causes linker errors in tests: https://youtrack.jetbrains.com/issue/CMP-3318
-internal fun PowerSyncBackendConnector.readCachedCredentials(): PowerSyncCredentials? {
-    return this.cachedCredentials
-}
+internal fun PowerSyncBackendConnector.readCachedCredentials(): PowerSyncCredentials? = this.cachedCredentials

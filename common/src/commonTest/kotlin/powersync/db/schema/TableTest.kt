@@ -174,10 +174,11 @@ class TableTest {
     @Test
     fun testValidationFailsDuplicateIndexColumn() {
         val columns = listOf(Column("name", ColumnType.TEXT))
-        val indexes = listOf(
-            Index("name_index", listOf(IndexedColumn("name"))),
-            Index("name_index", listOf(IndexedColumn("name")))
-        )
+        val indexes =
+            listOf(
+                Index("name_index", listOf(IndexedColumn("name"))),
+                Index("name_index", listOf(IndexedColumn("name"))),
+            )
         val table = Table("users", columns, indexes)
 
         val exception =
@@ -211,12 +212,13 @@ class TableTest {
 
     @Test
     fun testValidationLocalOnlyWithIncludeOld() {
-        val table = Table(
-            "foo",
-            listOf(Column.Companion.text("bar")),
-            localOnly = true,
-            trackPreviousValues = TrackPreviousValuesOptions()
-        )
+        val table =
+            Table(
+                "foo",
+                listOf(Column.Companion.text("bar")),
+                localOnly = true,
+                trackPreviousValues = TrackPreviousValuesOptions(),
+            )
 
         val exception = shouldThrow<IllegalStateException> { table.validate() }
         exception.message shouldBe "Can't track old values for local-only tables."
@@ -239,8 +241,8 @@ class TableTest {
             Table(
                 "foo",
                 emptyList(),
-                trackPreviousValues = TrackPreviousValuesOptions(columnFilter = listOf("foo", "bar"))
-            )
+                trackPreviousValues = TrackPreviousValuesOptions(columnFilter = listOf("foo", "bar")),
+            ),
         ).let {
             it["include_old"]!!.jsonArray.map { e -> e.jsonPrimitive.content } shouldBe listOf("foo", "bar")
             it["include_old_only_when_changed"]!!.jsonPrimitive.boolean shouldBe false
