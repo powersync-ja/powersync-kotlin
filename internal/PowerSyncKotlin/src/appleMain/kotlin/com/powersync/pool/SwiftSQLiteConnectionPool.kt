@@ -99,7 +99,7 @@ public fun openPowerSyncWithPool(
     schema: Schema,
     logger: Logger,
 ): PowerSyncDatabase =
-    PowerSyncDatabase.Companion.opened(
+    PowerSyncDatabase.opened(
         pool = pool,
         scope = GlobalScope,
         schema = schema,
