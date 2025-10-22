@@ -26,6 +26,11 @@ import kotlinx.cinterop.ptr
 import kotlinx.cinterop.toKString
 import kotlinx.cinterop.value
 
+public data class SessionResult(
+    val powerSyncResult: PowerSyncResult,
+    val affectedTables: Set<String>,
+)
+
 /**
  * We typically have a few options for table update hooks:
  * 1.) Registering a hook with SQLite
@@ -51,9 +56,8 @@ import kotlinx.cinterop.value
 @Throws(PowerSyncException::class)
 public fun withSession(
     db: CPointer<sqlite3>,
-    onComplete: (PowerSyncResult, Set<String>) -> Unit,
     block: () -> PowerSyncResult,
-): Unit =
+): SessionResult =
     runWrapped {
         memScoped {
             val sessionPtr = alloc<CPointerVar<sqlite3_session>>()
@@ -95,8 +99,10 @@ public fun withSession(
                 val changeset = changesetPtr.value
 
                 if (changesetSize == 0 || changeset == null) {
-                    onComplete(result, emptySet())
-                    return@memScoped
+                    return@memScoped SessionResult(
+                        result,
+                        affectedTables = emptySet(),
+                    )
                 }
 
                 // Parse the changeset to extract table names
@@ -112,8 +118,10 @@ public fun withSession(
                 val iter = iterPtr.value
 
                 if (iter == null) {
-                    onComplete(result, emptySet())
-                    return@memScoped
+                    return@memScoped SessionResult(
+                        result,
+                        affectedTables = emptySet(),
+                    )
                 }
 
                 try {
@@ -147,8 +155,10 @@ public fun withSession(
                     sqlite3_free(changeset)
                 }
 
-                onComplete(result, changedTables.toSet())
-                return@memScoped
+                return@memScoped SessionResult(
+                    result,
+                    affectedTables = changedTables.toSet(),
+                )
             } finally {
                 // Clean up the session
                 sqlite3session_delete(session)
