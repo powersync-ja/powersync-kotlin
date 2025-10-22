@@ -5,11 +5,11 @@ import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import app.cash.turbine.turbineScope
-import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
 import com.powersync.db.schema.Column
 import com.powersync.db.schema.Schema
 import com.powersync.db.schema.Table
+import com.powersync.inMemory
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.properties.shouldHaveValue
@@ -17,7 +17,6 @@ import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
-import kotlinx.io.files.SystemTemporaryDirectory
 import kotlin.test.Test
 
 class SqlDelightTest {
