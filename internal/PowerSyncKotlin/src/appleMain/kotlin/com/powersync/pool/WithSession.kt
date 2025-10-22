@@ -27,7 +27,7 @@ import kotlinx.cinterop.toKString
 import kotlinx.cinterop.value
 
 public data class SessionResult(
-    val powerSyncResult: PowerSyncResult,
+    val blockResult: PowerSyncResult,
     val affectedTables: Set<String>,
 )
 

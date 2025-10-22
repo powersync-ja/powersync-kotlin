@@ -1,14 +1,11 @@
 package com.powersync.pool
 
 import co.touchlab.kermit.Logger
-import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
 import com.powersync.db.driver.SQLiteConnectionLease
 import com.powersync.db.driver.SQLiteConnectionPool
 import com.powersync.db.runWrapped
 import com.powersync.db.schema.Schema
-import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -59,34 +56,36 @@ public class SwiftSQLiteConnectionPool(
         return result as T
     }
 
-    override suspend fun <T> write(callback: suspend (SQLiteConnectionLease) -> T): T {
-        var result: T? = null
-        adapter.leaseWrite { lease ->
-            runWrapped {
-                val connectionLease = RawConnectionLease(lease)
-                runBlocking {
-                    result = callback(connectionLease)
+    override suspend fun <T> write(callback: suspend (SQLiteConnectionLease) -> T): T =
+        runWrapped {
+            var result: T? = null
+            adapter.leaseWrite { lease ->
+                runWrapped {
+                    val connectionLease = RawConnectionLease(lease)
+                    runBlocking {
+                        result = callback(connectionLease)
+                    }
                 }
             }
+            @Suppress("UNCHECKED_CAST")
+            return result as T
         }
-        @Suppress("UNCHECKED_CAST")
-        return result as T
-    }
 
-    override suspend fun <R> withAllConnections(action: suspend (SQLiteConnectionLease, List<SQLiteConnectionLease>) -> R) {
-        adapter.leaseAll { writerLease, readerLeases ->
-            runWrapped {
-                runBlocking {
-                    action(
-                        RawConnectionLease(writerLease),
-                        readerLeases.map {
-                            RawConnectionLease(it)
-                        },
-                    )
+    override suspend fun <R> withAllConnections(action: suspend (SQLiteConnectionLease, List<SQLiteConnectionLease>) -> R): Unit =
+        runWrapped {
+            adapter.leaseAll { writerLease, readerLeases ->
+                runWrapped {
+                    runBlocking {
+                        action(
+                            RawConnectionLease(writerLease),
+                            readerLeases.map {
+                                RawConnectionLease(it)
+                            },
+                        )
+                    }
                 }
             }
         }
-    }
 
     override suspend fun close() {
         adapter.dispose()
