@@ -4,9 +4,9 @@
 
 - Refactor SDK: `com.powersync:powersync-core` has an identical API, but now depends on 
   `com.powersync:powersync-common` where most logic is implemented.
+  - __POTENTIALLY BREAKING CHANGE__: If you were injecting a `DatabaseDriverFactory` into Koin or Dagger, note that the
+    `PowerSyncDatabase()` factory method now takes a more generic `PersistentConnectionFactory`.
   - If you're using `PowerSyncDatabase.inMemory`, you explicitly have to import `com.powersync.inMemory` now.
-  - If you were injecting a `DatabaseDriverFactory` into Koin or Dagger, note that the `PowerSyncDatabase()`
-    factory method now takes a more generic `PersistentConnectionFactory`.
 
 ## 1.7.0
 
