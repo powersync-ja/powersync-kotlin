@@ -1,6 +1,14 @@
 # Changelog
 
-## 1.7.0 (unreleased)
+## 1.8.0 (unreleased)
+
+- Refactor SDK: `com.powersync:powersync-core` has an identical API, but now depends on 
+  `com.powersync:powersync-common` where most logic is implemented.
+  - __POTENTIALLY BREAKING CHANGE__: If you were injecting a `DatabaseDriverFactory` into Koin or Dagger, note that the
+    `PowerSyncDatabase()` factory method now takes a more generic `PersistentConnectionFactory`.
+  - If you're using `PowerSyncDatabase.inMemory`, you explicitly have to import `com.powersync.inMemory` now.
+
+## 1.7.0
 
 - Add `PowerSyncDatabase.inMemory` to create an in-memory SQLite database with PowerSync.
   This may be useful for testing.
