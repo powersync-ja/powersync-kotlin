@@ -18,15 +18,12 @@ import io.ktor.client.plugins.logging.Logger as KtorLogger
 public fun sqlite3DatabaseFactory(initialStatements: List<String>): PersistentConnectionFactory {
     @OptIn(ExperimentalPowerSyncAPI::class)
     return object : NativeConnectionFactory() {
-        override fun powersyncLoadableExtensionPath(): String? {
-            return resolvePowerSyncLoadableExtensionPath()
-        }
+        override fun resolveDefaultDatabasePath(dbFilename: String): String = appleDefaultDatabasePath(dbFilename)
 
-        override fun resolveDefaultDatabasePath(dbFilename: String): String {
-            return appleDefaultDatabasePath(dbFilename)
-        }
-
-        override fun openConnection(path: String, openFlags: Int): SQLiteConnection {
+        override fun openConnection(
+            path: String,
+            openFlags: Int,
+        ): SQLiteConnection {
             val conn = super.openConnection(path, openFlags)
             try {
                 for (statement in initialStatements) {
