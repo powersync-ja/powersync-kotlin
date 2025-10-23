@@ -24,7 +24,14 @@ and API documentation [here](https://powersync-ja.github.io/powersync-kotlin/).
 
 - [core](./core/)
 
-    - This is the Kotlin Multiplatform SDK implementation.
+    - This is the Kotlin Multiplatform SDK implementation, built by depending on `common`
+      and linking SQLite.
+
+- [common](./common/)
+
+    - This is the Kotlin Multiplatform SDK implementation without a dependency on a fixed
+      SQLite bundle. This allows the SDK to be used with custom SQLite installations (like
+      e.g. SQLCipher).
 
 - [integrations](./integrations/)
   - [room](./integrations/room/README.md): Allows using the [Room database library](https://developer.android.com/jetpack/androidx/releases/room) with PowerSync, making it easier to run typed queries on the database.
