@@ -98,7 +98,6 @@ public interface PowerSyncDatabase : Queries {
      *      params = params
      *  )
      *  ```
-     *  TODO: Internal Team - Status changes are reported on [statusStream].
      */
     @Throws(PowerSyncException::class, CancellationException::class)
     public suspend fun connect(

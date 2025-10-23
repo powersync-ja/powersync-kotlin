@@ -119,6 +119,8 @@ kotlin {
             }
 
             cinterops.create("sqlite3") {
+                // We're not linking SQLite here (to allow using this package with e.g. SQLCipher or
+                // SQLite3MultipleCiphers), :core depends on this package and is responsible for bundling SQLite.
                 packageName("com.powersync.internal.sqlite3")
                 includeDirs.allHeaders("src/nativeMain/interop/")
                 definitionFile.set(project.file("src/nativeMain/interop/sqlite3.def"))

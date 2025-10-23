@@ -18,6 +18,9 @@ structure:
 - `androidMain` - Android-specific code for loading the core extension.
 - `jvmMain` - Java-specific code for loading the core extension.
 - `nativeMain` - A SQLite driver implemented with cinterop calls to sqlite3.
+- `appleMain`: Utilities for finding a suitable database location on Apple platforms.
+- `appleNonWatchOsMain` and `watchosMain`: Loads the PowerSync core extension (which is linked statically on watchOS
+   and dynamically on other platforms).
 
 ## Attachment Helpers
 
