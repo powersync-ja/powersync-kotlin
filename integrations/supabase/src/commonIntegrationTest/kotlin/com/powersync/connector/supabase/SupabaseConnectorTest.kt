@@ -6,6 +6,7 @@ import com.powersync.db.crud.CrudTransaction
 import com.powersync.db.schema.Column
 import com.powersync.db.schema.Schema
 import com.powersync.db.schema.Table
+import com.powersync.inMemory
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.equals.shouldBeEqual
 import io.kotest.matchers.shouldBe

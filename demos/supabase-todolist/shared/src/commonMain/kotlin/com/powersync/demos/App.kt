@@ -10,7 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import com.powersync.DatabaseDriverFactory
+import com.powersync.PersistentConnectionFactory
 import com.powersync.PowerSyncDatabase
 import com.powersync.compose.composeState
 import com.powersync.connector.supabase.SupabaseConnector
@@ -52,7 +52,7 @@ val sharedAppModule = module {
 
 @Composable
 fun App(
-    factory: DatabaseDriverFactory,
+    factory: PersistentConnectionFactory,
     modifier: Modifier = Modifier,
 ) {
     fun KoinApplication.withDatabase() {
