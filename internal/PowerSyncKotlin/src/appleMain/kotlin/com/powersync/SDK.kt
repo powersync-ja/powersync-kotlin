@@ -2,6 +2,9 @@
 
 package com.powersync
 
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.execSQL
+import com.powersync.db.NativeConnectionFactory
 import com.powersync.db.crud.CrudTransaction
 import com.powersync.sync.SyncClientConfiguration
 import com.powersync.sync.SyncOptions
@@ -11,6 +14,30 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import io.ktor.client.plugins.logging.Logger as KtorLogger
+
+public fun sqlite3DatabaseFactory(initialStatements: List<String>): PersistentConnectionFactory {
+    @OptIn(ExperimentalPowerSyncAPI::class)
+    return object : NativeConnectionFactory() {
+        override fun resolveDefaultDatabasePath(dbFilename: String): String = appleDefaultDatabasePath(dbFilename)
+
+        override fun openConnection(
+            path: String,
+            openFlags: Int,
+        ): SQLiteConnection {
+            val conn = super.openConnection(path, openFlags)
+            try {
+                for (statement in initialStatements) {
+                    conn.execSQL(statement)
+                }
+            } catch (e: PowerSyncException) {
+                conn.close()
+                throw e
+            }
+
+            return super.openConnection(path, openFlags)
+        }
+    }
+}
 
 /**
  * Helper class designed to bridge SKIEE methods and allow them to throw
