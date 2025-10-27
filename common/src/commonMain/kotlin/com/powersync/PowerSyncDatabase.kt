@@ -204,14 +204,26 @@ public interface PowerSyncDatabase : Queries {
 
     /**
      *  Disconnect and clear the database.
-     *  Use this when logging out.
+     *
+     *  Clearing the database is useful when a user logs out, to ensure another user logging in later would not see
+     *  previous data.
+     *
      *  The database can still be queried after this is called, but the tables
      *  would be empty.
      *
      * To preserve data in local-only tables, set clearLocal to false.
+     *
+     * A "soft" clear deletes publicly visible tables, but keeps internal copies of data synced in the database. This
+     * usually means that if the same user logs out and back in again, the first sync is very fast because all internal
+     * data is still available. When a different user logs in, no old data would be visible at any point.
+     * Using soft deletes is recommended where it's not a security issue that old data could be reconstructible from the
+     * database.
      */
     @Throws(PowerSyncException::class, CancellationException::class)
-    public suspend fun disconnectAndClear(clearLocal: Boolean = true)
+    public suspend fun disconnectAndClear(
+        clearLocal: Boolean = true,
+        soft: Boolean = false,
+    )
 
     /**
      * Close the database, releasing resources.

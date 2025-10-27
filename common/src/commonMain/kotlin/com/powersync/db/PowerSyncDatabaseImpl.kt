@@ -461,11 +461,22 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 
-    override suspend fun disconnectAndClear(clearLocal: Boolean) {
+    override suspend fun disconnectAndClear(
+        clearLocal: Boolean,
+        soft: Boolean,
+    ) {
         disconnect()
 
+        var flags = 0
+        if (clearLocal) {
+            flags = flags or 1 // MASK_CLEAR_LOCAL
+        }
+        if (soft) {
+            flags = flags or 2 // MASK_SOFT_CLEAR
+        }
+
         internalDb.writeTransaction { tx ->
-            tx.getOptional("SELECT powersync_clear(?)", listOf(if (clearLocal) "1" else "0")) {}
+            tx.getOptional("SELECT powersync_clear(?)", listOf(flags)) {}
         }
         currentStatus.update { copy(lastSyncedAt = null, hasSynced = false) }
     }

@@ -7,7 +7,11 @@ import com.powersync.db.ActiveDatabaseGroup
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.CrudTransaction
 import com.powersync.db.getString
+import com.powersync.db.schema.PendingStatement
+import com.powersync.db.schema.PendingStatementParameter
+import com.powersync.db.schema.RawTable
 import com.powersync.db.schema.Schema
+import com.powersync.sync.LegacySyncImplementation
 import com.powersync.test.getTempDir
 import com.powersync.test.waitFor
 import com.powersync.testutils.UserRow
@@ -547,5 +551,57 @@ class DatabaseTest {
             hadOtherWrite.isCompleted shouldBe false
             job.cancelAndJoin()
             hadOtherWrite.await()
+        }
+
+    @Test
+    fun testSoftClear() =
+        databaseTest {
+            database.execute("INSERT INTO users (id, name) VALUES (uuid(), ?)", listOf("testuser"))
+            database.execute("INSERT INTO ps_buckets (name, last_applied_op) VALUES (?, ?)", listOf("bkt", 10))
+
+            // Doing a soft-clear should delete data but keep the bucket around.
+            database.disconnectAndClear(soft = true)
+            database.getAll("SELECT name FROM ps_buckets") { it.getString("name") } shouldHaveSize 1
+
+            // Doing a default clear also deletes buckets
+            database.disconnectAndClear()
+            database.getAll("SELECT name FROM ps_buckets") { it.getString("name") } shouldHaveSize 0
+        }
+
+    @Test
+    @OptIn(ExperimentalPowerSyncAPI::class)
+    fun testRawTablesClear() =
+        databaseTest(createInitialDatabase = false) {
+            val db =
+                openDatabase(
+                    Schema(
+                        listOf(
+                            RawTable(
+                                name = "lists",
+                                put =
+                                    PendingStatement(
+                                        "INSERT OR REPLACE INTO lists (id, name) VALUES (?, ?)",
+                                        listOf(
+                                            PendingStatementParameter.Id,
+                                            PendingStatementParameter.Column("name"),
+                                        ),
+                                    ),
+                                delete =
+                                    PendingStatement(
+                                        "DELETE FROM lists WHERE id = ?",
+                                        listOf(PendingStatementParameter.Id),
+                                    ),
+                                clear = "DELETE FROM lists",
+                            ),
+                        ),
+                    ),
+                )
+
+            db.execute("CREATE TABLE lists (id TEXT NOT NULL PRIMARY KEY, name TEXT)")
+            db.execute("INSERT INTO lists (id, name) VALUES (uuid(), ?)", listOf("list"))
+
+            db.getAll("SELECT * FROM lists") { } shouldHaveSize 1
+            db.disconnectAndClear()
+            db.getAll("SELECT * FROM lists") { } shouldHaveSize 0
         }
 }
