@@ -67,6 +67,7 @@ tasks.getByName<Delete>("clean") {
 
 // Merges individual module docs into a single HTML output
 dependencies {
+    dokka(project(":common:"))
     dokka(project(":core:"))
     dokka(project(":compose:"))
     dokka(project(":integrations:room"))
