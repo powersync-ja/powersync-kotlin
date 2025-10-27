@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.8.0 (unreleased)
+## 1.8.0
 
 - Refactor SDK: `com.powersync:powersync-core` has an identical API, but now depends on 
   `com.powersync:powersync-common` where most logic is implemented.
