@@ -32,6 +32,10 @@ public class RawTable(
      * The statement to run when the sync client wants to delete a row.
      */
     public val delete: PendingStatement,
+    /**
+     * An optional statement to run when [com.powersync.PowerSyncDatabase.disconnectAndClear] is called on the database.
+     */
+    public val clear: String? = null,
 ) : BaseTable {
     override fun validate() {
         // We don't currently have any validation for raw tables
@@ -42,6 +46,7 @@ public class RawTable(
             put("name", name)
             put("put", put.serialize())
             put("delete", delete.serialize())
+            clear?.let { put("clear", it) }
         }
 }
 

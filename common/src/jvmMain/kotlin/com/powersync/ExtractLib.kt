@@ -9,8 +9,8 @@ internal fun extractLib(fileName: String): String {
     val os = System.getProperty("os.name").lowercase()
     val (prefix, extension) =
         when {
-            os.contains("nux") || os.contains("nix") || os.contains("aix") -> "lib" to "so"
-            os.contains("mac") -> "lib" to "dylib"
+            os.contains("nux") || os.contains("nix") || os.contains("aix") -> "lib" to "linux.so"
+            os.contains("mac") -> "lib" to "macos.dylib"
             os.contains("win") -> "" to "dll"
             else -> error("Unsupported OS: $os")
         }
