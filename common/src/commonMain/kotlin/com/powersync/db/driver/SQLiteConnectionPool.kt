@@ -13,7 +13,6 @@ import kotlinx.coroutines.runBlocking
  * built on. The SDK provides its own pool, but can also use existing implementations (via
  * [com.powersync.PowerSyncDatabase.opened]).
  */
-@ExperimentalPowerSyncAPI()
 public interface SQLiteConnectionPool {
     /**
      * Calls the callback with a read-only connection temporarily leased from the pool.
@@ -49,7 +48,6 @@ public interface SQLiteConnectionPool {
     public suspend fun close()
 }
 
-@ExperimentalPowerSyncAPI
 public interface SQLiteConnectionLease {
     /**
      * Queries the autocommit state on the connection.

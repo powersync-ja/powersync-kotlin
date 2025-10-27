@@ -17,7 +17,6 @@ private val didLoadExtension by lazy {
     true
 }
 
-@ExperimentalPowerSyncAPI
 @Throws(PowerSyncException::class)
 public actual fun resolvePowerSyncLoadableExtensionPath(): String? {
     didLoadExtension

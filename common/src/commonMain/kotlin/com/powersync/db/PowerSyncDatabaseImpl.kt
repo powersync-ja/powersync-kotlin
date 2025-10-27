@@ -326,7 +326,6 @@ internal class PowerSyncDatabaseImpl(
         return powerSyncVersion
     }
 
-    @ExperimentalPowerSyncAPI
     override suspend fun <T> useConnection(
         readOnly: Boolean,
         block: suspend (SQLiteConnectionLease) -> T,

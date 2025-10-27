@@ -11,7 +11,6 @@ import kotlin.native.HiddenFromObjC
  * Configuration options for the [PowerSyncDatabase.connect] method, allowing customization of
  * the HTTP client used to connect to the PowerSync service.
  */
-@OptIn(ExperimentalObjCRefinement::class)
 public sealed class SyncClientConfiguration {
     /**
      * Extends the default Ktor [HttpClient] configuration with the provided block.
@@ -29,48 +28,44 @@ public sealed class SyncClientConfiguration {
      * this method when instantiating the client. The PowerSync SDK does not modify the provided client.
      */
     @HiddenFromObjC
-    @ExperimentalPowerSyncAPI
     public class ExistingClient(
         public val client: HttpClient,
     ) : SyncClientConfiguration()
 }
 
 /**
- * Experimental options that can be passed to [PowerSyncDatabase.connect] to specify an experimental
- * connection mechanism.
- *
- * The new connection implementation is more efficient and we expect it to become the default in
- * the future. At the moment, the implementation is not covered by the stability guarantees we offer
- * for the rest of the SDK though.
+ * Options for [PowerSyncDatabase.connect] to customize the connection mechanism.
  */
-public class SyncOptions
-    @ExperimentalPowerSyncAPI
-    constructor(
-        @property:ExperimentalPowerSyncAPI
-        public val newClientImplementation: Boolean = false,
+public class SyncOptions(
+    /**
+     * Whether to use a new client implementation written in Rust.
+     *
+     * The new implementation is more efficient is the default. It can be disabled if there are issues with the new
+     * implementation, but we expect to remove the old implementation in a future version of the PowerSync SDK. So if
+     * you run into issues with the new client, please share them with us!
+     */
+    public val newClientImplementation: Boolean = true,
+    /**
+     * The user agent to use for requests made to the PowerSync service.
+     */
+    public val userAgent: String = userAgent(),
+    /**
+     * Allows configuring the [HttpClient] used for connecting to the PowerSync service.
+     */
+    public val clientConfiguration: SyncClientConfiguration? = null,
+    /**
+     * Whether streams that have been defined with `auto_subscribe: true` should be synced even
+     * when they don't have an explicit subscription.
+     */
+    public val includeDefaultStreams: Boolean = true,
+) {
+    public companion object {
         /**
-         * The user agent to use for requests made to the PowerSync service.
+         * The default sync options, which are safe and stable to use.
+         *
+         * Constructing non-standard sync options requires an opt-in to experimental PowerSync
+         * APIs, and those might change in the future.
          */
-        public val userAgent: String = userAgent(),
-        @property:ExperimentalPowerSyncAPI
-        /**
-         * Allows configuring the [HttpClient] used for connecting to the PowerSync service.
-         */
-        public val clientConfiguration: SyncClientConfiguration? = null,
-        /**
-         * Whether streams that have been defined with `auto_subscribe: true` should be synced even
-         * when they don't have an explicit subscription.
-         */
-        public val includeDefaultStreams: Boolean = true,
-    ) {
-        public companion object {
-            /**
-             * The default sync options, which are safe and stable to use.
-             *
-             * Constructing non-standard sync options requires an opt-in to experimental PowerSync
-             * APIs, and those might change in the future.
-             */
-            @OptIn(ExperimentalPowerSyncAPI::class)
-            public val defaults: SyncOptions = SyncOptions()
-        }
+        public val defaults: SyncOptions = SyncOptions()
     }
+}

@@ -59,7 +59,6 @@ public open class DriverBasedInMemoryFactory<D : SQLiteDriver>(
  * configuring external database connections not managed by PowerSync to work with the PowerSync
  * SDK.
  */
-@ExperimentalPowerSyncAPI
 @Throws(PowerSyncException::class)
 public expect fun resolvePowerSyncLoadableExtensionPath(): String?
 
