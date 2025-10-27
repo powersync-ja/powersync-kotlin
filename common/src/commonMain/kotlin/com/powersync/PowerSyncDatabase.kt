@@ -246,7 +246,6 @@ public interface PowerSyncDatabase : Queries {
          * identifier, and uses internal locks to ensure these two databases are not synced at the
          * same time (which would be inefficient and can cause consistency issues).
          */
-        @ExperimentalPowerSyncAPI
         public fun opened(
             pool: SQLiteConnectionPool,
             scope: CoroutineScope,
@@ -264,7 +263,6 @@ public interface PowerSyncDatabase : Queries {
          *
          * This can be useful for writing tests relying on PowerSync databases.
          */
-        @ExperimentalPowerSyncAPI
         public fun openInMemory(
             factory: InMemoryConnectionFactory,
             schema: Schema,
@@ -285,7 +283,6 @@ public interface PowerSyncDatabase : Queries {
             )
         }
 
-        @ExperimentalPowerSyncAPI
         internal fun openedWithGroup(
             pool: SQLiteConnectionPool,
             scope: CoroutineScope,

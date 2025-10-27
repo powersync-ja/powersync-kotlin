@@ -196,8 +196,7 @@ public interface Queries {
      * connection with a `BEGIN` statement or forgetting to close it, can disrupt the rest of the
      * PowerSync SDK. For this reason, this method should only be used if absolutely necessary.
      */
-    @ExperimentalPowerSyncAPI()
-    @HiddenFromObjC()
+    @HiddenFromObjC
     public suspend fun <T> useConnection(
         readOnly: Boolean = false,
         block: suspend (SQLiteConnectionLease) -> T,
