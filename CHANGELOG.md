@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.1
+
+- Add POM name and description for `:common` project.
+
 ## 1.8.0
 
 - Refactor SDK: `com.powersync:powersync-core` has an identical API, but now depends on 
