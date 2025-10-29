@@ -4,15 +4,23 @@ package com.powersync
 
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
+import com.powersync.bucket.StreamPriority
 import com.powersync.db.NativeConnectionFactory
 import com.powersync.db.crud.CrudTransaction
 import com.powersync.sync.SyncClientConfiguration
 import com.powersync.sync.SyncOptions
+import com.powersync.sync.SyncStatusData
+import com.powersync.sync.SyncStream
+import com.powersync.sync.SyncStreamDescription
+import com.powersync.sync.SyncStreamStatus
+import com.powersync.sync.SyncStreamSubscription
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
+import kotlin.time.Duration.Companion.seconds
 import io.ktor.client.plugins.logging.Logger as KtorLogger
 
 public fun sqlite3DatabaseFactory(initialStatements: List<String>): PersistentConnectionFactory {
@@ -132,3 +140,26 @@ public fun errorHandledCrudTransactions(db: PowerSyncDatabase): Flow<PowerSyncRe
                 throw it
             }
         }
+
+/**
+ * Calls [SyncStream.subscribe] with types that are more convenient to construct in Swift:
+ *
+ * The `ttl` uses a [Double] representing seconds, `priority` is represented as the priority number
+ * instead of the [StreamPriority].
+ */
+@Throws(PowerSyncException::class, CancellationException::class)
+public suspend fun syncStreamSubscribeSwift(stream: SyncStream, ttl: Double?, priority: Int?): SyncStreamSubscription {
+    return stream.subscribe(
+        ttl = ttl?.seconds,
+        priority = priority?.let { StreamPriority(it) },
+    )
+}
+
+public fun syncStatusForStream(status: SyncStatusData, name: String, parameters: Map<String, Any?>?): SyncStreamStatus? {
+    return status.forStream(object: SyncStreamDescription {
+        override val name: String
+            get() = name
+        override val parameters: Map<String, Any?>?
+            get() = parameters
+    })
+}

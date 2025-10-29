@@ -1,6 +1,9 @@
 package com.powersync.sync
 
+import com.powersync.PowerSyncException
 import com.powersync.bucket.StreamPriority
+import kotlinx.coroutines.CancellationException
+import kotlin.native.HiddenFromObjC
 import kotlin.time.Duration
 import kotlin.time.Instant
 
@@ -73,11 +76,13 @@ public interface SyncSubscriptionDescription : SyncStreamDescription {
  * To obtain an instance of [SyncStream], call [com.powersync.PowerSyncDatabase.syncStream].
  */
 public interface SyncStream : SyncStreamDescription {
+    @HiddenFromObjC
     public suspend fun subscribe(
         ttl: Duration? = null,
         priority: StreamPriority? = null,
     ): SyncStreamSubscription
 
+    @Throws(PowerSyncException::class, CancellationException::class)
     public suspend fun unsubscribeAll()
 }
 
@@ -89,6 +94,7 @@ public interface SyncStreamSubscription : SyncStreamDescription {
      * A variant of [com.powersync.PowerSyncDatabase.waitForFirstSync] that is specific to this
      * stream subscription.
      */
+    @Throws(PowerSyncException::class, CancellationException::class)
     public suspend fun waitForFirstSync()
 
     /**
@@ -98,5 +104,6 @@ public interface SyncStreamSubscription : SyncStreamDescription {
      * that stream starts running. When it expires without subscribing again, the stream will be
      * evicted.
      */
+    @Throws(PowerSyncException::class, CancellationException::class)
     public suspend fun unsubscribe()
 }
