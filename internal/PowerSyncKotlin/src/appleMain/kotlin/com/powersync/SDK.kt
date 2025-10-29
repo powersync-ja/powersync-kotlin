@@ -148,18 +148,26 @@ public fun errorHandledCrudTransactions(db: PowerSyncDatabase): Flow<PowerSyncRe
  * instead of the [StreamPriority].
  */
 @Throws(PowerSyncException::class, CancellationException::class)
-public suspend fun syncStreamSubscribeSwift(stream: SyncStream, ttl: Double?, priority: Int?): SyncStreamSubscription {
-    return stream.subscribe(
+public suspend fun syncStreamSubscribeSwift(
+    stream: SyncStream,
+    ttl: Double?,
+    priority: Int?,
+): SyncStreamSubscription =
+    stream.subscribe(
         ttl = ttl?.seconds,
         priority = priority?.let { StreamPriority(it) },
     )
-}
 
-public fun syncStatusForStream(status: SyncStatusData, name: String, parameters: Map<String, Any?>?): SyncStreamStatus? {
-    return status.forStream(object: SyncStreamDescription {
-        override val name: String
-            get() = name
-        override val parameters: Map<String, Any?>?
-            get() = parameters
-    })
-}
+public fun syncStatusForStream(
+    status: SyncStatusData,
+    name: String,
+    parameters: Map<String, Any?>?,
+): SyncStreamStatus? =
+    status.forStream(
+        object : SyncStreamDescription {
+            override val name: String
+                get() = name
+            override val parameters: Map<String, Any?>?
+                get() = parameters
+        },
+    )
