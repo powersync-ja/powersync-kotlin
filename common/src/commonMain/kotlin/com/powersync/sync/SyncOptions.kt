@@ -38,11 +38,11 @@ public sealed class SyncClientConfiguration {
  */
 public class SyncOptions(
     /**
-     * Whether to use a new client implementation written in Rust.
+     * Enables the new client implementation written in Rust.
      *
-     * The new implementation is more efficient is the default. It can be disabled if there are issues with the new
-     * implementation, but we expect to remove the old implementation in a future version of the PowerSync SDK. So if
-     * you run into issues with the new client, please share them with us!
+     * The new implementation is more efficient and enabled by default. It can be disabled if compatibility issues occur.
+     * The old implementation will be removed in a future version of the PowerSync SDK.
+     * Please report any issues experienced with the new implementation.
      */
     public val newClientImplementation: Boolean = true,
     /**
@@ -62,10 +62,8 @@ public class SyncOptions(
     public companion object {
         /**
          * The default sync options, which are safe and stable to use.
-         *
-         * Constructing non-standard sync options requires an opt-in to experimental PowerSync
-         * APIs, and those might change in the future.
          */
+        @Deprecated("Customizing sync options is no longer necessary, use constructor instead", replaceWith = ReplaceWith("SyncOptions()"))
         public val defaults: SyncOptions = SyncOptions()
     }
 }

@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.9.0
+## 1.9.0 (unreleased)
 
 - Sync options: `newClientImplementation` is now the default.
 - Make `androidx.sqlite:sqlite-bundled` an API dependency of `:core` to avoid toolchain warnings.
