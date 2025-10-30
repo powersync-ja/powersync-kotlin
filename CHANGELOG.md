@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.2 (unreleased)
+
+- Make `androidx.sqlite:sqlite-bundled` an API dependency of `:core` to avoid toolchain warnings.
+
 ## 1.8.1
 
 - Add POM name and description for `:common` project.
