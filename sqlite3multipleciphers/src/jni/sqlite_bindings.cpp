@@ -421,17 +421,17 @@ jint JNI_OnLoad(JavaVM *vm, void * /* reserved */) {
     }
 
     const int driverMethodCount = sizeof(sDriverMethods) / sizeof(sDriverMethods[0]);
-    if (register_methods(env, "androidx/sqlite/driver/bundled/BundledSQLiteDriverKt",
+    if (register_methods(env, "com/powersync/encryption/BundledSQLiteDriverKt",
                          sDriverMethods, driverMethodCount) != JNI_OK) {
         return JNI_ERR;
     }
     const int connectionMethodCount = sizeof(sConnectionMethods) / sizeof(sConnectionMethods[0]);
-    if (register_methods(env, "androidx/sqlite/driver/bundled/BundledSQLiteConnectionKt",
+    if (register_methods(env, "com/powersync/encryption/BundledSQLiteConnectionKt",
                          sConnectionMethods, connectionMethodCount) != JNI_OK) {
         return JNI_ERR;
     }
     const int statementMethodCount = sizeof(sStatementMethods) / sizeof(sStatementMethods[0]);
-    if (register_methods(env, "androidx/sqlite/driver/bundled/BundledSQLiteStatementKt",
+    if (register_methods(env, "com/powersync/encryption/BundledSQLiteStatementKt",
                          sStatementMethods, statementMethodCount) != JNI_OK) {
         return JNI_ERR;
     }
