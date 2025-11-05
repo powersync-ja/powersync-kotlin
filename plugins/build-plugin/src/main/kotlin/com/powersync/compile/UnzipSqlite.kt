@@ -16,10 +16,10 @@ abstract class UnzipSqlite: Copy() {
     @get:OutputDirectory
     abstract val destination: DirectoryProperty
 
-    fun unzipSqlite(src: FileTree, dir: Provider<Directory>) {
+    fun unzipSqlite(src: FileTree, dir: Provider<Directory>, filter: String? = "*/sqlite3.*") {
         from(
             src.matching {
-                include("*/sqlite3.*")
+                filter?.let { include(it) }
                 exclude {
                     it.isDirectory
                 }

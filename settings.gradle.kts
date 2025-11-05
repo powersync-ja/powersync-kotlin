@@ -36,6 +36,7 @@ include(":core")
 include(":core-tests-android")
 include(":integrations:room")
 include(":static-sqlite-driver")
+include(":sqlite3multipleciphers")
 
 include(":integrations:sqldelight")
 include(":integrations:sqldelight-test-database")
