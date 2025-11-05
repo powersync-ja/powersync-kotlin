@@ -20,7 +20,7 @@ import androidx.sqlite.SQLiteConnection
 import com.powersync.PersistentConnectionFactory
 import com.powersync.resolvePowerSyncLoadableExtensionPath
 
-internal abstract class BundledSQLiteDriver(private val key: Key): PersistentConnectionFactory {
+public abstract class BundledSQLiteDriver internal constructor(private val key: Key): PersistentConnectionFactory {
     private fun open(fileName: String, flags: Int): SQLiteConnection {
         ensureJniLibraryLoaded()
 

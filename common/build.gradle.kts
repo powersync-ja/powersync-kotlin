@@ -137,6 +137,7 @@ kotlin {
                 optIn("kotlinx.cinterop.ExperimentalForeignApi")
                 optIn("kotlin.time.ExperimentalTime")
                 optIn("kotlin.experimental.ExperimentalObjCRefinement")
+                optIn("com.powersync.PowerSyncInternal")
             }
         }
 

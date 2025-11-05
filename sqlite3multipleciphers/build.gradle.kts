@@ -89,6 +89,7 @@ kotlin {
                 optIn("kotlin.experimental.ExperimentalNativeApi")
                 optIn("kotlinx.cinterop.ExperimentalForeignApi")
                 optIn("kotlinx.cinterop.BetaInteropApi")
+                optIn("com.powersync.PowerSyncInternal")
             }
         }
 
@@ -159,27 +160,34 @@ tasks.withType<ExternalNativeBuildTask> {
     dependsOn(unzipSQLiteSources)
 }
 
+tasks.named<ProcessResources>(kotlin.jvm().compilations["main"].processResourcesTaskName) {
+    from("build/jni-build/")
+}
+
 val xCodeInstallation = ClangCompile.resolveXcode(providers)
 
 // Tasks to build the JNI shared library for multiple operating systems.
 // Since the JNI sources rarely change, we don't run these tasks on every build. Instead,
 // we'll publish these sources as one-off releases when needed, and then reference that URL.
-fun registerCompileMacOsHostTask(architecture: String): TaskProvider<Exec> {
-    return tasks.register<Exec>("jniCompileMacos$architecture") {
+fun registerCompileMacOsHostTask(arm: Boolean): TaskProvider<Exec> {
+    val architectureName = if (arm) { "aarch64" } else { "x64" }
+
+    return tasks.register<Exec>("jniCompileMacos$architectureName") {
         val xcode = Path(xCodeInstallation.get())
         val toolchain =
             xcode.resolve("Toolchains/XcodeDefault.xctoolchain/usr/bin").absolutePathString()
 
-        val outputDirectory = layout.buildDirectory.dir("jni-build/macos")
-        val outputFile = outputDirectory.map { it.file("libsqlite3mc_jni.$architecture.dylib") }
+        val outputDirectory = layout.buildDirectory.dir("jni-build")
+        val outputFile = outputDirectory.map {
+            it.file("libsqlite3mc_jni_$architectureName.macos.dylib")
+        }
         outputs.file(outputFile)
 
         dependsOn(unzipSQLiteSources)
         val sqlite3McSources = unzipSQLiteSources.map { it.destinationDir }
         inputs.dir(sqlite3McSources)
 
-        val headers = layout.projectDirectory.dir("src/jni/headers/inc_mac")
-        inputs.dir(headers)
+        inputs.dir(layout.projectDirectory.dir("src/jni/"))
 
         doFirst {
             outputDirectory.get().asFile.mkdirs()
@@ -190,7 +198,7 @@ fun registerCompileMacOsHostTask(architecture: String): TaskProvider<Exec> {
             "-B$toolchain",
             "-dynamiclib",
             "-fPIC",
-            "--target=${architecture}-apple-macos",
+            if (arm) "--target=aarch64-apple-macos" else "--target=x86_64-apple-macos",
             "-o",
             outputFile.get().asFile.path,
             "src/jni/sqlite_bindings.cpp",
@@ -198,15 +206,15 @@ fun registerCompileMacOsHostTask(architecture: String): TaskProvider<Exec> {
             "-I",
             sqlite3McSources.get().path,
             "-I",
-            headers.asFile.path,
+            "src/jni/headers/inc_mac",
             "-O3",
             *ClangCompile.sqlite3ClangOptions,
         )
     }
 }
 
-val macosArm64 = registerCompileMacOsHostTask("aarch64")
-val macosX64 = registerCompileMacOsHostTask("x86_64")
+val macosArm64 = registerCompileMacOsHostTask(true)
+val macosX64 = registerCompileMacOsHostTask(false)
 
 tasks.register("jniCompile") {
     dependsOn(macosArm64)
