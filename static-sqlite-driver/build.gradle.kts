@@ -37,7 +37,7 @@ fun linkSqliteCInterop(target: KotlinNativeTarget): TaskProvider<CreateSqliteCIn
 val hostManager = HostManager()
 
 kotlin {
-    // We use sqlite3-jdbc on JVM platforms instead
+    // We use sqlite3-bundled on JVM platforms instead
     powersyncTargets(jvm=false)
 
     applyDefaultHierarchyTemplate()
