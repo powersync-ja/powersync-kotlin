@@ -74,7 +74,7 @@ fun compileSqlite(target: KotlinNativeTarget): TaskProvider<CreateSqliteCInterop
 }
 
 kotlin {
-    // We use sqlite3-jdbc on JVM platforms instead
+    // We use sqlite3-bundled on JVM platforms instead
     powersyncTargets(jvm=false)
 
     applyDefaultHierarchyTemplate()
