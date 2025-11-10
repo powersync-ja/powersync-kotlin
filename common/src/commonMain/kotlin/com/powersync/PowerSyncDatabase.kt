@@ -252,9 +252,10 @@ public interface PowerSyncDatabase : Queries {
             schema: Schema,
             identifier: String,
             logger: Logger,
+            dispatchStrategy: DispatchStrategy = DispatchStrategy.Default,
         ): PowerSyncDatabase {
             val group = ActiveDatabaseGroup.referenceDatabase(logger, identifier)
-            return openedWithGroup(pool, scope, schema, logger, group)
+            return openedWithGroup(pool, scope, schema, logger, group, dispatchStrategy)
         }
 
         /**
@@ -268,11 +269,13 @@ public interface PowerSyncDatabase : Queries {
             schema: Schema,
             scope: CoroutineScope,
             logger: Logger? = null,
+            dispatchStrategy: DispatchStrategy = DispatchStrategy.Default,
         ): PowerSyncDatabase {
             val logger = generateLogger(logger)
             // Since this returns a fresh in-memory database every time, use a fresh group to avoid warnings about the
             // same database being opened multiple times.
-            val collection = ActiveDatabaseGroup.GroupsCollection().referenceDatabase(logger, "test")
+            val collection =
+                ActiveDatabaseGroup.GroupsCollection().referenceDatabase(logger, "test")
 
             return openedWithGroup(
                 SingleConnectionPool(factory.openInMemoryConnection()),
@@ -280,6 +283,7 @@ public interface PowerSyncDatabase : Queries {
                 schema,
                 logger,
                 collection,
+                dispatchStrategy,
             )
         }
 
@@ -289,6 +293,7 @@ public interface PowerSyncDatabase : Queries {
             schema: Schema,
             logger: Logger,
             group: Pair<ActiveDatabaseResource, Any>,
+            dispatchStrategy: DispatchStrategy = DispatchStrategy.Default,
         ): PowerSyncDatabase =
             PowerSyncDatabaseImpl(
                 schema,
@@ -296,6 +301,7 @@ public interface PowerSyncDatabase : Queries {
                 pool,
                 logger,
                 group,
+                dispatchStrategy,
             )
     }
 }

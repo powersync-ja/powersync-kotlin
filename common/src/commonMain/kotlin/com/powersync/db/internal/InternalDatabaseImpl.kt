@@ -1,6 +1,8 @@
 package com.powersync.db.internal
 
 import co.touchlab.kermit.Logger
+import com.powersync.DispatchFunction
+import com.powersync.DispatchStrategy
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.db.SqlCursor
 import com.powersync.db.ThrowableLockCallback
@@ -11,8 +13,6 @@ import com.powersync.db.runWrapped
 import com.powersync.utils.AtomicMutableSet
 import com.powersync.utils.JsonUtil
 import com.powersync.utils.throttle
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.emitAll
@@ -20,17 +20,14 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.flow.transform
-import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalPowerSyncAPI::class)
 internal class InternalDatabaseImpl(
     private val pool: SQLiteConnectionPool,
     private val logger: Logger,
+    dispatchStrategy: DispatchStrategy,
 ) : InternalDatabase {
-    // Could be scope.coroutineContext, but the default is GlobalScope, which seems like a bad idea. To discuss.
-    private val dbContext = Dispatchers.IO
-
     override suspend fun execute(
         sql: String,
         parameters: List<Any?>?,
@@ -39,8 +36,10 @@ internal class InternalDatabaseImpl(
             context.execute(sql, parameters)
         }
 
+    private val dispatch: DispatchFunction = dispatchStrategy.dispatchFunction
+
     override suspend fun updateSchema(schemaJson: String) {
-        withContext(dbContext) {
+        dispatch {
             runWrapped {
                 pool.withAllConnections { writer, readers ->
                     writer.runTransaction { tx ->
@@ -167,7 +166,7 @@ internal class InternalDatabaseImpl(
      */
     @OptIn(ExperimentalPowerSyncAPI::class)
     private suspend fun <R> internalReadLock(callback: suspend (SQLiteConnectionLease) -> R): R =
-        withContext(dbContext) {
+        dispatch {
             runWrapped {
                 useConnection(true) { connection ->
                     callback(connection)
@@ -189,7 +188,7 @@ internal class InternalDatabaseImpl(
 
     @OptIn(ExperimentalPowerSyncAPI::class)
     private suspend fun <R> internalWriteLock(callback: suspend (SQLiteConnectionLease) -> R): R =
-        withContext(dbContext) {
+        dispatch {
             pool.write { writer ->
                 runWrapped {
                     callback(writer)

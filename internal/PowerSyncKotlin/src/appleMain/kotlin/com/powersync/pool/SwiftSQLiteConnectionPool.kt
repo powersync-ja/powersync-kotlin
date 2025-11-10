@@ -1,6 +1,8 @@
 package com.powersync.pool
 
 import co.touchlab.kermit.Logger
+import com.powersync.DispatchFunction
+import com.powersync.DispatchStrategy
 import com.powersync.PowerSyncDatabase
 import com.powersync.db.driver.SQLiteConnectionLease
 import com.powersync.db.driver.SQLiteConnectionPool
@@ -104,4 +106,12 @@ public fun openPowerSyncWithPool(
         schema = schema,
         identifier = identifier,
         logger = logger,
+        dispatchStrategy = DispatchStrategy.Custom(
+            object : DispatchFunction {
+                override suspend fun <R> invoke(block: suspend () -> R): R {
+                    // We leave the dispatching up to the pool
+                    return block()
+                }
+            },
+        ),
     )
