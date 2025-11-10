@@ -106,12 +106,13 @@ public fun openPowerSyncWithPool(
         schema = schema,
         identifier = identifier,
         logger = logger,
-        dispatchStrategy = DispatchStrategy.Custom(
-            object : DispatchFunction {
-                override suspend fun <R> invoke(block: suspend () -> R): R {
-                    // We leave the dispatching up to the pool
-                    return block()
-                }
-            },
-        ),
+        dispatchStrategy =
+            DispatchStrategy.Custom(
+                object : DispatchFunction {
+                    override suspend fun <R> invoke(block: suspend () -> R): R {
+                        // We leave the dispatching up to the pool
+                        return block()
+                    }
+                },
+            ),
     )
