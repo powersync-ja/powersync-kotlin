@@ -265,9 +265,14 @@ fun registerCompileMacOsHostTask(arm: Boolean): TaskProvider<Exec> {
 
 fun registerCompileWindowsOnMacOsTask(arm: Boolean): TaskProvider<Exec> {
     val architecture = if (arm) JniTarget.WINDOWS_ARM else JniTarget.WINDOWS_X64
+    val path = providers.gradleProperty("llvmMingw")
 
     return tasks.register<Exec>("jniCompile${architecture.name}") {
-        registerCompileOnHostTask(architecture, clang = "/Users/simon/Downloads/llvm-mingw-20251104-ucrt-macos-universal/bin/clang")
+        val clang = path.orNull?.let {
+            Path(path.get()).resolve("bin/clang").toString()
+        } ?: "clang"
+
+        registerCompileOnHostTask(architecture, clang = clang)
     }
 }
 
