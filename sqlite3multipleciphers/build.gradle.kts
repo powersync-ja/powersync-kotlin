@@ -169,54 +169,127 @@ val xCodeInstallation = ClangCompile.resolveXcode(providers)
 // Tasks to build the JNI shared library for multiple operating systems.
 // Since the JNI sources rarely change, we don't run these tasks on every build. Instead,
 // we'll publish these sources as one-off releases when needed, and then reference that URL.
-fun registerCompileMacOsHostTask(arm: Boolean): TaskProvider<Exec> {
-    val architectureName = if (arm) { "aarch64" } else { "x64" }
+enum class JniTarget {
+    LINUX_ARM,
+    LINUX_X64,
+    MACOS_ARM,
+    MACOS_X64,
+    WINDOWS_ARM,
+    WINDOWS_X64,
+}
 
-    return tasks.register<Exec>("jniCompileMacos$architectureName") {
+fun Exec.registerCompileOnHostTask(target: JniTarget, clang: String = "clang", toolchain: String? = null) {
+    val outputDirectory = layout.buildDirectory.dir("jni-build")
+    val outputFile = outputDirectory.map {
+        it.file(when (target) {
+            JniTarget.LINUX_ARM -> "libsqlite3mc_jni_aarch64.linux.so"
+            JniTarget.LINUX_X64 -> "libsqlite3mc_jni_x64.linux.so"
+            JniTarget.MACOS_ARM -> "libsqlite3mc_jni_aarch64.macos.dylib"
+            JniTarget.MACOS_X64 -> "libsqlite3mc_jni_x64.macos.dylib"
+            JniTarget.WINDOWS_ARM -> "sqlite3mc_jni_aarch64.dll"
+            JniTarget.WINDOWS_X64 -> "sqlite3mc_jni_x64.dll"
+        })
+    }
+    outputs.file(outputFile)
+
+    dependsOn(unzipSQLiteSources)
+    val sqlite3McSources = unzipSQLiteSources.map { it.destinationDir }
+    inputs.dir(sqlite3McSources)
+
+    inputs.dir(layout.projectDirectory.dir("src/jni/"))
+
+    doFirst {
+        outputDirectory.get().asFile.mkdirs()
+    }
+
+    if (target == JniTarget.LINUX_X64 || target == JniTarget.LINUX_ARM) {
+        executable = "/opt/homebrew/bin/docker"
+        args(
+            "run",
+            "-v", "./src:/src",
+            "-v", "./build:/build",
+            "powersync_kotlin_sqlite3mc_build_helper",
+            "clang",
+            "-fuse-ld=lld"
+        )
+    } else {
+        executable = clang
+    }
+
+    val outputFilePath = outputFile.get().asFile.toRelativeString(project.projectDir)
+    val sourceRoot = sqlite3McSources.get().toRelativeString(project.projectDir)
+    val amalgamation = File(sourceRoot, "sqlite3mc_amalgamation.c").path
+
+    args(
+        "-shared",
+        "-fPIC",
+        when (target) {
+            JniTarget.LINUX_ARM -> "--target=aarch64-pc-linux"
+            JniTarget.LINUX_X64 -> "--target=x86_64-pc-linux"
+            JniTarget.MACOS_ARM -> "--target=aarch64-apple-macos"
+            JniTarget.MACOS_X64 -> "--target=x86_64-apple-macos"
+            JniTarget.WINDOWS_ARM -> "--target=aarch64-w64-mingw32uwp"
+            JniTarget.WINDOWS_X64 -> "--target=x86_64-w64-mingw32uwp"
+        },
+        "-o",
+        outputFilePath,
+        "src/jni/sqlite_bindings.cpp",
+        amalgamation,
+        "-I",
+        sourceRoot,
+        "-I",
+        "src/jni/headers/common",
+        "-I",
+        when (target) {
+            JniTarget.LINUX_X64, JniTarget.LINUX_ARM -> "src/jni/headers/inc_linux"
+            JniTarget.MACOS_X64, JniTarget.MACOS_ARM -> "src/jni/headers/inc_mac"
+            JniTarget.WINDOWS_X64, JniTarget.WINDOWS_ARM -> "src/jni/headers/inc_win"
+        },
+        "-O3",
+        *ClangCompile.sqlite3ClangOptions,
+    )
+
+    toolchain?.let { args.add(it) }
+}
+
+fun registerCompileMacOsHostTask(arm: Boolean): TaskProvider<Exec> {
+    val architecture = if (arm) JniTarget.MACOS_ARM else JniTarget.MACOS_X64
+
+    return tasks.register<Exec>("jniCompile${architecture.name}") {
         val xcode = Path(xCodeInstallation.get())
         val toolchain =
             xcode.resolve("Toolchains/XcodeDefault.xctoolchain/usr/bin").absolutePathString()
-
-        val outputDirectory = layout.buildDirectory.dir("jni-build")
-        val outputFile = outputDirectory.map {
-            it.file("libsqlite3mc_jni_$architectureName.macos.dylib")
-        }
-        outputs.file(outputFile)
-
-        dependsOn(unzipSQLiteSources)
-        val sqlite3McSources = unzipSQLiteSources.map { it.destinationDir }
-        inputs.dir(sqlite3McSources)
-
-        inputs.dir(layout.projectDirectory.dir("src/jni/"))
-
-        doFirst {
-            outputDirectory.get().asFile.mkdirs()
-        }
-
-        executable = "clang"
-        args(
-            "-B$toolchain",
-            "-dynamiclib",
-            "-fPIC",
-            if (arm) "--target=aarch64-apple-macos" else "--target=x86_64-apple-macos",
-            "-o",
-            outputFile.get().asFile.path,
-            "src/jni/sqlite_bindings.cpp",
-            File(sqlite3McSources.get(), "sqlite3mc_amalgamation.c").path,
-            "-I",
-            sqlite3McSources.get().path,
-            "-I",
-            "src/jni/headers/inc_mac",
-            "-O3",
-            *ClangCompile.sqlite3ClangOptions,
-        )
+        registerCompileOnHostTask(architecture, toolchain = toolchain)
     }
 }
+
+fun registerCompileWindowsOnMacOsTask(arm: Boolean): TaskProvider<Exec> {
+    val architecture = if (arm) JniTarget.WINDOWS_ARM else JniTarget.WINDOWS_X64
+
+    return tasks.register<Exec>("jniCompile${architecture.name}") {
+        registerCompileOnHostTask(architecture, clang = "/Users/simon/Downloads/llvm-mingw-20251104-ucrt-macos-universal/bin/clang")
+    }
+}
+
+fun registerCompileLinuxOnMacOsTask(arm: Boolean): TaskProvider<Exec> {
+    val architecture = if (arm) JniTarget.LINUX_ARM else JniTarget.LINUX_X64
+
+    return tasks.register<Exec>("jniCompile${architecture.name}") {
+        registerCompileOnHostTask(architecture)
+    }
+}
+
+val linuxArm64 = registerCompileLinuxOnMacOsTask(true)
+val linuxX64 = registerCompileLinuxOnMacOsTask(false)
 
 val macosArm64 = registerCompileMacOsHostTask(true)
 val macosX64 = registerCompileMacOsHostTask(false)
 
+val windowsArm64 = registerCompileWindowsOnMacOsTask(true)
+val windowsX64 = registerCompileWindowsOnMacOsTask(false)
+
 tasks.register("jniCompile") {
-    dependsOn(macosArm64)
-    dependsOn(macosX64)
+    dependsOn(linuxX64, linuxArm64)
+    dependsOn(macosX64, macosArm64)
+    dependsOn(windowsX64, macosArm64)
 }
