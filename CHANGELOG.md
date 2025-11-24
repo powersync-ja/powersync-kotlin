@@ -4,6 +4,7 @@
 
 - Sync options: `newClientImplementation` is now the default.
 - Make `androidx.sqlite:sqlite-bundled` an API dependency of `:core` to avoid toolchain warnings.
+- Windows: Support ARM.
 
 ## 1.8.1
 

@@ -18,7 +18,7 @@ serialization = "1.9.0"
 kotlinx-io = "0.8.0"
 ktor = "3.2.3"
 uuid = "0.8.4"
-powersync-core = "0.4.8"
+powersync-core = "0.4.9"
 turbine = "1.2.1"
 kotest = "5.9.1" # we can't upgrade to 6.x because that requires Java 11 or above (we need Java 8 support)
 

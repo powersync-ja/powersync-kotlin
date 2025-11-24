@@ -41,6 +41,8 @@ val downloadPowersyncDesktopBinaries by tasks.registering(Download::class) {
         "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_x64.macos.dylib"
     val windows_x64 =
         "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/powersync_x64.dll"
+    val windows_aarch64 =
+        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/powersync_aarch64.dll"
 
     val includeAllPlatformsForJvmBuild =
         project.findProperty("powersync.binaries.allPlatforms") == "true"
@@ -57,7 +59,7 @@ val downloadPowersyncDesktopBinaries by tasks.registering(Download::class) {
             when {
                 os.isLinux -> linux_aarch64 to linux_x64
                 os.isMacOsX -> macos_aarch64 to macos_x64
-                os.isWindows -> null to windows_x64
+                os.isWindows -> windows_aarch64 to windows_x64
                 else -> error("Unknown operating system: $os")
             }
         val arch = System.getProperty("os.arch")

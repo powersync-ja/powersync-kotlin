@@ -30,6 +30,9 @@ jobs:
           - os: windows-latest
             name: windows
             targets: jvmTest
+          - os: windows-11-arm
+            name: windows-arm
+            targets: jvmTest
     runs-on: ${{ matrix.os }}
     name: Test ${{ matrix.name }}
     timeout-minutes: 20
