@@ -69,9 +69,6 @@ android {
                 .get()
                 .toInt()
     }
-    kotlin {
-        jvmToolchain(17)
-    }
 }
 
 dokka {
