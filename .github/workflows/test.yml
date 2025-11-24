@@ -2,7 +2,6 @@ name: Gradle build & test
 
 on:
   push:
-    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
   workflow_call:
@@ -12,6 +11,7 @@ permissions:
 
 jobs:
   build:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
     strategy:
       matrix:
         include:
@@ -79,6 +79,7 @@ jobs:
           **/build/test-results/
 
   android_emulator:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
