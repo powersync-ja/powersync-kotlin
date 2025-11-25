@@ -4,6 +4,17 @@
 
 - Sync options: `newClientImplementation` is now the default.
 - Make `androidx.sqlite:sqlite-bundled` an API dependency of `:core` to avoid toolchain warnings.
+- Add `appMetadata` parameter to `PowerSyncDatabase.connect()` to include application metadata in sync requests. This metadata is merged into sync requests and displayed in PowerSync service logs.
+
+```kotlin
+database.connect(
+    connector = connector,
+    appMetadata = mapOf(
+        "appVersion" to "1.0.0",
+        "deviceId" to "device456"
+    )
+)
+```
 
 ## 1.8.1
 

@@ -63,6 +63,7 @@ import kotlinx.io.readByteArray
 import kotlinx.io.readIntLe
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlin.experimental.ExperimentalObjCRefinement
 import kotlin.native.HiddenFromObjC
@@ -115,6 +116,7 @@ internal class StreamingSyncClient(
     private val options: SyncOptions,
     private val schema: Schema,
     private val activeSubscriptions: StateFlow<List<SubscriptionGroup>>,
+    private val appMetadata: Map<String, String>,
 ) {
     private var isUploadingCrud = AtomicReference<PendingCrudUpload?>(null)
     private var completedCrudUploads = Channel<Unit>(onBufferOverflow = BufferOverflow.DROP_OLDEST)
@@ -176,7 +178,13 @@ internal class StreamingSyncClient(
                 status.update { copy(downloadError = e) }
             } finally {
                 if (!result.hideDisconnectStateAndReconnectImmediately) {
-                    status.update { copy(connected = false, connecting = true, downloading = false) }
+                    status.update {
+                        copy(
+                            connected = false,
+                            connecting = true,
+                            downloading = false,
+                        )
+                    }
                     delay(retryDelayMs)
                 }
             }
@@ -397,6 +405,7 @@ internal class StreamingSyncClient(
                     schema = schema.toSerializable(),
                     includeDefaults = options.includeDefaultStreams,
                     activeStreams = subscriptions.map { it.key },
+                    appMetadata = appMetadata,
                 ),
             )
 
@@ -405,7 +414,9 @@ internal class StreamingSyncClient(
                     activeSubscriptions.collect {
                         if (subscriptions !== it) {
                             subscriptions = it
-                            controlInvocations.send(PowerSyncControlArguments.UpdateSubscriptions(activeSubscriptions.value.map { it.key }))
+                            controlInvocations.send(
+                                PowerSyncControlArguments.UpdateSubscriptions(activeSubscriptions.value.map { it.key }),
+                            )
                         }
                     }
                 }
@@ -525,9 +536,51 @@ internal class StreamingSyncClient(
         }
 
         private suspend fun connect(start: Instruction.EstablishSyncStream) {
-            receiveTextOrBinaryLines(start.request).collect {
+            // Merge local appMetadata from StreamingSyncClient into the request before sending
+            val mergedRequest = mergeAppMetadata(start.request)
+            receiveTextOrBinaryLines(mergedRequest).collect {
                 controlInvocations.send(it)
             }
+        }
+
+        /**
+         * FIXME, the Rust implementation does not yet pass app_metadata to the sync instruction
+         *
+         * Merges local appMetadata into the request JsonObject.
+         * If the request already has app_metadata, the local appMetadata will be merged into it
+         * (with local values taking precedence for duplicate keys).
+         */
+        private fun mergeAppMetadata(request: JsonObject): JsonObject {
+            if (appMetadata.isEmpty()) {
+                return request
+            }
+
+            // Convert local appMetadata to JsonObject
+            val localAppMetadataJson =
+                JsonObject(
+                    appMetadata.mapValues { (_, value) -> JsonPrimitive(value) },
+                )
+
+            // Get existing app_metadata from request, if any
+            val existingAppMetadata =
+                request["app_metadata"] as? JsonObject ?: JsonObject(emptyMap())
+
+            // Merge: existing first, then local (local takes precedence)
+            val mergedAppMetadata =
+                JsonObject(
+                    buildMap {
+                        putAll(existingAppMetadata)
+                        putAll(localAppMetadataJson)
+                    },
+                )
+
+            // Create new request with merged app_metadata
+            return JsonObject(
+                buildMap {
+                    putAll(request)
+                    put("app_metadata", mergedAppMetadata)
+                },
+            )
         }
     }
 
@@ -566,6 +619,7 @@ internal class StreamingSyncClient(
                         },
                     clientId = clientId!!,
                     parameters = params,
+                    appMetadata = appMetadata,
                 )
 
             lateinit var receiveLines: Job

@@ -142,6 +142,7 @@ internal class PowerSyncDatabaseImpl(
         retryDelayMs: Long,
         params: Map<String, JsonParam?>,
         options: SyncOptions,
+        appMetadata: Map<String, String>,
     ) {
         waitReady()
         mutex.withLock {
