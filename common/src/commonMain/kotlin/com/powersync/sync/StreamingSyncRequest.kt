@@ -12,7 +12,7 @@ internal data class StreamingSyncRequest(
     @SerialName("include_checksum") val includeChecksum: Boolean = true,
     @SerialName("client_id") val clientId: String,
     val parameters: JsonObject = JsonObject(mapOf()),
-    @SerialName("app_metadata") val appMetadata: Map<String, String>,
+    @SerialName("app_metadata") val appMetadata: Map<String, String> = emptyMap(),
 ) {
     @SerialName("raw_data")
     private val rawData: Boolean = true

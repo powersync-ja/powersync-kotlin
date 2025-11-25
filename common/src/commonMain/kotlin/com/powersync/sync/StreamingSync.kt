@@ -116,7 +116,7 @@ internal class StreamingSyncClient(
     private val options: SyncOptions,
     private val schema: Schema,
     private val activeSubscriptions: StateFlow<List<SubscriptionGroup>>,
-    private val appMetadata: Map<String, String>,
+    private val appMetadata: Map<String, String> = emptyMap(),
 ) {
     private var isUploadingCrud = AtomicReference<PendingCrudUpload?>(null)
     private var completedCrudUploads = Channel<Unit>(onBufferOverflow = BufferOverflow.DROP_OLDEST)
