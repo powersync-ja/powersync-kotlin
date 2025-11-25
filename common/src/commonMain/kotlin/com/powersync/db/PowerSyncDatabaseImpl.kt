@@ -160,6 +160,7 @@ internal class PowerSyncDatabaseImpl(
                     options = options,
                     schema = schema,
                     activeSubscriptions = streams.currentlyReferencedStreams,
+                    appMetadata = appMetadata,
                 )
             }
         }
