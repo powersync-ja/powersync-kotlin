@@ -16,14 +16,17 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            name: macos-watchos-tvos
+            name: watchos
             targets: watchosSimulatorArm64Test tvosSimulatorArm64Test
           - os: macos-latest
-            name: mac-ios-macos
-            targets: iosSimulatorArm64Test macosArm64Test
+            name: tvos
+            targets: tvosSimulatorArm64Test
           - os: macos-latest
-            name: mac-jvm
-            targets: jvmTest
+            name: ios
+            targets: iosSimulatorArm64Test
+          - os: macos-latest
+            name: macos
+            targets: jvmTest macosArm64Test
           - os: ubuntu-latest
             name: ubuntu
             targets: testDebugUnitTest testReleaseUnitTest jvmTest lintKotlin
