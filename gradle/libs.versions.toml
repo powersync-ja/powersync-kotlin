@@ -4,7 +4,7 @@ android-minSdk = "24"
 android-targetSdk = "36"
 android-compileSdk = "36"
 configurationAnnotations = "0.10.6"
-dokkaBase = "2.0.0"
+dokkaBase = "2.1.0"
 gradleDownloadTask = "5.6.0"
 java = "17"
 
