@@ -70,7 +70,7 @@ kotlin {
 }
 
 android {
-    namespace = "com.powersync.demos"
+    namespace = "com.powersync.demos.shared"
     compileSdk =
         libs.versions.android.compileSdk
             .get()
