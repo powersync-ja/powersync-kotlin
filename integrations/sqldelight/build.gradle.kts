@@ -49,7 +49,7 @@ kotlin {
 }
 
 android {
-    namespace = "com.powersync.drivers.common"
+    namespace = "com.powersync.integrations.sqldelight"
     compileSdk =
         libs.versions.android.compileSdk
             .get()

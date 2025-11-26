@@ -225,7 +225,7 @@ android {
         }
     }
 
-    namespace = "com.powersync"
+    namespace = "com.powersync.common"
     compileSdk =
         libs.versions.android.compileSdk
             .get()

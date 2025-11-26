@@ -94,7 +94,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    namespace = "com.powersync"
+    namespace = "com.powersync.core"
     compileSdk =
         libs.versions.android.compileSdk
             .get()

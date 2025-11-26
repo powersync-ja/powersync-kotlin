@@ -52,7 +52,7 @@ android {
         }
     }
 
-    namespace = "com.powersync"
+    namespace = "com.powersync.internal.testutils"
     compileSdk =
         libs.versions.android.compileSdk
             .get()

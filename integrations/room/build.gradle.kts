@@ -79,7 +79,7 @@ dependencies {
 }
 
 android {
-    namespace = "com.powersync.compose"
+    namespace = "com.powersync.integrations.room"
     compileSdk =
         libs.versions.android.compileSdk
             .get()
