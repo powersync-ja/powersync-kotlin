@@ -10,8 +10,8 @@ java = "17"
 
 # Dependencies
 kermit = "2.0.8"
-kotlin = "2.2.10" # Note: When updating, always update the first part of the ksp version too
-ksp = "2.2.10-2.0.2"
+kotlin = "2.2.21"
+ksp = "2.3.3"
 coroutines = "1.10.2"
 kotlinx-datetime = "0.7.1"
 serialization = "1.9.0"
@@ -37,7 +37,7 @@ sqldelight = "2.1.0"
 
 # plugins
 android-gradle-plugin = "8.12.1"
-skie = "0.10.6"
+skie = "0.10.8"
 maven-publish = "0.34.0"
 download-plugin = "5.6.0"
 mokkery = "2.9.0"
