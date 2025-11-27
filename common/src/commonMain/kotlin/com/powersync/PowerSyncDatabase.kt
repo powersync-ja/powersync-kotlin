@@ -80,6 +80,7 @@ public interface PowerSyncDatabase : Queries {
      *  Use @param [crudThrottleMs] to specify the time between CRUD operations. Defaults to 1000ms.
      *  Use @param [retryDelayMs] to specify the delay between retries after failure. Defaults to 5000ms.
      *  Use @param [params] to specify sync parameters from the client.
+     *  Use @param [appMetadata] to specify application metadata that will be displayed in PowerSync service logs.
      *
      *  Example usage:
      *  ```
@@ -91,11 +92,17 @@ public interface PowerSyncDatabase : Queries {
      *      )
      *   )
      *
+     *  val appMetadata = mapOf(
+     *      "appVersion" to "1.0.0",
+     *      "deviceId" to "device456"
+     *  )
+     *
      *  connect(
      *      connector = connector,
      *      crudThrottleMs = 2000L,
      *      retryDelayMs = 10000L,
-     *      params = params
+     *      params = params,
+     *      appMetadata = appMetadata
      *  )
      *  ```
      */
@@ -106,6 +113,7 @@ public interface PowerSyncDatabase : Queries {
         retryDelayMs: Long = 5000L,
         params: Map<String, JsonParam?> = emptyMap(),
         options: SyncOptions = SyncOptions(),
+        appMetadata: Map<String, String> = emptyMap(),
     )
 
     /**
@@ -272,7 +280,8 @@ public interface PowerSyncDatabase : Queries {
             val logger = generateLogger(logger)
             // Since this returns a fresh in-memory database every time, use a fresh group to avoid warnings about the
             // same database being opened multiple times.
-            val collection = ActiveDatabaseGroup.GroupsCollection().referenceDatabase(logger, "test")
+            val collection =
+                ActiveDatabaseGroup.GroupsCollection().referenceDatabase(logger, "test")
 
             return openedWithGroup(
                 SingleConnectionPool(factory.openInMemoryConnection()),

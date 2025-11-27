@@ -71,6 +71,8 @@ internal sealed interface PowerSyncControlArguments {
         val includeDefaults: Boolean,
         @SerialName("active_streams")
         val activeStreams: List<StreamKey>,
+        @SerialName("app_metadata")
+        val appMetadata: Map<String, String>,
     ) : PowerSyncControlArguments {
         override val sqlArguments: Pair<String, Any?>
             get() = "start" to JsonUtil.json.encodeToString(this)
@@ -109,7 +111,8 @@ internal sealed interface PowerSyncControlArguments {
     class UpdateSubscriptions(
         activeStreams: List<StreamKey>,
     ) : PowerSyncControlArguments {
-        override val sqlArguments: Pair<String, Any?> = "update_subscriptions" to JsonUtil.json.encodeToString(activeStreams)
+        override val sqlArguments: Pair<String, Any?> =
+            "update_subscriptions" to JsonUtil.json.encodeToString(activeStreams)
     }
 }
 
