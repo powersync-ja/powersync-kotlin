@@ -25,6 +25,7 @@ public fun PowerSyncDatabase(
     dbFilename: String = DEFAULT_DB_FILENAME,
     scope: CoroutineScope = GlobalScope,
     logger: Logger? = null,
+    dispatchStrategy: DispatchStrategy = DispatchStrategy.Default,
     /**
      * Optional database file directory path.
      * This parameter is ignored for iOS.
@@ -40,10 +41,10 @@ public fun PowerSyncDatabase(
         scope = scope,
         logger = generatedLogger,
         dbDirectory = dbDirectory,
+        dispatchStrategy = dispatchStrategy,
     )
 }
 
-@OptIn(ExperimentalPowerSyncAPI::class)
 internal fun createPowerSyncDatabaseImpl(
     factory: PersistentConnectionFactory,
     schema: Schema,
@@ -51,6 +52,7 @@ internal fun createPowerSyncDatabaseImpl(
     scope: CoroutineScope,
     logger: Logger,
     dbDirectory: String?,
+    dispatchStrategy: DispatchStrategy = DispatchStrategy.Default,
 ): PowerSyncDatabaseImpl {
     val identifier = dbDirectory + dbFilename
     val activeDatabaseGroup = ActiveDatabaseGroup.referenceDatabase(logger, identifier)
@@ -72,5 +74,6 @@ internal fun createPowerSyncDatabaseImpl(
         schema,
         logger,
         activeDatabaseGroup,
+        dispatchStrategy,
     ) as PowerSyncDatabaseImpl
 }

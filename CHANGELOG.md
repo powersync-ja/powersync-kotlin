@@ -4,6 +4,20 @@
 
 - Sync options: `newClientImplementation` is now the default.
 - Make `androidx.sqlite:sqlite-bundled` an API dependency of `:core` to avoid toolchain warnings.
+- Add `DispatchStrategy` API for customizing how database operations are dispatched to coroutine contexts.
+  By default, operations use `Dispatchers.IO`, but you can now provide a custom `CoroutineDispatcher` or
+  a fully custom `DispatchFunction` for complete control over the execution context.
+
+  ```kotlin
+  // Use default (Dispatchers.IO)
+  PowerSyncDatabase(factory, schema)
+
+  // Use a specific dispatcher
+  PowerSyncDatabase(factory, schema, dispatchStrategy = DispatchStrategy.Dispatcher(Dispatchers.Default))
+
+  // Use a custom function
+  PowerSyncDatabase(factory, schema, dispatchStrategy = DispatchStrategy.Custom(myCustomFunction))
+  ```
 
 ## 1.8.1
 
