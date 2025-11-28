@@ -65,7 +65,7 @@ kotlin {
         }
 
         appleMain.dependencies {
-            implementation(libs.ktor.client.darwin)
+//            implementation(libs.ktor.client.darwin)
 
             // We're not using the bundled SQLite library for Apple platforms. Instead, we depend on
             // static-sqlite-driver to link SQLite and have our own bindings implementing the

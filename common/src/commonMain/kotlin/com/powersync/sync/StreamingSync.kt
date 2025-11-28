@@ -24,7 +24,6 @@ import io.ktor.client.call.body
 import io.ktor.client.plugins.DefaultRequest
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
@@ -94,7 +93,6 @@ public fun HttpClientConfig<*>.configureSyncHttpClient(userAgent: String = userA
         socketTimeoutMillis = SOCKET_TIMEOUT
     }
     install(ContentNegotiation)
-    install(WebSockets)
 
     install(DefaultRequest) {
         headers {
@@ -139,9 +137,18 @@ internal class StreamingSyncClient(
     private fun createClient(
         userAgent: String,
         additionalConfig: HttpClientConfig<*>.() -> Unit = {},
-    ) = HttpClient {
-        configureSyncHttpClient(userAgent)
-        additionalConfig()
+    ): HttpClient {
+        val factory = overrideClientEngineFactory()
+        val config: HttpClientConfig<*>.() -> Unit = {
+            configureSyncHttpClient(userAgent)
+            additionalConfig()
+        }
+
+        return if (factory != null) {
+            HttpClient(factory, config)
+        } else {
+            HttpClient(config)
+        }
     }
 
     fun invalidateCredentials() {

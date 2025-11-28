@@ -204,6 +204,10 @@ kotlin {
         // We have special setup in this build configuration to make these tests link the PowerSync extension, so they
         // can run integration tests along with the executable for unit testing.
         appleTest.orNull?.dependsOn(commonIntegrationTest)
+
+        macosTest.dependencies {
+            implementation(libs.ktor.network)
+        }
     }
 }
 
