@@ -49,6 +49,12 @@ import platform.darwin.NSObject
 import platform.posix.memcpy
 import kotlin.coroutines.CoroutineContext
 
+/**
+ * A custom `NSURLSession`-based HTTP client for Apple platforms.
+ *
+ * This is quite similar to the default `ktor-client-darwin`, except that this one isn't affected by
+ * https://youtrack.jetbrains.com/issue/KTOR-9110/Darwin-Quick-memory-growth-when-streaming-response-body.
+ */
 internal object AppleHttpClientEngineFactory: HttpClientEngineFactory<HttpClientEngineConfig> {
     override fun create(block: HttpClientEngineConfig.() -> Unit): HttpClientEngine {
         return AppleHttpClient(HttpClientEngineConfig().apply(block))
