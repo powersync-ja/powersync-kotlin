@@ -1,10 +1,8 @@
 package com.powersync.sync
 
-import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
-import kotlin.experimental.ExperimentalObjCRefinement
 import kotlin.native.HiddenFromObjC
 
 /**
@@ -12,13 +10,18 @@ import kotlin.native.HiddenFromObjC
  * the HTTP client used to connect to the PowerSync service.
  */
 public sealed class SyncClientConfiguration {
+    internal abstract val supportsBackpressure: Boolean
+
     /**
      * Extends the default Ktor [HttpClient] configuration with the provided block.
      */
     @HiddenFromObjC
     public class ExtendedConfig(
         public val block: HttpClientConfig<*>.() -> Unit,
-    ) : SyncClientConfiguration()
+    ) : SyncClientConfiguration() {
+        override val supportsBackpressure: Boolean
+            get() = defaultClientImplementationSupportsBackpressure()
+    }
 
     /**
      * Provides an existing [HttpClient] instance to use for connecting to the PowerSync service.
@@ -30,6 +33,7 @@ public sealed class SyncClientConfiguration {
     @HiddenFromObjC
     public class ExistingClient(
         public val client: HttpClient,
+        override val supportsBackpressure: Boolean = true
     ) : SyncClientConfiguration()
 }
 
@@ -52,7 +56,7 @@ public class SyncOptions(
     /**
      * Allows configuring the [HttpClient] used for connecting to the PowerSync service.
      */
-    public val clientConfiguration: SyncClientConfiguration? = null,
+    public val clientConfiguration: SyncClientConfiguration = SyncClientConfiguration.ExtendedConfig {},
     /**
      * Whether streams that have been defined with `auto_subscribe: true` should be synced even
      * when they don't have an explicit subscription.

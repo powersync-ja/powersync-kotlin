@@ -94,7 +94,11 @@ public fun HttpClientConfig<*>.configureSyncHttpClient(userAgent: String = userA
         socketTimeoutMillis = SOCKET_TIMEOUT
     }
     install(ContentNegotiation)
-    install(WebSockets)
+    install(WebSockets) {
+        // RSocket Frames (Header + Payload) MUST be limited to 16,777,215 bytes, regardless of whether the utilized
+        // transport protocol requires the Frame Length field: https://github.com/rsocket/rsocket/blob/master/Protocol.md#max-frame-size
+        maxFrameSize = 16_777_215 + 1024 // + some extra, you never know
+    }
 
     install(DefaultRequest) {
         headers {
@@ -130,10 +134,7 @@ internal class StreamingSyncClient(
         when (val config = options.clientConfiguration) {
             is SyncClientConfiguration.ExtendedConfig ->
                 createClient(options.userAgent, config.block)
-
             is SyncClientConfiguration.ExistingClient -> config.client
-
-            null -> createClient(options.userAgent)
         }
 
     private fun createClient(
@@ -324,21 +325,36 @@ internal class StreamingSyncClient(
             }
         }
 
-    private fun receiveTextOrBinaryLines(req: JsonElement): Flow<PowerSyncControlArguments> =
-        flow {
-            connectToSyncEndpoint(req, supportBson = false) { isBson, response ->
-                emit(PowerSyncControlArguments.ConnectionEstablished)
-                val body = response.body<ByteReadChannel>()
+    private fun receiveTextOrBinaryLines(req: JsonElement): Flow<PowerSyncControlArguments> {
+        // If we can use streamed HTTP responses that respect backpressure, prefer to do that.
+        return if (options.clientConfiguration.supportsBackpressure) {
+            flow {
+                connectToSyncEndpoint(req, supportBson = false) { isBson, response ->
+                    emit(PowerSyncControlArguments.ConnectionEstablished)
+                    val body = response.body<ByteReadChannel>()
 
-                if (isBson) {
-                    emitAll(body.bsonObjects().map { PowerSyncControlArguments.BinaryLine(it) })
-                } else {
-                    emitAll(body.lines().map { PowerSyncControlArguments.TextLine(it) })
+                    if (isBson) {
+                        emitAll(body.bsonObjects().map { PowerSyncControlArguments.BinaryLine(it) })
+                    } else {
+                        emitAll(body.lines().map { PowerSyncControlArguments.TextLine(it) })
+                    }
+
+                    emit(PowerSyncControlArguments.ResponseStreamEnd)
                 }
+            }
+        } else {
+            // Use RSocket as a fallback to ensure we have backpressure on platforms that don't support it natively.
+            flow {
+                val credentials = requireNotNull(connector.getCredentialsCached()) { "Not logged in" }
 
-                emit(PowerSyncControlArguments.ResponseStreamEnd)
+                emitAll(httpClient.rSocketSyncStream(
+                    userAgent = options.userAgent,
+                    credentials = credentials,
+                    req = req,
+                ))
             }
         }
+    }
 
     private suspend fun streamingSyncIteration(): SyncIterationResult =
         coroutineScope {
