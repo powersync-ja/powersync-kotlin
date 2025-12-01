@@ -10,7 +10,6 @@ import kotlin.native.HiddenFromObjC
  * the HTTP client used to connect to the PowerSync service.
  */
 public sealed class SyncClientConfiguration {
-
     /**
      * Extends the default Ktor [HttpClient] configuration with the provided block.
      */

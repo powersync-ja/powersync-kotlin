@@ -18,8 +18,6 @@ public actual class DatabaseDriverFactory : NativeConnectionFactory() {
     actual override fun resolveDefaultDatabasePath(dbFilename: String): String = appleDefaultDatabasePath(dbFilename)
 }
 
-private fun appleClientKnownNotSupportBackpressure(config: HttpClientEngineConfig): Boolean {
-    return config is DarwinClientEngineConfig
-}
+private fun appleClientKnownNotSupportBackpressure(config: HttpClientEngineConfig): Boolean = config is DarwinClientEngineConfig
 
 internal actual val inMemoryDriver: InMemoryConnectionFactory = DatabaseDriverFactory()

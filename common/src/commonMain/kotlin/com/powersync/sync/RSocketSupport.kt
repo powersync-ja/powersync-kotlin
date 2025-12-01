@@ -118,9 +118,12 @@ internal fun HttpClient.rSocketSyncStream(
                 },
             )
 
-        emitAll(syncStream.map {
-            PowerSyncControlArguments.BinaryLine(it.data.readByteArray())
-        }.flowOn(Dispatchers.IO))
+        emitAll(
+            syncStream
+                .map {
+                    PowerSyncControlArguments.BinaryLine(it.data.readByteArray())
+                }.flowOn(Dispatchers.IO),
+        )
         emit(PowerSyncControlArguments.ResponseStreamEnd)
     }
 

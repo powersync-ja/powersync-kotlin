@@ -62,7 +62,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlin.time.Clock
 
-
 @OptIn(ExperimentalPowerSyncAPI::class)
 internal class StreamingSyncClient(
     private val bucketStorage: BucketStorage,
@@ -88,10 +87,11 @@ internal class StreamingSyncClient(
 
     private val httpClient: HttpClient =
         when (val config = options.clientConfiguration) {
-            is SyncClientConfiguration.ExtendedConfig -> HttpClient {
-                configureSyncHttpClient(options.userAgent)
-                config.block(this)
-            }
+            is SyncClientConfiguration.ExtendedConfig ->
+                HttpClient {
+                    configureSyncHttpClient(options.userAgent)
+                    config.block(this)
+                }
             is SyncClientConfiguration.ExistingClient -> config.client
         }
 
@@ -299,11 +299,13 @@ internal class StreamingSyncClient(
             flow {
                 val credentials = requireNotNull(connector.getCredentialsCached()) { "Not logged in" }
 
-                emitAll(httpClient.rSocketSyncStream(
-                    userAgent = options.userAgent,
-                    credentials = credentials,
-                    req = req,
-                ))
+                emitAll(
+                    httpClient.rSocketSyncStream(
+                        userAgent = options.userAgent,
+                        credentials = credentials,
+                        req = req,
+                    ),
+                )
             }
         }
     }

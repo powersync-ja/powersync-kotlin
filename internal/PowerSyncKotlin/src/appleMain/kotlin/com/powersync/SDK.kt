@@ -56,9 +56,7 @@ public fun sqlite3DatabaseFactory(initialStatements: List<String>): PersistentCo
     }
 }
 
-private fun appleClientKnownNotSupportBackpressure(config: HttpClientEngineConfig): Boolean {
-    return config is DarwinClientEngineConfig
-}
+private fun appleClientKnownNotSupportBackpressure(config: HttpClientEngineConfig): Boolean = config is DarwinClientEngineConfig
 
 /**
  * Helper class designed to bridge SKIEE methods and allow them to throw
