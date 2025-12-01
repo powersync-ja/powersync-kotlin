@@ -7,6 +7,8 @@ import androidx.sqlite.execSQL
 import com.powersync.bucket.StreamPriority
 import com.powersync.db.NativeConnectionFactory
 import com.powersync.db.crud.CrudTransaction
+import com.powersync.internal.InternalPowerSyncAPI
+import com.powersync.internal.httpClientIsKnownToNotSupportBackpressure
 import com.powersync.sync.SyncClientConfiguration
 import com.powersync.sync.SyncOptions
 import com.powersync.sync.SyncStatusData
@@ -14,16 +16,23 @@ import com.powersync.sync.SyncStream
 import com.powersync.sync.SyncStreamDescription
 import com.powersync.sync.SyncStreamStatus
 import com.powersync.sync.SyncStreamSubscription
+import io.ktor.client.engine.HttpClientEngineConfig
+import io.ktor.client.engine.darwin.DarwinClientEngineConfig
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.time.Duration.Companion.seconds
 import io.ktor.client.plugins.logging.Logger as KtorLogger
 
+@OptIn(ExperimentalAtomicApi::class, InternalPowerSyncAPI::class)
 public fun sqlite3DatabaseFactory(initialStatements: List<String>): PersistentConnectionFactory {
+    // Hack: Install apple-specific httpClientIsKnownToNotSupportBackpressure hook.
+    httpClientIsKnownToNotSupportBackpressure.compareAndSet(null, ::appleClientKnownNotSupportBackpressure)
+
     @OptIn(ExperimentalPowerSyncAPI::class)
     return object : NativeConnectionFactory() {
         override fun resolveDefaultDatabasePath(dbFilename: String): String = appleDefaultDatabasePath(dbFilename)
@@ -45,6 +54,10 @@ public fun sqlite3DatabaseFactory(initialStatements: List<String>): PersistentCo
             return super.openConnection(path, openFlags)
         }
     }
+}
+
+private fun appleClientKnownNotSupportBackpressure(config: HttpClientEngineConfig): Boolean {
+    return config is DarwinClientEngineConfig
 }
 
 /**

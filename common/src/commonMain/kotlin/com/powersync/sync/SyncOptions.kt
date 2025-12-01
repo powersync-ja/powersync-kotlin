@@ -10,7 +10,6 @@ import kotlin.native.HiddenFromObjC
  * the HTTP client used to connect to the PowerSync service.
  */
 public sealed class SyncClientConfiguration {
-    internal abstract val supportsBackpressure: Boolean
 
     /**
      * Extends the default Ktor [HttpClient] configuration with the provided block.
@@ -18,10 +17,7 @@ public sealed class SyncClientConfiguration {
     @HiddenFromObjC
     public class ExtendedConfig(
         public val block: HttpClientConfig<*>.() -> Unit,
-    ) : SyncClientConfiguration() {
-        override val supportsBackpressure: Boolean
-            get() = defaultClientImplementationSupportsBackpressure()
-    }
+    ) : SyncClientConfiguration()
 
     /**
      * Provides an existing [HttpClient] instance to use for connecting to the PowerSync service.
@@ -33,7 +29,6 @@ public sealed class SyncClientConfiguration {
     @HiddenFromObjC
     public class ExistingClient(
         public val client: HttpClient,
-        override val supportsBackpressure: Boolean = true
     ) : SyncClientConfiguration()
 }
 

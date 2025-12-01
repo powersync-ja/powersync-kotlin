@@ -16,15 +16,11 @@ import com.powersync.db.SubscriptionGroup
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.schema.Schema
 import com.powersync.db.schema.toSerializable
-import com.powersync.sync.StreamingSyncClient.Companion.SOCKET_TIMEOUT
 import com.powersync.utils.JsonUtil
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.call.body
-import io.ktor.client.plugins.DefaultRequest
-import io.ktor.client.plugins.HttpTimeout
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.websocket.WebSockets
+import io.ktor.client.plugins.pluginOrNull
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
@@ -64,48 +60,8 @@ import kotlinx.io.readIntLe
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
-import kotlin.experimental.ExperimentalObjCRefinement
-import kotlin.native.HiddenFromObjC
 import kotlin.time.Clock
 
-/**
- * This API is experimental and may change in future releases.
- *
- * Configures a [HttpClient] for PowerSync sync operations.
- * Configures required plugins and default request headers.
- *
- * This is currently only necessary when using a [SyncClientConfiguration.ExistingClient] for PowerSync
- * network requests.
- *
- * Example usage:
- *
- * ```kotlin
- * val client = HttpClient() {
- *  configureSyncHttpClient()
- *  // Your own config here
- * }
- * ```
- */
-@OptIn(ExperimentalObjCRefinement::class)
-@HiddenFromObjC
-@ExperimentalPowerSyncAPI
-public fun HttpClientConfig<*>.configureSyncHttpClient(userAgent: String = userAgent()) {
-    install(HttpTimeout) {
-        socketTimeoutMillis = SOCKET_TIMEOUT
-    }
-    install(ContentNegotiation)
-    install(WebSockets) {
-        // RSocket Frames (Header + Payload) MUST be limited to 16,777,215 bytes, regardless of whether the utilized
-        // transport protocol requires the Frame Length field: https://github.com/rsocket/rsocket/blob/master/Protocol.md#max-frame-size
-        maxFrameSize = 16_777_215 + 1024 // + some extra, you never know
-    }
-
-    install(DefaultRequest) {
-        headers {
-            append("User-Agent", userAgent)
-        }
-    }
-}
 
 @OptIn(ExperimentalPowerSyncAPI::class)
 internal class StreamingSyncClient(
@@ -132,18 +88,12 @@ internal class StreamingSyncClient(
 
     private val httpClient: HttpClient =
         when (val config = options.clientConfiguration) {
-            is SyncClientConfiguration.ExtendedConfig ->
-                createClient(options.userAgent, config.block)
+            is SyncClientConfiguration.ExtendedConfig -> HttpClient {
+                configureSyncHttpClient(options.userAgent)
+                config.block(this)
+            }
             is SyncClientConfiguration.ExistingClient -> config.client
         }
-
-    private fun createClient(
-        userAgent: String,
-        additionalConfig: HttpClientConfig<*>.() -> Unit = {},
-    ) = HttpClient {
-        configureSyncHttpClient(userAgent)
-        additionalConfig()
-    }
 
     fun invalidateCredentials() {
         connector.invalidateCredentials()
@@ -326,8 +276,8 @@ internal class StreamingSyncClient(
         }
 
     private fun receiveTextOrBinaryLines(req: JsonElement): Flow<PowerSyncControlArguments> {
-        // If we can use streamed HTTP responses that respect backpressure, prefer to do that.
-        return if (options.clientConfiguration.supportsBackpressure) {
+        return if (httpClient.pluginOrNull(DoesNotSupportBackpressureMarker) == null) {
+            // If we can use streamed HTTP responses that respect backpressure, prefer to do that.
             flow {
                 connectToSyncEndpoint(req, supportBson = false) { isBson, response ->
                     emit(PowerSyncControlArguments.ConnectionEstablished)
