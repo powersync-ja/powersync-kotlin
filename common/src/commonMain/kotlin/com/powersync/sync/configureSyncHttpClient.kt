@@ -37,28 +37,11 @@ import kotlin.native.HiddenFromObjC
 @HiddenFromObjC
 @ExperimentalPowerSyncAPI
 public fun HttpClientConfig<*>.configureSyncHttpClient(userAgent: String = userAgent()) {
-    val config = this@configureSyncHttpClient
-    var supportsBackpressure = true
-
-    config.engine {
-        if (isKnownToNotSupportBackpressure) {
-            supportsBackpressure = false
-        }
-    }
-
     install(HttpTimeout) {
         socketTimeoutMillis = SOCKET_TIMEOUT
     }
     install(ContentNegotiation)
-    if (!supportsBackpressure) {
-        install(DoesNotSupportBackpressureMarker)
-
-        install(WebSockets) {
-            // RSocket Frames (Header + Payload) MUST be limited to 16,777,215 bytes, regardless of whether the utilized
-            // transport protocol requires the Frame Length field: https://github.com/rsocket/rsocket/blob/master/Protocol.md#max-frame-size
-            maxFrameSize = 16_777_215 + 1024 // + some extra, you never know
-        }
-    }
+    install(WebSocketIfNecessaryPlugin)
 
     install(DefaultRequest) {
         headers {
@@ -67,17 +50,30 @@ public fun HttpClientConfig<*>.configureSyncHttpClient(userAgent: String = userA
     }
 }
 
-internal object DoesNotSupportBackpressureMarker: HttpClientPlugin<Unit, DoesNotSupportBackpressureMarker> {
-    override val key: AttributeKey<DoesNotSupportBackpressureMarker> = AttributeKey("DoesNotSupportBackpressureMarker")
+/**
+ * A client plugin that installs WebSocket support and configures it only if the HTTP client implementation is known not
+ * to support backpressure properly (since that is the only case in which we need RSocket over WebSockets).
+ */
+internal object WebSocketIfNecessaryPlugin: HttpClientPlugin<Unit, WebSockets> {
+    override val key: AttributeKey<WebSockets>
+        get() = WebSockets.key
 
-    override fun prepare(block: Unit.() -> Unit): DoesNotSupportBackpressureMarker {
-        return DoesNotSupportBackpressureMarker
+    val needsRSocketKey = AttributeKey<Boolean>("NeedsRSocketSupport")
+
+    override fun prepare(block: Unit.() -> Unit): WebSockets {
+        return WebSockets.prepare {
+            // RSocket Frames (Header + Payload) MUST be limited to 16,777,215 bytes, regardless of whether the utilized
+            // transport protocol requires the Frame Length field: https://github.com/rsocket/rsocket/blob/master/Protocol.md#max-frame-size
+            maxFrameSize = 16_777_215 + 1024 // + some extra, you never know
+        }
     }
 
-    override fun install(
-        plugin: DoesNotSupportBackpressureMarker,
-        scope: HttpClient
-    ) {
-        // Nothing to do, marker plugin.
+    override fun install(plugin: WebSockets, scope: HttpClient) {
+        if (scope.engineConfig.isKnownToNotSupportBackpressure) {
+            WebSockets.install(plugin, scope)
+            scope.attributes.put(needsRSocketKey, true)
+        } else {
+            scope.attributes.put(needsRSocketKey, false)
+        }
     }
 }

@@ -276,7 +276,9 @@ internal class StreamingSyncClient(
         }
 
     private fun receiveTextOrBinaryLines(req: JsonElement): Flow<PowerSyncControlArguments> {
-        return if (httpClient.pluginOrNull(DoesNotSupportBackpressureMarker) == null) {
+        val needsRSocket = httpClient.attributes[WebSocketIfNecessaryPlugin.needsRSocketKey]
+
+        return if (!needsRSocket) {
             // If we can use streamed HTTP responses that respect backpressure, prefer to do that.
             flow {
                 connectToSyncEndpoint(req, supportBson = false) { isBson, response ->
