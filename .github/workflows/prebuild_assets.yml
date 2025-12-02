@@ -50,10 +50,18 @@ jobs:
       - name: Set up XCode
         if: steps.cache_prebuild.outputs.cache-hit != 'true'
         uses: maxim-lobanov/setup-xcode@v1
+      - name: Setup Linux build docker image
+        run: docker build -t powersync_kotlin_sqlite3mc_build_helper --load jni
+      - name: Download llvm-mingw
+        run: |
+          curl -L https://github.com/mstorsjo/llvm-mingw/releases/download/20251118/llvm-mingw-20251118-ucrt-macos-universal.tar.xz -o llvm-ming.tar.xz
+          tar --extract --gzip --file llvm-ming.tar.xz
+          rm llvm-ming.tar.xz
+
       - name: Compile SQLite with Gradle
         if: steps.cache_prebuild.outputs.cache-hit != 'true'
         run: |
-          ./gradlew --scan internal:prebuild-binaries:compileNative
+          ./gradlew --scan -PllvmMingw=$(pwd)/llvm-mingw-20251118-ucrt-macos-universal internal:prebuild-binaries:compileNative
         shell: bash
       - uses: actions/upload-artifact@v5
         id: upload

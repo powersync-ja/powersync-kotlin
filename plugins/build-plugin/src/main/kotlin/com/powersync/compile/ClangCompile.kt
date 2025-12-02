@@ -132,7 +132,7 @@ abstract class ClangCompile : DefaultTask() {
                 .exec {
                     executable("xcode-select")
                     args("-p")
-                }.standardOutput.asText
+                }.standardOutput.asText.map { it.trim() }
         }
     }
 }

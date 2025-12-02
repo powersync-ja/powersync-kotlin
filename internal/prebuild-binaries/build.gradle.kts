@@ -1,9 +1,13 @@
 import com.powersync.compile.ClangCompile
 import com.powersync.compile.UnzipSqlite
 import de.undercouch.gradle.tasks.download.Download
+import kotlin.io.path.Path
 import org.gradle.kotlin.dsl.register
 import org.jetbrains.kotlin.konan.target.KonanTarget
 import com.powersync.compile.CreateStaticLibrary
+import com.powersync.compile.JniLibraryCompile
+import com.powersync.compile.JniTarget
+import kotlin.io.path.absolutePathString
 
 plugins {
     alias(libs.plugins.downloadPlugin)
@@ -13,6 +17,13 @@ val sqlite3McVersion = "2.2.6"
 val sqlite3BaseVersion = "3.51.1"
 val sqlite3ReleaseYear = "2025"
 val sqlite3ExpandedVersion = "3510100"
+
+data class CompiledAsset(
+    val output: Provider<RegularFileProperty>,
+    val fullName: String,
+)
+
+val xCodeInstallation = ClangCompile.resolveXcode(providers)
 
 val downloadSQLiteSources by tasks.registering(Download::class) {
     val zipFileName = "sqlite-amalgamation-$sqlite3ExpandedVersion.zip"
@@ -51,6 +62,44 @@ val unzipSqlite3MultipleCipherSources by tasks.registering(UnzipSqlite::class) {
     )
 }
 
+fun compileJni(target: JniTarget): CompiledAsset {
+    val name = target.filename("sqlite3mc_jni")
+
+    val task = tasks.register<JniLibraryCompile>("compile${target.name}") {
+        this.target.set(target)
+        inputFiles.from(
+            "jni/sqlite_bindings.cpp",
+            unzipSqlite3MultipleCipherSources.flatMap { it.destination.file("sqlite3mc_amalgamation.c") }
+        )
+        include.set(unzipSqlite3MultipleCipherSources.flatMap { it.destination })
+        sharedLibrary.set(layout.buildDirectory.file("jni/$name"))
+
+        when (target) {
+            JniTarget.LINUX_X64, JniTarget.LINUX_ARM -> {}
+            JniTarget.WINDOWS_X64, JniTarget.WINDOWS_ARM -> {
+                // For Windows, we compile with LLVM MinGW: https://github.com/mstorsjo/llvm-mingw
+                val path = providers.gradleProperty("llvmMingw")
+                val clang = path.orNull?.let {
+                    Path(path.get()).resolve("bin/clang").toString()
+                } ?: "clang"
+                clangPath.set(clang)
+            }
+            JniTarget.MACOS_X64, JniTarget.MACOS_ARM -> {
+                // on macOS: Compile with xcode tools
+                toolchain.set(xCodeInstallation.map {
+                    val xcode = Path(it)
+                    xcode.resolve("Toolchains/XcodeDefault.xctoolchain/usr/bin").absolutePathString()
+                })
+            }
+        }
+    }
+
+    return CompiledAsset(
+        output = task.map { it.sharedLibrary },
+        fullName = name
+    )
+}
+
 fun compileSqliteForKotlinNativeOnApple(library: String, abi: String): TaskProvider<CreateStaticLibrary> {
     val name = "$library$abi"
     val outputDir = layout.buildDirectory.dir("c/$abi")
@@ -66,7 +115,7 @@ fun compileSqliteForKotlinNativeOnApple(library: String, abi: String): TaskProvi
         }
 
         inputs.dir(sourceTask.map { it.destination })
-        include.set(unzipSQLiteSources.flatMap { it.destination })
+        include.set(sourceTask.flatMap { it.destination })
         inputFile.set(sourceTask.flatMap { it.destination.file(filename) })
 
         konanTarget.set(abi)
@@ -82,12 +131,7 @@ fun compileSqliteForKotlinNativeOnApple(library: String, abi: String): TaskProvi
     return createStaticLibrary
 }
 
-data class CompiledAsset(
-    val output: Provider<RegularFileProperty>,
-    val fullName: String,
-)
-
-val compileTasks = buildList {
+val kotlinNativeCompileTasks = buildList {
     val targets = KonanTarget.predefinedTargets.values.filter { it.family.isAppleFamily }.map { it.name }.toList()
     for (library in listOf("sqlite3", "sqlite3mc")) {
         for (abi in targets) {
@@ -101,13 +145,29 @@ val compileTasks = buildList {
 }
 
 val compileNative by tasks.registering(Copy::class) {
-    into(project.layout.buildDirectory.dir("output"))
+    into(project.layout.buildDirectory.dir("output/static"))
 
-    for (task in compileTasks) {
+    for (task in kotlinNativeCompileTasks) {
         from(task.output) {
             rename { task.fullName }
         }
     }
+}
+
+val jniCompileTasks: List<CompiledAsset> = JniTarget.entries.map(::compileJni)
+val compileJni by tasks.registering(Copy::class) {
+    into(project.layout.buildDirectory.dir("output/jni"))
+
+    for (task in jniCompileTasks) {
+        from(task.output) {
+            rename { task.fullName }
+        }
+    }
+}
+
+val compileAll by tasks.registering {
+    dependsOn(jniCompileTasks)
+    dependsOn(compileJni)
 }
 
 val hasPrebuiltAssets = providers.gradleProperty("hasPrebuiltAssets").map { it.toBooleanStrict() }
@@ -115,13 +175,18 @@ val hasPrebuiltAssets = providers.gradleProperty("hasPrebuiltAssets").map { it.t
 val nativeSqliteConfiguration by configurations.creating {
     isCanBeResolved = false
 }
+val jniSqlite3McConfiguration by configurations.creating {
+    isCanBeResolved = false
+}
 
 artifacts {
     if (hasPrebuiltAssets.getOrElse(false)) {
         // In CI builds, we set hasPrebuiltAssets=true. In that case, contents of build/output have been downloaded from
         // cache and don't need to be rebuilt.
-        add(nativeSqliteConfiguration.name, layout.buildDirectory.dir("output"))
+        add(nativeSqliteConfiguration.name, layout.buildDirectory.dir("output/native"))
+        add(jniSqlite3McConfiguration.name, layout.buildDirectory.dir("output/jni"))
     } else {
         add(nativeSqliteConfiguration.name, compileNative)
+        add(jniSqlite3McConfiguration.name, compileJni)
     }
 }
