@@ -1,6 +1,7 @@
 package com.powersync.db
 
 import co.touchlab.kermit.Logger
+import com.powersync.DispatchStrategy
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
 import com.powersync.PowerSyncException
@@ -61,6 +62,7 @@ internal class PowerSyncDatabaseImpl(
     pool: SQLiteConnectionPool,
     val logger: Logger,
     private val activeDatabaseGroup: Pair<ActiveDatabaseResource, Any>,
+    dispatchStrategy: DispatchStrategy,
 ) : PowerSyncDatabase {
     companion object {
         internal val streamConflictMessage =
@@ -79,7 +81,7 @@ internal class PowerSyncDatabaseImpl(
     private val resource = activeDatabaseGroup.first
     private val streams = StreamTracker(this)
 
-    private val internalDb = InternalDatabaseImpl(pool, logger)
+    private val internalDb = InternalDatabaseImpl(pool, logger, dispatchStrategy = dispatchStrategy)
 
     internal val bucketStorage: BucketStorage = BucketStorageImpl(internalDb, logger)
 
@@ -391,7 +393,7 @@ internal class PowerSyncDatabaseImpl(
 
     override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R {
         waitReady()
-        return internalDb.writeTransaction(callback)
+        return internalDb.readTransaction(callback)
     }
 
     override suspend fun <R> writeLock(callback: ThrowableLockCallback<R>): R {
