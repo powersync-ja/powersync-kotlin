@@ -109,3 +109,19 @@ val compileNative by tasks.registering(Copy::class) {
         }
     }
 }
+
+val hasPrebuiltAssets = providers.gradleProperty("hasPrebuiltAssets").map { it.toBooleanStrict() }
+
+val nativeSqliteConfiguration by configurations.creating {
+    isCanBeResolved = false
+}
+
+artifacts {
+    if (hasPrebuiltAssets.getOrElse(false)) {
+        // In CI builds, we set hasPrebuiltAssets=true. In that case, contents of build/output have been downloaded from
+        // cache and don't need to be rebuilt.
+        add(nativeSqliteConfiguration.name, layout.buildDirectory.dir("output"))
+    } else {
+        add(nativeSqliteConfiguration.name, compileNative)
+    }
+}

@@ -11,7 +11,12 @@ permissions:
   contents: read
 
 jobs:
+  fetch_prebuilts:
+    uses: ./.github/workflows/prebuild_assets.yml
+
   build:
+    needs:
+      - fetch_prebuilts
     strategy:
       matrix:
         include:
@@ -61,10 +66,15 @@ jobs:
       with:
         # TODO: Update to latest-stable once GH installs iOS 26 simulators
         xcode-version: '^16.4.0'
+    - name: Download prebuilts
+      uses: actions/download-artifact@v5
+      with:
+        artifact-ids: ${{ needs.fetch_prebuilts.outputs.artifact_id }}
+        path: internal/prebuild-binaries/build/output/
 
     - name: Build and run tests with Gradle
       run: |
-        ./gradlew --scan \
+        ./gradlew --scan -PhasPrebuiltAssets=true \
           ${{ matrix.targets }}
       shell: bash
 

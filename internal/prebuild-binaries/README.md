@@ -11,6 +11,5 @@ Specifically, this builds:
 We don't want to build these assets on every build since they're included in a `cinterops` definition file, meaning that
 they would have to be built during Gradle sync, which slows down that process.
 
-Instead, we have a manually-triggered GitHub workflow creating these assets as an artifact. That workflow then
-dispatches an upload workflow on the `powersync-ja/kotlin-assets` repository to upload assets as a GitHub release.
-Finally, the main build in this repository will download assets from that release.
+Instead, we use a cache for GitHub actions to only recompile these when necessary. During the main build, we then use
+a custom property to download assets instead of recompiling.
