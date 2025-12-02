@@ -14,8 +14,7 @@ jobs:
   compile:
     name: Compile SQLite
     timeout-minutes: 30
-    # We need the intel build because arm runners don't support docker :(
-    runs-on: macos-15-intel
+    runs-on: macos-latest
     outputs:
       artifact_url: ${{ steps.upload.outputs.artifact-url }}
       artifact_id: ${{ steps.upload.outputs.artifact-id }}
@@ -51,20 +50,16 @@ jobs:
       - name: Set up XCode
         if: steps.cache_prebuild.outputs.cache-hit != 'true'
         uses: maxim-lobanov/setup-xcode@v1
-      - name: Setup Docker
-        uses: douglascamata/setup-docker-macos-action@v1
-      - name: Setup Linux build docker image
-        run: docker build -t powersync_kotlin_sqlite3mc_build_helper --load jni
-      - name: Download llvm-mingw
+      - name: Download build tools
         run: |
-          curl -L https://github.com/mstorsjo/llvm-mingw/releases/download/20251118/llvm-mingw-20251118-ucrt-macos-universal.tar.xz -o llvm-ming.tar.xz
-          tar --extract --gzip --file llvm-ming.tar.xz
-          rm llvm-ming.tar.xz
+          cd internal/prebuild-binaries
+          ./download_glibc.sh
+          ./download_llvm_mingw.sh
 
       - name: Compile SQLite with Gradle
         if: steps.cache_prebuild.outputs.cache-hit != 'true'
         run: |
-          ./gradlew --scan -PllvmMingw=$(pwd)/llvm-mingw-20251118-ucrt-macos-universal internal:prebuild-binaries:compileNative
+          ./gradlew --scan internal:prebuild-binaries:compileNative
         shell: bash
       - uses: actions/upload-artifact@v5
         id: upload

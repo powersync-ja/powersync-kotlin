@@ -78,10 +78,7 @@ fun compileJni(target: JniTarget): CompiledAsset {
             JniTarget.LINUX_X64, JniTarget.LINUX_ARM -> {}
             JniTarget.WINDOWS_X64, JniTarget.WINDOWS_ARM -> {
                 // For Windows, we compile with LLVM MinGW: https://github.com/mstorsjo/llvm-mingw
-                val path = providers.gradleProperty("llvmMingw")
-                val clang = path.orNull?.let {
-                    Path(path.get()).resolve("bin/clang").toString()
-                } ?: "clang"
+                val clang = layout.buildDirectory.file("llvm-mingw/bin/clang").map { it.asFile.path }
                 clangPath.set(clang)
             }
             JniTarget.MACOS_X64, JniTarget.MACOS_ARM -> {
@@ -154,11 +151,16 @@ val compileNative by tasks.registering(Copy::class) {
     }
 }
 
-val jniCompileTasks: List<CompiledAsset> = JniTarget.entries.map(::compileJni)
+val jniCompileTasks: Map<JniTarget, CompiledAsset> = buildMap {
+    for (target in JniTarget.entries) {
+        put(target, compileJni(target))
+    }
+}
+
 val compileJni by tasks.registering(Copy::class) {
     into(project.layout.buildDirectory.dir("output/jni"))
 
-    for (task in jniCompileTasks) {
+    for (task in jniCompileTasks.values) {
         from(task.output) {
             rename { task.fullName }
         }

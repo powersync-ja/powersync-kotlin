@@ -87,20 +87,22 @@ abstract class JniLibraryCompile: DefaultTask() {
                 return file.relativeTo(workingDir).path
             }
 
-            if (target == JniTarget.LINUX_X64 || target == JniTarget.LINUX_ARM) {
-                executable = "/opt/homebrew/bin/docker"
-                args(
-                    "run",
-                    "-v", "./jni:/jni",
-                    "-v", "./build:/build",
-                    "powersync_kotlin_sqlite3mc_build_helper",
-                    "clang",
-                    "-fuse-ld=lld"
-                )
-            } else {
-                executable = clang
+            if (target == JniTarget.LINUX_X64) {
+                args("-fuse-ld=lld")
+                args("--sysroot=build/sysroot/")
             }
 
+            if (target == JniTarget.LINUX_ARM) {
+                val gccParent = layout.buildDirectory.dir("sysroot/usr/lib/gcc/aarch64-linux-gnu")
+                val gccPath = filePath(gccParent.get().asFile.listFiles().single())
+
+                args("-fuse-ld=lld")
+                args("--sysroot=build/sysroot/usr/aarch64-linux-gnu/")
+                args("-Wl,-L", gccPath)
+                args("-B", gccPath)
+            }
+
+            executable = clang
             toolchain.orNull?.let { args("-B$toolchain") }
 
             args(
