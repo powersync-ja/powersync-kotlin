@@ -165,6 +165,8 @@ kotlin {
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.stately.concurrency)
                 implementation(libs.configuration.annotations)
+                implementation(libs.rsocket.core)
+                implementation(libs.rsocket.transport.websocket)
                 api(libs.ktor.client.core)
                 api(libs.kermit)
             }

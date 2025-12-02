@@ -16,9 +16,10 @@ coroutines = "1.10.2"
 kotlinx-datetime = "0.7.1"
 serialization = "1.9.0"
 kotlinx-io = "0.8.0"
-ktor = "3.2.3"
+ktor = "3.3.3"
 uuid = "0.8.4"
-powersync-core = "0.4.8"
+powersync-core = "0.4.9"
+rsocket = "0.20.0"
 turbine = "1.2.1"
 kotest = "5.9.1" # we can't upgrade to 6.x because that requires Java 11 or above (we need Java 8 support)
 
@@ -26,12 +27,12 @@ stately = "2.1.0"
 supabase = "3.2.2"
 junit = "4.13.2"
 
-compose = "1.8.2" # This is for the multiplatform compose
-androidCompose = "2025.08.00"
-compose-preview = "1.9.0"
-compose-lifecycle = "2.9.2"
+compose = "1.9.3" # This is for the multiplatform compose
+androidCompose = "2025.11.01"
+compose-preview = "1.9.5"
+compose-lifecycle = "2.9.6"
 androidxSqlite = "2.6.0"
-androidxSplashscreen = "1.0.1"
+androidxSplashscreen = "1.2.0"
 room = "2.8.0"
 sqldelight = "2.1.0"
 
@@ -95,6 +96,8 @@ ktor-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json", 
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "coroutines" }
+rsocket-core = { module = "io.rsocket.kotlin:rsocket-core", version.ref = "rsocket" }
+rsocket-transport-websocket = { module = "io.rsocket.kotlin:rsocket-transport-ktor-websocket-internal", version.ref = "rsocket" }
 
 stately-concurrency = { module = "co.touchlab:stately-concurrency", version.ref = "stately" }
 supabase-client = { module = "io.github.jan-tennert.supabase:postgrest-kt", version.ref = "supabase" }

@@ -16,15 +16,11 @@ import com.powersync.db.SubscriptionGroup
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.schema.Schema
 import com.powersync.db.schema.toSerializable
-import com.powersync.sync.StreamingSyncClient.Companion.SOCKET_TIMEOUT
 import com.powersync.utils.JsonUtil
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.call.body
-import io.ktor.client.plugins.DefaultRequest
-import io.ktor.client.plugins.HttpTimeout
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.websocket.WebSockets
+import io.ktor.client.plugins.pluginOrNull
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
@@ -64,44 +60,7 @@ import kotlinx.io.readIntLe
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
-import kotlin.experimental.ExperimentalObjCRefinement
-import kotlin.native.HiddenFromObjC
 import kotlin.time.Clock
-
-/**
- * This API is experimental and may change in future releases.
- *
- * Configures a [HttpClient] for PowerSync sync operations.
- * Configures required plugins and default request headers.
- *
- * This is currently only necessary when using a [SyncClientConfiguration.ExistingClient] for PowerSync
- * network requests.
- *
- * Example usage:
- *
- * ```kotlin
- * val client = HttpClient() {
- *  configureSyncHttpClient()
- *  // Your own config here
- * }
- * ```
- */
-@OptIn(ExperimentalObjCRefinement::class)
-@HiddenFromObjC
-@ExperimentalPowerSyncAPI
-public fun HttpClientConfig<*>.configureSyncHttpClient(userAgent: String = userAgent()) {
-    install(HttpTimeout) {
-        socketTimeoutMillis = SOCKET_TIMEOUT
-    }
-    install(ContentNegotiation)
-    install(WebSockets)
-
-    install(DefaultRequest) {
-        headers {
-            append("User-Agent", userAgent)
-        }
-    }
-}
 
 @OptIn(ExperimentalPowerSyncAPI::class)
 internal class StreamingSyncClient(
@@ -129,20 +88,12 @@ internal class StreamingSyncClient(
     private val httpClient: HttpClient =
         when (val config = options.clientConfiguration) {
             is SyncClientConfiguration.ExtendedConfig ->
-                createClient(options.userAgent, config.block)
-
+                HttpClient {
+                    configureSyncHttpClient(options.userAgent)
+                    config.block(this)
+                }
             is SyncClientConfiguration.ExistingClient -> config.client
-
-            null -> createClient(options.userAgent)
         }
-
-    private fun createClient(
-        userAgent: String,
-        additionalConfig: HttpClientConfig<*>.() -> Unit = {},
-    ) = HttpClient {
-        configureSyncHttpClient(userAgent)
-        additionalConfig()
-    }
 
     fun invalidateCredentials() {
         connector.invalidateCredentials()
@@ -324,21 +275,40 @@ internal class StreamingSyncClient(
             }
         }
 
-    private fun receiveTextOrBinaryLines(req: JsonElement): Flow<PowerSyncControlArguments> =
-        flow {
-            connectToSyncEndpoint(req, supportBson = false) { isBson, response ->
-                emit(PowerSyncControlArguments.ConnectionEstablished)
-                val body = response.body<ByteReadChannel>()
+    private fun receiveTextOrBinaryLines(req: JsonElement): Flow<PowerSyncControlArguments> {
+        val needsRSocket = httpClient.attributes[WebSocketIfNecessaryPlugin.needsRSocketKey]
 
-                if (isBson) {
-                    emitAll(body.bsonObjects().map { PowerSyncControlArguments.BinaryLine(it) })
-                } else {
-                    emitAll(body.lines().map { PowerSyncControlArguments.TextLine(it) })
+        return if (!needsRSocket) {
+            // If we can use streamed HTTP responses that respect backpressure, prefer to do that.
+            flow {
+                connectToSyncEndpoint(req, supportBson = false) { isBson, response ->
+                    emit(PowerSyncControlArguments.ConnectionEstablished)
+                    val body = response.body<ByteReadChannel>()
+
+                    if (isBson) {
+                        emitAll(body.bsonObjects().map { PowerSyncControlArguments.BinaryLine(it) })
+                    } else {
+                        emitAll(body.lines().map { PowerSyncControlArguments.TextLine(it) })
+                    }
+
+                    emit(PowerSyncControlArguments.ResponseStreamEnd)
                 }
+            }
+        } else {
+            // Use RSocket as a fallback to ensure we have backpressure on platforms that don't support it natively.
+            flow {
+                val credentials = requireNotNull(connector.getCredentialsCached()) { "Not logged in" }
 
-                emit(PowerSyncControlArguments.ResponseStreamEnd)
+                emitAll(
+                    httpClient.rSocketSyncStream(
+                        userAgent = options.userAgent,
+                        credentials = credentials,
+                        req = req,
+                    ),
+                )
             }
         }
+    }
 
     private suspend fun streamingSyncIteration(): SyncIterationResult =
         coroutineScope {
