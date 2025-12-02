@@ -168,7 +168,7 @@ val compileJni by tasks.registering(Copy::class) {
 }
 
 val compileAll by tasks.registering {
-    dependsOn(jniCompileTasks)
+    dependsOn(compileNative)
     dependsOn(compileJni)
 }
 

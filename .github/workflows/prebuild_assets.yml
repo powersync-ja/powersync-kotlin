@@ -59,7 +59,7 @@ jobs:
       - name: Compile SQLite with Gradle
         if: steps.cache_prebuild.outputs.cache-hit != 'true'
         run: |
-          ./gradlew --scan internal:prebuild-binaries:compileNative
+          ./gradlew --scan internal:prebuild-binaries:compileAll
         shell: bash
       - uses: actions/upload-artifact@v5
         id: upload
