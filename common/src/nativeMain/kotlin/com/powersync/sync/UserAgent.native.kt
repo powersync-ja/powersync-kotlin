@@ -4,4 +4,4 @@ import com.powersync.build.LIBRARY_VERSION
 import kotlin.experimental.ExperimentalNativeApi
 
 @OptIn(ExperimentalNativeApi::class)
-internal actual fun userAgent(): String = "powersync-kotlin/v$LIBRARY_VERSION ${Platform.osFamily.name}"
+internal actual fun userAgent(): String = "powersync-kotlin/v$LIBRARY_VERSION ${Platform.cpuArchitecture.name}/${Platform.osFamily.name}"
