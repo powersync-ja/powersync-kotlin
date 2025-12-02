@@ -123,5 +123,8 @@ buildkonfig {
         stringConfigField("POWERSYNC_URL")
         stringConfigField("SUPABASE_URL")
         stringConfigField("SUPABASE_ANON_KEY")
+        
+        // App version from Gradle project version
+        buildConfigField(STRING, "APP_VERSION", "\"${project.version}\"")
     }
 }
