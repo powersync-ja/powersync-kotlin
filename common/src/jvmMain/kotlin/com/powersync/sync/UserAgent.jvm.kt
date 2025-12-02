@@ -7,5 +7,5 @@ internal actual fun userAgent(): String {
     val osVersion = System.getProperty("os.version") ?: ""
     val java = System.getProperty("java.vendor.version") ?: System.getProperty("java.runtime.version") ?: "unknown"
 
-    return "PowerSync Kotlin SDK v${LIBRARY_VERSION} (running Java $java on $os $osVersion)"
+    return "powersync-kotlin/${LIBRARY_VERSION} Java/$java $os/$osVersion"
 }
