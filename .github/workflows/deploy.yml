@@ -3,6 +3,9 @@ name: Release
 on: workflow_dispatch
 
 jobs:
+  fetch_prebuilts:
+    uses: ./.github/workflows/prebuild_assets.yml
+
   draft_release:
     permissions:
       contents: write
@@ -31,6 +34,8 @@ jobs:
 
   maven_publish:
     runs-on: macos-latest
+    needs:
+      - fetch_prebuilts
     steps:
       - uses: actions/checkout@v5
       - name: Validate Gradle Wrapper
@@ -46,10 +51,16 @@ jobs:
           distribution: 'temurin'
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+      - name: Download prebuilts
+        uses: actions/download-artifact@v5
+        with:
+          artifact-ids: ${{ needs.fetch_prebuilts.outputs.artifact_id }}
+          path: internal/prebuild-binaries/build/output/
       - name: Gradle publish
         run: |
           ./gradlew \
             --no-configuration-cache \
+            -PhasPrebuiltAssets=true
             -PGITHUB_PUBLISH_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
             -PsigningInMemoryKey="${{ secrets.SIGNING_KEY }}" \
             -PsigningInMemoryKeyId="${{ secrets.SIGNING_KEY_ID }}" \

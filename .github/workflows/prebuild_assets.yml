@@ -1,47 +1,57 @@
 name: Prebuild SQLite assets
 
-permissions:
-  contents: read
-
 on:
-  push:
-    branches:
-      - custom-native-build # todo remove
-  workflow_dispatch:
-    inputs:
-      version:
-        description: "Version number for the kotlin-assets release (e.g. 0.0.1)"
-        required: true
-        type: string
+  workflow_call:
+    outputs:
+      artifact_url:
+        description: "URL of the artifact containing precompiled SQLite binaries"
+        value: ${{ jobs.compile.outputs.artifact_url }}
+      artifact_id:
+        description: "id of the artifact containing precompiled SQLite binaries"
+        value: ${{ jobs.compile.outputs.artifact_id }}
 
 jobs:
   compile:
     name: Compile SQLite
     timeout-minutes: 30
     runs-on: macos-latest
+    outputs:
+      artifact_url: ${{ steps.upload.outputs.artifact-url }}
+      artifact_id: ${{ steps.upload.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+      - uses: actions/cache@v4
+        id: cache_prebuild
+        with:
+          path: internal/prebuild-binaries/build/output
+          key: sqlite-build-${{ hashFiles('internal/prebuild-binaries', 'plugins/build-plugin') }}
+
       - name: Validate Gradle Wrapper
+        if: steps.cache_prebuild.outputs.cache-hit != 'true'
         uses: gradle/actions/wrapper-validation@v4
       - uses: actions/cache@v4
+        if: steps.cache_prebuild.outputs.cache-hit != 'true'
         with:
           path: ~/.konan
           key: ${{ runner.os }}-${{ hashFiles('**/.lock') }}
       - name: Set up JDK 25
+        if: steps.cache_prebuild.outputs.cache-hit != 'true'
         uses: actions/setup-java@v4
         with:
           java-version: '25'
           distribution: 'temurin'
       - name: Set up Gradle
+        if: steps.cache_prebuild.outputs.cache-hit != 'true'
         uses: gradle/actions/setup-gradle@v4
         with:
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
       - name: Set up XCode
-        if: runner.os == 'macOS'
+        if: steps.cache_prebuild.outputs.cache-hit != 'true'
         uses: maxim-lobanov/setup-xcode@v1
       - name: Compile SQLite with Gradle
+        if: steps.cache_prebuild.outputs.cache-hit != 'true'
         run: |
           ./gradlew --scan internal:prebuild-binaries:compileNative
         shell: bash
