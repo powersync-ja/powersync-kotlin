@@ -95,9 +95,9 @@ kotlin {
             val compileSqlite3 = compileSqlite(this)
 
             compilations.named("main") {
-                cinterops.create("sqlite3") {
-                    definitionFile.set(compileSqlite3.flatMap { it.definitionFile })
-                }
+                //cinterops.create("sqlite3") {
+                //    definitionFile.set(compileSqlite3.flatMap { it.definitionFile })
+                //}
             }
         }
     }
