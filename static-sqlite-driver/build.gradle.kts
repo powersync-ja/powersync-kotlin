@@ -22,6 +22,7 @@ fun linkSqliteCInterop(target: KotlinNativeTarget): TaskProvider<CreateSqliteCIn
     val buildCInteropDef = tasks.register("${target.name}CinteropSqlite", CreateSqliteCInterop::class) {
         val precompiledSqlite: FileCollection = nativeSqliteConfiguration
         inputs.files(precompiledSqlite)
+        dependsOn(precompiledSqlite)
 
         val staticLibrary = precompiledSqlite.singleFile.resolve("${target.konanTarget.name}sqlite3.a")
         archiveFile.set(staticLibrary)
