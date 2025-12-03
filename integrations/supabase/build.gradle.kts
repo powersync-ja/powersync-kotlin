@@ -27,7 +27,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            api(projects.core)
+            api(projects.common)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.supabase.client)
             api(libs.supabase.auth)

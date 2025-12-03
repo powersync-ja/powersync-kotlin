@@ -73,6 +73,8 @@ jobs:
 
   build_xcframeworks:
     name: Build XCFrameworks
+    needs:
+      - fetch_prebuilts
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -91,8 +93,13 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+      - name: Download prebuilts
+        uses: actions/download-artifact@v5
+        with:
+          artifact-ids: ${{ needs.fetch_prebuilts.outputs.artifact_id }}
+          path: internal/prebuild-binaries/build/output/
       - name: Build frameworks
-        run: "./gradlew internal:PowerSyncKotlin:buildRelease"
+        run: "./gradlew -PhasPrebuiltAssets=true internal:PowerSyncKotlin:buildRelease"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -105,7 +112,7 @@ jobs:
   add_assets:
     permissions:
       contents: write
-    needs: [draft_release, build_xcframeworks]
+    needs: [draft_release, build_xcframeworks, fetch_prebuilts]
     name: Add assets to pending release
     runs-on: ubuntu-latest
     steps:
@@ -122,6 +129,27 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           gh release upload "${{ needs.draft_release.outputs.tag }}" PowersyncKotlinRelease.zip
+
+      - name: Download prebuilts
+        uses: actions/download-artifact@v5
+        with:
+          artifact-ids: ${{ needs.fetch_prebuilts.outputs.artifact_id }}
+          path: internal/prebuild-binaries/build/output/
+
+      - name: Archive prebuilts
+        run: |
+          find internal/prebuild-binaries/build/output
+          zip -r prebuilt_libraries.zip internal/prebuild-binaries/build/output/
+
+      - run: "ls -al"
+      - name: Upload XCFramework
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release upload "${{ needs.draft_release.outputs.tag }}" PowersyncKotlinRelease.zip
+          gh release upload "${{ needs.draft_release.outputs.tag }}" prebuilt_libraries.zip
+
 
       - name: "Update release description"
         env:
