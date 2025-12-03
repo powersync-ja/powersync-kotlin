@@ -121,15 +121,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
-          merge-multiple: true
-      - run: "ls -al"
-      - name: Upload XCFramework
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          gh release upload "${{ needs.draft_release.outputs.tag }}" PowersyncKotlinRelease.zip
-
+          name: XCFramework
       - name: Download prebuilts
         uses: actions/download-artifact@v5
         with:
@@ -141,7 +133,6 @@ jobs:
           find internal/prebuild-binaries/build/output
           zip -r prebuilt_libraries.zip internal/prebuild-binaries/build/output/
 
-      - run: "ls -al"
       - name: Upload XCFramework
         env:
           GH_TOKEN: ${{ github.token }}
@@ -149,7 +140,6 @@ jobs:
         run: |
           gh release upload "${{ needs.draft_release.outputs.tag }}" PowersyncKotlinRelease.zip
           gh release upload "${{ needs.draft_release.outputs.tag }}" prebuilt_libraries.zip
-
 
       - name: "Update release description"
         env:
