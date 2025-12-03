@@ -12,8 +12,8 @@ if (localPropertiesFile.exists()) {
 
 val useReleasedVersions = localProperties.getProperty("USE_RELEASED_POWERSYNC_VERSIONS", "false") == "true"
 
-subprojects {
-    if (useReleasedVersions) {
+if (useReleasedVersions) {
+    subprojects {
         configurations.all {
             // https://docs.gradle.org/current/userguide/resolution_rules.html#sec:conditional-dependency-substitution
             resolutionStrategy.dependencySubstitution.all {
@@ -39,4 +39,3 @@ subprojects {
         }
     }
 }
-

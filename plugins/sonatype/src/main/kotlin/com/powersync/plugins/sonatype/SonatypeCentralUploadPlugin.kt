@@ -10,6 +10,9 @@ import com.vanniktech.maven.publish.MavenPublishBaseExtension
 internal class SonatypeCentralUploadPlugin : Plugin<Project> {
     override fun apply(project: Project) {
         project.logger.info("Applying the `gradle-maven-publish` plugin")
+        project.group = project.property("GROUP") as String
+        project.version = project.property("LIBRARY_VERSION") as String
+
         project.plugins.apply(MavenPublishPlugin::class.java)
 
         val extension = project.extensions.create(

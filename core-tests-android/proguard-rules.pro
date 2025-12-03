@@ -19,3 +19,19 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# This is the entrypoint in the app, we want to minify everything else to simulate a real app build.
+-keep class com.powersync.testutils.IntegrationTestHelpers {
+    *;
+}
+
+# Not used in main app, needed for testing
+-keep class kotlin.** {
+    *;
+}
+
+-keep class androidx.tracing.Trace {
+  public static void beginSection(java.lang.String);
+  public static void endSection();
+  public static void forceEnableAppTracing();
+}

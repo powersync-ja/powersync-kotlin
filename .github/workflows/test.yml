@@ -22,7 +22,7 @@ jobs:
         include:
           - os: macos-latest
             name: watchos
-            targets: watchosSimulatorArm64Test tvosSimulatorArm64Test
+            targets: watchosSimulatorArm64Test
           - os: macos-latest
             name: tvos
             targets: tvosSimulatorArm64Test

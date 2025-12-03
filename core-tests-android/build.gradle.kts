@@ -1,9 +1,6 @@
-import com.slack.keeper.optInToKeeper
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.keeper)
 }
 
 dependencies {
@@ -11,11 +8,11 @@ dependencies {
     implementation(libs.androidx.core)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.material)
+    implementation(libs.test.coroutines)
+    implementation(libs.test.turbine)
 
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(libs.test.coroutines)
-    androidTestImplementation(libs.test.turbine)
 }
 
 android {
@@ -35,7 +32,10 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
             signingConfig = signingConfigs.getByName("debug")
         }
     }
@@ -47,8 +47,4 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
-}
-
-androidComponents {
-    beforeVariants { it.optInToKeeper() }
 }
