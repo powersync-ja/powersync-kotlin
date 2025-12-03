@@ -23,7 +23,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            api(projects.common)
+            api(projects.core)
             implementation(compose.runtime)
         }
         androidMain.dependencies {
