@@ -38,6 +38,8 @@ kotlin {
             dependsOn(commonTest.get())
 
             dependencies {
+                implementation(projects.internal.testutils)
+
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlinx.io)
                 implementation(libs.test.turbine)
