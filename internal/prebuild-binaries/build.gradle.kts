@@ -62,6 +62,20 @@ val unzipSqlite3MultipleCipherSources by tasks.registering(UnzipSqlite::class) {
     )
 }
 
+val prepareAndroidBuild by tasks.registering(Copy::class) {
+    from(unzipSqlite3MultipleCipherSources.flatMap { it.destination }) {
+        include(
+            "sqlite3mc_amalgamation.c",
+            "sqlite3mc_amalgamation.h",
+            "sqlite3.h"
+        )
+    }
+
+    from("jni/CMakeLists.txt")
+    from("jni/sqlite_bindings.cpp")
+    into(layout.buildDirectory.dir("android"))
+}
+
 fun compileJni(target: JniTarget): CompiledAsset {
     val name = target.filename("sqlite3mc_jni")
 
@@ -180,6 +194,9 @@ val nativeSqliteConfiguration by configurations.creating {
 val jniSqlite3McConfiguration by configurations.creating {
     isCanBeResolved = false
 }
+val androidBuildSourceConfiguration by configurations.creating {
+    isCanBeResolved = false
+}
 
 artifacts {
     if (hasPrebuiltAssets.getOrElse(false)) {
@@ -191,4 +208,6 @@ artifacts {
         add(nativeSqliteConfiguration.name, compileNative)
         add(jniSqlite3McConfiguration.name, compileJni)
     }
+
+    add(androidBuildSourceConfiguration.name, prepareAndroidBuild)
 }

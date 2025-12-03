@@ -19,10 +19,14 @@ val nativeSqliteConfiguration: Configuration by configurations.creating {
 val jniSqlite3McConfiguration: Configuration by configurations.creating {
     isCanBeConsumed = false
 }
+val androidBuildSourceConfiguration by configurations.creating {
+    isCanBeConsumed = false
+}
 
 dependencies {
     nativeSqliteConfiguration(project(path=":internal:prebuild-binaries", configuration="nativeSqliteConfiguration"))
     jniSqlite3McConfiguration(project(path=":internal:prebuild-binaries", configuration="jniSqlite3McConfiguration"))
+    androidBuildSourceConfiguration(project(path=":internal:prebuild-binaries", configuration="androidBuildSourceConfiguration"))
 }
 
 val hostManager = HostManager()
@@ -107,12 +111,12 @@ android {
             libs.versions.android.minSdk
                 .get()
                 .toInt()
-//        consumerProguardFiles("proguard-rules.pro")
+        consumerProguardFiles("src/androidMain/proguard-rules.pro")
     }
 
     externalNativeBuild {
         cmake {
-            path("src/jni/CMakeLists.txt")
+            path(File(androidBuildSourceConfiguration.singleFile, "CMakeLists.txt"))
         }
     }
 

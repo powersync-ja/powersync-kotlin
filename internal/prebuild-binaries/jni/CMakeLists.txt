@@ -1,3 +1,6 @@
+# NOTE! This file is not used as-is. It gets copied into a shared folder with sources by the
+# prepareAndroidBuild task.
+
 cmake_minimum_required(VERSION 3.14)
 project(
     powersync_sqlite3mc_bundled
@@ -7,8 +10,7 @@ project(
 
 set(CMAKE_C_FLAGS "-O3")
 
-add_library(sqlite3mc_bundled SHARED "../../build/downloads/sqlite3mc/sqlite3mc_amalgamation.c" "sqlite_bindings.cpp")
-target_include_directories(sqlite3mc_bundled PRIVATE "../../build/downloads/sqlite3mc")
+add_library(sqlite3mc_bundled SHARED "sqlite3mc_amalgamation.c" "sqlite_bindings.cpp")
 
 # Note: Keep in sync with the ClangCompile task used for static-sqlite-driver
 target_compile_definitions(sqlite3mc_bundled PUBLIC

@@ -5,7 +5,10 @@ import java.util.UUID
 import kotlin.reflect.KClass
 
 @PowerSyncInternal
-public fun extractLib(reference: KClass<*>, fileName: String): String {
+public fun extractLib(
+    reference: KClass<*>,
+    fileName: String,
+): String {
     val os = System.getProperty("os.name").lowercase()
     val (prefix, extension) =
         when {
