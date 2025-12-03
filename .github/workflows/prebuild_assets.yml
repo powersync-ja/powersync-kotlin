@@ -52,6 +52,7 @@ jobs:
         uses: maxim-lobanov/setup-xcode@v1
       - name: Download build tools
         run: |
+          brew install lld
           cd internal/prebuild-binaries
           ./download_glibc.sh
           ./download_llvm_mingw.sh
