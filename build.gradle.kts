@@ -73,6 +73,7 @@ dependencies {
     dokka(project(":integrations:room"))
     dokka(project(":integrations:sqldelight"))
     dokka(project(":integrations:supabase"))
+    dokka(projects.sqlite3multipleciphers)
 }
 
 dokka {

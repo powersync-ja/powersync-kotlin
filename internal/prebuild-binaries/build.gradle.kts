@@ -195,6 +195,9 @@ val jniSqlite3McConfiguration by configurations.creating {
     isCanBeResolved = false
 }
 val androidBuildSourceConfiguration by configurations.creating {
+    // We share the downloaded sqlite3mc sources with the sqlite3multipleciphers project, which uses it to
+    // setup a cmake-based NDK build. Since these work on all platforms and only run when needed, there's no
+    // need to prebuild them.
     isCanBeResolved = false
 }
 

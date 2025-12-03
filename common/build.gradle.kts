@@ -240,8 +240,6 @@ android {
                 .toInt()
         consumerProguardFiles("proguard-rules.pro")
     }
-
-    ndkVersion = "27.1.12297006"
 }
 
 tasks.named<ProcessResources>(kotlin.jvm().compilations["main"].processResourcesTaskName) {
