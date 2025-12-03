@@ -14,13 +14,16 @@
  * limitations under the License.
  */
 @file:JvmName("BundledSQLiteConnectionKt")
+
 package com.powersync.encryption
 
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.SQLiteStatement
 import androidx.sqlite.throwSQLiteException
 
-internal class BundledSQLiteConnection(private val connectionPointer: Long) : SQLiteConnection {
+internal class BundledSQLiteConnection(
+    private val connectionPointer: Long,
+) : SQLiteConnection {
     @Volatile private var isClosed = false
 
     override fun inTransaction(): Boolean {
@@ -38,7 +41,10 @@ internal class BundledSQLiteConnection(private val connectionPointer: Long) : SQ
         return BundledSQLiteStatement(connectionPointer, statementPointer)
     }
 
-    internal fun loadExtension(fileName: String, entryPoint: String?) {
+    internal fun loadExtension(
+        fileName: String,
+        entryPoint: String?,
+    ) {
         if (isClosed) {
             throwSQLiteException(SQLITE_MISUSE, "connection is closed")
         }
@@ -60,8 +66,15 @@ internal class BundledSQLiteConnection(private val connectionPointer: Long) : SQ
 
 private external fun nativeInTransaction(pointer: Long): Boolean
 
-private external fun nativePrepare(pointer: Long, sql: String): Long
+private external fun nativePrepare(
+    pointer: Long,
+    sql: String,
+): Long
 
-private external fun nativeLoadExtension(pointer: Long, fileName: String, entryPoint: String?)
+private external fun nativeLoadExtension(
+    pointer: Long,
+    fileName: String,
+    entryPoint: String?,
+)
 
 private external fun nativeClose(pointer: Long)

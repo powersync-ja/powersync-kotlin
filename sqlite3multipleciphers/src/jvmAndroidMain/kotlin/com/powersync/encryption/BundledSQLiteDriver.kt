@@ -14,14 +14,20 @@
  * limitations under the License.
  */
 @file:JvmName("BundledSQLiteDriverKt")
+
 package com.powersync.encryption
 
 import androidx.sqlite.SQLiteConnection
 import com.powersync.PersistentConnectionFactory
 import com.powersync.resolvePowerSyncLoadableExtensionPath
 
-public abstract class BundledSQLiteDriver internal constructor(private val key: Key): PersistentConnectionFactory {
-    private fun open(fileName: String, flags: Int): SQLiteConnection {
+public abstract class BundledSQLiteDriver internal constructor(
+    private val key: Key,
+) : PersistentConnectionFactory {
+    private fun open(
+        fileName: String,
+        flags: Int,
+    ): SQLiteConnection {
         ensureJniLibraryLoaded()
 
         val address = nativeOpen(fileName, flags)
@@ -36,15 +42,17 @@ public abstract class BundledSQLiteDriver internal constructor(private val key: 
         return connection
     }
 
-    override fun openConnection(path: String, openFlags: Int): SQLiteConnection {
-        return open(path, openFlags).also { it.encryptOrClose(key) }
-    }
+    override fun openConnection(
+        path: String,
+        openFlags: Int,
+    ): SQLiteConnection = open(path, openFlags).also { it.encryptOrClose(key) }
 
-    override fun openInMemoryConnection(): SQLiteConnection {
-        return open(":memory:", 2)
-    }
+    override fun openInMemoryConnection(): SQLiteConnection = open(":memory:", 2)
 }
 
 internal expect fun ensureJniLibraryLoaded()
 
-private external fun nativeOpen(name: String, openFlags: Int): Long
+private external fun nativeOpen(
+    name: String,
+    openFlags: Int,
+): Long

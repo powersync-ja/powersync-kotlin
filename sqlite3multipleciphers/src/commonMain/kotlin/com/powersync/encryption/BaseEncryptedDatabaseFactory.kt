@@ -4,7 +4,9 @@ import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
 
 public sealed interface Key {
-    public class Passphrase(public val passphrase: String) : Key
+    public class Passphrase(
+        public val passphrase: String,
+    ) : Key
     // TODO: Add raw key api
 }
 

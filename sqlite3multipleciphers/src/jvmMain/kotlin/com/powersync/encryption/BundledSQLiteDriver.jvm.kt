@@ -2,10 +2,10 @@ package com.powersync.encryption
 
 import com.powersync.extractLib
 
-public class JavaEncryptedDatabaseFactory(key: Key): BundledSQLiteDriver(key) {
-    override fun resolveDefaultDatabasePath(dbFilename: String): String {
-        return dbFilename
-    }
+public class JavaEncryptedDatabaseFactory(
+    key: Key,
+) : BundledSQLiteDriver(key) {
+    override fun resolveDefaultDatabasePath(dbFilename: String): String = dbFilename
 }
 
 private val didLoadLibrary by lazy {

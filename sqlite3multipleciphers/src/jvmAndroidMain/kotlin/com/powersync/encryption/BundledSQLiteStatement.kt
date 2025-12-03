@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 @file:JvmName("BundledSQLiteStatementKt")
+
 package com.powersync.encryption
 
 import androidx.sqlite.SQLiteStatement
@@ -23,25 +24,36 @@ internal class BundledSQLiteStatement(
     private val connectionPointer: Long,
     private val statementPointer: Long,
 ) : SQLiteStatement {
-
     @Volatile private var isClosed = false
 
-    override fun bindBlob(index: Int, value: ByteArray) {
+    override fun bindBlob(
+        index: Int,
+        value: ByteArray,
+    ) {
         throwIfClosed()
         nativeBindBlob(statementPointer, index, value)
     }
 
-    override fun bindDouble(index: Int, value: Double) {
+    override fun bindDouble(
+        index: Int,
+        value: Double,
+    ) {
         throwIfClosed()
         nativeBindDouble(statementPointer, index, value)
     }
 
-    override fun bindLong(index: Int, value: Long) {
+    override fun bindLong(
+        index: Int,
+        value: Long,
+    ) {
         throwIfClosed()
         nativeBindLong(statementPointer, index, value)
     }
 
-    override fun bindText(index: Int, value: String) {
+    override fun bindText(
+        index: Int,
+        value: String,
+    ) {
         throwIfClosed()
         nativeBindText(statementPointer, index, value)
     }
@@ -115,7 +127,7 @@ internal class BundledSQLiteStatement(
 
     private fun throwIfClosed() {
         if (isClosed) {
-            throwSQLiteException(21 /* SQLITE_MISUSE */, "statement is closed")
+            throwSQLiteException(21, "statement is closed")
         }
     }
 
@@ -124,24 +136,71 @@ internal class BundledSQLiteStatement(
     }
 }
 
+private external fun nativeBindBlob(
+    pointer: Long,
+    index: Int,
+    value: ByteArray,
+)
 
-private external fun nativeBindBlob(pointer: Long, index: Int, value: ByteArray)
-private external fun nativeBindDouble(pointer: Long, index: Int, value: Double)
-private external fun nativeBindLong(pointer: Long, index: Int, value: Long)
-private external fun nativeBindText(pointer: Long, index: Int, value: String)
-private external fun nativeBindNull(pointer: Long, index: Int)
+private external fun nativeBindDouble(
+    pointer: Long,
+    index: Int,
+    value: Double,
+)
+
+private external fun nativeBindLong(
+    pointer: Long,
+    index: Int,
+    value: Long,
+)
+
+private external fun nativeBindText(
+    pointer: Long,
+    index: Int,
+    value: String,
+)
+
+private external fun nativeBindNull(
+    pointer: Long,
+    index: Int,
+)
 
 private external fun nativeStep(pointer: Long): Boolean
 
-private external fun nativeGetBlob(pointer: Long, index: Int): ByteArray
-private external fun nativeGetDouble(pointer: Long, index: Int): Double
-private external fun nativeGetLong(pointer: Long, index: Int): Long
-private external fun nativeGetText(pointer: Long, index: Int): String
+private external fun nativeGetBlob(
+    pointer: Long,
+    index: Int,
+): ByteArray
+
+private external fun nativeGetDouble(
+    pointer: Long,
+    index: Int,
+): Double
+
+private external fun nativeGetLong(
+    pointer: Long,
+    index: Int,
+): Long
+
+private external fun nativeGetText(
+    pointer: Long,
+    index: Int,
+): String
+
 private external fun nativeGetColumnCount(pointer: Long): Int
-private external fun nativeGetColumnName(pointer: Long, index: Int): String
-private external fun nativeGetColumnType(pointer: Long, index: Int): Int
+
+private external fun nativeGetColumnName(
+    pointer: Long,
+    index: Int,
+): String
+
+private external fun nativeGetColumnType(
+    pointer: Long,
+    index: Int,
+): Int
 
 private external fun nativeReset(pointer: Long)
 
 private external fun nativeClearBindings(pointer: Long)
+
 private external fun nativeClose(pointer: Long)
