@@ -202,7 +202,7 @@ artifacts {
     if (hasPrebuiltAssets.getOrElse(false)) {
         // In CI builds, we set hasPrebuiltAssets=true. In that case, contents of build/output have been downloaded from
         // cache and don't need to be rebuilt.
-        add(nativeSqliteConfiguration.name, layout.buildDirectory.dir("output/native"))
+        add(nativeSqliteConfiguration.name, layout.buildDirectory.dir("output/static"))
         add(jniSqlite3McConfiguration.name, layout.buildDirectory.dir("output/jni"))
     } else {
         add(nativeSqliteConfiguration.name, compileNative)
