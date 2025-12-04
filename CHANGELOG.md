@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.9.0 (unreleased)
+## 1.9.0
 
 - Updated user agent string formats to allow viewing version distributions in the new PowerSync dashboard.
 - Sync options: `newClientImplementation` is now the default.

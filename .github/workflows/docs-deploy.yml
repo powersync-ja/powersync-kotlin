@@ -31,10 +31,7 @@ jobs:
           validate-wrappers: true
       - name: Build Docs
         run: |
-          ./gradlew --scan \
-            --no-configuration-cache \
-           -PGITHUB_PUBLISH_TOKEN=${{ secrets.GITHUB_TOKEN }} \
-          dokkaGenerate
+          ./gradlew --scan dokkaGenerate
         shell: bash
       - name: Upload static files as artifact
         id: deployment
