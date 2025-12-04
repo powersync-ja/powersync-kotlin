@@ -39,6 +39,8 @@ val downloadPowersyncDesktopBinaries by tasks.registering(Download::class) {
         "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_aarch64.macos.dylib"
     val macos_x64 =
         "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_x64.macos.dylib"
+    val windows_aarch64 =
+        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/powersync_aarch64.dll"
     val windows_x64 =
         "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/powersync_x64.dll"
 
@@ -51,20 +53,20 @@ val downloadPowersyncDesktopBinaries by tasks.registering(Download::class) {
     // We're not compiling native code for JVM builds here (we're doing that for Android only), so we just have to
     // fetch prebuilt binaries from the powersync-sqlite-core repository.
     if (includeAllPlatformsForJvmBuild) {
-        src(listOf(linux_aarch64, linux_x64, macos_aarch64, macos_x64, windows_x64))
+        src(listOf(linux_aarch64, linux_x64, macos_aarch64, macos_x64, windows_aarch64, windows_x64))
     } else {
         val (aarch64, x64) =
             when {
                 os.isLinux -> linux_aarch64 to linux_x64
                 os.isMacOsX -> macos_aarch64 to macos_x64
-                os.isWindows -> null to windows_x64
+                os.isWindows -> windows_aarch64 to windows_x64
                 else -> error("Unknown operating system: $os")
             }
         val arch = System.getProperty("os.arch")
         src(
             when (arch) {
-                "aarch64" -> listOfNotNull(aarch64)
-                "amd64", "x86_64" -> listOfNotNull(x64)
+                "aarch64" -> listOf(aarch64)
+                "amd64", "x86_64" -> listOf(x64)
                 else -> error("Unsupported architecture: $arch")
             },
         )
