@@ -41,6 +41,9 @@ and API documentation [here](https://powersync-ja.github.io/powersync-kotlin/).
     connector provides the connection between your application backend and the PowerSync managed database. It is used to:
       1. Retrieve a token to connect to the PowerSync service.
       2. Apply local changes on your backend application server (and from there, to your backend database).
+- [sqlite3multipleciphers](./sqlite3multipleciphers/)
+
+    - A SQLite driver implementation based on SQLite3MultipleCiphers.
 
 ## Demo Apps / Example Projects
 

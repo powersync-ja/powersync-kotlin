@@ -2,10 +2,13 @@ package com.powersync
 
 import java.io.File
 import java.util.UUID
+import kotlin.reflect.KClass
 
-private class R
-
-internal fun extractLib(fileName: String): String {
+@PowerSyncInternal
+public fun extractLib(
+    reference: KClass<*>,
+    fileName: String,
+): String {
     val os = System.getProperty("os.name").lowercase()
     val (prefix, extension) =
         when {
@@ -34,7 +37,7 @@ internal fun extractLib(fileName: String): String {
 
     val resourcePath = "/$prefix${fileName}_$arch.$extension"
 
-    (R::class.java.getResourceAsStream(resourcePath) ?: error("Resource $resourcePath not found")).use { input ->
+    (reference.java.getResourceAsStream(resourcePath) ?: error("Resource $resourcePath not found")).use { input ->
         file.outputStream().use { output -> input.copyTo(output) }
     }
 

@@ -42,12 +42,7 @@ abstract class ClangCompile : DefaultTask() {
 
     @get:Input
     val xcodeInstallation: Provider<String>
-        get() =
-            providers
-                .exec {
-                    executable("xcode-select")
-                    args("-p")
-                }.standardOutput.asText
+        get() = resolveXcode(providers)
 
     @TaskAction
     fun run() {
@@ -95,15 +90,7 @@ abstract class ClangCompile : DefaultTask() {
                     "--compile",
                     "-I${include.get().asFile.absolutePath}",
                     inputFile.get().asFile.absolutePath,
-                    "-DHAVE_GETHOSTUUID=0",
-                    "-DSQLITE_ENABLE_DBSTAT_VTAB",
-                    "-DSQLITE_ENABLE_FTS5",
-                    "-DSQLITE_ENABLE_RTREE",
-                    // Used by GRDB
-                    "-DSQLITE_ENABLE_SNAPSHOT",
-                    // Used for GRDB update hook like functionality
-                    "-DSQLITE_ENABLE_SESSION",
-                    "-DSQLITE_ENABLE_PREUPDATE_HOOK",
+                    *sqlite3ClangOptions,
                     //
                     "-O3",
                     "-o",
@@ -126,5 +113,26 @@ abstract class ClangCompile : DefaultTask() {
         const val TVOS_SIMULATOR_SDK =
             "Platforms/AppleTVSimulator.platform/Developer/SDKs/AppleTVSimulator.sdk"
         const val MACOS_SDK = "Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/"
+
+        val sqlite3ClangOptions = arrayOf(
+            // Note: Keep in sync with sqlite3multiplecipers/src/jni/CMakeLists.txt
+            "-DHAVE_GETHOSTUUID=0",
+            "-DSQLITE_ENABLE_DBSTAT_VTAB",
+            "-DSQLITE_ENABLE_FTS5",
+            "-DSQLITE_ENABLE_RTREE",
+            // Used by GRDB
+            "-DSQLITE_ENABLE_SNAPSHOT",
+            // Used for GRDB update hook like functionality
+            "-DSQLITE_ENABLE_SESSION",
+            "-DSQLITE_ENABLE_PREUPDATE_HOOK",
+        )
+
+        fun resolveXcode(factory: ProviderFactory): Provider<String> {
+            return factory
+                .exec {
+                    executable("xcode-select")
+                    args("-p")
+                }.standardOutput.asText.map { it.trim() }
+        }
     }
 }

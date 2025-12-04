@@ -8,6 +8,7 @@ plugins {
 
 dependencies {
     implementation(projects.core)
+    implementation(projects.sqlite3multipleciphers)
     implementation(libs.androidx.core)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.material)

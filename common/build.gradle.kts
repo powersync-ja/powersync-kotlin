@@ -137,6 +137,7 @@ kotlin {
                 optIn("kotlinx.cinterop.ExperimentalForeignApi")
                 optIn("kotlin.time.ExperimentalTime")
                 optIn("kotlin.experimental.ExperimentalObjCRefinement")
+                optIn("com.powersync.PowerSyncInternal")
             }
         }
 
@@ -239,8 +240,6 @@ android {
                 .toInt()
         consumerProguardFiles("proguard-rules.pro")
     }
-
-    ndkVersion = "27.1.12297006"
 }
 
 tasks.named<ProcessResources>(kotlin.jvm().compilations["main"].processResourcesTaskName) {

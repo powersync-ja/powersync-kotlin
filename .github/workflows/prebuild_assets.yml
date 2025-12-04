@@ -26,7 +26,7 @@ jobs:
         id: cache_prebuild
         with:
           path: internal/prebuild-binaries/build/output
-          key: sqlite-build-${{ hashFiles('internal/prebuild-binaries', 'plugins/build-plugin') }}
+          key: sqlite-build-${{ hashFiles('internal/prebuild-binaries/build.gradle.kts', 'plugins/build-plugin/src') }}
 
       - name: Validate Gradle Wrapper
         if: steps.cache_prebuild.outputs.cache-hit != 'true'
@@ -50,10 +50,18 @@ jobs:
       - name: Set up XCode
         if: steps.cache_prebuild.outputs.cache-hit != 'true'
         uses: maxim-lobanov/setup-xcode@v1
+      - name: Download build tools
+        if: steps.cache_prebuild.outputs.cache-hit != 'true'
+        run: |
+          brew install lld
+          cd internal/prebuild-binaries
+          ./download_glibc.sh
+          ./download_llvm_mingw.sh
+
       - name: Compile SQLite with Gradle
         if: steps.cache_prebuild.outputs.cache-hit != 'true'
         run: |
-          ./gradlew --scan internal:prebuild-binaries:compileNative
+          ./gradlew --scan internal:prebuild-binaries:compileAll
         shell: bash
       - uses: actions/upload-artifact@v5
         id: upload
