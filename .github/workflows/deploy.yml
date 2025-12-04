@@ -60,7 +60,7 @@ jobs:
         run: |
           ./gradlew \
             --no-configuration-cache \
-            -PhasPrebuiltAssets=true
+            -PhasPrebuiltAssets=true \
             -PGITHUB_PUBLISH_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
             -PsigningInMemoryKey="${{ secrets.SIGNING_KEY }}" \
             -PsigningInMemoryKeyId="${{ secrets.SIGNING_KEY_ID }}" \
