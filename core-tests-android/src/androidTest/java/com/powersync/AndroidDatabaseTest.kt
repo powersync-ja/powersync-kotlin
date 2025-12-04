@@ -44,4 +44,7 @@ class AndroidDatabaseTest {
 
     @Test
     fun canUseTempStore() = helpers.canUseTempStore()
+
+    @Test
+    fun testEncryptedDatabase() = helpers.testEncryptedDatabase()
 }

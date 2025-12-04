@@ -1,11 +1,15 @@
 package com.powersync.testutils
 
 import android.content.Context
+import androidx.sqlite.SQLiteException
+import androidx.sqlite.execSQL
 import app.cash.turbine.turbineScope
 import com.powersync.DatabaseDriverFactory
 import com.powersync.PowerSyncDatabase
 import com.powersync.PowerSyncException
 import com.powersync.db.schema.Schema
+import com.powersync.encryption.AndroidEncryptedDatabaseFactory
+import com.powersync.encryption.Key
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
@@ -227,5 +231,37 @@ class IntegrationTestHelpers(private val context: Context) {
         repeat(10000) {
             database.execute("INSERT INTO foo VALUES (?)", parameters = listOf(data))
         }
+    }
+
+    fun testEncryptedDatabase() = runTest {
+        val database = PowerSyncDatabase(
+            factory = AndroidEncryptedDatabaseFactory(
+                context,
+                Key.Passphrase("mykey")
+            ),
+            schema = Schema(UserRow.table),
+            dbFilename = "encrypted_test",
+        )
+
+        check(database.get("PRAGMA cipher") { it.getString(0)!! } == "chacha20") {
+            "Should be able to query PRAGMA cipher"
+        }
+
+        database.execute(
+            "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
+            listOf("Test", "test@example.org"),
+        )
+        database.close()
+
+        val unencryptedFactory = DatabaseDriverFactory(context)
+        val unencrypted = unencryptedFactory.openConnection("encrypted_test", null, false)
+
+        try {
+            unencrypted.execSQL("SELECT * FROM sqlite_schema")
+            throw IllegalStateException("Was able to read schema from encrypted database without supplying a key")
+        } catch (_: SQLiteException) {
+            // Expected
+        }
+        unencrypted.close()
     }
 }
