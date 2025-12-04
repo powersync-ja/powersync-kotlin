@@ -17,7 +17,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            api(projects.core)
+            api(projects.common)
             api(libs.sqldelight.runtime)
             implementation(libs.kotlinx.coroutines.core)
         }
@@ -28,6 +28,7 @@ kotlin {
             dependencies {
                 // Separate project because SQLDelight can't generate code in test source sets.
                 implementation(projects.integrations.sqldelightTestDatabase)
+                implementation(projects.internal.testutils)
 
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlinx.io)

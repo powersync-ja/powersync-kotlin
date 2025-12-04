@@ -30,6 +30,10 @@
     *;
 }
 
+-keep class androidx.test.** {
+    *;
+}
+
 -keep class androidx.tracing.Trace {
   public static void beginSection(java.lang.String);
   public static void endSection();

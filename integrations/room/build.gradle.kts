@@ -26,7 +26,7 @@ kotlin {
         }
 
         commonMain.dependencies {
-            api(project(":core"))
+            api(projects.common)
             api(libs.androidx.room.runtime)
             api(libs.androidx.sqlite.bundled)
 
