@@ -31,16 +31,17 @@ val downloadPowersyncDesktopBinaries by tasks.registering(Download::class) {
     val coreVersion =
         libs.versions.powersync.core
             .get()
-    val linux_aarch64 =
-        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_aarch64.linux.so"
-    val linux_x64 =
-        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_x64.linux.so"
-    val macos_aarch64 =
-        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_aarch64.macos.dylib"
-    val macos_x64 =
-        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/libpowersync_x64.macos.dylib"
-    val windows_x64 =
-        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/powersync_x64.dll"
+
+    fun downloadUrl(filename: String): String {
+        return "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/$filename"
+    }
+
+    val linux_aarch64 = "libpowersync_aarch64.linux.so"
+    val linux_x64 = "libpowersync_x64.linux.so"
+    val macos_aarch64 = "libpowersync_aarch64.macos.dylib"
+    val macos_x64 = "libpowersync_x64.macos.dylib"
+    val windows_aarch64 = "powersync_aarch64.dll"
+    val windows_x64 = "powersync_x64.dll"
 
     val includeAllPlatformsForJvmBuild =
         project.findProperty("powersync.binaries.allPlatforms") == "true"
@@ -48,26 +49,28 @@ val downloadPowersyncDesktopBinaries by tasks.registering(Download::class) {
 
     // The jar we're releasing for JVM clients needs to include the core extension. For local tests, it's enough to only
     // download the extension for the OS running the build. For releases, we want to include them all.
-    // We're not compiling native code for JVM builds here (we're doing that for Android only), so we just have to
-    // fetch prebuilt binaries from the powersync-sqlite-core repository.
+    // We're not compiling native code for JVM builds here, so we just have to fetch prebuilt binaries from the
+    // powersync-sqlite-core repository.
     if (includeAllPlatformsForJvmBuild) {
-        src(listOf(linux_aarch64, linux_x64, macos_aarch64, macos_x64, windows_x64))
+        val allSources = sequenceOf(linux_aarch64, linux_x64, macos_aarch64, macos_x64, windows_aarch64, windows_x64)
+            .map(::downloadUrl)
+            .toList()
+        src(allSources)
     } else {
         val (aarch64, x64) =
             when {
                 os.isLinux -> linux_aarch64 to linux_x64
                 os.isMacOsX -> macos_aarch64 to macos_x64
-                os.isWindows -> null to windows_x64
+                os.isWindows -> windows_aarch64 to windows_x64
                 else -> error("Unknown operating system: $os")
             }
         val arch = System.getProperty("os.arch")
-        src(
-            when (arch) {
-                "aarch64" -> listOfNotNull(aarch64)
-                "amd64", "x86_64" -> listOfNotNull(x64)
-                else -> error("Unsupported architecture: $arch")
-            },
-        )
+        val filename = when (arch) {
+            "aarch64" -> aarch64
+            "amd64", "x86_64" -> x64
+            else -> error("Unsupported architecture: $arch")
+        }
+        src(downloadUrl(filename))
     }
     dest(binariesFolder.map { it.dir("powersync") })
     onlyIfModified(true)
