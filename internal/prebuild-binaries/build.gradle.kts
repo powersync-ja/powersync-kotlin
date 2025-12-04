@@ -10,8 +10,11 @@ import com.powersync.compile.JniTarget
 import kotlin.io.path.absolutePathString
 
 plugins {
+    base // For the clean task
     alias(libs.plugins.downloadPlugin)
 }
+
+val lastKotlinSdkRelease = project.property("LIBRARY_VERSION") as String
 
 val sqlite3McVersion = "2.2.6"
 val sqlite3BaseVersion = "3.51.1"
@@ -41,6 +44,14 @@ val downloadSqlite3MultipleCipherSources by tasks.registering(Download::class) {
     overwrite(false)
 }
 
+val downloadPrebuiltsFromRelease by tasks.registering(Download::class) {
+    val zipFileName = "prebuilts-$lastKotlinSdkRelease.zip"
+    src("https://github.com/powersync-ja/powersync-kotlin/releases/download/v$lastKotlinSdkRelease/prebuilt_libraries.zip")
+    dest(layout.buildDirectory.dir("downloads").map { it.file(zipFileName) })
+    onlyIfNewer(true)
+    overwrite(false)
+}
+
 val unzipSQLiteSources by tasks.registering(UnzipSqlite::class) {
     val zip = downloadSQLiteSources.map { it.outputs.files.singleFile }
     inputs.file(zip)
@@ -60,6 +71,33 @@ val unzipSqlite3MultipleCipherSources by tasks.registering(UnzipSqlite::class) {
         dir = layout.buildDirectory.dir("downloads/sqlite3mc"),
         filter = null,
     )
+}
+
+abstract class ExtractPrebuilts: Copy() {
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    init {
+        into(outputDir)
+    }
+}
+
+val unzipPrebuiltsFromLastRelease by tasks.registering(ExtractPrebuilts::class) {
+    val zip = downloadPrebuiltsFromRelease.map { it.outputs.files.singleFile }
+
+    from(zipTree(zip)) {
+        include("internal/prebuild-binaries/build/output/**")
+
+        eachFile {
+            relativePath = RelativePath(
+                relativePath.isFile,
+                // Remove segments: [internal, prebuild-binaries, build, output]
+                *relativePath.segments.drop(4).toTypedArray()
+            )
+        }
+    }
+
+    outputDir.set(layout.buildDirectory.dir("downloads/from_last_release"))
 }
 
 val prepareAndroidBuild by tasks.registering(Copy::class) {
@@ -186,7 +224,6 @@ val compileAll by tasks.registering {
     dependsOn(compileJni)
 }
 
-val hasPrebuiltAssets = providers.gradleProperty("hasPrebuiltAssets").map { it.toBooleanStrict() }
 
 val nativeSqliteConfiguration by configurations.creating {
     isCanBeResolved = false
@@ -202,12 +239,33 @@ val androidBuildSourceConfiguration by configurations.creating {
 }
 
 artifacts {
+    val hasPrebuiltAssets = providers.gradleProperty("hasPrebuiltAssets").map { it.toBooleanStrict() }
+    val isInCI = providers.environmentVariable("CI").isPresent
+
+    // There are three ways to obtain the static and JNI libraries:
+    //
+    //  1. We can download and compile from source. This requires special toolchain dependencies (see readme) and is
+    //     slow.
+    //  2. We can download compiled binaries from the last GitHub release. We don't want to do this in CI to ensure
+    //     updates to the build are reflected in tests. It's a good fit for builds on developer machines though.
+    //  3. In CI, we run 1 in a separate step and re-use its outputs across multiple builds. -PhasPrebuiltAssets=true is
+    //     passed for consumers of those artifacts.
     if (hasPrebuiltAssets.getOrElse(false)) {
-        // In CI builds, we set hasPrebuiltAssets=true. In that case, contents of build/output have been downloaded from
-        // cache and don't need to be rebuilt.
+        // Case 3: Re-use downloaded assets.
         add(nativeSqliteConfiguration.name, layout.buildDirectory.dir("output/static"))
         add(jniSqlite3McConfiguration.name, layout.buildDirectory.dir("output/jni"))
+    } else if (!isInCI) {
+        // Developer machine, case 2. Download from last release.
+        add(
+            nativeSqliteConfiguration.name,
+            unzipPrebuiltsFromLastRelease.flatMap { it.outputDir.dir("static") }
+        )
+        add(
+            jniSqlite3McConfiguration.name,
+            unzipPrebuiltsFromLastRelease.flatMap { it.outputDir.dir("jni") }
+        )
     } else {
+        // Case 1, compile from source.
         add(nativeSqliteConfiguration.name, compileNative)
         add(jniSqlite3McConfiguration.name, compileJni)
     }
