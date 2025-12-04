@@ -1,17 +1,12 @@
 name: Release
 
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - fix-release
+on: workflow_dispatch
 
 jobs:
   fetch_prebuilts:
     uses: ./.github/workflows/prebuild_assets.yml
 
   draft_release:
-    if: false
     permissions:
       contents: write
     name: Create Draft Release on GitHub
@@ -78,7 +73,6 @@ jobs:
 
   build_xcframeworks:
     name: Build XCFrameworks
-    if: false
     needs:
       - fetch_prebuilts
     runs-on: macos-latest
@@ -119,7 +113,6 @@ jobs:
     permissions:
       contents: write
     needs: [draft_release, build_xcframeworks, fetch_prebuilts]
-    if: false
     name: Add assets to pending release
     runs-on: ubuntu-latest
     steps:
