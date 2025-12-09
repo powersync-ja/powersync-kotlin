@@ -45,6 +45,8 @@ include(":integrations:supabase")
 
 include(":compose")
 
+include(":internal:ktor-client-darwin")
+
 include(":demos:android-supabase-todolist")
 include(":demos:supabase-todolist")
 include(":demos:supabase-todolist:androidApp")
