@@ -4,21 +4,22 @@ android-minSdk = "24"
 android-targetSdk = "36"
 android-compileSdk = "36"
 configurationAnnotations = "0.10.6"
-dokkaBase = "2.0.0"
+dokkaBase = "2.1.0"
 gradleDownloadTask = "5.6.0"
 java = "17"
 
 # Dependencies
 kermit = "2.0.8"
-kotlin = "2.2.10" # Note: When updating, always update the first part of the ksp version too
-ksp = "2.2.10-2.0.2"
+kotlin = "2.2.21"
+ksp = "2.3.3"
 coroutines = "1.10.2"
 kotlinx-datetime = "0.7.1"
 serialization = "1.9.0"
 kotlinx-io = "0.8.0"
-ktor = "3.2.3"
+ktor = "3.3.3"
 uuid = "0.8.4"
-powersync-core = "0.4.8"
+powersync-core = "0.4.10"
+rsocket = "0.20.0"
 turbine = "1.2.1"
 kotest = "5.9.1" # we can't upgrade to 6.x because that requires Java 11 or above (we need Java 8 support)
 
@@ -26,23 +27,22 @@ stately = "2.1.0"
 supabase = "3.2.2"
 junit = "4.13.2"
 
-compose = "1.8.2" # This is for the multiplatform compose
-androidCompose = "2025.08.00"
-compose-preview = "1.9.0"
-compose-lifecycle = "2.9.2"
+compose = "1.9.3" # This is for the multiplatform compose
+androidCompose = "2025.11.01"
+compose-preview = "1.9.5"
+compose-lifecycle = "2.9.6"
 androidxSqlite = "2.6.0"
-androidxSplashscreen = "1.0.1"
+androidxSplashscreen = "1.2.0"
 room = "2.8.0"
 sqldelight = "2.1.0"
 
 # plugins
 android-gradle-plugin = "8.12.1"
-skie = "0.10.6"
+skie = "0.10.8"
 maven-publish = "0.34.0"
 download-plugin = "5.6.0"
-mokkery = "2.9.0"
+mokkery = "3.0.0"
 kotlinter = "5.2.0"
-keeper = "0.16.1"
 atomicfu = "0.29.0"
 buildKonfig = "0.17.1"
 
@@ -95,6 +95,8 @@ ktor-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json", 
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "coroutines" }
+rsocket-core = { module = "io.rsocket.kotlin:rsocket-core", version.ref = "rsocket" }
+rsocket-transport-websocket = { module = "io.rsocket.kotlin:rsocket-transport-ktor-websocket-internal", version.ref = "rsocket" }
 
 stately-concurrency = { module = "co.touchlab:stately-concurrency", version.ref = "stately" }
 supabase-client = { module = "io.github.jan-tennert.supabase:postgrest-kt", version.ref = "supabase" }
@@ -149,7 +151,6 @@ mavenPublishPlugin = { id = "com.vanniktech.maven.publish", version.ref = "maven
 downloadPlugin = { id = "de.undercouch.download", version.ref = "download-plugin" }
 mokkery = { id = "dev.mokkery", version.ref = "mokkery" }
 kotlinter = { id = "org.jmailen.kotlinter", version.ref = "kotlinter" }
-keeper = { id = "com.slack.keeper", version.ref = "keeper" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version.ref = "atomicfu" }
 buildKonfig = { id = "com.codingfeline.buildkonfig", version.ref = "buildKonfig" }

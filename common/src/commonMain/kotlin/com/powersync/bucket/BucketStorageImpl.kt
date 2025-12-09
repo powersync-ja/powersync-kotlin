@@ -76,7 +76,7 @@ internal class BucketStorageImpl(
             return false
 
         val seqBefore =
-            db.getOptional("SELECT seq FROM sqlite_sequence WHERE name = '${InternalTable.CRUD}'") {
+            db.getOptional("SELECT seq FROM main.sqlite_sequence WHERE name = '${InternalTable.CRUD}'") {
                 it.getLong(0)!!
             } ?: // Nothing to update
                 return false
@@ -92,7 +92,7 @@ internal class BucketStorageImpl(
             }
 
             val seqAfter =
-                tx.getOptional("SELECT seq FROM sqlite_sequence WHERE name = '${InternalTable.CRUD}'") {
+                tx.getOptional("SELECT seq FROM main.sqlite_sequence WHERE name = '${InternalTable.CRUD}'") {
                     it.getLong(0)!!
                 }
                     ?: // assert isNotEmpty

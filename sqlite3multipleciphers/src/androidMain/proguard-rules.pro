@@ -1,0 +1,1 @@
+-keepclasseswithmembers class com.powersync.encryption.** { native <methods>; }

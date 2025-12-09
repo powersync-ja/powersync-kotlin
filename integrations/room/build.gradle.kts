@@ -26,7 +26,7 @@ kotlin {
         }
 
         commonMain.dependencies {
-            api(project(":core"))
+            api(projects.common)
             api(libs.androidx.room.runtime)
             api(libs.androidx.sqlite.bundled)
 
@@ -79,7 +79,7 @@ dependencies {
 }
 
 android {
-    namespace = "com.powersync.compose"
+    namespace = "com.powersync.integrations.room"
     compileSdk =
         libs.versions.android.compileSdk
             .get()

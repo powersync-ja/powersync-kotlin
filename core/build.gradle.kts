@@ -94,7 +94,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    namespace = "com.powersync"
+    namespace = "com.powersync.core"
     compileSdk =
         libs.versions.android.compileSdk
             .get()
@@ -106,8 +106,6 @@ android {
                 .toInt()
         consumerProguardFiles("proguard-rules.pro")
     }
-
-    ndkVersion = "27.1.12297006"
 }
 
 // We want to build with recent JDKs, but need to make sure we support Java 8. https://jakewharton.com/build-on-latest-java-test-through-lowest-java/

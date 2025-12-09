@@ -1,10 +1,8 @@
 package com.powersync.sync
 
-import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
-import kotlin.experimental.ExperimentalObjCRefinement
 import kotlin.native.HiddenFromObjC
 
 /**
@@ -52,7 +50,7 @@ public class SyncOptions(
     /**
      * Allows configuring the [HttpClient] used for connecting to the PowerSync service.
      */
-    public val clientConfiguration: SyncClientConfiguration? = null,
+    public val clientConfiguration: SyncClientConfiguration = SyncClientConfiguration.ExtendedConfig {},
     /**
      * Whether streams that have been defined with `auto_subscribe: true` should be synced even
      * when they don't have an explicit subscription.

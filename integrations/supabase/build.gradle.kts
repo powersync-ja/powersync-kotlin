@@ -27,7 +27,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            api(projects.core)
+            api(projects.common)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.supabase.client)
             api(libs.supabase.auth)
@@ -38,6 +38,8 @@ kotlin {
             dependsOn(commonTest.get())
 
             dependencies {
+                implementation(projects.internal.testutils)
+
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlinx.io)
                 implementation(libs.test.turbine)

@@ -1,9 +1,6 @@
 # Changelog
 
-## 1.9.0 (unreleased)
-
-- Sync options: `newClientImplementation` is now the default.
-- Make `androidx.sqlite:sqlite-bundled` an API dependency of `:core` to avoid toolchain warnings.
+## 1.10.0
 - Add `appMetadata` parameter to `PowerSyncDatabase.connect()` to include application metadata in sync requests. This metadata is merged into sync requests and displayed in PowerSync service logs.
 
 ```kotlin
@@ -15,6 +12,14 @@ database.connect(
     )
 )
 ```
+
+## 1.9.0
+
+- Updated user agent string formats to allow viewing version distributions in the new PowerSync dashboard.
+- Sync options: `newClientImplementation` is now the default.
+- Make `androidx.sqlite:sqlite-bundled` an API dependency of `:core` to avoid toolchain warnings.
+- On Apple platforms, use a websocket protocol as a workaround to clients not supporting backpressure in HTTP response
+  streams.
 
 ## 1.8.1
 
