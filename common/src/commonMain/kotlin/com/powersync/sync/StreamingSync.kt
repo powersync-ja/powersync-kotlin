@@ -94,6 +94,7 @@ internal class StreamingSyncClient(
                     configureSyncHttpClient(options.userAgent)
                     config.block(this)
                 }
+
             is SyncClientConfiguration.ExistingClient -> config.client
         }
 
@@ -305,7 +306,8 @@ internal class StreamingSyncClient(
         } else {
             // Use RSocket as a fallback to ensure we have backpressure on platforms that don't support it natively.
             flow {
-                val credentials = requireNotNull(connector.getCredentialsCached()) { "Not logged in" }
+                val credentials =
+                    requireNotNull(connector.getCredentialsCached()) { "Not logged in" }
 
                 emitAll(
                     httpClient.rSocketSyncStream(
@@ -506,51 +508,9 @@ internal class StreamingSyncClient(
         }
 
         private suspend fun connect(start: Instruction.EstablishSyncStream) {
-            // Merge local appMetadata from StreamingSyncClient into the request before sending
-            val mergedRequest = mergeAppMetadata(start.request)
-            receiveTextOrBinaryLines(mergedRequest).collect {
+            receiveTextOrBinaryLines(start.request).collect {
                 controlInvocations.send(it)
             }
-        }
-
-        /**
-         * FIXME, the Rust implementation does not yet pass app_metadata to the sync instruction
-         *
-         * Merges local appMetadata into the request JsonObject.
-         * If the request already has app_metadata, the local appMetadata will be merged into it
-         * (with local values taking precedence for duplicate keys).
-         */
-        private fun mergeAppMetadata(request: JsonObject): JsonObject {
-            if (appMetadata.isEmpty()) {
-                return request
-            }
-
-            // Convert local appMetadata to JsonObject
-            val localAppMetadataJson =
-                JsonObject(
-                    appMetadata.mapValues { (_, value) -> JsonPrimitive(value) },
-                )
-
-            // Get existing app_metadata from request, if any
-            val existingAppMetadata =
-                request["app_metadata"] as? JsonObject ?: JsonObject(emptyMap())
-
-            // Merge: existing first, then local (local takes precedence)
-            val mergedAppMetadata =
-                JsonObject(
-                    buildMap {
-                        putAll(existingAppMetadata)
-                        putAll(localAppMetadataJson)
-                    },
-                )
-
-            // Create new request with merged app_metadata
-            return JsonObject(
-                buildMap {
-                    putAll(request)
-                    put("app_metadata", mergedAppMetadata)
-                },
-            )
         }
     }
 
