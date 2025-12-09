@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.10.0
+
+- Add internal fork of Ktor Darwin HTTP engine with improved backpressure handling for large response bodies on Apple platforms.
+  This fixes out-of-memory crashes when syncing large payloads (hundreds of MB) on iOS/macOS.
+- Replaces unbounded channel with bounded channel (capacity 64) to prevent unbounded memory growth
+- Applies backpressure that propagates to the network layer, throttling data delivery based on processing speed
+- No API changes - this is a transparent improvement to the underlying HTTP handling
+
 ## 1.9.0
 
 - Updated user agent string formats to allow viewing version distributions in the new PowerSync dashboard.
