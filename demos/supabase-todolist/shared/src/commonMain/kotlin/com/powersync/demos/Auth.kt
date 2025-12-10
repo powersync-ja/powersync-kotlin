@@ -69,6 +69,9 @@ internal class AuthViewModel(
                                                 }
                                             },
                                     ),
+                                appMetadata = mapOf(
+                                    "appVersion" to Config.APP_VERSION
+                                ),
                             )
                         }
 
