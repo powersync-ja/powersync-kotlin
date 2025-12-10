@@ -96,6 +96,33 @@ abstract class BaseSyncIntegrationTest(
         }
 
     @Test
+    fun useAppMetadata() =
+        databaseTest {
+            database.connect(
+                connector,
+                options = getOptions(),
+                appMetadata =
+                    mapOf(
+                        "app_version" to "1.0.0",
+                    ),
+            )
+            turbineScope(timeout = 10.0.seconds) {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                turbine.waitFor { it.connected }
+                turbine.cancel()
+            }
+
+            requestedSyncStreams shouldHaveSingleElement {
+                val meta = it.jsonObject["app_metadata"]!!.jsonObject
+                meta.keys shouldHaveSingleElement "app_version"
+                meta.values
+                    .first()
+                    .jsonPrimitive.content shouldBe "1.0.0"
+                true
+            }
+        }
+
+    @Test
     @OptIn(DelicateCoroutinesApi::class)
     fun closesResponseStreamOnDatabaseClose() =
         databaseTest {

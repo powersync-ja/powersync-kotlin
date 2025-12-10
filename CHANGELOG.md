@@ -1,11 +1,30 @@
 # Changelog
 
+## 1.10.0 (unreleased)
+
+- Add `appMetadata` parameter to `PowerSyncDatabase.connect()` to include application metadata in
+  sync requests. This metadata is merged into sync requests and displayed in PowerSync service logs.
+
+Note: This requires a PowerSync service version `>=1.17.0` in order for logs to display metadata.
+
+```kotlin
+database.connect(
+    connector = connector,
+    appMetadata = mapOf(
+        "appVersion" to "1.0.0",
+        "deviceId" to "device456"
+    )
+)
+```
+
 ## 1.9.0
 
-- Updated user agent string formats to allow viewing version distributions in the new PowerSync dashboard.
+- Updated user agent string formats to allow viewing version distributions in the new PowerSync
+  dashboard.
 - Sync options: `newClientImplementation` is now the default.
 - Make `androidx.sqlite:sqlite-bundled` an API dependency of `:core` to avoid toolchain warnings.
-- On Apple platforms, use a websocket protocol as a workaround to clients not supporting backpressure in HTTP response
+- On Apple platforms, use a websocket protocol as a workaround to clients not supporting
+  backpressure in HTTP response
   streams.
 
 ## 1.8.1
@@ -14,15 +33,19 @@
 
 ## 1.8.0
 
-- Refactor SDK: `com.powersync:powersync-core` has an identical API, but now depends on 
+- Refactor SDK: `com.powersync:powersync-core` has an identical API, but now depends on
   `com.powersync:powersync-common` where most logic is implemented.
-  - __POTENTIALLY BREAKING CHANGE__: If you were injecting a `DatabaseDriverFactory` into Koin or Dagger, note that the
-    `PowerSyncDatabase()` factory method now takes a more generic `PersistentConnectionFactory`.
-  - If you're using `PowerSyncDatabase.inMemory`, you explicitly have to import `com.powersync.inMemory` now.
+    - __POTENTIALLY BREAKING CHANGE__: If you were injecting a `DatabaseDriverFactory` into Koin or
+      Dagger, note that the
+      `PowerSyncDatabase()` factory method now takes a more generic `PersistentConnectionFactory`.
+    - If you're using `PowerSyncDatabase.inMemory`, you explicitly have to import
+      `com.powersync.inMemory` now.
 - Update the PowerSync core extension to version 0.4.8.
-- Add the `soft` flag to `disconnectAndClear()` which keeps an internal copy of synced data in the database, allowing
+- Add the `soft` flag to `disconnectAndClear()` which keeps an internal copy of synced data in the
+  database, allowing
   faster re-sync if a compatible token is used in the next `connect()` call.
-- Add the `clear` parameter to `RawTable` to run a statement helping the core extension clear raw tables.
+- Add the `clear` parameter to `RawTable` to run a statement helping the core extension clear raw
+  tables.
 
 ## 1.7.0
 

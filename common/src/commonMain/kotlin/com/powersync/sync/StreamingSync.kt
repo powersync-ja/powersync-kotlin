@@ -59,6 +59,7 @@ import kotlinx.io.readByteArray
 import kotlinx.io.readIntLe
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlin.time.Clock
 
@@ -74,6 +75,7 @@ internal class StreamingSyncClient(
     private val options: SyncOptions,
     private val schema: Schema,
     private val activeSubscriptions: StateFlow<List<SubscriptionGroup>>,
+    private val appMetadata: Map<String, String> = emptyMap(),
 ) {
     private var isUploadingCrud = AtomicReference<PendingCrudUpload?>(null)
     private var completedCrudUploads = Channel<Unit>(onBufferOverflow = BufferOverflow.DROP_OLDEST)
@@ -92,6 +94,7 @@ internal class StreamingSyncClient(
                     configureSyncHttpClient(options.userAgent)
                     config.block(this)
                 }
+
             is SyncClientConfiguration.ExistingClient -> config.client
         }
 
@@ -127,7 +130,13 @@ internal class StreamingSyncClient(
                 status.update { copy(downloadError = e) }
             } finally {
                 if (!result.hideDisconnectStateAndReconnectImmediately) {
-                    status.update { copy(connected = false, connecting = true, downloading = false) }
+                    status.update {
+                        copy(
+                            connected = false,
+                            connecting = true,
+                            downloading = false,
+                        )
+                    }
                     delay(retryDelayMs)
                 }
             }
@@ -297,7 +306,8 @@ internal class StreamingSyncClient(
         } else {
             // Use RSocket as a fallback to ensure we have backpressure on platforms that don't support it natively.
             flow {
-                val credentials = requireNotNull(connector.getCredentialsCached()) { "Not logged in" }
+                val credentials =
+                    requireNotNull(connector.getCredentialsCached()) { "Not logged in" }
 
                 emitAll(
                     httpClient.rSocketSyncStream(
@@ -367,6 +377,7 @@ internal class StreamingSyncClient(
                     schema = schema.toSerializable(),
                     includeDefaults = options.includeDefaultStreams,
                     activeStreams = subscriptions.map { it.key },
+                    appMetadata = appMetadata,
                 ),
             )
 
@@ -375,7 +386,9 @@ internal class StreamingSyncClient(
                     activeSubscriptions.collect {
                         if (subscriptions !== it) {
                             subscriptions = it
-                            controlInvocations.send(PowerSyncControlArguments.UpdateSubscriptions(activeSubscriptions.value.map { it.key }))
+                            controlInvocations.send(
+                                PowerSyncControlArguments.UpdateSubscriptions(activeSubscriptions.value.map { it.key }),
+                            )
                         }
                     }
                 }
@@ -536,6 +549,7 @@ internal class StreamingSyncClient(
                         },
                     clientId = clientId!!,
                     parameters = params,
+                    appMetadata = appMetadata,
                 )
 
             lateinit var receiveLines: Job
