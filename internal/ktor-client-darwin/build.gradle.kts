@@ -32,6 +32,7 @@ kotlin {
             kotlin.srcDir("darwin/src")
             dependencies {
                 api(libs.ktor.client.core)
+                api(libs.ktor.network.tls)
                 implementation(libs.kotlinx.coroutines.core)
             }
         }
