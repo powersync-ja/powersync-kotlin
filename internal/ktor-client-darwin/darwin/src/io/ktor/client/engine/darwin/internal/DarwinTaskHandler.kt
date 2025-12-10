@@ -24,7 +24,7 @@ internal class DarwinTaskHandler(
     val response: CompletableDeferred<HttpResponseData> = CompletableDeferred()
 
     private val requestTime: GMTDate = GMTDate()
-    private val bodyChunks = Channel<NSData>(capacity = 64)
+    private val bodyChunks = Channel<ByteArray>(capacity = 1)
 
     private var pendingFailure: Throwable? = null
         get() = field?.also { field = null }
@@ -32,9 +32,8 @@ internal class DarwinTaskHandler(
     private val body: ByteReadChannel =
             GlobalScope.writer(callContext, autoFlush = true) {
                         try {
-                            bodyChunks.consumeEach { nsData ->
-                                val bytes = nsData.toByteArray()
-                                channel.writeFully(bytes)
+                            bodyChunks.consumeEach {
+                                channel.writeFully(it)
                             }
                         } catch (cause: CancellationException) {
                             bodyChunks.cancel(cause)
@@ -48,20 +47,14 @@ internal class DarwinTaskHandler(
             val result = dataTask.response as NSHTTPURLResponse
             response.complete(result.toResponseData(requestData))
         }
-        
-        val result = bodyChunks.trySend(data)
-        when {
-            result.isClosed -> dataTask.cancel()
-            result.isFailure -> {
-                // Buffer full, block to apply backpressure
-                try {
-                    runBlocking { bodyChunks.send(data) }
-                } catch (_: CancellationException) {
-                    dataTask.cancel()
-                } catch (_: ClosedSendChannelException) {
-                    dataTask.cancel()
-                }
-            }
+
+        val bytes = data.toByteArray()
+        try {
+            runBlocking { bodyChunks.send(bytes) }
+        } catch (_: CancellationException) {
+            dataTask.cancel()
+        } catch (_: ClosedSendChannelException) {
+            dataTask.cancel()
         }
     }
 
