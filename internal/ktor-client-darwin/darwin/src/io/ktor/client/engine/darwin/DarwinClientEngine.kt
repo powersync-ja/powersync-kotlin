@@ -17,10 +17,7 @@ import platform.Foundation.*
 @OptIn(InternalAPI::class)
 internal class DarwinClientEngine(override val config: DarwinClientEngineConfig) : HttpClientEngineBase("ktor-darwin") {
 
-    private val requestQueue: NSOperationQueue? = when (val queue = NSOperationQueue.currentQueue()) {
-        NSOperationQueue.mainQueue -> NSOperationQueue()
-        else -> queue
-    }
+    private val requestQueue: NSOperationQueue = NSOperationQueue()
 
     override val dispatcher = Dispatchers.Unconfined
 
