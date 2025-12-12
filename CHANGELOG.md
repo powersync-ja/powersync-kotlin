@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.10.0 (unreleased)
+## 1.10.0
 
 - Add `appMetadata` parameter to `PowerSyncDatabase.connect()` to include application metadata in
   sync requests. This metadata is merged into sync requests and displayed in PowerSync service logs.
