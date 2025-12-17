@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.10.1
+
+- Fix XCFramework for Swift SDK to contain version numbers.
+
 ## 1.10.0
 
 - Add `appMetadata` parameter to `PowerSyncDatabase.connect()` to include application metadata in
