@@ -11,6 +11,11 @@ gradlePlugin {
         id = "com.powersync.plugins.sonatype"
         implementationClass = "com.powersync.plugins.sonatype.SonatypeCentralUploadPlugin"
     }
+
+    val versionPlugin by plugins.creating {
+        id = "com.powersync.plugins.version"
+        implementationClass = "com.powersync.plugins.PowerSyncVersionPlugin"
+    }
 }
 
 // The target release option here is the version of the JVM running the build by default, but Kotlin
