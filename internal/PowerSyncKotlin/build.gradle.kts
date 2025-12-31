@@ -7,6 +7,16 @@ plugins {
     alias(libs.plugins.kotlinter)
 }
 
+skie {
+    build {
+        // Recommended for distributable static frameworks - sets multiple flags:
+        // - noClangModuleBreadcrumbsInStaticFrameworks = true
+        // - enableSwiftLibraryEvolution = true
+        // - enableRelativeSourcePathsInDebugSymbols = true
+        produceDistributableFramework()
+    }
+}
+
 kotlin {
     val xcf = XCFramework()
 
@@ -36,6 +46,11 @@ kotlin {
     explicitApi()
 
     targets.withType<KotlinNativeTarget> {
+        binaries.all {
+            // Preserve debug info in release builds for crash symbolication
+            freeCompilerArgs += "-Xadd-light-debug=enable"
+        }
+
         compilations.named("main") {
             compileTaskProvider {
                 compilerOptions.freeCompilerArgs.add("-Xexport-kdoc")
@@ -81,6 +96,7 @@ listOf("Debug", "Release").forEach { buildType ->
         archiveFile.parentFile.mkdirs()
         archiveFile.delete()
 
+        // Include both the xcframework and all dSYM files
         executable = "zip"
         args("-r", "--symlinks", archiveFile.absolutePath, "PowerSyncKotlin.xcframework")
         workingDir(source)
