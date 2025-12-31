@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.skie)
     alias(libs.plugins.kotlinter)
+    id("com.powersync.plugins.version")
 }
 
 skie {
