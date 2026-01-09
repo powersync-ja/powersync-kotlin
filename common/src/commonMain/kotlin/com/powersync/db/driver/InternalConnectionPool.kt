@@ -77,14 +77,15 @@ internal class InternalConnectionPool(
 }
 
 internal fun SQLiteConnection.setupDefaultPragmas(readOnly: Boolean) {
-    execSQL("pragma journal_mode = WAL")
+    if (readOnly) {
+        execSQL("pragma query_only = TRUE")
+    } else {
+        execSQL("pragma journal_mode = WAL")
+    }
+
     execSQL("pragma journal_size_limit = ${6 * 1024 * 1024}")
     execSQL("pragma busy_timeout = 30000")
     execSQL("pragma cache_size = ${50 * 1024}")
-
-    if (readOnly) {
-        execSQL("pragma query_only = TRUE")
-    }
 
     // Older versions of the SDK used to set up an empty schema and raise the user version to 1.
     // Keep doing that for consistency.
