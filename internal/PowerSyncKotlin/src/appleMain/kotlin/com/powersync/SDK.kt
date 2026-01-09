@@ -51,7 +51,7 @@ public fun sqlite3DatabaseFactory(initialStatements: List<String>): PersistentCo
                 throw e
             }
 
-            return super.openConnection(path, openFlags)
+            return conn
         }
     }
 }

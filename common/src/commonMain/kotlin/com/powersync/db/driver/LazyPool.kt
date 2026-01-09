@@ -14,7 +14,8 @@ import kotlinx.coroutines.flow.SharedFlow
 internal class LazyPool(
     openInner: () -> SQLiteConnectionPool,
 ) : SQLiteConnectionPool {
-    private val pool by lazy(openInner)
+    private val lazyPool = lazy(openInner)
+    private val pool by lazyPool
 
     override suspend fun <T> read(callback: suspend (SQLiteConnectionLease) -> T): T = pool.read(callback)
 
@@ -26,5 +27,9 @@ internal class LazyPool(
     override val updates: SharedFlow<Set<String>>
         get() = pool.updates
 
-    override suspend fun close() = pool.close()
+    override suspend fun close() {
+        if (lazyPool.isInitialized()) {
+            pool.close()
+        }
+    }
 }

@@ -1,5 +1,6 @@
 package com.powersync
 
+import androidx.sqlite.SQLiteConnection
 import app.cash.turbine.test
 import app.cash.turbine.turbineScope
 import co.touchlab.kermit.ExperimentalKermitApi
@@ -12,6 +13,7 @@ import com.powersync.db.schema.PendingStatementParameter
 import com.powersync.db.schema.RawTable
 import com.powersync.db.schema.Schema
 import com.powersync.sync.LegacySyncImplementation
+import com.powersync.test.factory
 import com.powersync.test.getTempDir
 import com.powersync.test.waitFor
 import com.powersync.testutils.UserRow
@@ -63,6 +65,36 @@ class DatabaseTest {
                     mapper = { it.getLong(0)!! },
                 )
             mode shouldBe 1
+        }
+
+    @Test
+    fun testInitializationErrorsAreRethrown() =
+        databaseTest(createInitialDatabase = false) {
+            val db =
+                createPowerSyncDatabaseImpl(
+                    factory =
+                        object : PersistentConnectionFactory {
+                            override fun resolveDefaultDatabasePath(dbFilename: String): String = dbFilename
+
+                            override fun openConnection(
+                                path: String,
+                                openFlags: Int,
+                            ): SQLiteConnection = openInMemoryConnection()
+
+                            override fun openInMemoryConnection(): SQLiteConnection =
+                                throw PowerSyncException("simulated failure to open database", null)
+                        },
+                    schema = Schema(UserRow.table),
+                    dbFilename = databaseName,
+                    dbDirectory = testDirectory,
+                    logger = logger,
+                    scope = scope,
+                )
+
+            val exception = shouldThrow<PowerSyncException> { db.execute("SELECT 1") }
+            exception.message shouldBe "simulated failure to open database"
+
+            db.close()
         }
 
     @Test

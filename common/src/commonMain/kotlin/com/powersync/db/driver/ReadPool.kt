@@ -24,8 +24,9 @@ internal class ReadPool(
     private val available = Channel<Pair<SQLiteConnection, CompletableDeferred<Unit>>>()
     private val connections: List<Job> =
         List(size) {
+            val driver = factory()
+
             scope.launch {
-                val driver = factory()
                 try {
                     while (true) {
                         val done = CompletableDeferred<Unit>()
