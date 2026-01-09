@@ -100,9 +100,10 @@ internal class PowerSyncDatabaseImpl(
     // This is set before the initialization job completes
     private lateinit var powerSyncVersion: String
     private val initializeResult = CompletableDeferred<Unit>()
-    private val initializeJob = scope.launch {
-        initializeResult.completeWith(runCatching { initialize() })
-    }
+    private val initializeJob =
+        scope.launch {
+            initializeResult.completeWith(runCatching { initialize() })
+        }
 
     private suspend fun initialize() {
         val sqliteVersion = internalDb.get("SELECT sqlite_version()") { it.getString(0)!! }
