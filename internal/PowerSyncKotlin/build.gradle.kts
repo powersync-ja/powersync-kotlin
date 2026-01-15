@@ -8,6 +8,16 @@ plugins {
     id("com.powersync.plugins.version")
 }
 
+skie {
+    build {
+        // Recommended for distributable static frameworks - sets multiple flags:
+        // - noClangModuleBreadcrumbsInStaticFrameworks = true
+        // - enableSwiftLibraryEvolution = true
+        // - enableRelativeSourcePathsInDebugSymbols = true
+        produceDistributableFramework()
+    }
+}
+
 kotlin {
     val xcf = XCFramework()
 
