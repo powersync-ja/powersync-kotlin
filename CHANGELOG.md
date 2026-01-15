@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.10.2 (unreleased)
+## 1.10.2
 
 - Exceptions that occur while initializing a PowerSync database are now rethrown when the database is used.
 - [Internal] Updated PowerSyncKotlin build to use SKIEE's `produceDistributableFramework`.
