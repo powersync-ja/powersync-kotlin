@@ -30,10 +30,13 @@ import com.powersync.utils.JsonUtil
 import com.powersync.utils.throttle
 import com.powersync.utils.toJsonObject
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.completeWith
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
@@ -41,6 +44,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.time.Duration.Companion.milliseconds
@@ -95,7 +99,11 @@ internal class PowerSyncDatabaseImpl(
 
     // This is set before the initialization job completes
     private lateinit var powerSyncVersion: String
-    private val initializeJob = scope.launch { initialize() }
+    private val initializeResult = CompletableDeferred<Unit>()
+    private val initializeJob =
+        scope.launch {
+            initializeResult.completeWith(runCatching { initialize() })
+        }
 
     private suspend fun initialize() {
         val sqliteVersion = internalDb.get("SELECT sqlite_version()") { it.getString(0)!! }
@@ -113,7 +121,7 @@ internal class PowerSyncDatabaseImpl(
     }
 
     private suspend fun waitReady() {
-        initializeJob.join()
+        initializeResult.await()
     }
 
     override suspend fun updateSchema(schema: Schema) =

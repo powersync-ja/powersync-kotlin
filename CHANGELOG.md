@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.10.2 (unreleased)
+
+- Exceptions that occur while initializing a PowerSync database are now rethrown when the database is used.
+
 ## 1.10.1
 
 - Fix XCFramework for Swift SDK to contain version numbers.
