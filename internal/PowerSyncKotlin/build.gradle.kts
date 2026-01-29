@@ -31,6 +31,9 @@ kotlin {
         watchosArm64(),
         watchosSimulatorArm64(),
         watchosX64(),
+        tvosSimulatorArm64(),
+        tvosX64(),
+        tvosArm64(),
     ).forEach {
         it.binaries.framework {
             baseName = "PowerSyncKotlin"
