@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.10.3
+
+- Fix sync client crash with Ktor versions 3.4.0.
+- [Internal] Support tvOS in framework for Swift SDK.
+
 ## 1.10.2
 
 - Exceptions that occur while initializing a PowerSync database are now rethrown when the database is used.

@@ -41,17 +41,23 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ProducerScope
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.buffer
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -231,56 +237,67 @@ internal class StreamingSyncClient(
         return body.data.writeCheckpoint
     }
 
-    private suspend fun <T> connectToSyncEndpoint(
+    private fun <T> syncEndpointFlow(
         req: JsonElement,
         supportBson: Boolean,
-        block: suspend (isBson: Boolean, response: HttpResponse) -> T,
-    ): T {
-        val credentials = connector.getCredentialsCached()
-        require(credentials != null) { "Not logged in" }
+        innerFlow: suspend FlowCollector<T>.(isBson: Boolean, response: HttpResponse) -> Unit,
+    ): Flow<T> {
+        val originalFlow =
+            channelFlow<T> {
+                val credentials = connector.getCredentialsCached()
+                require(credentials != null) { "Not logged in" }
 
-        val uri = credentials.endpointUri("sync/stream")
+                val uri = credentials.endpointUri("sync/stream")
 
-        val bodyJson = JsonUtil.json.encodeToString(req)
+                val bodyJson = JsonUtil.json.encodeToString(req)
 
-        val request =
-            httpClient.preparePost(uri) {
-                contentType(ContentType.Application.Json)
-                headers {
-                    append(HttpHeaders.Authorization, "Token ${credentials.token}")
-                    if (supportBson) {
-                        accept(bsonStream.withParameter("q", "0.9"))
-                        // Also indicate ndjson support as fallback
-                        append(HttpHeaders.Accept, ndjson.withParameter("q", "0.8"))
-                    } else {
-                        accept(ndjson)
+                val request =
+                    httpClient.preparePost(uri) {
+                        contentType(ContentType.Application.Json)
+                        headers {
+                            append(HttpHeaders.Authorization, "Token ${credentials.token}")
+                            if (supportBson) {
+                                accept(bsonStream.withParameter("q", "0.9"))
+                                // Also indicate ndjson support as fallback
+                                append(HttpHeaders.Accept, ndjson.withParameter("q", "0.8"))
+                            } else {
+                                accept(ndjson)
+                            }
+                        }
+                        setBody(bodyJson)
+                    }
+
+                request.execute { httpResponse ->
+                    val isBson = httpResponse.contentType() == bsonStream
+
+                    if (httpResponse.status.value == 401) {
+                        connector.invalidateCredentials()
+                    }
+
+                    if (httpResponse.status != HttpStatusCode.OK) {
+                        throw RuntimeException("Received error when connecting to sync stream: ${httpResponse.bodyAsText()}")
+                    }
+
+                    // Within this context, we can create the inner flow and push items to the channel.
+                    flow { innerFlow(isBson, httpResponse) }.collect {
+                        send(it)
                     }
                 }
-                setBody(bodyJson)
             }
 
-        return request.execute { httpResponse ->
-            val isBson = httpResponse.contentType() == bsonStream
-
-            if (httpResponse.status.value == 401) {
-                connector.invalidateCredentials()
-            }
-
-            if (httpResponse.status != HttpStatusCode.OK) {
-                throw RuntimeException("Received error when connecting to sync stream: ${httpResponse.bodyAsText()}")
-            }
-
-            block(isBson, httpResponse)
-        }
+        // We're only using a channelFlow to allow consumer and producer to be on different coroutine contexts (which is
+        // a requirement because request.execute changes the context to the one of the engine). However, we still want
+        // each emit() to block until it has been received to preserve backpressure.
+        return originalFlow.buffer(Channel.RENDEZVOUS)
     }
 
     private fun receiveTextLines(req: JsonElement): Flow<String> =
-        flow {
-            connectToSyncEndpoint(req, supportBson = false) { isBson, response ->
-                status.update { copy(connected = true, connecting = false) }
-                check(!isBson)
+        syncEndpointFlow(req, supportBson = false) { isBson, response ->
+            status.update { copy(connected = true, connecting = false) }
+            check(!isBson)
 
-                emitAll(response.body<ByteReadChannel>().lines())
+            response.body<ByteReadChannel>().lines().collect {
+                emit(it)
             }
         }
 
@@ -289,19 +306,17 @@ internal class StreamingSyncClient(
 
         return if (!needsRSocket) {
             // If we can use streamed HTTP responses that respect backpressure, prefer to do that.
-            flow {
-                connectToSyncEndpoint(req, supportBson = false) { isBson, response ->
-                    emit(PowerSyncControlArguments.ConnectionEstablished)
-                    val body = response.body<ByteReadChannel>()
+            syncEndpointFlow(req, supportBson = false) { isBson, response ->
+                emit(PowerSyncControlArguments.ConnectionEstablished)
+                val body = response.body<ByteReadChannel>()
 
-                    if (isBson) {
-                        emitAll(body.bsonObjects().map { PowerSyncControlArguments.BinaryLine(it) })
-                    } else {
-                        emitAll(body.lines().map { PowerSyncControlArguments.TextLine(it) })
-                    }
-
-                    emit(PowerSyncControlArguments.ResponseStreamEnd)
+                if (isBson) {
+                    emitAll(body.bsonObjects().map { PowerSyncControlArguments.BinaryLine(it) })
+                } else {
+                    emitAll(body.lines().map { PowerSyncControlArguments.TextLine(it) })
                 }
+
+                emit(PowerSyncControlArguments.ResponseStreamEnd)
             }
         } else {
             // Use RSocket as a fallback to ensure we have backpressure on platforms that don't support it natively.
