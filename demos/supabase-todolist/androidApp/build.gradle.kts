@@ -1,20 +1,12 @@
 plugins {
-    kotlin("multiplatform")
     id("com.android.application")
     alias(libs.plugins.compose.compiler)
     id("org.jetbrains.compose")
 }
 
-kotlin {
-    androidTarget()
-    sourceSets {
-        val androidMain by getting {
-            dependencies {
-                implementation(projects.demos.supabaseTodolist.shared)
-                implementation(compose.material)
-            }
-        }
-    }
+dependencies {
+    implementation(projects.demos.supabaseTodolist.shared)
+    implementation(compose.material)
 }
 
 android {
@@ -31,7 +23,8 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlin {
-        jvmToolchain(libs.versions.java.get().toInt())
-    }
+}
+
+kotlin {
+    jvmToolchain(libs.versions.java.get().toInt())
 }

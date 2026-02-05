@@ -1,4 +1,5 @@
 import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
 plugins {
@@ -13,7 +14,25 @@ plugins {
 version = "1.0-SNAPSHOT"
 
 kotlin {
-    androidTarget()
+    androidLibrary {
+        namespace = "com.powersync.demos.shared"
+        compileSdk =
+            libs.versions.android.compileSdk
+                .get()
+                .toInt()
+        minSdk =
+            libs.versions.android.minSdk
+                .get()
+                .toInt()
+
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
+
+        androidResources {
+            enable = true
+        }
+    }
 
     jvm()
     iosX64()
@@ -66,35 +85,6 @@ kotlin {
             implementation(compose.desktop.common)
             implementation(libs.kotlinx.coroutines.swing)
         }
-    }
-}
-
-android {
-    namespace = "com.powersync.demos.shared"
-    compileSdk =
-        libs.versions.android.compileSdk
-            .get()
-            .toInt()
-    sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
-    sourceSets["main"].res.srcDirs("src/androidMain/res")
-    sourceSets["main"].resources.srcDirs("src/commonMain/resources")
-
-    defaultConfig {
-        minSdk =
-            libs.versions.android.minSdk
-                .get()
-                .toInt()
-    }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-    kotlin {
-        jvmToolchain(
-            libs.versions.java
-                .get()
-                .toInt(),
-        )
     }
 }
 
