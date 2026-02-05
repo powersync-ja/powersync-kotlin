@@ -139,7 +139,7 @@ kmp-lifecycle-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-v
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "android-gradle-plugin" }
-#android-library = { id = "com.android.library", version.ref = "android-gradle-plugin" }
+android-library = { id = "com.android.library", version.ref = "android-gradle-plugin" }
 android-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "android-gradle-plugin" }
 jetbrainsCompose = { id = "org.jetbrains.compose", version.ref = "compose" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
@@ -157,4 +157,3 @@ buildKonfig = { id = "com.codingfeline.buildkonfig", version.ref = "buildKonfig"
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 androidx-room = { id = "androidx.room", version.ref = "room" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
-android-library = { id = "com.android.library", version.ref = "android-gradle-plugin" }
