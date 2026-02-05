@@ -4,14 +4,15 @@ import co.touchlab.kermit.ExperimentalKermitApi
 import co.touchlab.kermit.LogWriter
 import co.touchlab.kermit.Severity
 import co.touchlab.kermit.TestLogWriter
-import kotlinx.atomicfu.locks.reentrantLock
-import kotlinx.atomicfu.locks.withLock
+import io.ktor.utils.io.InternalAPI
+import io.ktor.utils.io.locks.reentrantLock
+import io.ktor.utils.io.locks.withLock
 
 /**
  * A version of the `TestLogWriter` from Kermit that uses a mutex around logs instead of throwing
  * for concurrent access.
 */
-@OptIn(ExperimentalKermitApi::class)
+@OptIn(ExperimentalKermitApi::class, InternalAPI::class)
 class PowerSyncTestLogWriter(
     private val loggable: Severity,
 ) : LogWriter() {

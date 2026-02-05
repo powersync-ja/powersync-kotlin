@@ -2,7 +2,27 @@
 
 ## 1.10.3
 
+- __Important__: Due to changes in our build setup, the library can no longer determine
+  whether it is running in debug mode on Android. This changes the default log severity
+  from `Verbose` to `Warn`. We recommend passing a logger explicitly:
+  ```Kotlin
+  PowerSyncDatabase(
+    // ... other parameters
+    logger = Logger(
+        config = StaticConfig(
+            logWriterList = listOf(platformLogWriter()),
+            minSeverity = if (BuildConfig.isDebug) {
+                Severity.Verbose
+            } else {
+                Severity.Warn
+            },
+        ),
+        tag = "PowerSync",
+    )
+  )
+  ```
 - Fix sync client crash with Ktor versions 3.4.0.
+- [Internal] Update Android Gradle plugin to version 9.0.
 - [Internal] Support tvOS in framework for Swift SDK.
 
 ## 1.10.2

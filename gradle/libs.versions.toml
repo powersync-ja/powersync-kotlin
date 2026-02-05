@@ -43,7 +43,6 @@ maven-publish = "0.34.0"
 download-plugin = "5.6.0"
 mokkery = "3.1.1"
 kotlinter = "5.2.0"
-atomicfu = "0.31.0"
 buildKonfig = "0.17.1"
 
 # Sample - Android
@@ -154,7 +153,6 @@ downloadPlugin = { id = "de.undercouch.download", version.ref = "download-plugin
 mokkery = { id = "dev.mokkery", version.ref = "mokkery" }
 kotlinter = { id = "org.jmailen.kotlinter", version.ref = "kotlinter" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
-kotlin-atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version.ref = "atomicfu" }
 buildKonfig = { id = "com.codingfeline.buildkonfig", version.ref = "buildKonfig" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 androidx-room = { id = "androidx.room", version.ref = "room" }

@@ -4,7 +4,6 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.android.multiplatform.library)
     alias(libs.plugins.kotlinter)
-    //alias(libs.plugins.kotlin.atomicfu)
     id("com.powersync.plugins.sonatype")
     id("com.powersync.plugins.sharedbuild")
     id("dokka-convention")

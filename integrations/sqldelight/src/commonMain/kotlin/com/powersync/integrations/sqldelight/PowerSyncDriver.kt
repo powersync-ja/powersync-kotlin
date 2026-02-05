@@ -10,8 +10,9 @@ import app.cash.sqldelight.db.SqlPreparedStatement
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
 import com.powersync.db.driver.SQLiteConnectionLease
-import kotlinx.atomicfu.locks.SynchronizedObject
-import kotlinx.atomicfu.locks.synchronized
+import io.ktor.utils.io.InternalAPI
+import io.ktor.utils.io.locks.SynchronizedObject
+import io.ktor.utils.io.locks.synchronized
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -29,7 +30,7 @@ import kotlinx.coroutines.launch
  * This driver implements [SqlDriver] and can be passed to constructors of your SQLDelight database.
  * Please see the readme of this library for more details to be aware of.
  */
-@OptIn(ExperimentalPowerSyncAPI::class)
+@OptIn(ExperimentalPowerSyncAPI::class, InternalAPI::class)
 public class PowerSyncDriver(
     private val db: PowerSyncDatabase,
     private val scope: CoroutineScope,

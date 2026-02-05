@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.compose.compiler) apply false
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.android.multiplatform.library) apply false
+    alias(libs.plugins.android.library) apply false
     alias(libs.plugins.kotlinMultiplatform) apply false
     alias(libs.plugins.skie) apply false
     alias(libs.plugins.kotlin.jvm) apply false
@@ -16,13 +17,11 @@ plugins {
     alias(libs.plugins.mavenPublishPlugin) apply false
     alias(libs.plugins.downloadPlugin) apply false
     alias(libs.plugins.kotlinter) apply false
-    alias(libs.plugins.kotlin.atomicfu) apply false
     alias(libs.plugins.cocoapods) apply false
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.androidx.room) apply false
     id("org.jetbrains.dokka") version libs.versions.dokkaBase
     id("dokka-convention")
-    alias(libs.plugins.android.library) apply false
 }
 
 tasks.getByName<Delete>("clean") {
