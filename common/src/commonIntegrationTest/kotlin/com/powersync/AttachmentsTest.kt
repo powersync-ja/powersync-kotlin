@@ -19,9 +19,9 @@ import com.powersync.testutils.UserRow
 import com.powersync.testutils.databaseTest
 import dev.mokkery.answering.throws
 import dev.mokkery.everySuspend
-import dev.mokkery.matcher.ArgMatchersScope
+import dev.mokkery.matcher.MokkeryMatcherScope
 import dev.mokkery.matcher.any
-import dev.mokkery.matcher.matching
+import dev.mokkery.matcher.matches
 import dev.mokkery.mock
 import dev.mokkery.spy
 import dev.mokkery.verifySuspend
@@ -596,5 +596,5 @@ class AttachmentsTest {
         }
 }
 
-fun ArgMatchersScope.attachmentMatcher(attachment: Attachment): Attachment =
-    matching(toString = { "attachment($attachment)" }, predicate = { it.id == attachment.id })
+fun MokkeryMatcherScope.attachmentMatcher(attachment: Attachment): Attachment =
+    matches(toString = { "attachment($attachment)" }, predicate = { it.id == attachment.id })
