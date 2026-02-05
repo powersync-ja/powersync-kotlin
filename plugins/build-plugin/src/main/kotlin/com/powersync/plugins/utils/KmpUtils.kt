@@ -2,25 +2,31 @@ package com.powersync.plugins.utils
 
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.dsl.KotlinTargetContainerWithPresetFunctions
+import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
+import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
+import gradle.kotlin.dsl.accessors._bf3f966d940f970633f154ff8d510fa5.versionCatalogs
+import org.gradle.api.plugins.ExtensionAware
 
-public fun KotlinTargetContainerWithPresetFunctions.powersyncTargets(
+public fun KotlinMultiplatformExtension.powersyncTargets(
     native: Boolean = true,
     jvm: Boolean = true,
-    android: Boolean = true,
+    android: (KotlinMultiplatformAndroidLibraryTarget.() -> Unit)? = null,
     includeTargetsWithoutComposeSupport: Boolean = true,
     watchOS: Boolean = true,
     legacyJavaSupport: Boolean = true,
 ) {
     if (jvm) {
-        if (android) {
-            androidTarget {
-                publishLibraryVariants("release", "debug")
+        android?.let { configureAndroid ->
+            (this as ExtensionAware).extensions.configure<KotlinMultiplatformAndroidLibraryTarget>("androidLibrary") {
+                val catalog = project.versionCatalogs.named("libs")
+                compileSdk = catalog.findVersion("android-compileSdk").get().requiredVersion.toInt()
+                minSdk = catalog.findVersion("android-minSdk").get().requiredVersion.toInt()
 
-                @OptIn(ExperimentalKotlinGradlePluginApi::class)
                 compilerOptions {
                     jvmTarget.set(JvmTarget.JVM_17)
                 }
+
+                configureAndroid()
             }
         }
 

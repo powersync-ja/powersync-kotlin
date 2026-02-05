@@ -4,7 +4,7 @@ import org.jmailen.gradle.kotlinter.tasks.LintTask
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.android.multiplatform.library)
     alias(libs.plugins.kotlinter)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlinSerialization)
@@ -14,7 +14,12 @@ plugins {
 }
 
 kotlin {
-    powersyncTargets()
+    powersyncTargets(
+        android = {
+            namespace = "com.powersync.integrations.room"
+        }
+    )
+
     explicitApi()
     applyDefaultHierarchyTemplate()
 
@@ -75,23 +80,6 @@ dependencies {
         val capitalized = target.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
 
         add("ksp${capitalized}Test", libs.androidx.room.compiler)
-    }
-}
-
-android {
-    namespace = "com.powersync.integrations.room"
-    compileSdk =
-        libs.versions.android.compileSdk
-            .get()
-            .toInt()
-    defaultConfig {
-        minSdk =
-            libs.versions.android.minSdk
-                .get()
-                .toInt()
-    }
-    kotlin {
-        jvmToolchain(17)
     }
 }
 

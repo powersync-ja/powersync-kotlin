@@ -38,6 +38,7 @@ include(":core-tests-android")
 include(":integrations:room")
 include(":static-sqlite-driver")
 include(":sqlite3multipleciphers")
+include(":internal:sqlite3mcandroid")
 
 include(":integrations:sqldelight")
 include(":integrations:sqldelight-test-database")
@@ -45,12 +46,13 @@ include(":integrations:supabase")
 
 include(":compose")
 
-include(":demos:android-supabase-todolist")
-include(":demos:supabase-todolist")
-include(":demos:supabase-todolist:androidApp")
-include(":demos:supabase-todolist:androidBackgroundSync")
-include(":demos:supabase-todolist:desktopApp")
-include(":demos:supabase-todolist:iosApp")
-include(":demos:supabase-todolist:shared")
+//include(":demos:android-supabase-todolist")
+//include(":demos:supabase-todolist")
+//include(":demos:supabase-todolist:androidApp")
+//include(":demos:supabase-todolist:androidBackgroundSync")
+//include(":demos:supabase-todolist:desktopApp")
+//include(":demos:supabase-todolist:iosApp")
+//include(":demos:supabase-todolist:shared")
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+

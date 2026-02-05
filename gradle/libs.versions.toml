@@ -14,7 +14,7 @@ kotlin = "2.3.0"
 ksp = "2.3.3"
 coroutines = "1.10.2"
 kotlinx-datetime = "0.7.1"
-serialization = "1.9.0"
+serialization = "1.10.0"
 kotlinx-io = "0.8.0"
 ktor = "3.4.0"
 uuid = "0.8.4"
@@ -37,13 +37,13 @@ room = "2.8.0"
 sqldelight = "2.1.0"
 
 # plugins
-android-gradle-plugin = "8.12.1"
+android-gradle-plugin = "9.0.0"
 skie = "0.10.9"
 maven-publish = "0.34.0"
 download-plugin = "5.6.0"
 mokkery = "3.1.1"
 kotlinter = "5.2.0"
-atomicfu = "0.29.0"
+atomicfu = "0.31.0"
 buildKonfig = "0.17.1"
 
 # Sample - Android
@@ -67,6 +67,7 @@ gradle-download-task = { module = "de.undercouch:gradle-download-task", version.
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 kermit-test = { module = "co.touchlab:kermit-test", version.ref = "kermit" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+android-gradle-api = { module = "com.android.tools.build:gradle-api", version.ref = "android-gradle-plugin" }
 powersync-sqlite-core-android = { module = "com.powersync:powersync-sqlite-core", version.ref = "powersync-core" }
 mavenPublishPlugin = { module = "com.vanniktech:gradle-maven-publish-plugin", version.ref = "maven-publish" }
 
@@ -139,7 +140,8 @@ kmp-lifecycle-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-v
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "android-gradle-plugin" }
-android-library = { id = "com.android.library", version.ref = "android-gradle-plugin" }
+#android-library = { id = "com.android.library", version.ref = "android-gradle-plugin" }
+android-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "android-gradle-plugin" }
 jetbrainsCompose = { id = "org.jetbrains.compose", version.ref = "compose" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 cocoapods = { id = "org.jetbrains.kotlin.native.cocoapods", version.ref = "kotlin" }
@@ -157,3 +159,4 @@ buildKonfig = { id = "com.codingfeline.buildkonfig", version.ref = "buildKonfig"
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 androidx-room = { id = "androidx.room", version.ref = "room" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
+android-library = { id = "com.android.library", version.ref = "android-gradle-plugin" }

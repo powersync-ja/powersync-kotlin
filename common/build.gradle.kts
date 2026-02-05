@@ -13,14 +13,13 @@ import kotlin.io.path.writeText
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.kotlinSerialization)
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.android.multiplatform.library)
     alias(libs.plugins.mavenPublishPlugin)
     alias(libs.plugins.downloadPlugin)
     alias(libs.plugins.kotlinter)
     id("com.powersync.plugins.sonatype")
     id("com.powersync.plugins.sharedbuild")
     alias(libs.plugins.mokkery)
-    alias(libs.plugins.kotlin.atomicfu)
     id("dokka-convention")
 }
 
@@ -104,7 +103,18 @@ val generateVersionConstant by tasks.registering {
 }
 
 kotlin {
-    powersyncTargets()
+    powersyncTargets(
+        android = {
+            namespace = "com.powersync.common"
+
+            optimization {
+                consumerKeepRules.apply {
+                    publish = true
+                    file("proguard-rules.pro")
+                }
+            }
+        }
+    )
 
     targets.withType<KotlinNativeTarget> {
         compilations.named("main") {
@@ -210,38 +220,6 @@ kotlin {
         // We have special setup in this build configuration to make these tests link the PowerSync extension, so they
         // can run integration tests along with the executable for unit testing.
         appleTest.orNull?.dependsOn(commonIntegrationTest)
-    }
-}
-
-android {
-    compileOptions {
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    buildFeatures {
-        buildConfig = true
-    }
-
-    buildTypes {
-        release {
-            buildConfigField("boolean", "DEBUG", "false")
-        }
-        debug {
-            buildConfigField("boolean", "DEBUG", "true")
-        }
-    }
-
-    namespace = "com.powersync.common"
-    compileSdk =
-        libs.versions.android.compileSdk
-            .get()
-            .toInt()
-    defaultConfig {
-        minSdk =
-            libs.versions.android.minSdk
-                .get()
-                .toInt()
-        consumerProguardFiles("proguard-rules.pro")
     }
 }
 

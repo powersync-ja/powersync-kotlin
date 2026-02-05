@@ -2,7 +2,7 @@ import com.powersync.plugins.utils.powersyncTargets
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.android.multiplatform.library)
     alias(libs.plugins.kotlinter)
     id("com.powersync.plugins.sharedbuild")
     alias(libs.plugins.mokkery)
@@ -11,6 +11,22 @@ plugins {
 
 kotlin {
     powersyncTargets()
+    androidLibrary {
+        namespace = "com.powersync.internal.testutils"
+        compileSdk =
+            libs.versions.android.compileSdk
+                .get()
+                .toInt()
+        minSdk =
+            libs.versions.android.minSdk
+                .get()
+                .toInt()
+        //      compilerOptions.configure {
+        //          jvmTarget.set(
+        //              org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8
+        //          )
+        //      }
+    }
     applyDefaultHierarchyTemplate()
 
     sourceSets {
@@ -38,23 +54,4 @@ kotlin {
         jvmMain.get().dependsOn(platformMain)
         nativeMain.orNull?.dependsOn(platformMain)
     }
-}
-
-android {
-    compileOptions {
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    buildTypes {
-        release {
-        }
-        debug {
-        }
-    }
-
-    namespace = "com.powersync.internal.testutils"
-    compileSdk =
-        libs.versions.android.compileSdk
-            .get()
-            .toInt()
 }
