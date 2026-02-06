@@ -6,7 +6,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinTest
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.android.multiplatform.library)
     alias(libs.plugins.mavenPublishPlugin)
     alias(libs.plugins.downloadPlugin)
     alias(libs.plugins.kotlinter)
@@ -17,7 +17,18 @@ plugins {
 }
 
 kotlin {
-    powersyncTargets()
+    powersyncTargets(
+        android = {
+            namespace = "com.powersync.core"
+
+            optimization {
+                consumerKeepRules.apply {
+                    publish = true
+                    file("proguard-rules.pro")
+                }
+            }
+        }
+    )
 
     targets.withType<KotlinNativeTarget> {
         compilations.named("main") {
@@ -86,25 +97,6 @@ kotlin {
         // We have special setup in this build configuration to make these tests link the PowerSync extension, so they
         // can run integration tests along with the executable for unit testing.
         appleTest.orNull?.dependsOn(commonIntegrationTest)
-    }
-}
-
-android {
-    compileOptions {
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    namespace = "com.powersync.core"
-    compileSdk =
-        libs.versions.android.compileSdk
-            .get()
-            .toInt()
-    defaultConfig {
-        minSdk =
-            libs.versions.android.minSdk
-                .get()
-                .toInt()
-        consumerProguardFiles("proguard-rules.pro")
     }
 }
 

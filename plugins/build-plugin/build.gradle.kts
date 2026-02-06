@@ -13,5 +13,6 @@ gradlePlugin {
 dependencies {
     implementation(libs.gradle.download.task)
     implementation(libs.kotlin.gradle.plugin)
+    implementation(libs.android.gradle.api)
     implementation(libs.dokka.gradle.plugin)
 }

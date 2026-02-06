@@ -2,16 +2,18 @@ import com.powersync.plugins.utils.powersyncTargets
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.android.multiplatform.library)
     alias(libs.plugins.kotlinter)
-    alias(libs.plugins.kotlin.atomicfu)
     id("com.powersync.plugins.sonatype")
     id("com.powersync.plugins.sharedbuild")
     id("dokka-convention")
 }
 
 kotlin {
-    powersyncTargets()
+    powersyncTargets(android = {
+        namespace = "com.powersync.integrations.sqldelight"
+    })
+
     explicitApi()
     applyDefaultHierarchyTemplate()
 
@@ -46,23 +48,6 @@ kotlin {
         // We have special setup in this build configuration to make these tests link the PowerSync extension, so they
         // can run integration tests along with the executable for unit testing.
         nativeTest.orNull?.dependsOn(commonIntegrationTest)
-    }
-}
-
-android {
-    namespace = "com.powersync.integrations.sqldelight"
-    compileSdk =
-        libs.versions.android.compileSdk
-            .get()
-            .toInt()
-    defaultConfig {
-        minSdk =
-            libs.versions.android.minSdk
-                .get()
-                .toInt()
-    }
-    kotlin {
-        jvmToolchain(17)
     }
 }
 

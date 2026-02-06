@@ -23,10 +23,11 @@ internal class SonatypeCentralUploadPlugin : Plugin<Project> {
 
         // The publishing plugin would apply Dokka to upload docs by default, but we only really apply Dokka on the root
         // project, so this breaks the release flow.
-        @Suppress("UnstableApiUsage")
-        project.extensions.getByType(MavenPublishBaseExtension::class.java).configure(KotlinMultiplatform(
-            javadocJar = JavadocJar.Empty(),
-        ))
+        if (project.plugins.hasPlugin("org.jetbrains.dokka")) {
+            project.extensions.getByType(MavenPublishBaseExtension::class.java).configure(KotlinMultiplatform(
+                javadocJar = JavadocJar.Empty(),
+            ))
+        }
 
         extension.apply()
     }

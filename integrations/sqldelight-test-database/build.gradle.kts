@@ -12,7 +12,7 @@ plugins {
 kotlin {
     // We don't test on Android devices, JVM tests are enough for the SQLDelight test package since
     // it doesn't contain Android-specific code.
-    powersyncTargets(android = false)
+    powersyncTargets(android = null)
 
     explicitApi()
     applyDefaultHierarchyTemplate()

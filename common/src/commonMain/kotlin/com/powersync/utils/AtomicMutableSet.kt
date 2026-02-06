@@ -1,8 +1,10 @@
 package com.powersync.utils
 
-import kotlinx.atomicfu.locks.SynchronizedObject
-import kotlinx.atomicfu.locks.synchronized
+import io.ktor.utils.io.InternalAPI
+import io.ktor.utils.io.locks.SynchronizedObject
+import io.ktor.utils.io.locks.synchronized
 
+@OptIn(InternalAPI::class)
 public class AtomicMutableSet<T> : SynchronizedObject() {
     private val set = mutableSetOf<T>()
 

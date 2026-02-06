@@ -4,7 +4,7 @@ import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.kotlinSerialization)
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.android.multiplatform.library)
     alias(libs.plugins.kotlinter)
     id("com.powersync.plugins.sonatype")
     id("com.powersync.plugins.sharedbuild")
@@ -13,7 +13,10 @@ plugins {
 
 kotlin {
     // The Supabase KMP project does not support arm64 watchOS builds
-    powersyncTargets(watchOS = false)
+    powersyncTargets(watchOS = false, android = {
+        namespace = "com.powersync.connector.supabase"
+    })
+
     targets.withType<KotlinNativeTarget> {
         compilations.named("main") {
             compileTaskProvider {
@@ -56,23 +59,6 @@ kotlin {
         // We have special setup in this build configuration to make these tests link the PowerSync extension, so they
         // can run integration tests along with the executable for unit testing.
         nativeTest.orNull?.dependsOn(commonIntegrationTest)
-    }
-}
-
-android {
-    namespace = "com.powersync.connector.supabase"
-    compileSdk =
-        libs.versions.android.compileSdk
-            .get()
-            .toInt()
-    defaultConfig {
-        minSdk =
-            libs.versions.android.minSdk
-                .get()
-                .toInt()
-    }
-    kotlin {
-        jvmToolchain(17)
     }
 }
 
