@@ -106,13 +106,6 @@ kotlin {
     powersyncTargets(
         android = {
             namespace = "com.powersync.common"
-
-            optimization {
-                consumerKeepRules.apply {
-                    publish = true
-                    file("proguard-rules.pro")
-                }
-            }
         }
     )
 
