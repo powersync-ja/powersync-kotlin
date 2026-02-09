@@ -1,6 +1,8 @@
 # Changelog
 
-## 1.10.3
+## 1.10.4
+
+(Note: Version `1.10.3` has been skipped due to publishing issues requiring another release)
 
 - __Important__: Due to changes in our build setup, the library can no longer determine
   whether it is running in debug mode on Android. This changes the default log severity

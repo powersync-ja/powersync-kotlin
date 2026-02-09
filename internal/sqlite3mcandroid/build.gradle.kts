@@ -64,3 +64,10 @@ tasks.withType(ExternalNativeBuildJsonTask::class.java).configureEach {
     // runs before CMake is invoked.
     dependsOn(generateCmake)
 }
+
+tasks.withType<com.android.build.gradle.tasks.JavaDocGenerationTask> {
+    // The Android Gradle plugin ships with a very old version of Dokka that is enabled by default and doesn't support
+    // running on Java 25.
+    // We don't even have any Kotlin sources here, so we can skip the Android documentation task.
+    enabled = false
+}
