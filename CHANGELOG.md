@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.11.0 (unreleased)
+
+- Update PowerSync core extension to version 0.4.11.
+
 ## 1.10.4
 
 (Note: Version `1.10.3` has been skipped due to publishing issues requiring another release)
