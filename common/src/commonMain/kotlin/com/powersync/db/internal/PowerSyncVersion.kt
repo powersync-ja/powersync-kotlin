@@ -18,7 +18,7 @@ internal data class PowerSyncVersion(
     override fun toString(): String = "$major.$minor.$patch"
 
     companion object {
-        val MINIMUM: PowerSyncVersion = PowerSyncVersion(0, 4, 10)
+        val MINIMUM: PowerSyncVersion = PowerSyncVersion(0, 4, 11)
 
         fun parse(from: String): PowerSyncVersion {
             val versionInts: List<Int> =
