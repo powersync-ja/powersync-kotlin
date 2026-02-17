@@ -49,6 +49,12 @@ jobs:
       - name: Set up XCode
         if: runner.os == 'macOS' && steps.cache_prebuild.outputs.cache-hit != 'true'
         uses: maxim-lobanov/setup-xcode@v1
+      - name: Install cross-compiling GCC
+        shell: bash
+        if: runner.os == 'Linux' && steps.cache_prebuild.outputs.cache-hit != 'true'
+        run: |
+          sudo apt update
+          sudo apt install -y gcc-aarch64-linux-gnu
       - name: Download build tools
         if: runner.os == 'macOS' && steps.cache_prebuild.outputs.cache-hit != 'true'
         run: |
