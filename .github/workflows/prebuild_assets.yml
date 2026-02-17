@@ -54,7 +54,7 @@ jobs:
         if: runner.os == 'Linux' && steps.cache_prebuild.outputs.cache-hit != 'true'
         run: |
           sudo apt update
-          sudo apt install -y gcc-aarch64-linux-gnu
+          sudo apt install -y g++-aarch64-linux-gnu
       - name: Download build tools
         if: runner.os == 'macOS' && steps.cache_prebuild.outputs.cache-hit != 'true'
         run: |
