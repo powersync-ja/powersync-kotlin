@@ -24,7 +24,6 @@ import kotlinx.serialization.json.put
  *
  * Note that raw tables are only supported when [SyncOptions.newClientImplementation] is enabled.
  */
-@ExperimentalPowerSyncAPI
 public class RawTable(
     override val name: String,
     public val put: PendingStatement,
@@ -50,7 +49,6 @@ public class RawTable(
         }
 }
 
-@ExperimentalPowerSyncAPI
 public class PendingStatement(
     public val sql: String,
     public val parameters: List<PendingStatementParameter>,
@@ -80,7 +78,6 @@ public class PendingStatement(
 /**
  * A parameter that can be used in a [PendingStatement].
  */
-@ExperimentalPowerSyncAPI
 public sealed interface PendingStatementParameter {
     /**
      * Resolves to the id of the affected row.

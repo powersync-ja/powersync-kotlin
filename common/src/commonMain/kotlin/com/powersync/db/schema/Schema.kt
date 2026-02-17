@@ -85,7 +85,7 @@ internal data class SerializableSchema(
 internal fun Schema.toSerializable(): SerializableSchema =
     with(this) {
         SerializableSchema(
-            tables = tables.map { it.toSerializable() },
+            tables = tables,
             rawTables = rawTables.map { it.serialize() },
         )
     }

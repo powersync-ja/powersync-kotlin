@@ -1,11 +1,15 @@
 package com.powersync.db.schema
 
 import com.powersync.db.crud.CrudEntry
-import kotlinx.serialization.SerialName
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.buildClassSerialDescriptor
+import kotlinx.serialization.descriptors.element
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.encoding.encodeStructure
+import kotlinx.serialization.serializer
 
 private const val MAX_AMOUNT_OF_COLUMNS = 1999
 
@@ -26,34 +30,42 @@ public data class Table(
      */
     var indexes: List<Index> = listOf(),
     /**
-     * Whether the table only exists locally.
+     * Common options for this table.
      */
-    val localOnly: Boolean = false,
-    /**
-     * Whether this is an insert-only table.
-     */
-    val insertOnly: Boolean = false,
+    var options: TableOptions = TableOptions(),
     /**
      * Override the name for the view
      */
-    private val viewNameOverride: String? = null,
-    /**
-     *  Whether to add a hidden `_metadata` column that will be enabled for updates to attach custom
-     *  information about writes that will be reported through [CrudEntry.metadata].
-     */
-    val trackMetadata: Boolean = false,
-    /**
-     * When set to a non-null value, track old values of columns for [CrudEntry.previousValue].
-     *
-     * See [TrackPreviousValuesOptions] for details.
-     */
-    val trackPreviousValues: TrackPreviousValuesOptions? = null,
-    /**
-     * Whether an `UPDATE` statement that doesn't change any values should be ignored when creating
-     * CRUD entries.
-     */
-    val ignoreEmptyUpdates: Boolean = false,
+    internal val viewNameOverride: String? = null,
 ) : BaseTable {
+    @Deprecated(
+        "This constructor exists for backwards-compatibility only. Consider using the primary constructor and pass advanced options in TableOptions()",
+    )
+    public constructor(
+        name: String,
+        columns: List<Column>,
+        indexes: List<Index> = listOf(),
+        localOnly: Boolean = false,
+        insertOnly: Boolean = false,
+        viewNameOverride: String? = null,
+        trackMetadata: Boolean = false,
+        trackPreviousValues: TrackPreviousValuesOptions? = null,
+        ignoreEmptyUpdates: Boolean = false,
+    ) : this(
+        name = name,
+        columns = columns,
+        indexes = indexes,
+        viewNameOverride = viewNameOverride,
+        options =
+            TableOptions(
+                localOnly = localOnly,
+                insertOnly = insertOnly,
+                trackMetadata = trackMetadata,
+                trackPreviousValues = trackPreviousValues,
+                ignoreEmptyUpdates = ignoreEmptyUpdates,
+            ),
+    )
+
     init {
         /**
          * Need to set the column definition for each index column.
@@ -85,9 +97,12 @@ public data class Table(
                 name,
                 columns,
                 indexes,
-                localOnly = true,
-                insertOnly = false,
                 viewNameOverride = viewName,
+                options =
+                    TableOptions(
+                        localOnly = true,
+                        insertOnly = false,
+                    ),
             )
 
         /**
@@ -109,12 +124,15 @@ public data class Table(
                 name,
                 columns,
                 indexes = listOf(),
-                localOnly = false,
-                insertOnly = true,
                 viewNameOverride = viewName,
-                ignoreEmptyUpdates = ignoreEmptyUpdates,
-                trackMetadata = trackMetadata,
-                trackPreviousValues = trackPreviousValues,
+                options =
+                    TableOptions(
+                        localOnly = false,
+                        insertOnly = true,
+                        ignoreEmptyUpdates = ignoreEmptyUpdates,
+                        trackMetadata = trackMetadata,
+                        trackPreviousValues = trackPreviousValues,
+                    ),
             )
     }
 
@@ -124,7 +142,7 @@ public data class Table(
      * Name of the table that stores the underlying data.
      */
     internal val internalName: String
-        get() = if (localOnly) "ps_data_local__$name" else "ps_data__$name"
+        get() = if (options.localOnly) "ps_data_local__$name" else "ps_data__$name"
 
     public operator fun get(columnName: String): Column = columns.first { it.name == columnName }
 
@@ -158,12 +176,7 @@ public data class Table(
             throw AssertionError("Invalid characters in view name: $viewNameOverride")
         }
 
-        check(!localOnly || !trackMetadata) {
-            "Can't track metadata for local-only tables."
-        }
-        check(!localOnly || trackPreviousValues == null) {
-            "Can't track old values for local-only tables."
-        }
+        options.validate()
 
         val columnNames = mutableSetOf("id")
         for (column in columns) {
@@ -235,50 +248,38 @@ public data class TrackPreviousValuesOptions(
     val onlyWhenChanged: Boolean = false,
 )
 
-@Serializable
-internal data class SerializableTable(
-    var name: String,
-    var columns: List<SerializableColumn>,
-    var indexes: List<SerializableIndex> = listOf(),
-    @SerialName("local_only")
-    val localOnly: Boolean = false,
-    @SerialName("insert_only")
-    val insertOnly: Boolean = false,
-    @SerialName("view_name")
-    val viewName: String? = null,
-    @SerialName("ignore_empty_update")
-    val ignoreEmptyUpdate: Boolean = false,
-    @SerialName("include_metadata")
-    val includeMetadata: Boolean = false,
-    @SerialName("include_old")
-    val includeOld: JsonElement = JsonPrimitive(false),
-    @SerialName("include_old_only_when_changed")
-    val includeOldOnlyWhenChanged: Boolean = false,
-)
+internal typealias SerializableTable =
+    @Serializable(TableSerializer::class)
+    Table
 
-internal fun Table.toSerializable(): SerializableTable =
-    with(this) {
-        SerializableTable(
-            name = name,
-            columns = columns.map { it.toSerializable() },
-            indexes = indexes.map { it.toSerializable() },
-            localOnly = localOnly,
-            insertOnly = insertOnly,
-            viewName = viewName,
-            ignoreEmptyUpdate = ignoreEmptyUpdates,
-            includeMetadata = trackMetadata,
-            includeOld =
-                trackPreviousValues?.let {
-                    if (it.columnFilter != null) {
-                        buildJsonArray {
-                            for (column in it.columnFilter) {
-                                add(JsonPrimitive(column))
-                            }
-                        }
-                    } else {
-                        JsonPrimitive(true)
-                    }
-                } ?: JsonPrimitive(false),
-            includeOldOnlyWhenChanged = trackPreviousValues?.onlyWhenChanged ?: false,
-        )
+internal object TableSerializer : KSerializer<Table> {
+    override val descriptor: SerialDescriptor =
+        buildClassSerialDescriptor("com.powersync.db.schema.Table") {
+            element<String>("name")
+            element<List<SerializableColumn>>("columns")
+            element<List<SerializableIndex>>("indexes")
+            element<String?>("view_name")
+
+            // Flatten common TableOptions fields into this serializer
+            TableOptions.addFields(this)
+        }
+
+    override fun serialize(
+        encoder: Encoder,
+        value: Table,
+    ) {
+        encoder.encodeStructure(descriptor) {
+            encodeStringElement(descriptor, 0, value.name)
+            encodeSerializableElement(descriptor, 1, serializer<List<SerializableColumn>>(), value.columns.map { it.toSerializable() })
+            encodeSerializableElement(descriptor, 2, serializer<List<SerializableIndex>>(), value.indexes.map { it.toSerializable() })
+            encodeSerializableElement(descriptor, 3, serializer<String?>(), value.viewNameOverride)
+
+            value.options.serialize(descriptor, 4, this)
+        }
     }
+
+    override fun deserialize(decoder: Decoder): Table {
+        // We'll only ever serialize tables
+        throw UnsupportedOperationException("deserializing tables")
+    }
+}
