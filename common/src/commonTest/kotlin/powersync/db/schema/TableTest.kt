@@ -227,12 +227,11 @@ class TableTest {
 
     @Test
     fun handlesOptions() {
-        fun serialize(table: Table): JsonObject {
-            return JsonUtil.json.encodeToJsonElement(
+        fun serialize(table: Table): JsonObject =
+            JsonUtil.json.encodeToJsonElement(
                 TableSerializer,
-                table
+                table,
             ) as JsonObject
-        }
 
         serialize(Table("foo", emptyList(), trackMetadata = true))["include_metadata"]!!.jsonPrimitive.boolean shouldBe true
         serialize(Table("foo", emptyList(), ignoreEmptyUpdates = true))["ignore_empty_update"]!!.jsonPrimitive.boolean shouldBe true

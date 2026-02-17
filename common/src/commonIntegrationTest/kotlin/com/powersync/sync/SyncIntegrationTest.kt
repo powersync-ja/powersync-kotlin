@@ -16,9 +16,11 @@ import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.connectors.readCachedCredentials
 import com.powersync.db.PowerSyncDatabaseImpl
+import com.powersync.db.getString
 import com.powersync.db.schema.PendingStatement
 import com.powersync.db.schema.PendingStatementParameter
 import com.powersync.db.schema.RawTable
+import com.powersync.db.schema.RawTableSchema
 import com.powersync.db.schema.Schema
 import com.powersync.test.TestConnector
 import com.powersync.test.waitFor
@@ -800,7 +802,7 @@ class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
 
     @Test
     @OptIn(ExperimentalPowerSyncAPI::class, LegacySyncImplementation::class)
-    fun rawTables() =
+    fun rawTablesWithImplicitStatements() =
         databaseTest(createInitialDatabase = false) {
             val db =
                 openDatabase(
@@ -808,19 +810,7 @@ class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
                         listOf(
                             RawTable(
                                 name = "lists",
-                                put =
-                                    PendingStatement(
-                                        "INSERT OR REPLACE INTO lists (id, name) VALUES (?, ?)",
-                                        listOf(
-                                            PendingStatementParameter.Id,
-                                            PendingStatementParameter.Column("name"),
-                                        ),
-                                    ),
-                                delete =
-                                    PendingStatement(
-                                        "DELETE FROM lists WHERE id = ?",
-                                        listOf(PendingStatementParameter.Id),
-                                    ),
+                                schema = RawTableSchema("lists"),
                             ),
                         ),
                     ),
@@ -870,6 +860,114 @@ class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
                 syncLines.send(SyncLine.CheckpointComplete("1"))
 
                 query.awaitItem() shouldBe listOf("my_list" to "custom list")
+
+                syncLines.send(
+                    SyncLine.FullCheckpoint(
+                        Checkpoint(
+                            lastOpId = "2",
+                            checksums = listOf(BucketChecksum("a", checksum = 0)),
+                        ),
+                    ),
+                )
+                syncLines.send(
+                    SyncLine.SyncDataBucket(
+                        bucket = "a",
+                        data =
+                            listOf(
+                                OplogEntry(
+                                    checksum = 0L,
+                                    data = null,
+                                    op = OpType.REMOVE,
+                                    opId = "2",
+                                    rowId = "my_list",
+                                    rowType = "lists",
+                                ),
+                            ),
+                        after = null,
+                        nextAfter = null,
+                    ),
+                )
+                syncLines.send(SyncLine.CheckpointComplete("1"))
+
+                query.awaitItem() shouldBe emptyList()
+                query.cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    @OptIn(ExperimentalPowerSyncAPI::class, LegacySyncImplementation::class)
+    fun rawTablesWithExplicitStatements() =
+        databaseTest(createInitialDatabase = false) {
+            val db =
+                openDatabase(
+                    Schema(
+                        listOf(
+                            RawTable(
+                                name = "lists",
+                                put =
+                                    PendingStatement(
+                                        "INSERT OR REPLACE INTO lists (id, name, _rest) VALUES (?, ?, ?)",
+                                        listOf(
+                                            PendingStatementParameter.Id,
+                                            PendingStatementParameter.Column("name"),
+                                            PendingStatementParameter.Rest,
+                                        ),
+                                    ),
+                                delete =
+                                    PendingStatement(
+                                        "DELETE FROM lists WHERE id = ?",
+                                        listOf(PendingStatementParameter.Id),
+                                    ),
+                            ),
+                        ),
+                    ),
+                )
+
+            db.execute("CREATE TABLE lists (id TEXT NOT NULL PRIMARY KEY, name TEXT, _rest TEXT)")
+            turbineScope(timeout = 10.0.seconds) {
+                val query =
+                    db
+                        .watch("SELECT * FROM lists", throttleMs = 0L) {
+                            Triple(it.getString(0), it.getString(1), it.getString(2))
+                        }.testIn(this)
+                query.awaitItem() shouldBe emptyList()
+
+                db.connect(connector, options = getOptions())
+                syncLines.send(
+                    SyncLine.FullCheckpoint(
+                        Checkpoint(
+                            lastOpId = "1",
+                            checksums = listOf(BucketChecksum("a", checksum = 0)),
+                        ),
+                    ),
+                )
+                syncLines.send(
+                    SyncLine.SyncDataBucket(
+                        bucket = "a",
+                        data =
+                            listOf(
+                                OplogEntry(
+                                    checksum = 0L,
+                                    data =
+                                        JsonUtil.json.encodeToString(
+                                            mapOf(
+                                                "name" to "custom list",
+                                                "additional_column" to "foo",
+                                            ),
+                                        ),
+                                    op = OpType.PUT,
+                                    opId = "1",
+                                    rowId = "my_list",
+                                    rowType = "lists",
+                                ),
+                            ),
+                        after = null,
+                        nextAfter = null,
+                    ),
+                )
+                syncLines.send(SyncLine.CheckpointComplete("1"))
+
+                query.awaitItem() shouldBe listOf(Triple("my_list", "custom list", "{\"additional_column\":\"foo\"}"))
 
                 syncLines.send(
                     SyncLine.FullCheckpoint(

@@ -78,14 +78,13 @@ public data class Schema internal constructor(
 internal data class SerializableSchema(
     val tables: List<SerializableTable>,
     @SerialName("raw_tables")
-    val rawTables: List<JsonElement>,
+    val rawTables: List<SerializableRawTable>,
 )
 
-@OptIn(ExperimentalPowerSyncAPI::class)
 internal fun Schema.toSerializable(): SerializableSchema =
     with(this) {
         SerializableSchema(
             tables = tables,
-            rawTables = rawTables.map { it.serialize() },
+            rawTables = rawTables,
         )
     }
