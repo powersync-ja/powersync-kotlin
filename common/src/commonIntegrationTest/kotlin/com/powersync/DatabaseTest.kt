@@ -12,6 +12,7 @@ import com.powersync.db.schema.PendingStatement
 import com.powersync.db.schema.PendingStatementParameter
 import com.powersync.db.schema.RawTable
 import com.powersync.db.schema.Schema
+import com.powersync.db.schema.TableOptions
 import com.powersync.sync.LegacySyncImplementation
 import com.powersync.test.factory
 import com.powersync.test.getTempDir
@@ -366,7 +367,9 @@ class DatabaseTest {
                             // no such table: main.ps_data_local__users.
                             // Perhaps this is a bug in the core extension
                             name = "local_users",
-                            localOnly = true,
+                            options = TableOptions(
+                                localOnly = true,
+                            ),
                         ),
                     ),
             )
@@ -391,7 +394,7 @@ class DatabaseTest {
     @Test
     fun insertOnlyCRUD() =
         databaseTest {
-            database.updateSchema(schema = Schema(UserRow.table.copy(insertOnly = true)))
+            database.updateSchema(schema = Schema(UserRow.table.copy(options = TableOptions(insertOnly = true))))
 
             database.execute(
                 """

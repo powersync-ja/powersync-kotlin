@@ -6,6 +6,7 @@ import com.powersync.db.schema.Index
 import com.powersync.db.schema.IndexedColumn
 import com.powersync.db.schema.SerializableTable
 import com.powersync.db.schema.Table
+import com.powersync.db.schema.TableSerializer
 import com.powersync.db.schema.TrackPreviousValuesOptions
 import com.powersync.db.schema.toSerializable
 import com.powersync.utils.JsonUtil
@@ -226,8 +227,12 @@ class TableTest {
 
     @Test
     fun handlesOptions() {
-        fun serialize(table: Table): JsonObject =
-            JsonUtil.json.encodeToJsonElement(serializer<SerializableTable>(), table.toSerializable()) as JsonObject
+        fun serialize(table: Table): JsonObject {
+            return JsonUtil.json.encodeToJsonElement(
+                TableSerializer,
+                table
+            ) as JsonObject
+        }
 
         serialize(Table("foo", emptyList(), trackMetadata = true))["include_metadata"]!!.jsonPrimitive.boolean shouldBe true
         serialize(Table("foo", emptyList(), ignoreEmptyUpdates = true))["ignore_empty_update"]!!.jsonPrimitive.boolean shouldBe true
