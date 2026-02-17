@@ -2,19 +2,18 @@ name: Gradle build & test
 
 on:
   push:
-    branches: [ "main" ]
   pull_request:
-    branches: [ "main" ]
-  workflow_call:
 
 permissions:
   contents: read
 
 jobs:
   fetch_prebuilts:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
     uses: ./.github/workflows/prebuild_assets.yml
 
   build:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
     needs:
       - fetch_prebuilts
     strategy:
@@ -89,6 +88,7 @@ jobs:
           **/build/test-results/
 
   android_emulator:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
