@@ -57,6 +57,7 @@ jobs:
           cd internal/prebuild-binaries
           ./download_glibc.sh
           ./download_llvm_mingw.sh
+          ls -l build/sysroot
 
       - name: Compile SQLite with Gradle
         if: steps.cache_prebuild.outputs.cache-hit != 'true'
