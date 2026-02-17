@@ -5,10 +5,10 @@ on:
     outputs:
       artifact_url:
         description: "URL of the artifact containing precompiled SQLite binaries"
-        value: ${{ jobs.compile.merge.artifact_url }}
+        value: ${{ jobs.merge.outputs.artifact_url }}
       artifact_id:
         description: "id of the artifact containing precompiled SQLite binaries"
-        value: ${{ jobs.compile.merge.artifact_id }}
+        value: ${{ jobs.merge.outputs.artifact_id }}
 
 jobs:
   compile:
