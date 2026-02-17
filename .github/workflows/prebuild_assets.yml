@@ -74,7 +74,8 @@ jobs:
           retention-days: 1
 
   merge:
-    name: Merged compiled libraries
+    name: Merge compiled libraries
+    needs: [compile]
     timeout-minutes: 5
     runs-on: ubuntu-slim
     outputs:
@@ -96,6 +97,7 @@ jobs:
         with:
           path: internal/prebuild-binaries/build/output/*
           name: kotlin-sqlite
+          if-no-files-found: error
           retention-days: 1
       - run: |
           echo "${{ steps.upload.outputs.artifact-url }}"
