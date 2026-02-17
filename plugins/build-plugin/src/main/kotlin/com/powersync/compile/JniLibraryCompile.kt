@@ -17,7 +17,6 @@ import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import org.gradle.process.ProcessExecutionException
-import org.gradle.process.internal.ExecException
 import java.io.File
 import javax.inject.Inject
 
