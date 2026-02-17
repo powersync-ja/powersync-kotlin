@@ -2,6 +2,14 @@
 
 ## 1.11.0 (unreleased)
 
+- __Breaking__: On tables, the `localOnly`, `insertOnly`, `trackMetadata`, `trackPreviousValues` and
+  `ignoreEmptyUpdates` options are now stored in a `TableOptions` class. Existing constructors
+  continue to work, but calling `copy` with any of these parameters no longer works.
+- Make raw tables easier to use:
+  - Introduce the `RawTableSchema` class storing the name of a raw table in the database. When set,
+    `put` and `delete` statements can be inferred automatically.
+  - Add `RawTable.jsonDescription`, which can be passed to the `powersync_create_raw_table_crud_trigger`
+    SQL function to auto-create triggers forwarding writes to `ps_crud`.
 - Update PowerSync core extension to version 0.4.11.
 
 ## 1.10.4

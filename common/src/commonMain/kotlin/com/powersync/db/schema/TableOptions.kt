@@ -77,12 +77,12 @@ public data class TableOptions(
     internal companion object {
         fun addFields(descriptor: ClassSerialDescriptorBuilder) {
             with(descriptor) {
-                element<Boolean>("local_only")
-                element<Boolean>("insert_only")
-                element<Boolean>("ignore_empty_update")
-                element<Boolean>("include_metadata")
-                element<JsonElement>("include_old")
-                element<Boolean>("include_old_only_when_changed")
+                element<Boolean>("local_only", isOptional = true)
+                element<Boolean>("insert_only", isOptional = true)
+                element<Boolean>("ignore_empty_update", isOptional = true)
+                element<Boolean>("include_metadata", isOptional = true)
+                element<JsonElement>("include_old", isOptional = true)
+                element<Boolean>("include_old_only_when_changed", isOptional = true)
             }
         }
     }

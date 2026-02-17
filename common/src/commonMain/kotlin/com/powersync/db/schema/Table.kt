@@ -1,12 +1,11 @@
 package com.powersync.db.schema
 
 import com.powersync.db.crud.CrudEntry
-import kotlinx.serialization.KSerializer
+import com.powersync.utils.OnlySerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.descriptors.element
-import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.encoding.encodeStructure
 import kotlinx.serialization.serializer
@@ -38,9 +37,6 @@ public data class Table(
      */
     internal val viewNameOverride: String? = null,
 ) : BaseTable {
-    @Deprecated(
-        "This constructor exists for backwards-compatibility only. Consider using the primary constructor and pass advanced options in TableOptions()",
-    )
     public constructor(
         name: String,
         columns: List<Column>,
@@ -252,7 +248,7 @@ internal typealias SerializableTable =
     @Serializable(TableSerializer::class)
     Table
 
-internal object TableSerializer : KSerializer<Table> {
+internal object TableSerializer : OnlySerializer<Table>() {
     override val descriptor: SerialDescriptor =
         buildClassSerialDescriptor("com.powersync.db.schema.Table") {
             element<String>("name")
@@ -276,10 +272,5 @@ internal object TableSerializer : KSerializer<Table> {
 
             value.options.serialize(descriptor, 4, this)
         }
-    }
-
-    override fun deserialize(decoder: Decoder): Table {
-        // We'll only ever serialize tables
-        throw UnsupportedOperationException("deserializing tables")
     }
 }

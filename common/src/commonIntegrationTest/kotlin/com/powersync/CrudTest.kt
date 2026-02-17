@@ -1,10 +1,15 @@
 package com.powersync
 
+import com.powersync.db.crud.UpdateType
 import com.powersync.db.schema.Column
+import com.powersync.db.schema.RawTable
+import com.powersync.db.schema.RawTableSchema
 import com.powersync.db.schema.Schema
 import com.powersync.db.schema.Table
+import com.powersync.db.schema.TableOptions
 import com.powersync.db.schema.TrackPreviousValuesOptions
 import com.powersync.testutils.databaseTest
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import kotlin.test.Test
 
@@ -161,5 +166,90 @@ class CrudTest {
                 mapOf(
                     "a" to "42", // Not an integer!
                 )
+        }
+
+    @Test
+    fun rawTableInferredCrudTrigger() =
+        databaseTest(createInitialDatabase = false) {
+            val table = RawTable("sync_name", RawTableSchema("users"))
+            database = openDatabase(Schema(tables = listOf(), rawTables = listOf(table)))
+
+            database.execute("CREATE TABLE users (id TEXT, name TEXT);")
+            database.execute(
+                "SELECT powersync_create_raw_table_crud_trigger(?, ?, ?)",
+                listOf(
+                    table.jsonDescription(),
+                    "users_insert",
+                    "INSERT",
+                ),
+            )
+
+            database.execute(
+                "INSERT INTO users (id, name) VALUES (?, ?);",
+                listOf(
+                    "id",
+                    "user",
+                ),
+            )
+
+            val tx = database.getNextCrudTransaction()!!
+            tx.crud shouldHaveSize 1
+            val write = tx.crud[0]
+            write.op shouldBe UpdateType.PUT
+            write.table shouldBe "sync_name"
+            write.id shouldBe "id"
+            write.opData shouldBe mapOf("name" to "user")
+        }
+
+    @Test
+    fun rawTableOptions() =
+        databaseTest(createInitialDatabase = false) {
+            val table =
+                RawTable(
+                    "sync_name",
+                    RawTableSchema(
+                        tableName = "users",
+                        syncedColumns = listOf("name"),
+                        options =
+                            TableOptions(
+                                ignoreEmptyUpdates = true,
+                                trackPreviousValues = TrackPreviousValuesOptions(),
+                            ),
+                    ),
+                )
+            database = openDatabase(Schema(tables = listOf(), rawTables = listOf(table)))
+
+            database.execute("CREATE TABLE users (id TEXT, name TEXT, local TEXT);")
+            database.execute(
+                "INSERT INTO users (id, name, local) VALUES (?, ?, ?)",
+                listOf(
+                    "id",
+                    "name",
+                    "local",
+                ),
+            )
+
+            database.execute(
+                "SELECT powersync_create_raw_table_crud_trigger(?, ?, ?)",
+                listOf(
+                    table.jsonDescription(),
+                    "users_update",
+                    "UPDATE",
+                ),
+            )
+
+            database.execute("UPDATE users SET name = ?, local = ?", listOf("updated_name", "updated_local"))
+
+            // This should not generate a CRUD entry because the only syned column is not affected.
+            database.execute("UPDATE users SET name = ?, local = ?", listOf("updated_name", "updated_local_2"))
+
+            val tx = database.getNextCrudTransaction()!!
+            tx.crud shouldHaveSize 1
+            val write = tx.crud[0]
+            write.op shouldBe UpdateType.PATCH
+            write.id shouldBe "id"
+            // These should not include the local-only column
+            write.opData shouldBe mapOf("name" to "updated_name")
+            write.previousValues shouldBe mapOf("name" to "name")
         }
 }

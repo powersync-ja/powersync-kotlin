@@ -367,9 +367,10 @@ class DatabaseTest {
                             // no such table: main.ps_data_local__users.
                             // Perhaps this is a bug in the core extension
                             name = "local_users",
-                            options = TableOptions(
-                                localOnly = true,
-                            ),
+                            options =
+                                TableOptions(
+                                    localOnly = true,
+                                ),
                         ),
                     ),
             )
