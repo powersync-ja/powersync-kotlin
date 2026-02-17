@@ -80,75 +80,98 @@ abstract class JniLibraryCompile: DefaultTask() {
     @TaskAction
     fun run() {
         val target = this.target.get()
-        val clang = clangPath.getOrElse("clang")
-        val workingDir = layout.projectDirectory.asFile
+        val compiler = if (target == JniTarget.LINUX_ARM || target == JniTarget.LINUX_X64) {
+            // We only compile Linux libraries on Linux hosts, and use GCC for that. The reason is
+            // that obtaining sysroots for Linux on Apple platforms is kind of annoying.
+            GccLibraryCompiler(target)
+        } else {
+            ClangLibraryCompiler(target)
+        }
+
+        compiler.run()
+    }
+
+    private abstract inner class SharedLibraryCompiler(protected val target: JniTarget) {
+        private val workingDir = layout.projectDirectory.asFile
+        protected val args = mutableListOf<String>()
+
+        protected abstract val compiler: String
+
+        protected abstract fun resolveArgs()
 
         fun filePath(file: File): String {
             return file.relativeTo(workingDir).path
         }
 
-        val args = buildList {
-            if (target == JniTarget.LINUX_X64) {
-                add("-fuse-ld=lld")
-                add("--sysroot=build/sysroot/")
+        protected fun addCommonArgs() {
+            with(args) {
+                add("-shared")
+                add("-fPIC")
+                add("-o")
+                add(filePath(sharedLibrary.get().asFile))
+                inputFiles.files.forEach { add(filePath(it)) }
+                add("-I")
+                add(filePath(include.get().asFile))
+                add("-I")
+                add("jni/headers/common")
+                add("-I")
+                add(when (target) {
+                    JniTarget.LINUX_X64, JniTarget.LINUX_ARM -> "jni/headers/inc_linux"
+                    JniTarget.MACOS_X64, JniTarget.MACOS_ARM -> "jni/headers/inc_mac"
+                    JniTarget.WINDOWS_X64, JniTarget.WINDOWS_ARM -> "jni/headers/inc_win"
+                })
+                add("-O3")
+                addAll(ClangCompile.sqlite3ClangOptions)
+            }
+        }
+
+        fun run() {
+            resolveArgs()
+
+            val execProvider = providers.exec {
+                this@exec.workingDir = this@SharedLibraryCompiler.workingDir
+                executable = compiler
+                args(this@SharedLibraryCompiler.args)
+
+                isIgnoreExitValue = true // So that we can provide better error messages
             }
 
-            if (target == JniTarget.LINUX_ARM) {
-                val gccParent = layout.buildDirectory.dir("sysroot/usr/lib/gcc/aarch64-linux-gnu")
-                val gccPath = filePath(gccParent.get().asFile.listFiles().single())
+            try {
+                execProvider.result.get().assertNormalExitValue()
+            } catch (_: ProcessExecutionException) {
+                val formattedArgs = args.joinToString(separator = " ") { "\"$it\"" }
+                val stderr = execProvider.standardError.asText.orNull
 
-                add("-fuse-ld=lld")
-                add("--sysroot=build/sysroot/usr/aarch64-linux-gnu/")
-                add("-Wl,-L")
-                add(gccPath)
-                add("-B")
-                add(gccPath)
+                throw ProcessExecutionException("Could not start in ${workingDir.path}: $compiler $formattedArgs. Stderr: $stderr")
             }
+        }
+    }
 
-            toolchain.orNull?.let { add("-B$toolchain") }
+    private inner class ClangLibraryCompiler(target: JniTarget) : SharedLibraryCompiler(target) {
+        override val compiler: String = clangPath.getOrElse("clang")
 
-            add("-shared")
-            add("-fPIC")
-            add(when (target) {
-                JniTarget.LINUX_ARM -> "--target=aarch64-pc-linux"
-                JniTarget.LINUX_X64 -> "--target=x86_64-pc-linux"
+        override fun resolveArgs() {
+            args.add(when (target) {
                 JniTarget.MACOS_ARM -> "--target=aarch64-apple-macos"
                 JniTarget.MACOS_X64 -> "--target=x86_64-apple-macos"
                 JniTarget.WINDOWS_ARM -> "--target=aarch64-w64-mingw32uwp"
                 JniTarget.WINDOWS_X64 -> "--target=x86_64-w64-mingw32uwp"
+                JniTarget.LINUX_ARM, JniTarget.LINUX_X64 -> throw IllegalStateException()
             })
-            add("-o")
-            add(filePath(sharedLibrary.get().asFile))
-            inputFiles.files.forEach { add(filePath(it)) }
-            add("-I")
-            add(filePath(include.get().asFile))
-            add("-I")
-            add("jni/headers/common")
-            add("-I")
-            add(when (target) {
-                JniTarget.LINUX_X64, JniTarget.LINUX_ARM -> "jni/headers/inc_linux"
-                JniTarget.MACOS_X64, JniTarget.MACOS_ARM -> "jni/headers/inc_mac"
-                JniTarget.WINDOWS_X64, JniTarget.WINDOWS_ARM -> "jni/headers/inc_win"
-            })
-            add("-O3")
-            addAll(ClangCompile.sqlite3ClangOptions)
+
+            addCommonArgs()
+        }
+    }
+
+    private inner class GccLibraryCompiler(target: JniTarget) : SharedLibraryCompiler(target) {
+        override val compiler: String = when (target) {
+            JniTarget.LINUX_ARM -> "aarch64-linux-gnu-gcc"
+            JniTarget.LINUX_X64 -> "x86_64-linux-gnu-gcc"
+            else -> throw IllegalArgumentException("Not a linux target: $target")
         }
 
-        val execProvider = providers.exec {
-            this.workingDir = workingDir
-            executable = clang
-            args(args)
-
-            isIgnoreExitValue = true // So that we can provide better error messages
-        }
-
-        try {
-            execProvider.result.get().assertNormalExitValue()
-        } catch (_: ProcessExecutionException) {
-            val formattedArgs = args.joinToString(separator = " ") { "\"$it\"" }
-            val stderr = execProvider.standardError.asText.orNull
-
-            throw ProcessExecutionException("Could not start $clang $formattedArgs. Stderr: $stderr")
+        override fun resolveArgs() {
+            addCommonArgs()
         }
     }
 }

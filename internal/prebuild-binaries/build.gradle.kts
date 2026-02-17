@@ -114,6 +114,8 @@ val prepareAndroidBuild by tasks.registering(Copy::class) {
     into(layout.buildDirectory.dir("android"))
 }
 
+val isLinux = System.getProperty("os.name") == "Linux"
+
 fun compileJni(target: JniTarget): CompiledAsset {
     val name = target.filename("sqlite3mc_jni")
 
@@ -212,7 +214,14 @@ val jniCompileTasks: Map<JniTarget, CompiledAsset> = buildMap {
 val compileJni by tasks.registering(Copy::class) {
     into(project.layout.buildDirectory.dir("output/jni"))
 
-    for (task in jniCompileTasks.values) {
+    val targets = if (isLinux) {
+        listOf(JniTarget.LINUX_X64, JniTarget.LINUX_ARM)
+    } else {
+        listOf(JniTarget.WINDOWS_ARM, JniTarget.WINDOWS_X64, JniTarget.MACOS_ARM, JniTarget.MACOS_X64)
+    }
+
+    for (target in targets) {
+        val task = jniCompileTasks[target]!!
         from(task.output) {
             rename { task.fullName }
         }
@@ -220,7 +229,10 @@ val compileJni by tasks.registering(Copy::class) {
 }
 
 val compileAll by tasks.registering {
-    dependsOn(compileNative)
+    if (!isLinux) {
+        dependsOn(compileNative)
+    }
+
     dependsOn(compileJni)
 }
 
