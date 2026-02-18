@@ -21,6 +21,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.native.HiddenFromObjC
 
 /**
  * A PowerSync managed database.
@@ -242,6 +243,7 @@ public interface PowerSyncDatabase : Queries {
     @Throws(PowerSyncException::class, CancellationException::class)
     public suspend fun close()
 
+    @HiddenFromObjC
     public companion object PowerSyncOpenFactory {
         /**
          * Creates a PowerSync database managed by an external connection pool.
