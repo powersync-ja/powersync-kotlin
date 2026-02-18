@@ -1,11 +1,13 @@
 package com.powersync.pool
 
 import co.touchlab.kermit.Logger
+import com.powersync.InMemoryConnectionFactory
 import com.powersync.PowerSyncDatabase
 import com.powersync.db.driver.SQLiteConnectionLease
 import com.powersync.db.driver.SQLiteConnectionPool
 import com.powersync.db.runWrapped
 import com.powersync.db.schema.Schema
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -92,6 +94,14 @@ public class SwiftSQLiteConnectionPool(
     }
 }
 
+@OptIn(DelicateCoroutinesApi::class)
+public fun openPowerSyncInMemory(
+    factory: InMemoryConnectionFactory,
+    schema: Schema,
+    logger: Logger,
+): PowerSyncDatabase = PowerSyncDatabase.openInMemory(factory, schema, GlobalScope, logger)
+
+@OptIn(DelicateCoroutinesApi::class)
 public fun openPowerSyncWithPool(
     pool: SQLiteConnectionPool,
     identifier: String,
