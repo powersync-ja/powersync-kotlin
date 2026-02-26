@@ -196,7 +196,6 @@ public interface PowerSyncDatabase : Queries {
      *
      * Use [SyncStream.subscribe] on the returned instance to subscribe to the stream.
      */
-    @ExperimentalPowerSyncAPI
     public fun syncStream(
         name: String,
         parameters: Map<String, JsonParam>? = null,
