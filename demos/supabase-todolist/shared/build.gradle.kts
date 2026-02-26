@@ -39,23 +39,6 @@ kotlin {
     iosArm64()
     iosSimulatorArm64()
 
-    cocoapods {
-        version = "1.0.0"
-        summary = "A shared library for TodoAppLite PowerSync app"
-        homepage = "none"
-        ios.deploymentTarget = "14.1"
-        podfile = project.file("../iosApp/Podfile")
-        pod("powersync-sqlite-core") {
-            version = "0.4.11"
-            linkOnly = true
-        }
-
-        framework {
-            baseName = "shared"
-            isStatic = true
-            export("com.powersync:core")
-        }
-    }
     sourceSets {
         commonMain.dependencies {
             // When copying this example, use the current version available
