@@ -133,7 +133,6 @@ fun AppContent(
             TodosScreen(
                 modifier = modifier.background(MaterialTheme.colors.background),
                 navController = navController,
-                listId = selectedListId ?: "",
                 items = todoItems,
                 syncStatus = status,
                 inputText = todosInputText,
