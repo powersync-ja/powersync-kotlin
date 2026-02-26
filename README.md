@@ -77,26 +77,17 @@ If want to use the Supabase Connector, also add the following to `commonMain.dep
     implementation("com.powersync:connector-supabase:$powersyncVersion")
 ```
 
-### Cocoapods
+### Apple setup
 
-We recommend using Cocoapods (as opposed to SMP) for iOS targets. Add the following to the `cocoapods` config in your `build.gradle.kts`
+When building iOS, macOS, tvOS or watchOS apps with Kotlin Multiplatform and Kotlin/Native, you also
+need to install the PowerSync SQLite extension with your app.
 
-```kotlin
-cocoapods {
-    //...
-    pod("powersync-sqlite-core") {
-        linkOnly = true
-    }
+To do that, open the target project in XCode and add a package dependency on
+`https://github.com/powersync-ja/powersync-sqlite-core-swift.git`.
+You can also open the demo project (`demos/supabase-todolist/iosApp`) in XCode as an example.
 
-    framework {
-        isStatic = true
-        export("com.powersync:core")
-    }
-    //...
-}
-```
-
-Note: The `linkOnly` attribute is set to `true` and framework is set to `isStatic = true` to ensure that the `powersync-sqlite-core` binaries are only statically linked.
+For Android and JVM targets, the extension is bundled with the Kotlin SDK and no further setup is
+necessary.
 
 ## Formatting and Linting
 
