@@ -11,6 +11,8 @@
   - Add `RawTable.jsonDescription`, which can be passed to the `powersync_create_raw_table_crud_trigger`
     SQL function to auto-create triggers forwarding writes to `ps_crud`.
 - Update PowerSync core extension to version 0.4.11.
+- Remove the experimental label from Sync Stream APIs.
+- Compose: add `composeSyncStream` helper method to subscribe to Sync Streams in a composition.
 
 ## 1.10.4
 
