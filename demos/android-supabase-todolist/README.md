@@ -27,7 +27,7 @@ streams:
 
   list_items:
     auto_subscribe: true
-    query: SELECT * FROM todos WHERE list_id = subscription.parameter('list_id') AND list_id IN (SELECT id FROM lists WHERE owner_id = auth.user_id())
+    query: SELECT todos.* FROM todos INNER JOIN lists ON todos.list_id = lists.id WHERE lists.owner_id = auth.user_id()```
 ```
 
 Giving lists a [higher priority](https://docs.powersync.com/sync/advanced/prioritized-sync) allows updates to be synced before all items have been received.
