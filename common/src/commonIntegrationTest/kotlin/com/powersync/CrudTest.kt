@@ -171,7 +171,7 @@ class CrudTest {
     @Test
     fun rawTableInferredCrudTrigger() =
         databaseTest(createInitialDatabase = false) {
-            val table = RawTable("sync_name", RawTableSchema("users"))
+            val table = RawTable("users", RawTableSchema())
             database = openDatabase(Schema(tables = listOf(), rawTables = listOf(table)))
 
             database.execute("CREATE TABLE users (id TEXT, name TEXT);")
@@ -196,7 +196,7 @@ class CrudTest {
             tx.crud shouldHaveSize 1
             val write = tx.crud[0]
             write.op shouldBe UpdateType.PUT
-            write.table shouldBe "sync_name"
+            write.table shouldBe "users"
             write.id shouldBe "id"
             write.opData shouldBe mapOf("name" to "user")
         }
