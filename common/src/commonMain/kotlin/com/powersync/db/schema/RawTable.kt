@@ -100,8 +100,10 @@ public class RawTableSchema(
      * for the sync client. It can also be used to auto-generate triggers forwarding writes on raw
      * tables into the CRUD upload queue (using the `powersync_create_raw_table_crud_trigger` SQL
      * function).
+     *
+     * When set to null, it defaults to [RawTable.name] as these are commonly the same.
      */
-    public val tableName: String,
+    public val tableName: String? = null,
     /**
      * An optional filter of columns that should be synced.
      *
@@ -177,7 +179,7 @@ internal object RawTableSerializer : KSerializer<RawTable> {
             value.clear?.let { clear -> encodeStringElement(descriptor, 3, clear) }
 
             value.schema?.let { schema ->
-                encodeStringElement(descriptor, 4, schema.tableName)
+                encodeStringElement(descriptor, 4, schema.tableName ?: value.name)
                 schema.syncedColumns?.let { filter -> encodeSerializableElement(descriptor, 5, serializer<List<String>>(), filter) }
 
                 schema.options.serialize(descriptor, 6, this)
