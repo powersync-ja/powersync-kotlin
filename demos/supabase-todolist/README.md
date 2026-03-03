@@ -16,30 +16,29 @@ To run this demo, you need a Supabase and PowerSync project. Detailed instructio
 Follow this guide to:
 1. Create and configure a Supabase project.
 2. Create a new PowerSync instance, connecting to the database of the Supabase project. See instructions [here](https://docs.powersync.com/integration-guides/supabase-+-powersync#connect-powersync-to-your-supabase).
-3. Deploy sync rules.
+3. Deploy Sync Streams.
 
-### Opting in to priorities
+### Sync Streams Configuration
 
-If you want to use the example with [bucket priorities](https://docs.powersync.com/usage/use-case-examples/prioritized-sync),
-you can adopt the following sync rules instead of the ones suggested by the simpler integration guide:
+This demo uses [Sync Streams](https://docs.powersync.com/sync/streams/overview) with auto-subscribed streams to sync data. Deploy the following configuration:
 
 ```YAML
-bucket_definitions:
+config:
+  edition: 3
+
+streams:
   all_lists:
     priority: 1
-    parameters: select request.user_id() as "user"
-    data:
-      - select * from lists where owner_id = bucket."user"
+    auto_subscribe: true
+    query: SELECT * FROM lists WHERE owner_id = auth.user_id()
+    
 
   list_items:
-    # Separate bucket per list
-    parameters: select id as list_id from lists where owner_id = request.user_id()
-    data:
-      - select * from todos where list_id = bucket.list_id
+    auto_subscribe: true
+    query: SELECT todos.* FROM todos INNER JOIN lists ON todos.list_id = lists.id WHERE lists.owner_id = auth.user_id()
 ```
 
-The project will work with both sync rules, but giving lists a higher priority allows updates to be synchronized before
-all items have been received.
+Giving lists a [higher priority](https://docs.powersync.com/sync/advanced/prioritized-sync) allows updates to be synced before all items have been received.
 
 ## Configure project in Android Studio
 
