@@ -6,30 +6,18 @@
 
 # PowerSync Kotlin SDK
 
-This is the PowerSync client SDK for Kotlin. This SDK currently supports the following Kotlin targets:
-
-- Android
-- JVM
-- iOS
-- macOS
-- watchOS
-- tvOS
-
-If you need support for additional targets, please reach out!
-
-See a summary of features [here](https://docs.powersync.com/client-sdk-references/kotlin-multiplatform#sdk-features)
-and API documentation [here](https://powersync-ja.github.io/powersync-kotlin/).
+This is the PowerSync client SDK for Kotlin. Supported targets are listed [here](https://docs.powersync.com/resources/supported-platforms#kotlin-sdk).
 
 ## Structure: Packages
 
 - [core](./core/)
 
-    - This is the Kotlin Multiplatform SDK implementation, built by depending on `common`
+    - This is the Kotlin SDK implementation, built by depending on `common`
       and linking SQLite.
 
 - [common](./common/)
 
-    - This is the Kotlin Multiplatform SDK implementation without a dependency on a fixed
+    - This is the Kotlin SDK implementation without a dependency on a fixed
       SQLite bundle. This allows the SDK to be used with custom SQLite installations (like
       e.g. SQLCipher).
 
@@ -43,20 +31,20 @@ and API documentation [here](https://powersync-ja.github.io/powersync-kotlin/).
       2. Apply local changes on your backend application server (and from there, to your backend database).
 - [sqlite3multipleciphers](./sqlite3multipleciphers/)
 
-    - A SQLite driver implementation based on SQLite3MultipleCiphers.
+    - A SQLite driver implementation based on `SQLite3MultipleCiphers`.
 
 ## Demo Apps / Example Projects
 
-The easiest way to test the PowerSync KMP SDK is to run one of our demo applications.
+The easiest way to test the Kotlin SDK is to run one of our demo applications.
 
 Demo applications are located in the [`demos/`](./demos) directory. See their respective README's for testing instructions:
 
-- [demos/supabase-todolist](./demos/supabase-todolist/README.md): A simple to-do list application demonstrating the use of the PowerSync Kotlin Multiplatform SDK and the Supabase connector.
-- [demos/android-supabase-todolist](./demos/android-supabase-todolist/README.md): A simple to-do list application demonstrating the use of the PowerSync Kotlin Multiplatform SDK and the Supabase connector in an Android application.
+- [demos/supabase-todolist](./demos/supabase-todolist/README.md): A simple to-do list application demonstrating the use of the Kotlin SDK and the Supabase connector.
+- [demos/android-supabase-todolist](./demos/android-supabase-todolist/README.md): A simple to-do list application demonstrating the use of the Kotlin SDK and the Supabase connector in an Android application.
 
 ## Installation
 
-Add the PowerSync Kotlin Multiplatform SDK to your project by adding the following to your `build.gradle.kts` file:
+Add the SDK to your project by adding the following to your `build.gradle.kts` file:
 
 ```kotlin
 
@@ -96,8 +84,8 @@ It will automatically use the rules set in the `.editorconfig` file.
 
 ## Getting Started
 
-Our [full SDK reference](https://docs.powersync.com/client-sdk-references/kotlin-multiplatform-alpha#getting-started) contains everything you need to know to get started implementing PowerSync in your project.
+Our [full SDK reference](https://docs.powersync.com/client-sdks/reference/kotlin) contains everything you need to know to get started implementing PowerSync in your project.
 
 ## Examples
 
-For example projects built with PowerSync and Kotlin Multiplatform, see our [Demo Apps / Example Projects](https://docs.powersync.com/resources/demo-apps-example-projects#kotlin-multiplatform) gallery. Most of these projects can also be found in the [`demos/`](demos/) directory.
+For example projects built with PowerSync and Kotlin, see our [Demo Apps / Example Projects](https://docs.powersync.com/intro/examples#kotlin) gallery. Most of these projects can also be found in the [`demos/`](demos/) directory.
