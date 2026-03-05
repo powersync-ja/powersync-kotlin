@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.11.0 (unreleased)
+## 1.11.0
 
 - __Breaking__: On tables, the `localOnly`, `insertOnly`, `trackMetadata`, `trackPreviousValues` and
   `ignoreEmptyUpdates` options are now stored in a `TableOptions` class. Existing constructors
