@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+- Fix RSocket connection bugs on iOS (and other platforms using the RSocket sync transport):
+  - Fix false `connected: true` status when using an invalid token. `ConnectionEstablished` is now
+    only emitted when the first data frame arrives from the server, matching the HTTP path which
+    waits for a `200 OK`.
+  - Fix sync loop terminating permanently when the server rejects the connection with an RSocket
+    ERROR frame (e.g. invalid JWT). `RSocketError` extends `Throwable` not `Exception`, so it was
+    not caught by the retry loop.
+  - Fix sync loop stalling indefinitely after a transport-layer failure (dead socket, network
+    dropout). The iOS OS detects dead sockets and surfaces them as a `CancellationException` inside
+    rsocket-kotlin; without this fix the exception was misidentified as normal coroutine
+    cancellation, leaving the sync loop waiting forever.
+
 ## 1.11.0
 
 - __Breaking__: On tables, the `localOnly`, `insertOnly`, `trackMetadata`, `trackPreviousValues` and

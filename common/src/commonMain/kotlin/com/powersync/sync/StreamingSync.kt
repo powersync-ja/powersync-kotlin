@@ -132,15 +132,19 @@ internal class StreamingSyncClient(
                     invalidCredentials = false
                 }
                 result = streamingSyncIteration()
-            } catch (e: Throwable) {
-                if (e is CancellationException) {
-                    throw e
-                }
-
+            } catch (e: RSocketError) {
+                // RSocketError extends Throwable directly (not Exception), so it needs its own
+                // catch block to avoid accidentally catching JVM Errors (OutOfMemoryError, etc.).
                 if (e is RSocketError.Setup.Rejected) {
                     // The server rejected the RSocket SETUP frame, most likely due to an invalid
                     // token. Invalidate credentials so a fresh token is fetched on the next attempt.
                     connector.invalidateCredentials()
+                }
+                logger.e("Error in streamingSync: ${e.message}")
+                status.update { copy(downloadError = e) }
+            } catch (e: Exception) {
+                if (e is CancellationException) {
+                    throw e
                 }
 
                 logger.e("Error in streamingSync: ${e.message}")

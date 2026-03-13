@@ -138,22 +138,18 @@ internal fun HttpClient.rSocketSyncStream(
         )
         emit(PowerSyncControlArguments.ResponseStreamEnd)
         } catch (e: CancellationException) {
-            // Defensive: a CancellationException here most likely means the transport layer
-            // failed without the server sending an RSocket ERROR frame first (e.g. airplane mode,
-            // wifi dropout, or the iOS OS detecting a dead socket). In that case rsocket-kotlin
-            // cancels its internal connection scope with an IOException as the cause, which
-            // arrives here as a CancellationException rather than an RSocketError.
+            // A CancellationException here means the transport layer failed without the server
+            // sending an RSocket ERROR frame first (e.g. iOS OS detecting a dead socket, airplane
+            // mode, wifi dropout). rsocket-kotlin cancels its internal connection scope with the
+            // underlying IOException as the cause, which arrives here as a CancellationException
+            // rather than an RSocketError. The iOS OS surfaces dead sockets promptly, so this
+            // path is reached well before any keep-alive timeout fires.
             //
             // If our own collector coroutine is being cancelled (e.g. disconnect() was called),
             // ensureActive() re-throws and the cancellation propagates normally.
             // If only the RSocket-internal scope was cancelled, ensureActive() returns normally
             // and we wrap as RuntimeException so the enclosing launch{} is treated as *failed*
             // rather than *cancelled* — preventing a fetchLinesJob stall.
-            //
-            // NOTE: the primary fix for server-side rejections (invalid JWT etc.) is the
-            // catch (e: Throwable) in streamingSync() which catches RSocketError directly.
-            // This catch is a defensive fallback for transport-layer failures that don't
-            // produce an RSocket ERROR frame and has not been explicitly reproduced in testing.
             currentCoroutineContext().ensureActive()
             throw RuntimeException("RSocket sync stream was interrupted", e)
         }
