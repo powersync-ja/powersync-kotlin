@@ -19,14 +19,16 @@ import io.rsocket.kotlin.transport.RSocketClientTarget
 import io.rsocket.kotlin.transport.RSocketConnection
 import io.rsocket.kotlin.transport.RSocketTransportApi
 import io.rsocket.kotlin.transport.ktor.websocket.internal.KtorWebSocketConnection
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.transform
 import kotlinx.io.readByteArray
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -50,81 +52,108 @@ internal fun HttpClient.rSocketSyncStream(
     credentials: PowerSyncCredentials,
 ): Flow<PowerSyncControlArguments> =
     flow {
-        val flowContext = currentCoroutineContext()
+        try {
+            val flowContext = currentCoroutineContext()
 
-        val websocketUri =
-            URLBuilder(credentials.endpointUri("sync/stream")).apply {
-                protocol =
-                    when (protocolOrNull) {
-                        URLProtocol.HTTP -> URLProtocol.WS
-                        else -> URLProtocol.WSS
-                    }
-            }
-
-        // Note: We're using a custom connector here because we need to set options for each request
-        // without creating a new HTTP client each time. The recommended approach would be to add an
-        // RSocket extension to the HTTP client, but that only allows us to set the SETUP metadata for
-        // all connections (bad because we need a short-lived token in there).
-        // https://github.com/rsocket/rsocket-kotlin/issues/311
-        val target =
-            object : RSocketClientTarget {
-                @RSocketTransportApi
-                override suspend fun connectClient(): RSocketConnection {
-                    val ws =
-                        webSocketSession {
-                            url.takeFrom(websocketUri)
+            val websocketUri =
+                URLBuilder(credentials.endpointUri("sync/stream")).apply {
+                    protocol =
+                        when (protocolOrNull) {
+                            URLProtocol.HTTP -> URLProtocol.WS
+                            else -> URLProtocol.WSS
                         }
-                    return KtorWebSocketConnection(ws)
                 }
 
-                override val coroutineContext: CoroutineContext
-                    get() = flowContext
-            }
+            // Note: We're using a custom connector here because we need to set options for each request
+            // without creating a new HTTP client each time. The recommended approach would be to add an
+            // RSocket extension to the HTTP client, but that only allows us to set the SETUP metadata for
+            // all connections (bad because we need a short-lived token in there).
+            // https://github.com/rsocket/rsocket-kotlin/issues/311
+            val target =
+                object : RSocketClientTarget {
+                    @RSocketTransportApi
+                    override suspend fun connectClient(): RSocketConnection {
+                        val ws =
+                            webSocketSession {
+                                url.takeFrom(websocketUri)
+                            }
+                        return KtorWebSocketConnection(ws)
+                    }
 
-        val connector =
-            RSocketConnector {
-                connectionConfig {
-                    payloadMimeType =
-                        PayloadMimeType(
-                            metadata = "application/json",
-                            data = "application/json",
-                        )
+                    override val coroutineContext: CoroutineContext
+                        get() = flowContext
+                }
 
-                    setupPayload {
-                        buildPayload {
-                            data("{}")
-                            metadata(
-                                JsonUtil.json.encodeToString(
-                                    ConnectionSetupMetadata(
-                                        token = "Bearer ${credentials.token}",
-                                        userAgent = userAgent,
-                                    ),
-                                ),
+            val connector =
+                RSocketConnector {
+                    connectionConfig {
+                        payloadMimeType =
+                            PayloadMimeType(
+                                metadata = "application/json",
+                                data = "application/json",
                             )
+
+                        setupPayload {
+                            buildPayload {
+                                data("{}")
+                                metadata(
+                                    JsonUtil.json.encodeToString(
+                                        ConnectionSetupMetadata(
+                                            token = "Bearer ${credentials.token}",
+                                            userAgent = userAgent,
+                                        ),
+                                    ),
+                                )
+                            }
                         }
+
+                        keepAlive = KeepAlive(interval = 20.0.seconds, maxLifetime = 30.0.seconds)
                     }
-
-                    keepAlive = KeepAlive(interval = 20.0.seconds, maxLifetime = 30.0.seconds)
                 }
-            }
 
-        val rSocket = connector.connect(target)
-        emit(PowerSyncControlArguments.ConnectionEstablished)
-        val syncStream =
-            rSocket.requestStream(
-                buildPayload {
-                    data(JsonUtil.json.encodeToString(req))
-                    metadata(JsonUtil.json.encodeToString(RequestStreamMetadata("/sync/stream")))
-                },
+            val rSocket = connector.connect(target)
+            val syncStream =
+                rSocket.requestStream(
+                    buildPayload {
+                        data(JsonUtil.json.encodeToString(req))
+                        metadata(JsonUtil.json.encodeToString(RequestStreamMetadata("/sync/stream")))
+                    },
+                )
+
+            // Emit ConnectionEstablished only when the first frame arrives from the server, mirroring
+            // the HTTP path which emits it only after receiving a 200 OK. This prevents falsely
+            // reporting a successful connection when the server rejects the token: the WebSocket
+            // upgrade (HTTP 101) succeeds at the transport layer, but token validation happens when
+            // the server processes the stream request and responds.
+            var connectionEstablishedEmitted = false
+            emitAll(
+                syncStream
+                    .transform { payload ->
+                        if (!connectionEstablishedEmitted) {
+                            connectionEstablishedEmitted = true
+                            emit(PowerSyncControlArguments.ConnectionEstablished)
+                        }
+                        emit(PowerSyncControlArguments.BinaryLine(payload.data.readByteArray()))
+                    }.flowOn(Dispatchers.IO),
             )
-
-        emitAll(
-            syncStream
-                .map {
-                    PowerSyncControlArguments.BinaryLine(it.data.readByteArray())
-                }.flowOn(Dispatchers.IO),
-        )
-        emit(PowerSyncControlArguments.ResponseStreamEnd)
+            emit(PowerSyncControlArguments.ResponseStreamEnd)
+        } catch (e: CancellationException) {
+            // A CancellationException here can originate from two places:
+            //   1. The collector's coroutine being cancelled (e.g. disconnect() was called).
+            //      ensureActive() detects this and re-throws, letting the cancellation propagate
+            //      normally up through the structured concurrency hierarchy.
+            //   2. The RSocket connection's internal scope being cancelled (e.g. the keep-alive
+            //      timer fired because the dead iOS socket never surfaced a read error).
+            //      In this case the collector is still active, so ensureActive() returns normally
+            //      and we wrap the exception as a RuntimeException.
+            //
+            // Wrapping is essential: if a CancellationException escapes the flow, Kotlin treats
+            // the enclosing launch{} as merely *cancelled* rather than *failed*. fetchLinesJob
+            // then silently waits for its still-running completedCrudUploads listener, keeping
+            // controlInvocations open and stalling the sync loop indefinitely.
+            currentCoroutineContext().ensureActive()
+            throw RuntimeException("RSocket sync stream was interrupted", e)
+        }
     }
 
 /**
