@@ -147,6 +147,12 @@ internal class StreamingSyncClient(
                     throw e
                 }
 
+                if (e is RSocketCredentialsExpiredException) {
+                    // Auth error (PSYNC_S21xx) delivered via the RSocket transport-layer failure
+                    // path. Invalidate credentials so a fresh token is fetched on the next attempt.
+                    connector.invalidateCredentials()
+                }
+
                 logger.e("Error in streamingSync: ${e.message}")
                 status.update { copy(downloadError = e) }
             } finally {
