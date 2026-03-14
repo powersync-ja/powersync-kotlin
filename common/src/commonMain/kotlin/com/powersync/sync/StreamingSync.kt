@@ -37,6 +37,7 @@ import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.readAvailable
 import io.ktor.utils.io.readBuffer
 import io.ktor.utils.io.readUTF8Line
+import io.rsocket.kotlin.RSocketError
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineName
@@ -59,6 +60,7 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.io.readByteArray
@@ -95,13 +97,16 @@ internal class StreamingSyncClient(
 
     private val httpClient: HttpClient =
         when (val config = options.clientConfiguration) {
-            is SyncClientConfiguration.ExtendedConfig ->
+            is SyncClientConfiguration.ExtendedConfig -> {
                 HttpClient {
                     configureSyncHttpClient(options.userAgent)
                     config.block(this)
                 }
+            }
 
-            is SyncClientConfiguration.ExistingClient -> config.client
+            is SyncClientConfiguration.ExistingClient -> {
+                config.client
+            }
         }
 
     fun invalidateCredentials() {
@@ -127,9 +132,25 @@ internal class StreamingSyncClient(
                     invalidCredentials = false
                 }
                 result = streamingSyncIteration()
+            } catch (e: RSocketError) {
+                // RSocketError extends Throwable directly (not Exception), so it needs its own
+                // catch block to avoid accidentally catching JVM Errors (OutOfMemoryError, etc.).
+                if (e is RSocketError.Setup.Rejected) {
+                    // The server rejected the RSocket SETUP frame, most likely due to an invalid
+                    // token. Invalidate credentials so a fresh token is fetched on the next attempt.
+                    connector.invalidateCredentials()
+                }
+                logger.e("Error in streamingSync: ${e.message}")
+                status.update { copy(downloadError = e) }
             } catch (e: Exception) {
                 if (e is CancellationException) {
                     throw e
+                }
+
+                if (e is RSocketCredentialsExpiredException) {
+                    // Auth error (PSYNC_S21xx) delivered via the RSocket transport-layer failure
+                    // path. Invalidate credentials so a fresh token is fetched on the next attempt.
+                    connector.invalidateCredentials()
                 }
 
                 logger.e("Error in streamingSync: ${e.message}")
@@ -602,17 +623,33 @@ internal class StreamingSyncClient(
             state: SyncStreamState,
         ): SyncStreamState =
             when (line) {
-                is SyncLine.FullCheckpoint -> handleStreamingSyncCheckpoint(line, state)
-                is SyncLine.CheckpointDiff -> handleStreamingSyncCheckpointDiff(line, state)
-                is SyncLine.CheckpointComplete -> handleStreamingSyncCheckpointComplete(state)
-                is SyncLine.CheckpointPartiallyComplete ->
+                is SyncLine.FullCheckpoint -> {
+                    handleStreamingSyncCheckpoint(line, state)
+                }
+
+                is SyncLine.CheckpointDiff -> {
+                    handleStreamingSyncCheckpointDiff(line, state)
+                }
+
+                is SyncLine.CheckpointComplete -> {
+                    handleStreamingSyncCheckpointComplete(state)
+                }
+
+                is SyncLine.CheckpointPartiallyComplete -> {
                     handleStreamingSyncCheckpointPartiallyComplete(
                         line,
                         state,
                     )
+                }
 
-                is SyncLine.KeepAlive -> handleStreamingKeepAlive(line, state)
-                is SyncLine.SyncDataBucket -> handleStreamingSyncData(line, state)
+                is SyncLine.KeepAlive -> {
+                    handleStreamingKeepAlive(line, state)
+                }
+
+                is SyncLine.SyncDataBucket -> {
+                    handleStreamingSyncData(line, state)
+                }
+
                 SyncLine.UnknownSyncLine -> {
                     logger.w { "Unhandled instruction $jsonString" }
                     state
