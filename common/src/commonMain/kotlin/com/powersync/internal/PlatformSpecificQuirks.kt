@@ -20,8 +20,15 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 public val httpClientIsKnownToNotSupportBackpressure: AtomicReference<((HttpClientEngineConfig) -> Boolean)?> = AtomicReference(null)
 
 @OptIn(ExperimentalAtomicApi::class, InternalPowerSyncAPI::class)
-internal val HttpClientEngineConfig.isKnownToNotSupportBackpressure: Boolean
+internal val HttpClientEngineConfig.shouldUseRSocketStream: Boolean
     get() {
+        if (!platformAllowsWebSockets()) {
+            // We can only use regular HTTP on watchOS, so avoid falling back to RSocket streams there.
+            return false
+        }
+
         val check = httpClientIsKnownToNotSupportBackpressure.load() ?: return false
         return check(this)
     }
+
+internal expect fun platformAllowsWebSockets(): Boolean
