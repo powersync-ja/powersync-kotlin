@@ -5,7 +5,6 @@ import com.powersync.enableSwiftLogs
 import com.powersync.sync.SyncClientConfiguration
 import com.powersync.sync.configureSyncHttpClient
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
 import io.ktor.client.engine.HttpClientEngineBase
 import io.ktor.client.engine.HttpClientEngineConfig
 import io.ktor.client.engine.callContext
@@ -13,21 +12,12 @@ import io.ktor.client.plugins.HttpTimeoutCapability
 import io.ktor.client.request.HttpRequestData
 import io.ktor.client.request.HttpResponseData
 import io.ktor.client.request.ResponseAdapterAttributeKey
-import io.ktor.client.request.accept
-import io.ktor.client.request.headers
-import io.ktor.client.request.preparePost
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
 import io.ktor.client.utils.buildHeaders
 import io.ktor.client.utils.dropCompressionHeaders
-import io.ktor.http.ContentType
 import io.ktor.http.HttpProtocolVersion
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.contentType
 import io.ktor.util.date.GMTDate
-import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.InternalAPI
-import io.ktor.utils.io.readUTF8Line
 import io.ktor.utils.io.writeFully
 import io.ktor.utils.io.writer
 import kotlinx.cinterop.UnsafeNumber
@@ -37,7 +27,6 @@ import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.job
@@ -67,6 +56,9 @@ public interface HttpRequestListener {
 
     /**
      * Notifies Kotlin that a chunk of response data is available on an HTTP stream.
+     *
+     * Returns true if the consumer requests the response stream to be paused. In that case, the `resume` callback will
+     * be invoked once the consumer is ready again.
      */
     public fun handleResponseData(data: NSData, resume: () -> Unit): Boolean
 
@@ -210,65 +202,3 @@ public fun swiftHttpClient(
             enableSwiftLogs(logging)
         }
     )
-
-public fun swiftHttpClientTest(adapter: SwiftHttpClientAdapter) {
-    GlobalScope.launch {
-        val serverUrl = "http://localhost:8080"
-        val httpClient = HttpClient(SwiftHttpClient(adapter)) {
-            configureSyncHttpClient()
-        }
-
-        println("Client: Connecting to $serverUrl/sync/stream...")
-
-        try {
-            val ndjson = ContentType("application", "x-ndjson")
-            val uri = "$serverUrl/sync/stream"
-
-            val request = httpClient.preparePost(uri) {
-                contentType(ContentType.Application.Json)
-                headers {
-                    accept(ndjson)
-                }
-                setBody("") // Empty POST body
-            }
-
-            request.execute { httpResponse ->
-                println("Client: Connected. Status: ${httpResponse.status}")
-
-                if (httpResponse.status != HttpStatusCode.OK) {
-                    throw RuntimeException("Received error when connecting to sync stream: ${httpResponse.bodyAsText()}")
-                }
-
-                println("Client: Starting to receive data...")
-
-                var lineCount = 0
-
-                // Read the response as a stream of lines using ByteReadChannel (same as PowerSync)
-                val body: ByteReadChannel = httpResponse.body<ByteReadChannel>()
-
-                println("Client: Starting to read stream...")
-
-                while (!body.isClosedForRead) {
-                    val line = body.readUTF8Line()
-                    if (!line.isNullOrBlank()) {
-                        lineCount++
-
-                        println("line count is $lineCount, length was ${line.length}")
-                    } else if (line == null) {
-                        // End of stream
-                        println("Client: Stream ended (line is null)")
-                        break
-                    }
-                }
-
-                println("Client: Finished. Received $lineCount lines total")
-            }
-
-        } catch (e: Exception) {
-            println("Client: Error - ${e.message}")
-            e.printStackTrace()
-        } finally {
-            httpClient.close()
-        }
-    }
-}
