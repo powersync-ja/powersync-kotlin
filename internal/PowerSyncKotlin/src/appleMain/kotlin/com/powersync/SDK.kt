@@ -16,6 +16,7 @@ import com.powersync.sync.SyncStream
 import com.powersync.sync.SyncStreamDescription
 import com.powersync.sync.SyncStreamStatus
 import com.powersync.sync.SyncStreamSubscription
+import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngineConfig
 import io.ktor.client.engine.darwin.DarwinClientEngineConfig
 import io.ktor.client.plugins.logging.LogLevel
@@ -102,24 +103,28 @@ public data class SwiftRequestLoggerConfig(
     public val log: (message: String) -> Unit,
 )
 
+internal fun HttpClientConfig<*>.enableSwiftLogs(loggingConfig: SwiftRequestLoggerConfig? = null) {
+    if (loggingConfig != null) {
+        install(Logging) {
+            // Pass everything to the provided logger. The logger controls the active level
+            level = loggingConfig.logLevel.toKtorLogLevel()
+            logger =
+                object : KtorLogger {
+                    override fun log(message: String) {
+                        loggingConfig.log(message)
+                    }
+                }
+        }
+    }
+}
+
 /**
  * Creates a Ktor [SyncClientConfiguration.ExtendedConfig] that extends the default Ktor client.
  * Specifying a [SwiftRequestLoggerConfig] will install the Ktor logging plugin with the specified configuration.
  */
 public fun createExtendedSyncClientConfiguration(loggingConfig: SwiftRequestLoggerConfig? = null): SyncClientConfiguration =
     SyncClientConfiguration.ExtendedConfig {
-        if (loggingConfig != null) {
-            install(Logging) {
-                // Pass everything to the provided logger. The logger controls the active level
-                level = loggingConfig.logLevel.toKtorLogLevel()
-                logger =
-                    object : KtorLogger {
-                        override fun log(message: String) {
-                            loggingConfig.log(message)
-                        }
-                    }
-            }
-        }
+        enableSwiftLogs(loggingConfig)
     }
 
 /**
@@ -131,12 +136,12 @@ public fun createExtendedSyncClientConfiguration(loggingConfig: SwiftRequestLogg
 public fun createSyncOptions(
     newClient: Boolean,
     userAgent: String,
-    loggingConfig: SwiftRequestLoggerConfig? = null,
+    clientConfiguration: SyncClientConfiguration
 ): SyncOptions =
     SyncOptions(
         newClientImplementation = newClient,
         userAgent = userAgent,
-        clientConfiguration = createExtendedSyncClientConfiguration(loggingConfig),
+        clientConfiguration = clientConfiguration,
     )
 
 public fun errorHandledCrudTransactions(db: PowerSyncDatabase): Flow<PowerSyncResult> =
