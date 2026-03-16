@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.11.2 (unreleased)
+
+- Don't attempt to create WebSocket connections on watchOS.
+
 ## 1.11.1
 
 - Fix RSocket connection bugs on iOS (and other platforms using the RSocket sync transport):

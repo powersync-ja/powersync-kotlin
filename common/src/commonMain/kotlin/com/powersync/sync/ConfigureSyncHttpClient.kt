@@ -1,7 +1,7 @@
 package com.powersync.sync
 
 import com.powersync.ExperimentalPowerSyncAPI
-import com.powersync.internal.isKnownToNotSupportBackpressure
+import com.powersync.internal.shouldUseRSocketStream
 import com.powersync.sync.StreamingSyncClient.Companion.SOCKET_TIMEOUT
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
@@ -71,7 +71,7 @@ internal object WebSocketIfNecessaryPlugin : HttpClientPlugin<Unit, WebSockets> 
         plugin: WebSockets,
         scope: HttpClient,
     ) {
-        if (scope.engineConfig.isKnownToNotSupportBackpressure) {
+        if (scope.engineConfig.shouldUseRSocketStream) {
             WebSockets.install(plugin, scope)
             scope.attributes.put(needsRSocketKey, true)
         } else {
