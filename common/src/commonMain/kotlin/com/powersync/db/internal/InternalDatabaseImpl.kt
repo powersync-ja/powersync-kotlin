@@ -40,9 +40,9 @@ internal class InternalDatabaseImpl(
         }
 
     override suspend fun updateSchema(schemaJson: String) {
-        withContext(dbContext) {
-            runWrapped {
-                pool.withAllConnections { writer, readers ->
+        runWrapped {
+            pool.withAllConnections { writer, readers ->
+                withContext(dbContext) {
                     writer.runTransaction { tx ->
                         tx.getOptional(
                             "SELECT powersync_replace_schema(?);",
@@ -167,9 +167,9 @@ internal class InternalDatabaseImpl(
      */
     @OptIn(ExperimentalPowerSyncAPI::class)
     private suspend fun <R> internalReadLock(callback: suspend (SQLiteConnectionLease) -> R): R =
-        withContext(dbContext) {
-            runWrapped {
-                useConnection(true) { connection ->
+        runWrapped {
+            useConnection(true) { connection ->
+                withContext(dbContext) {
                     callback(connection)
                 }
             }
@@ -189,9 +189,9 @@ internal class InternalDatabaseImpl(
 
     @OptIn(ExperimentalPowerSyncAPI::class)
     private suspend fun <R> internalWriteLock(callback: suspend (SQLiteConnectionLease) -> R): R =
-        withContext(dbContext) {
-            pool.write { writer ->
-                runWrapped {
+        pool.write { writer ->
+            runWrapped {
+                withContext(dbContext) {
                     callback(writer)
                 }
             }
