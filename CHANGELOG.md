@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.11.2 (unreleased)
+## 1.11.2
 
 - Don't attempt to create WebSocket connections on watchOS.
 - Update default SQLite cache size to 50MB, this was previously erroneously set to 200MB
@@ -9,6 +9,7 @@
   Implementers of `SQLiteConnectionPool` should dispatch blocking SQLite callbacks to an
   appropriate dispatcher such as `Dispatchers.IO`. This should prevent the worker pool from
   expanding when large numbers of concurrent operations are requested.
+- Skip creating `ps_crud` entries when clearing raw tables.
 
 ## 1.11.1
 
