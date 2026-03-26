@@ -179,8 +179,8 @@ internal class InternalDatabaseImpl(
 
     @OptIn(ExperimentalPowerSyncAPI::class)
     private suspend fun <R> internalWriteLock(callback: suspend (SQLiteConnectionLease) -> R): R =
-        pool.write { writer ->
-            runWrapped {
+        runWrapped {
+            pool.write { writer ->
                 callback(writer)
             }
         }
