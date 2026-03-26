@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.11.2 (unreleased)
+## 1.11.2
 
 - Don't attempt to create WebSocket connections on watchOS.
 - Update default SQLite cache size to 50MB, this was previously erroneously set to 200MB
