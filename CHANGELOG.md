@@ -3,18 +3,24 @@
 ## 1.11.2 (unreleased)
 
 - Don't attempt to create WebSocket connections on watchOS.
+- Update default SQLite cache size to 50MB, this was previously erroneously set to 200MB
+- Move dispatching responsibility into `SQLiteConnectionPool` implementations after obtaining a
+  connection lease.
+  Implementers of `SQLiteConnectionPool` should dispatch blocking SQLite callbacks to an
+  appropriate dispatcher such as `Dispatchers.IO`. This should prevent the worker pool from
+  expanding when large numbers of concurrent operations are requested.
 
 ## 1.11.1
 
 - Fix RSocket connection bugs on iOS (and other platforms using the RSocket sync transport):
-  - Fix false `connected: true` status when using an invalid token. `ConnectionEstablished` is now
-    only emitted when the first data frame arrives from the server, matching the HTTP path which
-    waits for a `200 OK`.
-  - Fix sync loop terminating permanently when the server rejects the connection with an RSocket
-    ERROR frame (e.g. invalid JWT). `RSocketError` extends `Throwable` not `Exception`, so it was
-    not caught by the retry loop.
-  - Fix sync loop stalling indefinitely after a transport-layer failure (dead socket, network
-    dropout).
+    - Fix false `connected: true` status when using an invalid token. `ConnectionEstablished` is now
+      only emitted when the first data frame arrives from the server, matching the HTTP path which
+      waits for a `200 OK`.
+    - Fix sync loop terminating permanently when the server rejects the connection with an RSocket
+      ERROR frame (e.g. invalid JWT). `RSocketError` extends `Throwable` not `Exception`, so it was
+      not caught by the retry loop.
+    - Fix sync loop stalling indefinitely after a transport-layer failure (dead socket, network
+      dropout).
 
 ## 1.11.0
 
@@ -22,10 +28,12 @@
   `ignoreEmptyUpdates` options are now stored in a `TableOptions` class. Existing constructors
   continue to work, but calling `copy` with any of these parameters no longer works.
 - Make raw tables easier to use:
-  - Introduce the `RawTableSchema` class storing the name of a raw table in the database. When set,
-    `put` and `delete` statements can be inferred automatically.
-  - Add `RawTable.jsonDescription`, which can be passed to the `powersync_create_raw_table_crud_trigger`
-    SQL function to auto-create triggers forwarding writes to `ps_crud`.
+    - Introduce the `RawTableSchema` class storing the name of a raw table in the database. When
+      set,
+      `put` and `delete` statements can be inferred automatically.
+    - Add `RawTable.jsonDescription`, which can be passed to the
+      `powersync_create_raw_table_crud_trigger`
+      SQL function to auto-create triggers forwarding writes to `ps_crud`.
 - Update PowerSync core extension to version 0.4.11.
 - Remove the experimental label from Sync Stream APIs.
 - Compose: add `composeSyncStream` helper method to subscribe to Sync Streams in a composition.
@@ -59,7 +67,8 @@
 
 ## 1.10.2
 
-- Exceptions that occur while initializing a PowerSync database are now rethrown when the database is used.
+- Exceptions that occur while initializing a PowerSync database are now rethrown when the database
+  is used.
 - [Internal] Updated PowerSyncKotlin build to use SKIEE's `produceDistributableFramework`.
 
 ## 1.10.1
