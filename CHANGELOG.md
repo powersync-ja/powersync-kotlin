@@ -9,6 +9,7 @@
   Implementers of `SQLiteConnectionPool` should dispatch blocking SQLite callbacks to an
   appropriate dispatcher such as `Dispatchers.IO`. This should prevent the worker pool from
   expanding when large numbers of concurrent operations are requested.
+- Skip creating `ps_crud` entries when clearing raw tables.
 
 ## 1.11.1
 
