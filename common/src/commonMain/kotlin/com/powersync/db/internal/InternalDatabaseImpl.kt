@@ -11,8 +11,6 @@ import com.powersync.db.runWrapped
 import com.powersync.utils.AtomicMutableSet
 import com.powersync.utils.JsonUtil
 import com.powersync.utils.throttle
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.emitAll
@@ -20,7 +18,6 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.flow.transform
-import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalPowerSyncAPI::class)
@@ -28,9 +25,6 @@ internal class InternalDatabaseImpl(
     private val pool: SQLiteConnectionPool,
     private val logger: Logger,
 ) : InternalDatabase {
-    // Could be scope.coroutineContext, but the default is GlobalScope, which seems like a bad idea. To discuss.
-    private val dbContext = Dispatchers.IO
-
     override suspend fun execute(
         sql: String,
         parameters: List<Any?>?,
@@ -42,18 +36,16 @@ internal class InternalDatabaseImpl(
     override suspend fun updateSchema(schemaJson: String) {
         runWrapped {
             pool.withAllConnections { writer, readers ->
-                withContext(dbContext) {
-                    writer.runTransaction { tx ->
-                        tx.getOptional(
-                            "SELECT powersync_replace_schema(?);",
-                            listOf(schemaJson),
-                        ) {}
-                    }
+                writer.runTransaction { tx ->
+                    tx.getOptional(
+                        "SELECT powersync_replace_schema(?);",
+                        listOf(schemaJson),
+                    ) {}
+                }
 
-                    // Update the schema on all read connections
-                    for (readConnection in readers) {
-                        readConnection.execSQL("pragma table_info('sqlite_master')")
-                    }
+                // Update the schema on all read connections
+                for (readConnection in readers) {
+                    readConnection.execSQL("pragma table_info('sqlite_master')")
                 }
             }
         }
@@ -169,9 +161,7 @@ internal class InternalDatabaseImpl(
     private suspend fun <R> internalReadLock(callback: suspend (SQLiteConnectionLease) -> R): R =
         runWrapped {
             useConnection(true) { connection ->
-                withContext(dbContext) {
-                    callback(connection)
-                }
+                callback(connection)
             }
         }
 
@@ -191,9 +181,7 @@ internal class InternalDatabaseImpl(
     private suspend fun <R> internalWriteLock(callback: suspend (SQLiteConnectionLease) -> R): R =
         pool.write { writer ->
             runWrapped {
-                withContext(dbContext) {
-                    callback(writer)
-                }
+                callback(writer)
             }
         }
 

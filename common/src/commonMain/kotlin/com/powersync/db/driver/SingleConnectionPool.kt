@@ -2,10 +2,13 @@ package com.powersync.db.driver
 
 import androidx.sqlite.SQLiteConnection
 import com.powersync.ExperimentalPowerSyncAPI
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 /**
  * A [SQLiteConnectionPool] backed by a single database connection.
@@ -20,6 +23,8 @@ public class SingleConnectionPool(
     private var closed = false
     private val tableUpdatesFlow = MutableSharedFlow<Set<String>>(replay = 0)
 
+    private val dispatcher = Dispatchers.IO
+
     init {
         conn.setupDefaultPragmas(false)
     }
@@ -28,14 +33,16 @@ public class SingleConnectionPool(
 
     override suspend fun <T> write(callback: suspend (SQLiteConnectionLease) -> T): T =
         mutex.withLock {
-            check(!closed) { "Connection closed" }
+            withContext(dispatcher) {
+                check(!closed) { "Connection closed" }
 
-            try {
-                callback(RawConnectionLease(conn))
-            } finally {
-                val updates = conn.readPendingUpdates()
-                if (updates.isNotEmpty()) {
-                    tableUpdatesFlow.emit(updates)
+                try {
+                    callback(RawConnectionLease(conn))
+                } finally {
+                    val updates = conn.readPendingUpdates()
+                    if (updates.isNotEmpty()) {
+                        tableUpdatesFlow.emit(updates)
+                    }
                 }
             }
         }

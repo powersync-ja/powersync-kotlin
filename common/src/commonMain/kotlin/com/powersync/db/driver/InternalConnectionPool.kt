@@ -6,11 +6,14 @@ import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PersistentConnectionFactory
 import com.powersync.utils.JsonUtil
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalPowerSyncAPI::class)
 internal class InternalConnectionPool(
@@ -26,6 +29,11 @@ internal class InternalConnectionPool(
     // MutableSharedFlow to emit batched table updates
     private val tableUpdatesFlow = MutableSharedFlow<Set<String>>(replay = 0)
 
+    // Database calls are synchronous/blocking, so we always run them on Dispatchers.IO instead of
+    // inheriting the caller-provided scope context. The provided scope is still used for
+    // lifecycle-bound pool coroutines like read workers and update emission.
+    private val dispatcher = Dispatchers.IO
+
     private fun newConnection(readOnly: Boolean): SQLiteConnection {
         val connection =
             factory.openConnection(
@@ -38,19 +46,26 @@ internal class InternalConnectionPool(
         return connection
     }
 
-    override suspend fun <T> read(callback: suspend (SQLiteConnectionLease) -> T): T = readPool.read(callback)
+    override suspend fun <T> read(callback: suspend (SQLiteConnectionLease) -> T): T =
+        readPool.read { connection ->
+            withContext(dispatcher) {
+                callback(connection)
+            }
+        }
 
     override suspend fun <T> write(callback: suspend (SQLiteConnectionLease) -> T): T =
         writeLockMutex.withLock {
-            try {
-                callback(RawConnectionLease(writeConnection))
-            } finally {
-                // When we've leased a write connection, we may have to update table update flows
-                // after users ran their custom statements.
-                val updatedTables = writeConnection.readPendingUpdates()
-                if (updatedTables.isNotEmpty()) {
-                    scope.launch {
-                        tableUpdatesFlow.emit(updatedTables)
+            withContext(dispatcher) {
+                try {
+                    callback(RawConnectionLease(writeConnection))
+                } finally {
+                    // When we've leased a write connection, we may have to update table update flows
+                    // after users ran their custom statements.
+                    val updatedTables = writeConnection.readPendingUpdates()
+                    if (updatedTables.isNotEmpty()) {
+                        scope.launch {
+                            tableUpdatesFlow.emit(updatedTables)
+                        }
                     }
                 }
             }
@@ -61,6 +76,7 @@ internal class InternalConnectionPool(
         readPool.withAllConnections { rawReadConnections ->
             val readers = rawReadConnections.map { RawConnectionLease(it) }
             // Then get access to the write connection
+            // The write call will dispatch to the provided dispatcher
             write { writer ->
                 action(writer, readers)
             }

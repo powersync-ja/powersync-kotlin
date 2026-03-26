@@ -4,9 +4,11 @@
 
 - Don't attempt to create WebSocket connections on watchOS.
 - Update default SQLite cache size to 50MB, this was previously erroneously set to 200MB
-- Move dispatching to Dispatchers.IO after obtaining a connection lease from a SQLiteConnectionPool.
-  This should prevent the worker pool from expanding when large numbers of concurrent operations are
-  requested.
+- Move dispatching responsibility into `SQLiteConnectionPool` implementations after obtaining a
+  connection lease.
+  Implementers of `SQLiteConnectionPool` should dispatch blocking SQLite callbacks to an
+  appropriate dispatcher such as `Dispatchers.IO`. This should prevent the worker pool from
+  expanding when large numbers of concurrent operations are requested.
 
 ## 1.11.1
 
