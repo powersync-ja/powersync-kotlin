@@ -1,4 +1,3 @@
-import com.android.build.gradle.tasks.ExternalNativeBuildJsonTask
 import com.powersync.compile.CreateSqliteCInterop
 import com.powersync.plugins.utils.powersyncTargets
 import org.gradle.kotlin.dsl.register

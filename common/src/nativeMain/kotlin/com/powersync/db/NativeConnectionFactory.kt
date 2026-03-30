@@ -16,21 +16,14 @@ public abstract class NativeConnectionFactory : PersistentConnectionFactory {
         path: String,
         openFlags: Int,
     ): SQLiteConnection {
-        // On some platforms, most notably watchOS, there's no dynamic extension loading and the core extension is
-        // registered via sqlite3_auto_extension.
         val extensionPath = resolvePowerSyncLoadableExtensionPath()
-        val db = Database.open(path, openFlags)
-
-        if (extensionPath != null) {
-            try {
-                db.loadExtension(extensionPath, "sqlite3_powersync_init")
-            } catch (e: PowerSyncException) {
-                db.close()
-                throw e
-            }
+        // On native platforms, the path should be null since we link the extension statically.
+        // Still, we need to call that method to register the extension to SQLite.
+        check(extensionPath == null) {
+            "Expected PowerSync core extension path to be null on native platforms."
         }
 
-        return db
+        return Database.open(path, openFlags)
     }
 
     override fun openInMemoryConnection(): SQLiteConnection = openConnection(":memory:", 0x02)

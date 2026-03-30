@@ -38,12 +38,11 @@ int sqlite3_get_autocommit(sqlite3 *db);
 
 int sqlite3_db_config(sqlite3 *db, int op, ...);
 
-int sqlite3_load_extension(
-        sqlite3 *db,          /* Load the extension into this database connection */
-        const char *zFile,    /* Name of the shared library containing extension */
-        const char *zProc,    /* Entry point.  Derived from zFile if 0 */
-        char **pzErrMsg       /* Put error message here if not 0 */
-);
+int sqlite3_auto_extension(int(*xEntryPoint)(
+        sqlite3 *db,
+        const char **pzErrMsg,
+        const void *pThunk
+));
 
 int sqlite3_extended_result_codes(sqlite3 *, int onoff);
 

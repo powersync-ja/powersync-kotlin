@@ -1,11 +1,14 @@
+import com.powersync.compile.CreatePowerSyncSqliteCoreCInterop
 import com.powersync.plugins.utils.powersyncTargets
 import de.undercouch.gradle.tasks.download.Download
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.internal.os.OperatingSystem
+import org.gradle.kotlin.dsl.kotlin
+import org.gradle.kotlin.dsl.register
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest
 import org.jetbrains.kotlin.gradle.tasks.KotlinTest
-import org.jetbrains.kotlin.konan.target.Family
+import org.jetbrains.kotlin.konan.target.KonanTarget
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText
@@ -21,6 +24,10 @@ plugins {
     id("com.powersync.plugins.sharedbuild")
     alias(libs.plugins.mokkery)
     id("dokka-convention")
+}
+
+val powersyncStaticLibrariesConfiguration: Configuration by configurations.creating {
+    isCanBeConsumed = false
 }
 
 val binariesFolder = project.layout.buildDirectory.dir("binaries/desktop")
@@ -75,6 +82,48 @@ val downloadPowersyncDesktopBinaries by tasks.registering(Download::class) {
     onlyIfModified(true)
 }
 
+dependencies {
+    powersyncStaticLibrariesConfiguration(project(path=":internal:download-core-extension", configuration="powersyncStaticLibrariesConfiguration"))
+}
+
+fun linkCoreExtensionStatically(target: KotlinNativeTarget): TaskProvider<CreatePowerSyncSqliteCoreCInterop> {
+    val buildCInteropDef = tasks.register("${target.name}CinteropCoreExtension", CreatePowerSyncSqliteCoreCInterop::class) {
+        val precompiledSqlite: FileCollection = powersyncStaticLibrariesConfiguration
+        inputs.files(precompiledSqlite)
+        dependsOn(precompiledSqlite)
+
+        val fileName = when (val konanTarget = target.konanTarget) {
+            KonanTarget.LINUX_ARM64 -> "libpowersync_aarch64.linux.a"
+            KonanTarget.LINUX_X64 -> "libpowersync_x64.linux.a"
+
+            KonanTarget.MINGW_X64 -> "powersync_x64.lib"
+
+            KonanTarget.MACOS_ARM64 -> "libpowersync_aarch64.macos.a"
+            KonanTarget.MACOS_X64 -> "libpowersync_x64.macos.a"
+
+            KonanTarget.IOS_ARM64 -> "libpowersync_aarch64.ios.a"
+            KonanTarget.IOS_SIMULATOR_ARM64 -> "libpowersync_aarch64.ios-sim.a"
+            KonanTarget.IOS_X64 -> "libpowersync_x64.ios-sim.a"
+
+            KonanTarget.TVOS_ARM64 -> "libpowersync_aarch64.tvos.a"
+            KonanTarget.TVOS_SIMULATOR_ARM64 -> "libpowersync_aarch64.tvos-sim.a"
+            KonanTarget.TVOS_X64 -> "libpowersync_x64.tvos-sim.a"
+
+            KonanTarget.WATCHOS_ARM64 -> "libpowersync_arm64_32.watchos.a"
+            KonanTarget.WATCHOS_DEVICE_ARM64 -> "libpowersync_aarch64.watchos.a"
+            KonanTarget.WATCHOS_SIMULATOR_ARM64 -> "libpowersync_aarch64.watchos-sim.a"
+            KonanTarget.WATCHOS_X64 -> "libpowersync_x64.watchos-sim.a"
+            else -> error("Unsupported target: $konanTarget")
+        }
+
+        val staticLibrary = precompiledSqlite.singleFile.resolve(fileName)
+        archiveFile.set(staticLibrary)
+        definitionFile.value(layout.buildDirectory.map { it.file("interopDefs/${target.name}/sqlite3mc.def") })
+    }
+
+    return buildCInteropDef
+}
+
 val generateVersionConstant by tasks.registering {
     val target = project.layout.buildDirectory.dir("generated/constants")
     val packageName = "com.powersync.build"
@@ -115,13 +164,9 @@ kotlin {
                 compilerOptions.freeCompilerArgs.add("-Xexport-kdoc")
             }
 
-            if (target.konanTarget.family == Family.WATCHOS) {
-                // We're linking the core extension statically, which means that we need a cinterop
-                // to call powersync_init_static
-                cinterops.create("powersync_static") {
-                    packageName("com.powersync.static")
-                    headers(file("src/watchosMain/powersync_static.h"))
-                }
+            cinterops.create("core_extension") {
+                val interopSource = linkCoreExtensionStatically(this@withType)
+                definitionFile.set(interopSource.flatMap { it.definitionFile })
             }
 
             cinterops.create("sqlite3") {
@@ -189,15 +234,6 @@ kotlin {
         jvmMain {
             dependsOn(commonJava)
         }
-
-        // Common apple targets where we link the core extension dynamically
-        val appleNonWatchOsMain by creating {
-            dependsOn(appleMain.get())
-        }
-
-        macosMain.orNull?.dependsOn(appleNonWatchOsMain)
-        iosMain.orNull?.dependsOn(appleNonWatchOsMain)
-        tvosMain.orNull?.dependsOn(appleNonWatchOsMain)
 
         commonTest.dependencies {
             implementation(projects.internal.testutils)

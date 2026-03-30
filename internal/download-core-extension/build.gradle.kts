@@ -36,10 +36,34 @@ val unzipPowerSyncFramework by tasks.registering(Exec::class) {
     outputs.dir(destination)
 }
 
+val downloadPowerSyncStaticLibraries by tasks.registering(Download::class) {
+    val url = libs.versions.powersync.core.map { coreVersion ->
+        "file:///Users/simon/Downloads/kotlin-libs-test/libs.zip"
+        //"https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/powersync-sqlite-core.xcframework.zip"
+    }
+    val binariesFolder = project.layout.buildDirectory.dir("binaries")
+    src(url)
+    dest(binariesFolder.map { it.file("powersync-static-libraries.zip") })
+    onlyIfModified(true)
+}
+
+val unzipPowerSyncStaticLibraries by tasks.registering(Copy::class) {
+    val source = downloadPowerSyncStaticLibraries.map { it.outputFiles.single() }
+    val dest = project.layout.buildDirectory.dir("binaries/static").map { it.asFile }
+
+    from(zipTree(source))
+    into(dest)
+}
+
 val powersyncFrameworkConfiguration by configurations.creating {
+    isCanBeResolved = false
+}
+
+val powersyncStaticLibrariesConfiguration by configurations.creating {
     isCanBeResolved = false
 }
 
 artifacts {
     add(powersyncFrameworkConfiguration.name, unzipPowerSyncFramework)
+    add(powersyncStaticLibrariesConfiguration.name, unzipPowerSyncStaticLibraries)
 }

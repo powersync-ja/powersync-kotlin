@@ -1,9 +1,13 @@
 package com.powersync
 
-import com.powersync.static.powersync_init_static
+import com.powersync.internal.core_extension.sqlite3_powersync_init
+import com.powersync.internal.sqlite3.sqlite3_auto_extension
+import kotlinx.cinterop.staticCFunction
 
 private val didLoadExtension by lazy {
-    val rc = powersync_init_static()
+    val rc = sqlite3_auto_extension(staticCFunction { db, errMsg, api ->
+        return@staticCFunction sqlite3_powersync_init(db, errMsg, api)
+    })
     if (rc != 0) {
         throw PowerSyncException(
             "Could not load the PowerSync SQLite core extension",
@@ -17,7 +21,7 @@ private val didLoadExtension by lazy {
     true
 }
 
-@Throws(PowerSyncException::class)
+@Throws(exceptionClasses = [PowerSyncException::class])
 public actual fun resolvePowerSyncLoadableExtensionPath(): String? {
     didLoadExtension
     return null
