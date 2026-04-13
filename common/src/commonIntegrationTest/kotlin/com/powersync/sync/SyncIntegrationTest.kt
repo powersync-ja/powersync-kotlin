@@ -31,13 +31,16 @@ import com.powersync.utils.JsonParam
 import com.powersync.utils.JsonUtil
 import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
 import io.ktor.http.ContentType
+import io.ktor.utils.io.core.toByteArray
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -1053,6 +1056,26 @@ class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
                 syncLines.close()
                 turbine.waitFor { !it.connected }
 
+                turbine.cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `reconnects on unexpected end of response`() =
+        databaseTest {
+            turbineScope(timeout = 10.0.seconds) {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                database.connect(TestConnector(), options = getOptions())
+                turbine.waitFor { it.connected }
+
+                syncLines.send("unterminated line".toByteArray())
+                syncLines.close()
+                turbine.waitFor { !it.connected }
+                database.currentStatus.downloadError shouldNotBeNull {
+                }
+
+                syncLines = Channel()
+                turbine.waitFor { it.connected }
                 turbine.cancelAndIgnoreRemainingEvents()
             }
         }
