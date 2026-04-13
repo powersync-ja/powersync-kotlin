@@ -1,8 +1,5 @@
-package com.powersync.sync
+package com.powersync.testutils
 
-import com.powersync.bucket.BucketChecksum
-import com.powersync.bucket.Checkpoint
-import com.powersync.bucket.OplogEntry
 import com.powersync.bucket.StreamPriority
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
@@ -16,7 +13,6 @@ import kotlinx.serialization.encoding.decodeStructure
 import kotlinx.serialization.encoding.encodeStructure
 import kotlinx.serialization.serializer
 
-@LegacySyncImplementation
 @Serializable(with = SyncLineSerializer::class)
 internal sealed interface SyncLine {
     data class FullCheckpoint(
@@ -58,7 +54,6 @@ internal sealed interface SyncLine {
     data object UnknownSyncLine : SyncLine
 }
 
-@LegacySyncImplementation
 private class SyncLineSerializer : KSerializer<SyncLine> {
     private val checkpoint = serializer<Checkpoint>()
     private val checkpointDiff = serializer<SyncLine.CheckpointDiff>()
@@ -115,3 +110,57 @@ private class SyncLineSerializer : KSerializer<SyncLine> {
         }
     }
 }
+
+@Serializable
+internal data class Checkpoint(
+    @SerialName("last_op_id") val lastOpId: String,
+    @SerialName("buckets") val checksums: List<BucketChecksum>,
+    @SerialName("write_checkpoint") val writeCheckpoint: String? = null,
+) {
+    fun clone(): Checkpoint = Checkpoint(lastOpId, checksums, writeCheckpoint)
+}
+
+@Serializable
+internal data class OplogEntry(
+    val checksum: Long,
+    @SerialName("op_id") val opId: String,
+    @SerialName("object_id") val rowId: String? = null,
+    @SerialName("object_type") val rowType: String? = null,
+    val op: OpType? = null,
+    /**
+     * Together with rowType and rowId, this uniquely identifies a source entry per bucket in the oplog.
+     * There may be multiple source entries for a single "rowType + rowId" combination.
+     */
+    val subkey: String? = null,
+    val data: String? = null,
+)
+
+@Serializable
+internal enum class OpType(
+    private val value: Int,
+) {
+    CLEAR(1),
+    MOVE(2),
+    PUT(3),
+    REMOVE(4),
+    ;
+
+    override fun toString(): String = value.toString()
+}
+
+@Serializable
+internal data class BucketState(
+    val bucket: String,
+    @SerialName("op_id") val opId: String,
+) {
+    override fun toString() = "BucketState<$bucket:$opId>"
+}
+
+@Serializable
+internal data class BucketChecksum(
+    val bucket: String,
+    val priority: StreamPriority = StreamPriority.DEFAULT_PRIORITY,
+    val checksum: Int,
+    val count: Int? = null,
+    @SerialName("last_op_id") val lastOpId: String? = null,
+)

@@ -6,9 +6,6 @@ import com.powersync.db.crud.CrudEntry
 import com.powersync.db.internal.PowerSyncTransaction
 import com.powersync.db.schema.SerializableSchema
 import com.powersync.sync.Instruction
-import com.powersync.sync.LegacySyncImplementation
-import com.powersync.sync.SyncDataBatch
-import com.powersync.sync.SyncLocalDatabaseResult
 import com.powersync.utils.JsonUtil
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -32,27 +29,6 @@ internal interface BucketStorage {
     suspend fun updateLocalTarget(checkpointCallback: suspend () -> String): Boolean
 
     suspend fun hasCompletedSync(): Boolean
-
-    @LegacySyncImplementation
-    suspend fun getBucketStates(): List<BucketState>
-
-    @LegacySyncImplementation
-    suspend fun getBucketOperationProgress(): Map<String, LocalOperationCounters>
-
-    @LegacySyncImplementation
-    suspend fun removeBuckets(bucketsToDelete: List<String>)
-
-    @LegacySyncImplementation
-    fun setTargetCheckpoint(checkpoint: Checkpoint)
-
-    @LegacySyncImplementation
-    suspend fun saveSyncData(syncDataBatch: SyncDataBatch)
-
-    @LegacySyncImplementation
-    suspend fun syncLocalDatabase(
-        targetCheckpoint: Checkpoint,
-        partialPriority: StreamPriority? = null,
-    ): SyncLocalDatabaseResult
 
     suspend fun control(args: PowerSyncControlArguments): List<Instruction>
 }
@@ -115,8 +91,3 @@ internal sealed interface PowerSyncControlArguments {
             "update_subscriptions" to JsonUtil.json.encodeToString(activeStreams)
     }
 }
-
-@Serializable
-internal class StartSyncIteration(
-    val parameters: JsonObject,
-)

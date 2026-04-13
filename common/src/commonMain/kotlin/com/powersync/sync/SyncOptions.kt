@@ -38,9 +38,8 @@ public class SyncOptions(
     /**
      * Enables the new client implementation written in Rust.
      *
-     * The new implementation is more efficient and enabled by default. It can be disabled if compatibility issues occur.
-     * The old implementation will be removed in a future version of the PowerSync SDK.
-     * Please report any issues experienced with the new implementation.
+     * This is enabled by default, and can no longer be disabled (the old Kotlin client has been
+     * removed from the PowerSync SDK).
      */
     public val newClientImplementation: Boolean = true,
     /**
@@ -63,5 +62,11 @@ public class SyncOptions(
          */
         @Deprecated("Customizing sync options is no longer necessary, use constructor instead", replaceWith = ReplaceWith("SyncOptions()"))
         public val defaults: SyncOptions = SyncOptions()
+    }
+
+    init {
+        check(newClientImplementation) {
+            "Support for newClientImplementation = false has been removed"
+        }
     }
 }

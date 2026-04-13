@@ -1,11 +1,8 @@
 package com.powersync.sync
 
-import com.powersync.bucket.Checkpoint
-import com.powersync.bucket.LocalOperationCounters
 import com.powersync.bucket.StreamPriority
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlin.math.min
 
 /**
  * Information about a progressing download.
@@ -84,49 +81,6 @@ public data class SyncDownloadProgress internal constructor(
     }
 
     /**
-     * Creates download progress information from the local progress counters since the last full sync and the target
-     * checkpoint.
-     */
-    @LegacySyncImplementation
-    internal constructor(localProgress: Map<String, LocalOperationCounters>, target: Checkpoint) : this(
-        buildMap {
-            var invalidated = false
-
-            for (entry in target.checksums) {
-                val savedProgress = localProgress[entry.bucket]
-                val atLast = savedProgress?.atLast ?: 0
-                val sinceLast = savedProgress?.sinceLast ?: 0
-
-                put(
-                    entry.bucket,
-                    CoreBucketProgress(
-                        priority = entry.priority,
-                        atLast = (savedProgress?.atLast ?: 0).toLong(),
-                        sinceLast = (savedProgress?.sinceLast ?: 0).toLong(),
-                        targetCount = (entry.count ?: 0).toLong(),
-                    ),
-                )
-
-                entry.count?.let { knownCount ->
-                    if (knownCount < atLast + sinceLast) {
-                        // Either due to a defrag / sync rule deploy or a compaction operation, the
-                        // size of the bucket shrank so much that the local ops exceed the ops in
-                        // the updated bucket. We can't possibly report progress in this case (it
-                        // would overshoot 100%).
-                        invalidated = true
-                    }
-                }
-            }
-
-            if (invalidated) {
-                for ((key, value) in entries) {
-                    put(key, value.copy(sinceLast = 0, atLast = 0))
-                }
-            }
-        },
-    )
-
-    /**
      * Returns download progress towards all data up until the specified [priority] being received.
      *
      * The returned [ProgressWithOperations] instance tracks the target amount of operations that need to be downloaded
@@ -136,24 +90,6 @@ public data class SyncDownloadProgress internal constructor(
         val (total, completed) = targetAndCompletedCounts(priority)
         return ProgressInfo(totalOperations = total, downloadedOperations = completed)
     }
-
-    @LegacySyncImplementation
-    internal fun incrementDownloaded(batch: SyncDataBatch): SyncDownloadProgress =
-        SyncDownloadProgress(
-            buildMap {
-                putAll(this@SyncDownloadProgress.buckets)
-
-                for (bucket in batch.buckets) {
-                    val previous = get(bucket.bucket) ?: continue
-                    put(
-                        bucket.bucket,
-                        previous.copy(
-                            sinceLast = min(previous.sinceLast + bucket.data.size, previous.targetCount),
-                        ),
-                    )
-                }
-            },
-        )
 
     private fun targetAndCompletedCounts(priority: StreamPriority): Pair<Int, Int> =
         buckets.values

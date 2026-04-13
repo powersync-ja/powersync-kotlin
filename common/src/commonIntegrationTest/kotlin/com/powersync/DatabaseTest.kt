@@ -13,8 +13,6 @@ import com.powersync.db.schema.PendingStatementParameter
 import com.powersync.db.schema.RawTable
 import com.powersync.db.schema.Schema
 import com.powersync.db.schema.TableOptions
-import com.powersync.sync.LegacySyncImplementation
-import com.powersync.test.factory
 import com.powersync.test.getTempDir
 import com.powersync.test.waitFor
 import com.powersync.testutils.UserRow

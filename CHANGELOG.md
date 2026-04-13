@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.12.0 (unreleased)
+
+- Remove the legacy Kotlin sync client. `newSyncClientImplementation` is now the only supported
+  option.
+
 ## 1.11.2
 
 - Don't attempt to create WebSocket connections on watchOS.

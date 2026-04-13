@@ -3,6 +3,7 @@ package com.powersync.sync
 import app.cash.turbine.turbineScope
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.bucket.StreamPriority
+import com.powersync.testutils.SyncLine
 import com.powersync.testutils.databaseTest
 import com.powersync.testutils.waitFor
 import com.powersync.utils.JsonParam
@@ -24,7 +25,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlin.test.Test
 
-@OptIn(ExperimentalPowerSyncAPI::class, LegacySyncImplementation::class)
+@OptIn(ExperimentalPowerSyncAPI::class)
 class SyncStreamTest : AbstractSyncTest(true) {
     @Test
     fun `can disable default streams`() =

@@ -1,5 +1,3 @@
-@file:OptIn(LegacySyncImplementation::class)
-
 package com.powersync.testutils
 
 import co.touchlab.kermit.ExperimentalKermitApi
@@ -13,7 +11,6 @@ import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.createPowerSyncDatabaseImpl
 import com.powersync.db.PowerSyncDatabaseImpl
 import com.powersync.db.schema.Schema
-import com.powersync.sync.LegacySyncImplementation
 import com.powersync.sync.configureSyncHttpClient
 import com.powersync.test.PowerSyncTestLogWriter
 import com.powersync.test.TestConnector
