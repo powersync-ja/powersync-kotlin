@@ -23,6 +23,7 @@ import dev.mokkery.everySuspend
 import dev.mokkery.mock
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeTypeOf
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.utils.io.ByteChannel
@@ -32,6 +33,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
+import kotlinx.io.EOFException
 import kotlinx.serialization.json.JsonObject
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -261,7 +263,7 @@ class StreamingSyncClientTest {
                 channel.close()
 
                 // Still two bytes missing for length
-                objects.awaitError()
+                objects.awaitError().shouldBeTypeOf<EOFException>()
             }
         }
 
@@ -277,7 +279,7 @@ class StreamingSyncClientTest {
                 channel.close()
 
                 // Still two bytes missing for content
-                objects.awaitError()
+                objects.awaitError().shouldBeTypeOf<EOFException>()
             }
         }
 }

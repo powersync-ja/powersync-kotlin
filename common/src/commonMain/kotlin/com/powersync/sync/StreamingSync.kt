@@ -20,7 +20,6 @@ import com.powersync.utils.JsonUtil
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.call.body
-import io.ktor.client.plugins.pluginOrNull
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
@@ -36,19 +35,17 @@ import io.ktor.http.contentType
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.readAvailable
 import io.ktor.utils.io.readBuffer
-import io.ktor.utils.io.readUTF8Line
+import io.ktor.utils.io.readLineStrict
 import io.rsocket.kotlin.RSocketError
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.ProducerScope
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -58,16 +55,14 @@ import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.io.EOFException
 import kotlinx.io.readByteArray
 import kotlinx.io.readIntLe
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlin.time.Clock
 
@@ -855,7 +850,7 @@ internal class StreamingSyncClient(
         fun ByteReadChannel.lines(): Flow<String> =
             flow {
                 while (!isClosedForRead) {
-                    val line = readUTF8Line()
+                    val line = readLineStrict()
                     if (line != null) {
                         emit(line)
                     }
@@ -894,10 +889,7 @@ internal class StreamingSyncClient(
                     if (bytesRead == -1) {
                         // No bytes available, wait for more
                         if (isClosedForRead || !awaitContent(1)) {
-                            throw PowerSyncException(
-                                "Unexpected end of response in middle of BSON sync line",
-                                null,
-                            )
+                            throw EOFException()
                         }
                     } else {
                         remaining -= bytesRead
