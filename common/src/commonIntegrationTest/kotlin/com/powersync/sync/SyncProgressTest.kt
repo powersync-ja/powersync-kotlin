@@ -2,12 +2,13 @@ package com.powersync.sync
 
 import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.turbineScope
-import com.powersync.bucket.BucketChecksum
-import com.powersync.bucket.Checkpoint
-import com.powersync.bucket.OpType
-import com.powersync.bucket.OplogEntry
 import com.powersync.bucket.StreamPriority
 import com.powersync.testutils.ActiveDatabaseTest
+import com.powersync.testutils.BucketChecksum
+import com.powersync.testutils.Checkpoint
+import com.powersync.testutils.OpType
+import com.powersync.testutils.OplogEntry
+import com.powersync.testutils.SyncLine
 import com.powersync.testutils.databaseTest
 import com.powersync.testutils.waitFor
 import io.kotest.assertions.withClue
@@ -19,12 +20,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-@OptIn(LegacySyncImplementation::class)
-abstract class BaseSyncProgressTest(
-    useNewSyncImplementation: Boolean,
-) : AbstractSyncTest(
-        useNewSyncImplementation,
-    ) {
+class SyncProgressTest : AbstractSyncTest() {
     private var lastOpId = 0
 
     @BeforeTest
@@ -413,7 +409,3 @@ abstract class BaseSyncProgressTest(
             syncLines.close()
         }
 }
-
-class LegacySyncProgressTest : BaseSyncProgressTest(false)
-
-class NewSyncProgressTest : BaseSyncProgressTest(true)

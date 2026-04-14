@@ -8,13 +8,11 @@ import com.powersync.testutils.ActiveDatabaseTest
  * implementation from the core extension.
  */
 abstract class AbstractSyncTest(
-    private val useNewSyncImplementation: Boolean,
     protected val useBson: Boolean = false,
 ) {
     @OptIn(ExperimentalPowerSyncAPI::class)
     internal fun ActiveDatabaseTest.getOptions(): SyncOptions =
         SyncOptions(
-            useNewSyncImplementation,
             clientConfiguration = SyncClientConfiguration.ExistingClient(createSyncClient()),
         )
 }

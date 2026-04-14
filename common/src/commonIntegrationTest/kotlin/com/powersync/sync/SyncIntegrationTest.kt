@@ -5,10 +5,6 @@ import co.touchlab.kermit.ExperimentalKermitApi
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
 import com.powersync.PowerSyncException
-import com.powersync.bucket.BucketChecksum
-import com.powersync.bucket.Checkpoint
-import com.powersync.bucket.OpType
-import com.powersync.bucket.OplogEntry
 import com.powersync.bucket.StreamPriority
 import com.powersync.bucket.WriteCheckpointData
 import com.powersync.bucket.WriteCheckpointResponse
@@ -16,7 +12,6 @@ import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.connectors.readCachedCredentials
 import com.powersync.db.PowerSyncDatabaseImpl
-import com.powersync.db.getString
 import com.powersync.db.schema.PendingStatement
 import com.powersync.db.schema.PendingStatementParameter
 import com.powersync.db.schema.RawTable
@@ -24,6 +19,12 @@ import com.powersync.db.schema.RawTableSchema
 import com.powersync.db.schema.Schema
 import com.powersync.test.TestConnector
 import com.powersync.test.waitFor
+import com.powersync.testutils.BucketChecksum
+import com.powersync.testutils.Checkpoint
+import com.powersync.testutils.OpType
+import com.powersync.testutils.OplogEntry
+import com.powersync.testutils.SyncLine
+import com.powersync.testutils.SyncLine.SyncDataBucket
 import com.powersync.testutils.UserRow
 import com.powersync.testutils.databaseTest
 import com.powersync.testutils.waitFor
@@ -51,12 +52,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.fail
 import kotlin.time.Duration.Companion.seconds
 
-@OptIn(LegacySyncImplementation::class)
-abstract class BaseSyncIntegrationTest(
-    useNewSyncImplementation: Boolean,
-) : AbstractSyncTest(
-        useNewSyncImplementation,
-    ) {
+class SyncIntegrationTest : AbstractSyncTest() {
     private suspend fun PowerSyncDatabase.expectUserCount(amount: Int) {
         val users = getAll("SELECT * FROM users;") { UserRow.from(it) }
         users shouldHaveSize amount
@@ -211,7 +207,7 @@ abstract class BaseSyncIntegrationTest(
                 val id = operationId++
 
                 syncLines.send(
-                    SyncLine.SyncDataBucket(
+                    SyncDataBucket(
                         bucket = "bucket$priority",
                         data =
                             listOf(
@@ -564,7 +560,7 @@ abstract class BaseSyncIntegrationTest(
             }
 
             syncLines.send(
-                SyncLine.SyncDataBucket(
+                SyncDataBucket(
                     bucket = "a",
                     data =
                         listOf(
@@ -657,7 +653,7 @@ abstract class BaseSyncIntegrationTest(
                     ),
                 )
                 syncLines.send(
-                    SyncLine.SyncDataBucket(
+                    SyncDataBucket(
                         bucket = "a",
                         data =
                             listOf(
@@ -748,14 +744,7 @@ abstract class BaseSyncIntegrationTest(
                 turbine.cancelAndIgnoreRemainingEvents()
             }
         }
-}
 
-class LegacySyncIntegrationTest : BaseSyncIntegrationTest(false)
-
-class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
-    // The legacy sync implementation doesn't prefetch credentials and doesn't support raw tables.
-
-    @OptIn(LegacySyncImplementation::class)
     @Test
     fun testTokenPrefetch() =
         databaseTest {
@@ -804,7 +793,7 @@ class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
         }
 
     @Test
-    @OptIn(ExperimentalPowerSyncAPI::class, LegacySyncImplementation::class)
+    @OptIn(ExperimentalPowerSyncAPI::class)
     fun rawTablesWithImplicitStatements() =
         databaseTest(createInitialDatabase = false) {
             val db =
@@ -838,7 +827,7 @@ class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
                     ),
                 )
                 syncLines.send(
-                    SyncLine.SyncDataBucket(
+                    SyncDataBucket(
                         bucket = "a",
                         data =
                             listOf(
@@ -873,7 +862,7 @@ class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
                     ),
                 )
                 syncLines.send(
-                    SyncLine.SyncDataBucket(
+                    SyncDataBucket(
                         bucket = "a",
                         data =
                             listOf(
@@ -898,7 +887,7 @@ class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
         }
 
     @Test
-    @OptIn(ExperimentalPowerSyncAPI::class, LegacySyncImplementation::class)
+    @OptIn(ExperimentalPowerSyncAPI::class)
     fun rawTablesWithExplicitStatements() =
         databaseTest(createInitialDatabase = false) {
             val db =
@@ -945,7 +934,7 @@ class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
                     ),
                 )
                 syncLines.send(
-                    SyncLine.SyncDataBucket(
+                    SyncDataBucket(
                         bucket = "a",
                         data =
                             listOf(
@@ -981,7 +970,7 @@ class NewSyncIntegrationTest : BaseSyncIntegrationTest(true) {
                     ),
                 )
                 syncLines.send(
-                    SyncLine.SyncDataBucket(
+                    SyncDataBucket(
                         bucket = "a",
                         data =
                             listOf(

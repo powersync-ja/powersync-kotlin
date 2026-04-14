@@ -181,23 +181,6 @@ internal data class SyncStatusDataContainer(
             internalSubscriptions = status.streams,
         )
     }
-
-    @LegacySyncImplementation
-    internal fun abortedDownload() =
-        copy(
-            downloading = false,
-            downloadProgress = null,
-        )
-
-    @LegacySyncImplementation
-    internal fun copyWithCompletedDownload() =
-        copy(
-            lastSyncedAt = Clock.System.now(),
-            downloading = false,
-            downloadProgress = null,
-            hasSynced = true,
-            downloadError = null,
-        )
 }
 
 @ConsistentCopyVisibility
