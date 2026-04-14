@@ -60,8 +60,6 @@ import kotlinx.io.readByteArray
 import kotlinx.io.readIntLe
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.encodeToJsonElement
-import kotlin.time.Clock
 
 @OptIn(ExperimentalPowerSyncAPI::class)
 internal class StreamingSyncClient(

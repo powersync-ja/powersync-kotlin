@@ -20,7 +20,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-class BaseSyncProgressTest: AbstractSyncTest() {
+class SyncProgressTest : AbstractSyncTest() {
     private var lastOpId = 0
 
     @BeforeTest

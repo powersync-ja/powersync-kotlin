@@ -52,7 +52,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.fail
 import kotlin.time.Duration.Companion.seconds
 
-class SyncIntegrationTest: AbstractSyncTest() {
+class SyncIntegrationTest : AbstractSyncTest() {
     private suspend fun PowerSyncDatabase.expectUserCount(amount: Int) {
         val users = getAll("SELECT * FROM users;") { UserRow.from(it) }
         users shouldHaveSize amount
