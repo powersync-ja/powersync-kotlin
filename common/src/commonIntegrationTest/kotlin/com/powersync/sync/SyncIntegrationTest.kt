@@ -787,12 +787,13 @@ class SyncIntegrationTest : AbstractSyncTest() {
                 database.currentStatus.connected shouldBe true
 
                 // After the prefetch completes, we should reconnect
-                val timeToReconnect = scope.testTimeSource.measureTime {
-                    completePrefetch.complete(Unit)
-                    turbine.waitFor { !it.connected }
+                val timeToReconnect =
+                    scope.testTimeSource.measureTime {
+                        completePrefetch.complete(Unit)
+                        turbine.waitFor { !it.connected }
 
-                    turbine.waitFor { it.connected }
-                }
+                        turbine.waitFor { it.connected }
+                    }
                 // We should not wait for the reconnect delay when we reconnect due to a prefetched
                 // token (that's kind of the whole point...).
                 timeToReconnect shouldBe 0.seconds
