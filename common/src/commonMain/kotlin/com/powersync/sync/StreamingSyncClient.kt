@@ -493,7 +493,7 @@ internal class StreamingSyncClient(
                                     logger.v { "Stopping because new credentials are available" }
 
                                     // Token has been refreshed, start another iteration
-                                    controlInvocations.send(PowerSyncControlArguments.Stop)
+                                    controlInvocations.send(PowerSyncControlArguments.DidRefreshToken)
                                 }
                             job.invokeOnCompletion {
                                 credentialsInvalidation = null

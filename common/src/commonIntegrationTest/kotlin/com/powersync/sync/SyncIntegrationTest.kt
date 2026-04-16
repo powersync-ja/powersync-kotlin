@@ -41,7 +41,9 @@ import io.ktor.utils.io.core.toByteArray
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.test.testTimeSource
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -51,6 +53,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.fail
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.measureTime
 
 class SyncIntegrationTest : AbstractSyncTest() {
     private suspend fun PowerSyncDatabase.expectUserCount(amount: Int) {
@@ -745,6 +748,7 @@ class SyncIntegrationTest : AbstractSyncTest() {
             }
         }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun testTokenPrefetch() =
         databaseTest {
@@ -783,10 +787,16 @@ class SyncIntegrationTest : AbstractSyncTest() {
                 database.currentStatus.connected shouldBe true
 
                 // After the prefetch completes, we should reconnect
-                completePrefetch.complete(Unit)
-                turbine.waitFor { !it.connected }
+                val timeToReconnect = scope.testTimeSource.measureTime {
+                    completePrefetch.complete(Unit)
+                    turbine.waitFor { !it.connected }
 
-                turbine.waitFor { it.connected }
+                    turbine.waitFor { it.connected }
+                }
+                // We should not wait for the reconnect delay when we reconnect due to a prefetched
+                // token (that's kind of the whole point...).
+                timeToReconnect shouldBe 0.seconds
+
                 fetchCredentialsCount shouldBe 2
                 turbine.cancelAndIgnoreRemainingEvents()
             }
