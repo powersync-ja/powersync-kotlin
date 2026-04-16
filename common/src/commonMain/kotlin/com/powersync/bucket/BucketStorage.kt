@@ -72,6 +72,10 @@ internal sealed interface PowerSyncControlArguments {
         override val sqlArguments: Pair<String, Any?> = "line_binary" to line
     }
 
+    data object DidRefreshToken : PowerSyncControlArguments {
+        override val sqlArguments: Pair<String, Any?> = "refreshed_token" to null
+    }
+
     data object CompletedUpload : PowerSyncControlArguments {
         override val sqlArguments: Pair<String, Any?> = "completed_upload" to null
     }

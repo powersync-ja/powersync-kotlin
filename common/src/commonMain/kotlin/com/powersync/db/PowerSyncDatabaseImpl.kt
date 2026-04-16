@@ -455,7 +455,7 @@ internal class PowerSyncDatabaseImpl(
         val syncJob = syncSupervisorJob
         if (syncJob != null && syncJob.isActive) {
             // Using this exception type will also make the sync job invalidate credentials.
-            syncJob.cancel(DisconnectRequestedException)
+            syncJob.cancel(DisconnectRequestedException())
             syncJob.join()
             syncSupervisorJob = null
         }
@@ -558,4 +558,4 @@ internal class PowerSyncDatabaseImpl(
     }
 }
 
-internal object DisconnectRequestedException : CancellationException("disconnect() called")
+internal class DisconnectRequestedException : CancellationException("disconnect() called")

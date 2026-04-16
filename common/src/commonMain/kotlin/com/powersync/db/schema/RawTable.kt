@@ -1,6 +1,5 @@
 package com.powersync.db.schema
 
-import com.powersync.sync.SyncOptions
 import com.powersync.utils.OnlySerializer
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
@@ -30,8 +29,6 @@ import kotlinx.serialization.serializer
  * However, it's the responsibility of the developer to create these raw tables, migrate them when necessary and to
  * write triggers detecting local writes. For more information, see
  * [the documentation page](https://docs.powersync.com/usage/use-case-examples/raw-tables).
- *
- * Note that raw tables are only supported when [SyncOptions.newClientImplementation] is enabled.
  */
 public class RawTable private constructor(
     override val name: String,
