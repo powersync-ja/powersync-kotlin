@@ -4,6 +4,7 @@
 
 - Remove the legacy Kotlin sync client. `newSyncClientImplementation` is now the only supported
   option.
+- Avoid reconnect delay on reconnects due to a prefetched token.
 
 ## 1.11.2
 
