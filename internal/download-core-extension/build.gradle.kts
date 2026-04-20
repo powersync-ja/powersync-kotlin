@@ -38,8 +38,7 @@ val unzipPowerSyncFramework by tasks.registering(Exec::class) {
 
 val downloadPowerSyncStaticLibraries by tasks.registering(Download::class) {
     val url = libs.versions.powersync.core.map { coreVersion ->
-        "file:///Users/simon/Downloads/kotlin-libs-test/libs.zip"
-        //"https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/powersync-sqlite-core.xcframework.zip"
+        "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/static_libs.zip"
     }
     val binariesFolder = project.layout.buildDirectory.dir("binaries")
     src(url)
