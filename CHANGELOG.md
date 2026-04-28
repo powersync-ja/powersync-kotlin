@@ -5,6 +5,11 @@
 - Remove the legacy Kotlin sync client. `newSyncClientImplementation` is now the only supported
   option.
 - Avoid reconnect delay on reconnects due to a prefetched token.
+- On native Apple platforms, it is no longer necessary to depend on the PowerSync SQLite core
+  extension through external dependencies. Like on all other platforms, the Kotlin SDK will now link
+  the core extension directly.
+  You can remove dependencies on `https://github.com/powersync-ja/powersync-sqlite-core-swift.git`
+  or the `powersync-sqlite-core` CocoaPod.
 
 ## 1.11.2
 
