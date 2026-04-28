@@ -8,6 +8,7 @@ private val didLoadExtension by lazy {
     val rc =
         sqlite3_auto_extension(
             staticCFunction { db, errMsg, api ->
+                // We need this indirection because we can't obtain a function pointer in Kotlin.
                 return@staticCFunction sqlite3_powersync_init(db, errMsg, api)
             },
         )
@@ -16,7 +17,7 @@ private val didLoadExtension by lazy {
             "Could not load the PowerSync SQLite core extension",
             cause =
                 Exception(
-                    "Calling powersync_init_static returned result code $rc",
+                    "Calling sqlite3_powersync_init returned result code $rc",
                 ),
         )
     }
@@ -24,7 +25,7 @@ private val didLoadExtension by lazy {
     true
 }
 
-@Throws(exceptionClasses = [PowerSyncException::class])
+@Throws(PowerSyncException::class)
 public actual fun resolvePowerSyncLoadableExtensionPath(): String? {
     didLoadExtension
     return null
