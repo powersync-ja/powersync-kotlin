@@ -5,13 +5,13 @@ import androidx.sqlite.SQLiteStatement
 import cnames.structs.sqlite3
 import cnames.structs.sqlite3_stmt
 import com.powersync.PowerSyncException
+import com.powersync.internal.sqlite3.sqlite3_auto_extension
 import com.powersync.internal.sqlite3.sqlite3_close_v2
 import com.powersync.internal.sqlite3.sqlite3_db_config
 import com.powersync.internal.sqlite3.sqlite3_extended_result_codes
 import com.powersync.internal.sqlite3.sqlite3_free
 import com.powersync.internal.sqlite3.sqlite3_get_autocommit
 import com.powersync.internal.sqlite3.sqlite3_initialize
-import com.powersync.internal.sqlite3.sqlite3_auto_extension
 import com.powersync.internal.sqlite3.sqlite3_open_v2
 import com.powersync.internal.sqlite3.sqlite3_prepare16_v3
 import kotlinx.cinterop.ByteVar
