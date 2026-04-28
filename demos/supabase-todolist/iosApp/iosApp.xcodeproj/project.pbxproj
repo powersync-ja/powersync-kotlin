@@ -11,7 +11,6 @@
 		058557D9273AAEEB004C7B11 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058557D8273AAEEB004C7B11 /* Preview Assets.xcassets */; };
 		2152FB042600AC8F00CF470E /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2152FB032600AC8F00CF470E /* iOSApp.swift */; };
 		3251B1422AA8DC67001521C0 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3251B1412AA8DC67001521C0 /* ContentView.swift */; };
-		F4FFC4C62F5044200022CF0B /* PowerSyncSQLiteCore in Frameworks */ = {isa = PBXBuildFile; productRef = F4FFC4C52F5044200022CF0B /* PowerSyncSQLiteCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -29,7 +28,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F4FFC4C62F5044200022CF0B /* PowerSyncSQLiteCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -128,7 +126,6 @@
 			);
 			mainGroup = 7555FF72242A565900829871;
 			packageReferences = (
-				F4FFC4C42F5044200022CF0B /* XCRemoteSwiftPackageReference "powersync-sqlite-core-swift" */,
 			);
 			productRefGroup = 7555FF7C242A565900829871 /* Products */;
 			projectDirPath = "";
@@ -328,7 +325,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_ASSET_PATHS = "\"iosApp/Preview Content\"";
-				DEVELOPMENT_TEAM = N2FNDTNV98;
+				DEVELOPMENT_TEAM = 6WA62GTJNA;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = iosApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 14.1;
@@ -352,7 +349,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_ASSET_PATHS = "\"iosApp/Preview Content\"";
-				DEVELOPMENT_TEAM = N2FNDTNV98;
+				DEVELOPMENT_TEAM = 6WA62GTJNA;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = iosApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 14.1;
@@ -391,25 +388,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		F4FFC4C42F5044200022CF0B /* XCRemoteSwiftPackageReference "powersync-sqlite-core-swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/powersync-ja/powersync-sqlite-core-swift.git";
-			requirement = {
-				kind = exactVersion;
-				version = 0.4.12;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		F4FFC4C52F5044200022CF0B /* PowerSyncSQLiteCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = F4FFC4C42F5044200022CF0B /* XCRemoteSwiftPackageReference "powersync-sqlite-core-swift" */;
-			productName = PowerSyncSQLiteCore;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 7555FF73242A565900829871 /* Project object */;
 }

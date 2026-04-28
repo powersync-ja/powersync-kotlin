@@ -56,8 +56,6 @@ abstract class CreatePowerSyncSqliteCoreCInterop: DefaultTask() {
         definitionFile.get().asFile.writeText("""
             package = com.powersync.internal.core_extension
             
-            linkerOpts.linux_x64 = -lpthread -ldl
-            linkerOpts.macos_x64 = -lpthread -ldl
             staticLibraries=${archive.name}
             libraryPaths=${parent.relativeTo(layout.projectDirectory.asFile.canonicalFile)}
             ---
