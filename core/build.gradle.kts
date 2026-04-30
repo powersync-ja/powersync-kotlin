@@ -62,7 +62,6 @@ kotlin {
 
         androidMain {
             dependencies {
-                api(libs.powersync.sqlite.core.android)
                 api(libs.androidx.sqlite.bundled)
                 implementation(libs.ktor.client.okhttp)
             }

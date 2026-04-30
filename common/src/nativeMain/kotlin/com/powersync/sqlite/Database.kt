@@ -5,13 +5,13 @@ import androidx.sqlite.SQLiteStatement
 import cnames.structs.sqlite3
 import cnames.structs.sqlite3_stmt
 import com.powersync.PowerSyncException
+import com.powersync.internal.sqlite3.sqlite3_auto_extension
 import com.powersync.internal.sqlite3.sqlite3_close_v2
 import com.powersync.internal.sqlite3.sqlite3_db_config
 import com.powersync.internal.sqlite3.sqlite3_extended_result_codes
 import com.powersync.internal.sqlite3.sqlite3_free
 import com.powersync.internal.sqlite3.sqlite3_get_autocommit
 import com.powersync.internal.sqlite3.sqlite3_initialize
-import com.powersync.internal.sqlite3.sqlite3_load_extension
 import com.powersync.internal.sqlite3.sqlite3_open_v2
 import com.powersync.internal.sqlite3.sqlite3_prepare16_v3
 import kotlinx.cinterop.ByteVar
@@ -50,24 +50,6 @@ public class Database(
                 .checkResult(sql)
 
             Statement(sql, ptr, stmtPtr.value!!)
-        }
-
-    public fun loadExtension(
-        filename: String,
-        entrypoint: String,
-    ): Unit =
-        memScoped {
-            val errorMessagePointer = alloc<CPointerVar<ByteVar>>()
-            val resultCode = sqlite3_load_extension(ptr, filename, entrypoint, errorMessagePointer.ptr)
-
-            if (resultCode != 0) {
-                val errorMessage = errorMessagePointer.value?.toKStringFromUtf8()
-                if (errorMessage != null) {
-                    sqlite3_free(errorMessagePointer.value)
-                }
-
-                throw PowerSyncException("Could not load extension ($resultCode): ${errorMessage ?: "unknown error"}", null)
-            }
         }
 
     override fun close() {
