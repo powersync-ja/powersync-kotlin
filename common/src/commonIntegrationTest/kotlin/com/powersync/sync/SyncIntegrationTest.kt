@@ -758,7 +758,7 @@ class SyncIntegrationTest : AbstractSyncTest() {
 
             val connector =
                 object : PowerSyncBackendConnector() {
-                    override suspend fun fetchCredentials(): PowerSyncCredentials? {
+                    override suspend fun fetchCredentials(): PowerSyncCredentials {
                         fetchCredentialsCount++
                         if (fetchCredentialsCount == 2) {
                             prefetchCalled.complete(Unit)
@@ -790,9 +790,9 @@ class SyncIntegrationTest : AbstractSyncTest() {
                 val timeToReconnect =
                     scope.testTimeSource.measureTime {
                         completePrefetch.complete(Unit)
-                        turbine.waitFor { !it.connected }
-
-                        turbine.waitFor { it.connected }
+                        // Wait for a disconnect and reconnect.
+                        waitForSyncLinesChannelClosed()
+                        syncLines.send(SyncLine.KeepAlive(tokenExpiresIn = 4000))
                     }
                 // We should not wait for the reconnect delay when we reconnect due to a prefetched
                 // token (that's kind of the whole point...).
