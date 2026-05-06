@@ -13,7 +13,6 @@ public sealed class SyncClientConfiguration {
     /**
      * Extends the default Ktor [HttpClient] configuration with the provided block.
      */
-    @HiddenFromObjC
     public class ExtendedConfig(
         public val block: HttpClientConfig<*>.() -> Unit,
     ) : SyncClientConfiguration()
@@ -25,7 +24,6 @@ public sealed class SyncClientConfiguration {
      * The [configureSyncHttpClient] function can be used to configure the client for PowerSync, call
      * this method when instantiating the client. The PowerSync SDK does not modify the provided client.
      */
-    @HiddenFromObjC
     public class ExistingClient(
         public val client: HttpClient,
     ) : SyncClientConfiguration()

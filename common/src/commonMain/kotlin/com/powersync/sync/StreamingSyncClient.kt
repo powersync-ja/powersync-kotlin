@@ -12,7 +12,6 @@ import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.SubscriptionGroup
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.schema.Schema
-import com.powersync.db.schema.toSerializable
 import com.powersync.utils.JsonUtil
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
@@ -380,7 +379,7 @@ internal class StreamingSyncClient(
             invokeControl(
                 PowerSyncControlArguments.Start(
                     parameters = params,
-                    schema = schema.toSerializable(),
+                    schema = schema,
                     includeDefaults = options.includeDefaultStreams,
                     activeStreams = subscriptions.map { it.key },
                     appMetadata = appMetadata,

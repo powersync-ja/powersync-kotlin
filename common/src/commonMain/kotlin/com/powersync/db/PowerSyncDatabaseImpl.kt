@@ -18,7 +18,6 @@ import com.powersync.db.internal.InternalDatabaseImpl
 import com.powersync.db.internal.InternalTable
 import com.powersync.db.internal.PowerSyncVersion
 import com.powersync.db.schema.Schema
-import com.powersync.db.schema.toSerializable
 import com.powersync.sync.CoreSyncStatus
 import com.powersync.sync.StreamingSyncClient
 import com.powersync.sync.SyncOptions
@@ -138,7 +137,7 @@ internal class PowerSyncDatabaseImpl(
                     cause = Exception("PowerSync client is already connected"),
                 )
             }
-            val schemaJson = JsonUtil.json.encodeToString(schema.toSerializable())
+            val schemaJson = JsonUtil.json.encodeToString(schema)
             internalDb.updateSchema(schemaJson)
             this.schema = schema
         }

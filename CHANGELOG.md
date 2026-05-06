@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.12.0 (unreleased)
+## 1.12.0
 
 - Remove the legacy Kotlin sync client. `newSyncClientImplementation` is now the only supported
   option.

@@ -14,7 +14,7 @@ jobs:
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -37,22 +37,22 @@ jobs:
     needs:
       - fetch_prebuilts
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Validate Gradle Wrapper
         uses: gradle/wrapper-validation-action@v1
-      - uses: actions/cache@v3
+      - uses: actions/cache@v5
         with:
           path: ~/.konan
           key: ${{ runner.os }}-${{ hashFiles('**/.lock') }}
       - name: Set up JDK 25
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v5
         with:
           java-version: '25'
           distribution: 'temurin'
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
       - name: Download prebuilts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           artifact-ids: ${{ needs.fetch_prebuilts.outputs.artifact_id }}
           path: internal/prebuild-binaries/build/output/
@@ -81,59 +81,18 @@ jobs:
             publishAllPublicationsToSonatypeRepository
         shell: bash
 
-  build_xcframeworks:
-    name: Build XCFrameworks
-    needs:
-      - fetch_prebuilts
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Validate Gradle Wrapper
-        uses: gradle/wrapper-validation-action@v1
-      - uses: actions/cache@v3
-        with:
-          path: ~/.konan
-          key: ${{ runner.os }}-${{ hashFiles('**/.lock') }}
-      - name: Set up JDK 25
-        uses: actions/setup-java@v3
-        with:
-          java-version: '25'
-          distribution: 'temurin'
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-      - name: Download prebuilts
-        uses: actions/download-artifact@v5
-        with:
-          artifact-ids: ${{ needs.fetch_prebuilts.outputs.artifact_id }}
-          path: internal/prebuild-binaries/build/output/
-      - name: Build frameworks
-        run: "./gradlew -PhasPrebuiltAssets=true internal:PowerSyncKotlin:buildRelease"
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: XCFramework
-          retention-days: 1 # Only used temporarily
-          compression-level: 0 # We're already uploading a compressed file
-          path: internal/PowerSyncKotlin/build/FrameworkArchives/PowersyncKotlinRelease.zip
-          if-no-files-found: error
-
   add_assets:
     permissions:
       contents: write
-    needs: [draft_release, build_xcframeworks, fetch_prebuilts]
+    needs: [draft_release, fetch_prebuilts]
     name: Add assets to pending release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: actions/download-artifact@v4
-        with:
-          name: XCFramework
       - name: Download prebuilts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           artifact-ids: ${{ needs.fetch_prebuilts.outputs.artifact_id }}
           path: internal/prebuild-binaries/build/output/
@@ -143,26 +102,9 @@ jobs:
           find internal/prebuild-binaries/build/output
           zip -r prebuilt_libraries.zip internal/prebuild-binaries/build/output/
 
-      - name: Upload XCFramework
+      - name: Upload prebuilt libraries
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          gh release upload "${{ needs.draft_release.outputs.tag }}" PowersyncKotlinRelease.zip
           gh release upload "${{ needs.draft_release.outputs.tag }}" prebuilt_libraries.zip
-
-      - name: "Update release description"
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        shell: bash
-        run: |
-          checksums=$(sha256sum PowersyncKotlinRelease.zip)
-          cat > RELEASE_NOTES <<- NOTES_END
-          File hashes:
-          \`\`\`
-          $checksums
-          \`\`\`
-          NOTES_END
-          
-          gh release edit "${{ needs.draft_release.outputs.tag }}" -F RELEASE_NOTES

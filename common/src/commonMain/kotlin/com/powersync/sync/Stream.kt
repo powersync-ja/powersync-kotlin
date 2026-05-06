@@ -76,7 +76,6 @@ public interface SyncSubscriptionDescription : SyncStreamDescription {
  * To obtain an instance of [SyncStream], call [com.powersync.PowerSyncDatabase.syncStream].
  */
 public interface SyncStream : SyncStreamDescription {
-    @HiddenFromObjC
     public suspend fun subscribe(
         ttl: Duration? = null,
         priority: StreamPriority? = null,

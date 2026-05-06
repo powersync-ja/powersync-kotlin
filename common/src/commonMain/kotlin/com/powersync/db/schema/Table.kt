@@ -15,6 +15,7 @@ private const val MAX_AMOUNT_OF_COLUMNS = 1999
 /**
  * A single table in the schema.
  */
+@Serializable(with = TableSerializer::class)
 public data class Table(
     /**
      * The synced table name, matching sync rules.
@@ -225,7 +226,7 @@ public data class Table(
 }
 
 /**
- * Options to include old values in [CrudEntry.previousValue] for update statements.
+ * Options to include old values in [CrudEntry.previousValues] for update statements.
  *
  * These options are enabled by passing them to a non-local [Table] constructor.
  */
@@ -244,16 +245,12 @@ public data class TrackPreviousValuesOptions(
     val onlyWhenChanged: Boolean = false,
 )
 
-internal typealias SerializableTable =
-    @Serializable(TableSerializer::class)
-    Table
-
 internal object TableSerializer : OnlySerializer<Table>() {
     override val descriptor: SerialDescriptor =
         buildClassSerialDescriptor("com.powersync.db.schema.Table") {
             element<String>("name")
-            element<List<SerializableColumn>>("columns")
-            element<List<SerializableIndex>>("indexes")
+            element<List<Column>>("columns")
+            element<List<Index>>("indexes")
             element<String?>("view_name")
 
             // Flatten common TableOptions fields into this serializer
@@ -266,8 +263,8 @@ internal object TableSerializer : OnlySerializer<Table>() {
     ) {
         encoder.encodeStructure(descriptor) {
             encodeStringElement(descriptor, 0, value.name)
-            encodeSerializableElement(descriptor, 1, serializer<List<SerializableColumn>>(), value.columns.map { it.toSerializable() })
-            encodeSerializableElement(descriptor, 2, serializer<List<SerializableIndex>>(), value.indexes.map { it.toSerializable() })
+            encodeSerializableElement(descriptor, 1, serializer<List<Column>>(), value.columns)
+            encodeSerializableElement(descriptor, 2, serializer<List<Index>>(), value.indexes)
             encodeSerializableElement(descriptor, 3, serializer<String?>(), value.viewNameOverride)
 
             value.options.serialize(descriptor, 4, this)

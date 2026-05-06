@@ -3,6 +3,7 @@ package com.powersync.db.schema
 import kotlinx.serialization.Serializable
 
 /** A single column in a table schema. */
+@Serializable
 public data class Column(
     val name: String,
     val type: ColumnType,
@@ -18,11 +19,3 @@ public data class Column(
         public fun real(name: String): Column = Column(name, ColumnType.REAL)
     }
 }
-
-@Serializable
-internal data class SerializableColumn(
-    val name: String,
-    val type: ColumnType,
-)
-
-internal fun Column.toSerializable(): SerializableColumn = with(this) { SerializableColumn(name, type) }

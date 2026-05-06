@@ -1,7 +1,6 @@
 package com.powersync
 
 import co.touchlab.kermit.Logger
-import co.touchlab.skie.configuration.annotations.DefaultArgumentInterop
 import com.powersync.db.ActiveDatabaseGroup
 import com.powersync.db.PowerSyncDatabaseImpl
 import com.powersync.db.driver.InternalConnectionPool
@@ -18,7 +17,6 @@ public const val DEFAULT_DB_FILENAME: String = "powersync.db"
  * Use this to create a [PowerSyncDatabase]
  */
 @OptIn(DelicateCoroutinesApi::class)
-@DefaultArgumentInterop.Enabled
 public fun PowerSyncDatabase(
     factory: PersistentConnectionFactory,
     schema: Schema,

@@ -10,10 +10,7 @@ import io.ktor.client.plugins.HttpClientPlugin
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.websocket.WebSockets
-import io.ktor.client.request.headers
 import io.ktor.util.AttributeKey
-import kotlin.experimental.ExperimentalObjCRefinement
-import kotlin.native.HiddenFromObjC
 
 /**
  * This API is experimental and may change in future releases.
@@ -33,8 +30,6 @@ import kotlin.native.HiddenFromObjC
  * }
  * ```
  */
-@OptIn(ExperimentalObjCRefinement::class)
-@HiddenFromObjC
 @ExperimentalPowerSyncAPI
 public fun HttpClientConfig<*>.configureSyncHttpClient(userAgent: String = userAgent()) {
     install(HttpTimeout) {

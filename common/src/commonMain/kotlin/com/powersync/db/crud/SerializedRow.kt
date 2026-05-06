@@ -2,8 +2,6 @@ package com.powersync.db.crud
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.serialDescriptor
 import kotlinx.serialization.encoding.Decoder
@@ -14,9 +12,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
-import kotlin.experimental.ExperimentalObjCRefinement
-import kotlin.native.HiddenFromObjC
-import kotlin.time.Instant
 
 /**
  * A named collection of values as they appear in a SQLite row.
@@ -25,7 +20,6 @@ import kotlin.time.Instant
  * SDK, but the [typed] getter can be used to obtain a `Map<String, Any>` where values are either
  * [String]s, [Int]s or [Double]s.
  */
-@OptIn(ExperimentalObjCRefinement::class)
 public interface SqliteRow : Map<String, String?> {
     /**
      * A typed view of the SQLite row.
@@ -35,7 +29,6 @@ public interface SqliteRow : Map<String, String?> {
     /**
      * A [JsonObject] of all values in this row that can be represented as JSON.
      */
-    @HiddenFromObjC
     public val jsonValues: JsonObject
 }
 
@@ -74,7 +67,7 @@ internal class TypedRow(
             ::ToTypedEntry,
         )
 
-    private object Serializer : KSerializer<TypedRow> {
+    object Serializer : KSerializer<TypedRow> {
         override val descriptor: SerialDescriptor
             get() = serialDescriptor<JsonObject>()
 

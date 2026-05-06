@@ -4,7 +4,7 @@ import com.powersync.db.SqlCursor
 import com.powersync.db.StreamKey
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.internal.PowerSyncTransaction
-import com.powersync.db.schema.SerializableSchema
+import com.powersync.db.schema.Schema
 import com.powersync.sync.Instruction
 import com.powersync.utils.JsonUtil
 import kotlinx.serialization.SerialName
@@ -42,7 +42,7 @@ internal sealed interface PowerSyncControlArguments {
     @Serializable
     class Start(
         val parameters: JsonObject,
-        val schema: SerializableSchema,
+        val schema: Schema,
         @SerialName("include_defaults")
         val includeDefaults: Boolean,
         @SerialName("active_streams")

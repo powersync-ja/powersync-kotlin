@@ -54,7 +54,7 @@ internal sealed interface SyncLine {
     data object UnknownSyncLine : SyncLine
 }
 
-private class SyncLineSerializer : KSerializer<SyncLine> {
+internal class SyncLineSerializer : KSerializer<SyncLine> {
     private val checkpoint = serializer<Checkpoint>()
     private val checkpointDiff = serializer<SyncLine.CheckpointDiff>()
     private val checkpointComplete = serializer<SyncLine.CheckpointComplete>()
