@@ -2,13 +2,17 @@ package com.powersync.db.schema
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 /**
  * Describes an indexed column.
  */
+@Serializable
 public data class IndexedColumn(
+    @SerialName("name")
     val column: String,
     val ascending: Boolean = true,
+    @Transient
     private var columnDefinition: Column? = null,
     var type: ColumnType? = null,
 ) {
@@ -34,18 +38,5 @@ public data class IndexedColumn(
         }
     }
 }
-
-@Serializable
-internal data class SerializableIndexColumn(
-    @SerialName("name")
-    val column: String,
-    val type: ColumnType?,
-    val ascending: Boolean,
-)
-
-internal fun IndexedColumn.toSerializable(): SerializableIndexColumn =
-    with(this) {
-        SerializableIndexColumn(column, type, ascending)
-    }
 
 internal fun mapColumn(column: Column): String = "CAST(json_extract(data, ${column.name}) as ${column.type})"

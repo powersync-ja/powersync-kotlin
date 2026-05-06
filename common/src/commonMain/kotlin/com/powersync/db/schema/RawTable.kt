@@ -30,6 +30,7 @@ import kotlinx.serialization.serializer
  * write triggers detecting local writes. For more information, see
  * [the documentation page](https://docs.powersync.com/usage/use-case-examples/raw-tables).
  */
+@Serializable(RawTableSerializer::class)
 public class RawTable private constructor(
     override val name: String,
     public val put: PendingStatement?,
@@ -145,10 +146,6 @@ public sealed interface PendingStatementParameter {
      */
     public object Rest : PendingStatementParameter
 }
-
-internal typealias SerializableRawTable =
-    @Serializable(RawTableSerializer::class)
-    RawTable
 
 internal object RawTableSerializer : KSerializer<RawTable> {
     override val descriptor: SerialDescriptor =

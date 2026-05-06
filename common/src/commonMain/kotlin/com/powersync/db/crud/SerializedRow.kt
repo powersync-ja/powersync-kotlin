@@ -67,7 +67,7 @@ internal class TypedRow(
             ::ToTypedEntry,
         )
 
-    private object Serializer : KSerializer<TypedRow> {
+    object Serializer : KSerializer<TypedRow> {
         override val descriptor: SerialDescriptor
             get() = serialDescriptor<JsonObject>()
 
