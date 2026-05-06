@@ -242,7 +242,6 @@ public interface PowerSyncDatabase : Queries {
     @Throws(PowerSyncException::class, CancellationException::class)
     public suspend fun close()
 
-    @HiddenFromObjC
     public companion object PowerSyncOpenFactory {
         /**
          * Creates a PowerSync database managed by an external connection pool.
