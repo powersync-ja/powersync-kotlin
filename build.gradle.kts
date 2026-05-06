@@ -11,7 +11,6 @@ plugins {
     alias(libs.plugins.android.multiplatform.library) apply false
     alias(libs.plugins.android.library) apply false
     alias(libs.plugins.kotlinMultiplatform) apply false
-    alias(libs.plugins.skie) apply false
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.mavenPublishPlugin) apply false

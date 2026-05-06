@@ -46,7 +46,6 @@ kotlin {
             languageSettings {
                 optIn("kotlinx.cinterop.ExperimentalForeignApi")
                 optIn("kotlin.time.ExperimentalTime")
-                optIn("kotlin.experimental.ExperimentalObjCRefinement")
             }
         }
 

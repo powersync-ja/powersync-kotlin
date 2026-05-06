@@ -28,7 +28,6 @@ plugins {
 rootProject.name = "powersync-root"
 
 include(":internal:download-core-extension")
-include(":internal:PowerSyncKotlin")
 include(":internal:testutils")
 include(":internal:prebuild-binaries")
 

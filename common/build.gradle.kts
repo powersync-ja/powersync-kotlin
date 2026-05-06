@@ -187,7 +187,6 @@ kotlin {
             languageSettings {
                 optIn("kotlinx.cinterop.ExperimentalForeignApi")
                 optIn("kotlin.time.ExperimentalTime")
-                optIn("kotlin.experimental.ExperimentalObjCRefinement")
                 optIn("com.powersync.PowerSyncInternal")
             }
         }
@@ -216,7 +215,6 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.stately.concurrency)
-                implementation(libs.configuration.annotations)
                 implementation(libs.rsocket.core)
                 implementation(libs.rsocket.transport.websocket)
                 api(libs.ktor.client.core)

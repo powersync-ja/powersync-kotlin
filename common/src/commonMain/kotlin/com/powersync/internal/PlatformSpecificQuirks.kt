@@ -6,7 +6,7 @@ import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 /**
- * A hook installed by the `:core` and `:internal:PowerSyncKotlin` projects.
+ * A hook installed by the `:core` project.
  *
  * The hook is responsible for determining whether a given [HttpClientEngine] (expressed through
  * [HttpClientEngineConfig] because the former is not always public) is known not to support backpressure.
