@@ -1,7 +1,7 @@
 # PowerSync Room integration
 
 > [!NOTE]
-> Note that this package is currently in alpha.
+> Note that this package is currently in beta.
 
 This module integrates PowerSync with Room databases. This allows you run typed queries against the local database with compile-time validation. 
 
