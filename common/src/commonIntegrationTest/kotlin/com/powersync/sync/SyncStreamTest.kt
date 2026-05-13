@@ -28,28 +28,28 @@ import kotlin.test.Test
 @OptIn(ExperimentalPowerSyncAPI::class)
 class SyncStreamTest : AbstractSyncTest(true) {
     @Test
-    fun `isInitializing is true before database init and false after`() =
+    fun `syncStreams is null before database init and non-null after`() =
         databaseTest(createInitialDatabase = false) {
             database = openDatabase()
-            // Init job is queued but not yet started — isInitializing must be true
-            database.currentStatus.isInitializing shouldBe true
+            // Init job is queued but not yet started — syncStreams must be null
+            database.currentStatus.syncStreams shouldBe null
 
             // readLock suspends until initialization completes (resolveOfflineSyncStatus is called)
             database.readLock { }
-            database.currentStatus.isInitializing shouldBe false
+            database.currentStatus.syncStreams shouldBe emptyList()
         }
 
     @Test
-    fun `isInitializing remains false after connecting`() =
+    fun `syncStreams is empty after connecting with no active streams`() =
         databaseTest {
-            database.currentStatus.isInitializing shouldBe false
+            database.currentStatus.syncStreams shouldBe emptyList()
 
             database.connect(connector, options = getOptions())
             turbineScope {
                 val turbine = database.currentStatus.asFlow().testIn(this)
                 turbine.waitFor { it.connected && !it.downloading }
 
-                database.currentStatus.isInitializing shouldBe false
+                database.currentStatus.syncStreams shouldBe emptyList()
                 turbine.cancelAndIgnoreRemainingEvents()
             }
         }
