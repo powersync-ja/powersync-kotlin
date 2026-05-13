@@ -28,6 +28,33 @@ import kotlin.test.Test
 @OptIn(ExperimentalPowerSyncAPI::class)
 class SyncStreamTest : AbstractSyncTest(true) {
     @Test
+    fun `isInitializing is true before database init and false after`() =
+        databaseTest(createInitialDatabase = false) {
+            database = openDatabase()
+            // Init job is queued but not yet started — isInitializing must be true
+            database.currentStatus.isInitializing shouldBe true
+
+            // readLock suspends until initialization completes (resolveOfflineSyncStatus is called)
+            database.readLock { }
+            database.currentStatus.isInitializing shouldBe false
+        }
+
+    @Test
+    fun `isInitializing remains false after connecting`() =
+        databaseTest {
+            database.currentStatus.isInitializing shouldBe false
+
+            database.connect(connector, options = getOptions())
+            turbineScope {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                turbine.waitFor { it.connected && !it.downloading }
+
+                database.currentStatus.isInitializing shouldBe false
+                turbine.cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
     fun `can disable default streams`() =
         databaseTest {
             database.connect(

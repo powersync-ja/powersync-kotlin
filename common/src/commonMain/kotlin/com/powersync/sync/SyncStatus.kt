@@ -93,7 +93,16 @@ public sealed class SyncStatusData {
      */
     public abstract val priorityStatusEntries: List<PriorityStatusEntry>
 
-    internal abstract val internalSubscriptions: List<CoreActiveStreamSubscription>?
+    /**
+     * true while the sync system is still being initialized from the database, before any
+     * sync status has been received from the core extension.
+     *
+     * Becomes false after the first status update from the core, at which point [syncStreams]
+     * and related properties reflect a reliable state (empty or not).
+     */
+    public abstract val isInitializing: Boolean
+
+    internal abstract val internalSubscriptions: List<CoreActiveStreamSubscription>
 
     /**
      * Status information for whether buckets in [priority] have been synchronized.
@@ -116,17 +125,17 @@ public sealed class SyncStatusData {
     /**
      * All sync streams currently being tracked in the database.
      *
-     * This returns null when the database is currently being opened and we don't have reliable
-     * information about included streams yet.
+     * Returns an empty list both before and after initialization. Use [isInitializing] to
+     * distinguish the initial loading state from a confirmed empty list of streams.
      */
-    public val syncStreams: List<SyncStreamStatus>? get() = internalSubscriptions?.map(this::exposeStreamStatus)
+    public val syncStreams: List<SyncStreamStatus>? get() = internalSubscriptions.map(this::exposeStreamStatus)
 
     /**
      * Status information for [stream], if it's a stream that is currently tracked by the sync
      * client.
      */
     public fun forStream(stream: SyncStreamDescription): SyncStreamStatus? {
-        val raw = internalSubscriptions?.firstOrNull { it.name == stream.name && it.parameters == stream.parameters } ?: return null
+        val raw = internalSubscriptions.firstOrNull { it.name == stream.name && it.parameters == stream.parameters } ?: return null
         return exposeStreamStatus(raw)
     }
 
@@ -155,6 +164,7 @@ internal data class SyncStatusDataContainer(
     override val uploadError: Any? = null,
     override val downloadError: Any? = null,
     override val priorityStatusEntries: List<PriorityStatusEntry> = emptyList(),
+    override val isInitializing: Boolean = true,
     override val internalSubscriptions: List<CoreActiveStreamSubscription> = emptyList(),
 ) : SyncStatusData() {
     override val anyError
@@ -178,6 +188,7 @@ internal data class SyncStatusDataContainer(
                         hasSynced = it.hasSynced,
                     )
                 },
+            isInitializing = false,
             internalSubscriptions = status.streams,
         )
     }
@@ -240,6 +251,9 @@ public data class SyncStatus internal constructor(
 
     override val priorityStatusEntries: List<PriorityStatusEntry>
         get() = data.priorityStatusEntries
+
+    override val isInitializing: Boolean
+        get() = data.isInitializing
 
     override val internalSubscriptions: List<CoreActiveStreamSubscription>
         get() = data.internalSubscriptions
