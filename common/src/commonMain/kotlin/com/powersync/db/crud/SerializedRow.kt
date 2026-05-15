@@ -6,6 +6,7 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.serialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -88,16 +89,24 @@ private data class ToTypedEntry(
     override val key: String
         get() = inner.key
     override val value: Any?
-        get() = inner.value.jsonPrimitive.asData()
+        get() = inner.value.asData()
 
     companion object {
-        private fun JsonPrimitive.asData(): Any? =
-            if (this === JsonNull) {
-                null
-            } else if (isString) {
-                content
-            } else {
-                content.jsonNumberOrBoolean()
+        private fun JsonElement.asData(): Any? =
+            when (this) {
+                // Note: Array and object values never appear in a CRUD row (they would be
+                // represented as strings instead). We also use TypedRows to represent stream
+                // parameters though, and those can be arrays/objects.
+                is JsonArray -> map { it.asData() }
+                is JsonObject -> mapValues { it.value.asData() }
+                JsonNull -> null
+                is JsonPrimitive -> {
+                    if (isString) {
+                        content
+                    } else {
+                        content.jsonNumberOrBoolean()
+                    }
+                }
             }
 
         private fun String.jsonNumberOrBoolean(): Any =
