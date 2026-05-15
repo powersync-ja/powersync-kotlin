@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.12.1 (unreleased)
+
+- Fix sync status to make `syncStreams` return null when the database is initializing.
+- Fix errors when subscribing to Sync Streams with object or array parameters.
+
 ## 1.12.0
 
 - Remove the legacy Kotlin sync client. `newSyncClientImplementation` is now the only supported
