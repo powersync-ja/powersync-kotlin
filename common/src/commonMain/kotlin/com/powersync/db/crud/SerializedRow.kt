@@ -92,8 +92,8 @@ private data class ToTypedEntry(
         get() = inner.value.asData()
 
     companion object {
-        private fun JsonElement.asData(): Any? {
-            return when (this) {
+        private fun JsonElement.asData(): Any? =
+            when (this) {
                 // Note: Array and object values never appear in a CRUD row (they would be
                 // represented as strings instead). We also use TypedRows to represent stream
                 // parameters though, and those can be arrays/objects.
@@ -108,7 +108,6 @@ private data class ToTypedEntry(
                     }
                 }
             }
-        }
 
         private fun String.jsonNumberOrBoolean(): Any =
             when {

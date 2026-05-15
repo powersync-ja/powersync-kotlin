@@ -214,45 +214,52 @@ class SyncStreamTest : AbstractSyncTest(true) {
         }
 
     @Test
-    fun `can subscribe with object and array parameters`() = databaseTest {
-        // Regression test for https://github.com/powersync-ja/powersync-kotlin/issues/349.
-        val stream = database.syncStream(
-            "stream",
-            mapOf(
-                "a" to JsonParam.Collection(listOf(
-                    JsonParam.String("foo"),
-                    JsonParam.String("bar"),
-                )),
-                "b" to JsonParam.Map(mapOf("foo" to JsonParam.String("bar")))
-            )
-        ).subscribe()
+    fun `can subscribe with object and array parameters`() =
+        databaseTest {
+            // Regression test for https://github.com/powersync-ja/powersync-kotlin/issues/349.
+            val stream =
+                database
+                    .syncStream(
+                        "stream",
+                        mapOf(
+                            "a" to
+                                JsonParam.Collection(
+                                    listOf(
+                                        JsonParam.String("foo"),
+                                        JsonParam.String("bar"),
+                                    ),
+                                ),
+                            "b" to JsonParam.Map(mapOf("foo" to JsonParam.String("bar"))),
+                        ),
+                    ).subscribe()
 
-        database.connect(connector, options = getOptions())
-        turbineScope {
-            val turbine = database.currentStatus.asFlow().testIn(this)
-            turbine.waitFor { it.connected && !it.downloading }
+            database.connect(connector, options = getOptions())
+            turbineScope {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                turbine.waitFor { it.connected && !it.downloading }
 
-            requestedSyncStreams shouldHaveSingleElement {
-                val streams = it.jsonObject["streams"]!!.jsonObject
-                val subscriptions = streams["subscriptions"]!!.jsonArray
+                requestedSyncStreams shouldHaveSingleElement {
+                    val streams = it.jsonObject["streams"]!!.jsonObject
+                    val subscriptions = streams["subscriptions"]!!.jsonArray
 
-                subscriptions shouldHaveSize 1
-                JsonUtil.json.encodeToString(subscriptions[0]) shouldBe
+                    subscriptions shouldHaveSize 1
+                    JsonUtil.json.encodeToString(subscriptions[0]) shouldBe
                         """{"stream":"stream","parameters":{"a":["foo","bar"],"b":{"foo":"bar"}},"override_priority":null}"""
-                true
+                    true
+                }
+
+                turbine.cancelAndIgnoreRemainingEvents()
             }
 
-            turbine.cancelAndIgnoreRemainingEvents()
+            val streams = database.currentStatus.syncStreams!!
+            streams shouldHaveSize 1
+            streams[0].subscription.parameters shouldBe
+                mapOf(
+                    "a" to listOf("foo", "bar"),
+                    "b" to mapOf("foo" to "bar"),
+                )
+            stream.unsubscribe()
         }
-
-        val streams = database.currentStatus.syncStreams!!
-        streams shouldHaveSize 1
-        streams[0].subscription.parameters shouldBe mapOf(
-            "a" to listOf("foo", "bar"),
-            "b" to mapOf("foo" to "bar"),
-        )
-        stream.unsubscribe()
-    }
 
     @Test
     fun `subscriptions update while offline`() =
