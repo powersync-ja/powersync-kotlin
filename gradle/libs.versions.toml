@@ -23,7 +23,7 @@ turbine = "1.2.1"
 kotest = "5.9.1" # we can't upgrade to 6.x because that requires Java 11 or above (we need Java 8 support)
 
 stately = "2.1.0"
-supabase = "3.2.2"
+supabase = "3.6.0"
 junit = "4.13.2"
 
 compose = "1.9.3" # This is for the multiplatform compose
