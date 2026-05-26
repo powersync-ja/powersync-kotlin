@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalAtomicApi::class)
+
 package com.powersync.demo.backgroundsync
 
 import android.app.Notification
@@ -14,10 +16,11 @@ import com.powersync.PowerSyncDatabase
 import com.powersync.connector.supabase.SupabaseConnector
 import com.powersync.sync.SyncStatusData
 import io.github.jan.supabase.auth.status.SessionStatus
-import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
+import kotlin.concurrent.atomics.AtomicBoolean
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 class SyncService: LifecycleService() {
 
@@ -92,7 +95,7 @@ class SyncService: LifecycleService() {
 
     override fun onDestroy() {
         if (holdsServiceLock) {
-            SERVICE_RUNNING.value = false
+            SERVICE_RUNNING.store(false)
         }
 
         super.onDestroy()
@@ -118,6 +121,6 @@ class SyncService: LifecycleService() {
 
     private companion object {
         val CHANNEL_ID = "background_sync"
-        val SERVICE_RUNNING = atomic(false)
+        val SERVICE_RUNNING = AtomicBoolean(false)
     }
 }
