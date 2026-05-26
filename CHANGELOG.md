@@ -4,6 +4,7 @@
 
 - Fix sync status to make `syncStreams` return null when the database is initializing.
 - Fix errors when subscribing to Sync Streams with object or array parameters.
+- Support versions 3.6.0 of the Supabase client libraries.
 
 ## 1.12.0
 
