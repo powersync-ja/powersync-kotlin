@@ -4,7 +4,7 @@ import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
-import gradle.kotlin.dsl.accessors._bf3f966d940f970633f154ff8d510fa5.versionCatalogs
+import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.plugins.ExtensionAware
 
 public fun KotlinMultiplatformExtension.powersyncTargets(
@@ -18,7 +18,8 @@ public fun KotlinMultiplatformExtension.powersyncTargets(
     if (jvm) {
         android?.let { configureAndroid ->
             (this as ExtensionAware).extensions.configure<KotlinMultiplatformAndroidLibraryTarget>("androidLibrary") {
-                val catalog = project.versionCatalogs.named("libs")
+                val versionCatalogs = project.extensions.getByName("versionCatalogs") as VersionCatalogsExtension
+                val catalog = versionCatalogs.named("libs")
                 compileSdk = catalog.findVersion("android-compileSdk").get().requiredVersion.toInt()
                 minSdk = catalog.findVersion("android-minSdk").get().requiredVersion.toInt()
 
@@ -46,16 +47,13 @@ public fun KotlinMultiplatformExtension.powersyncTargets(
     }
 
     if (native) {
-        iosX64()
         iosArm64()
         iosSimulatorArm64()
 
         if (includeTargetsWithoutComposeSupport) {
-            macosX64()
             macosArm64()
 
             tvosSimulatorArm64()
-            tvosX64()
             tvosArm64()
 
             if (watchOS) {
@@ -63,7 +61,6 @@ public fun KotlinMultiplatformExtension.powersyncTargets(
                 watchosArm64() // arm64_32-apple-watchos
 
                 watchosSimulatorArm64() // aarch64-apple-watchos-simulator
-                watchosX64() // x86_64-apple-watchos-simulator
             }
         }
     }
