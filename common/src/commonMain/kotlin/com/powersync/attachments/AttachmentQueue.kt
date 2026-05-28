@@ -323,13 +323,13 @@ public open class AttachmentQueue(
     @Throws(PowerSyncException::class, CancellationException::class)
     public open suspend fun processWatchedAttachments(items: List<WatchedAttachmentItem>): Unit =
         runWrapped {
-            /**
+            /*
              * Use a lock here to prevent conflicting state updates.
              */
             attachmentsService.withContext { attachmentsContext ->
                 logger.v { "processWatchedAttachments($items)" }
 
-                /**
+                /*
                  * Need to get all the attachments which are tracked in the DB.
                  * We might need to restore an archived attachment.
                  */
@@ -370,7 +370,7 @@ public open class AttachmentQueue(
                                 existingQueueItem.copy(state = AttachmentState.SYNCED),
                             )
                         } else {
-                            /**
+                            /*
                              * The localURI should be set if the record was meant to be downloaded
                              * and has been synced. If it's missing and hasSynced is false then
                              * it must be an upload operation.
@@ -389,7 +389,7 @@ public open class AttachmentQueue(
                     }
                 }
 
-                /**
+                /*
                  * Archive any items not specified in the watched items.
                  * For QUEUED_DELETE or QUEUED_UPLOAD states, archive only if hasSynced is true.
                  * For other states, archive if the record is not found in the items.
@@ -402,6 +402,7 @@ public open class AttachmentQueue(
                             when (attachment.state) {
                                 // Archive these record if they have synced
                                 AttachmentState.QUEUED_DELETE, AttachmentState.QUEUED_UPLOAD -> attachment.hasSynced
+
                                 // Other states, such as QUEUED_DOWNLOAD can be archived if they are not present in watched items
                                 else -> true
                             }
@@ -446,7 +447,7 @@ public open class AttachmentQueue(
             // Write the file to the filesystem.
             val fileSize = localStorage.saveFile(localUri, data)
 
-            /**
+            /*
              * Starts a write transaction. The attachment record and relevant local relationship
              * assignment should happen in the same transaction.
              */
@@ -463,7 +464,7 @@ public open class AttachmentQueue(
                             metaData = metaData,
                         )
 
-                    /**
+                    /*
                      * Allow consumers to set relationships to this attachment ID.
                      */
                     updateHook.invoke(tx, attachment)
@@ -549,7 +550,7 @@ public open class AttachmentQueue(
             }
             val exists = localStorage.fileExists(attachment.localUri)
             if (
-                attachment.state == AttachmentState.SYNCED || attachment.state == AttachmentState.QUEUED_UPLOAD && !exists
+                (attachment.state == AttachmentState.SYNCED || attachment.state == AttachmentState.QUEUED_UPLOAD) && !exists
             ) {
                 updates.add(
                     attachment.copy(

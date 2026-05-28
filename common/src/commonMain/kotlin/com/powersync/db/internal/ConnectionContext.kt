@@ -108,12 +108,30 @@ internal fun SQLiteStatement.bind(parameters: List<Any?>?) {
         val index = i + 1
 
         when (parameter) {
-            is Boolean -> bindBoolean(index, parameter)
-            is String -> bindText(index, parameter)
-            is Long -> bindLong(index, parameter)
-            is Int -> bindLong(index, parameter.toLong())
-            is Double -> bindDouble(index, parameter)
-            is ByteArray -> bindBlob(index, parameter)
+            is Boolean -> {
+                bindBoolean(index, parameter)
+            }
+
+            is String -> {
+                bindText(index, parameter)
+            }
+
+            is Long -> {
+                bindLong(index, parameter)
+            }
+
+            is Int -> {
+                bindLong(index, parameter.toLong())
+            }
+
+            is Double -> {
+                bindDouble(index, parameter)
+            }
+
+            is ByteArray -> {
+                bindBlob(index, parameter)
+            }
+
             else -> {
                 if (parameter != null) {
                     throw IllegalArgumentException("Unsupported parameter type: ${parameter::class}, at index $index")

@@ -90,7 +90,7 @@ public open class SyncingService(
                             .throttle(syncThrottle)
                             .collect {
                                 attachmentsService.withContext { context ->
-                                    /**
+                                    /*
                                      * Gets and performs the operations for active attachments which are
                                      * pending download, upload, or delete.
                                      */
@@ -178,6 +178,7 @@ public open class SyncingService(
                     }
 
                     AttachmentState.SYNCED -> {}
+
                     AttachmentState.ARCHIVED -> {}
                 }
             }

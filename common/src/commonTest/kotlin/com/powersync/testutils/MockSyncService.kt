@@ -66,17 +66,23 @@ internal class MockSyncService(
                                     val serializedLine = JsonUtil.json.encodeToString(line)
                                     channel.writeStringUtf8("$serializedLine\n")
                                 }
+
                                 is JsonElement -> {
                                     val serializedLine = JsonUtil.json.encodeToString(line)
                                     channel.writeStringUtf8("$serializedLine\n")
                                 }
+
                                 is ByteArray -> {
                                     channel.writeByteArray(line)
                                 }
+
                                 is String -> {
                                     channel.writeStringUtf8("$line\n")
                                 }
-                                else -> throw UnsupportedOperationException("Unknown sync line type")
+
+                                else -> {
+                                    throw UnsupportedOperationException("Unknown sync line type")
+                                }
                             }
 
                             channel.flush()

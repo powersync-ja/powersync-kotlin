@@ -191,6 +191,7 @@ public open class SupabaseConnector(
                     }
                 table.upsert(data)
             }
+
             UpdateType.PATCH -> {
                 table.update(entry.opData!!.jsonValues) {
                     filter {
@@ -198,6 +199,7 @@ public open class SupabaseConnector(
                     }
                 }
             }
+
             UpdateType.DELETE -> {
                 table.delete {
                     filter {
@@ -228,7 +230,7 @@ public open class SupabaseConnector(
         errorCode: String?,
     ) {
         if (errorCode != null && isFatalError(errorCode)) {
-            /**
+            /*
              * Instead of blocking the queue with these errors,
              * discard the (rest of the) transaction.
              *

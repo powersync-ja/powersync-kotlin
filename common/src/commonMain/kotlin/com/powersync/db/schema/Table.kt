@@ -64,7 +64,7 @@ public data class Table(
     )
 
     init {
-        /**
+        /*
          * Need to set the column definition for each index column.
          * This is required for serialization
          */
@@ -190,7 +190,9 @@ public data class Table(
                     throw AssertionError("Invalid characters in column name: $name.${column.name}")
                 }
 
-                else -> columnNames.add(column.name)
+                else -> {
+                    columnNames.add(column.name)
+                }
             }
         }
 

@@ -7,12 +7,16 @@ internal data class PowerSyncVersion(
 ) : Comparable<PowerSyncVersion> {
     override fun compareTo(other: PowerSyncVersion): Int =
         when (val compareMajor = major.compareTo(other.major)) {
-            0 ->
+            0 -> {
                 when (val compareMinor = minor.compareTo(other.minor)) {
                     0 -> patch.compareTo(other.patch)
                     else -> compareMinor
                 }
-            else -> compareMajor
+            }
+
+            else -> {
+                compareMajor
+            }
         }
 
     override fun toString(): String = "$major.$minor.$patch"

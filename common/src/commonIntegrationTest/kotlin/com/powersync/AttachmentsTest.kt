@@ -103,7 +103,7 @@ class AttachmentsTest {
                         remoteStorage = remote,
                         attachmentsDirectory = getAttachmentsDir(),
                         watchAttachments = { watchAttachments(database) },
-                        /**
+                        /*
                          * Sets the cache limit to zero for this test. Archived records will
                          * immediately be deleted.
                          */
@@ -141,7 +141,7 @@ class AttachmentsTest {
                 var attachmentRecord = attachmentQuery.awaitItem().first()
                 attachmentRecord shouldNotBe null
 
-                /**
+                /*
                  * The timing of the watched query resolving might differ slightly.
                  * We might get a watched query result where the attachment is QUEUED_DOWNLOAD
                  * or we could get the result once it has been DOWNLOADED.
@@ -211,7 +211,7 @@ class AttachmentsTest {
                         remoteStorage = remote,
                         attachmentsDirectory = getAttachmentsDir(),
                         watchAttachments = { watchAttachments(database) },
-                        /**
+                        /*
                          * Sets the cache limit to zero for this test. Archived records will
                          * immediately be deleted.
                          */
@@ -320,7 +320,7 @@ class AttachmentsTest {
                         remoteStorage = remote,
                         attachmentsDirectory = getAttachmentsDir(),
                         watchAttachments = { watchAttachments(database) },
-                        /**
+                        /*
                          * Sets the cache limit to zero for this test. Archived records will
                          * immediately be deleted.
                          */
@@ -423,9 +423,7 @@ class AttachmentsTest {
                         remoteStorage = remote,
                         attachmentsDirectory = getAttachmentsDir(),
                         watchAttachments = { watchAttachments(database) },
-                        /**
-                         * Keep some items in the cache
-                         */
+                        // Keep some items in the cache
                         archivedCacheLimit = 10,
                         logger = logger,
                     )
@@ -460,7 +458,7 @@ class AttachmentsTest {
                 var attachmentRecord = attachmentQuery.awaitItem().first()
                 attachmentRecord shouldNotBe null
 
-                /**
+                /*
                  * The timing of the watched query resolving might differ slightly.
                  * We might get a watched query result where the attachment is QUEUED_DOWNLOAD
                  * or we could get the result once it has been DOWNLOADED.
