@@ -67,13 +67,9 @@ dependencies {
     val targets = listOf(
         "jvm",
         "macosArm64",
-        "macosX64",
         "iosSimulatorArm64",
-        "iosX64",
         "tvosSimulatorArm64",
-        "tvosX64",
         "watchosSimulatorArm64",
-        "watchosX64"
     )
 
     targets.forEach { target ->

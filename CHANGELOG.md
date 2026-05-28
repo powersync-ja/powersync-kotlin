@@ -1,7 +1,9 @@
 # Changelog
 
-## 1.12.1 (unreleased)
+## 1.13.0 (unreleased)
 
+- __Potentially breaking change__: Aligning with Kotlin and Androidx multiplatform libraries, this 
+  release removes support for `x86_64` Apple targets (`iosX64()`, `macosX64()`, `tvosX64()` and `watchosX64()`).
 - Fix sync status to make `syncStreams` return null when the database is initializing.
 - Fix errors when subscribing to Sync Streams with object or array parameters.
 - Support versions 3.6.0 of the Supabase client libraries.
