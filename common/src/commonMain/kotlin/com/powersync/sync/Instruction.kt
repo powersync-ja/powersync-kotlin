@@ -83,27 +83,49 @@ internal sealed interface Instruction {
             decoder.decodeStructure(descriptor) {
                 val value =
                     when (val index = decodeElementIndex(descriptor)) {
-                        0 -> decodeSerializableElement(descriptor, 0, logLine)
-                        1 -> decodeSerializableElement(descriptor, 1, updateSyncStatus)
-                        2 -> decodeSerializableElement(descriptor, 2, establishSyncStream)
-                        3 -> decodeSerializableElement(descriptor, 3, fetchCredentials)
+                        0 -> {
+                            decodeSerializableElement(descriptor, 0, logLine)
+                        }
+
+                        1 -> {
+                            decodeSerializableElement(descriptor, 1, updateSyncStatus)
+                        }
+
+                        2 -> {
+                            decodeSerializableElement(descriptor, 2, establishSyncStream)
+                        }
+
+                        3 -> {
+                            decodeSerializableElement(descriptor, 3, fetchCredentials)
+                        }
+
                         4 -> {
                             decodeSerializableElement(descriptor, 4, flushFileSystem)
                             FlushSileSystem
                         }
+
                         5 -> {
                             decodeSerializableElement(descriptor, 5, closeSyncStream)
                         }
+
                         6 -> {
                             decodeSerializableElement(descriptor, 6, didCompleteSync)
                             DidCompleteSync
                         }
-                        CompositeDecoder.UNKNOWN_NAME ->
+
+                        CompositeDecoder.UNKNOWN_NAME -> {
                             UnknownInstruction(
                                 decodeSerializableElement(descriptor, index, serializer<JsonElement>()),
                             )
-                        CompositeDecoder.DECODE_DONE -> UnknownInstruction(null)
-                        else -> error("Unexpected index: $index")
+                        }
+
+                        CompositeDecoder.DECODE_DONE -> {
+                            UnknownInstruction(null)
+                        }
+
+                        else -> {
+                            error("Unexpected index: $index")
+                        }
                     }
 
                 if (decodeElementIndex(descriptor) != CompositeDecoder.DECODE_DONE) {

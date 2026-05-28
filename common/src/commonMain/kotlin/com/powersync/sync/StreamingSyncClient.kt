@@ -186,7 +186,7 @@ internal class StreamingSyncClient(
         var checkedCrudItem: CrudEntry? = null
 
         while (true) {
-            /**
+            /*
              * This is the first item in the FIFO CRUD queue.
              */
             try {

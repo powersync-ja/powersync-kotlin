@@ -206,12 +206,19 @@ internal object PendingStatementSerializer : OnlySerializer<PendingStatement>() 
                 serializer<List<JsonElement>>(),
                 value.parameters.map { p ->
                     when (p) {
-                        is PendingStatementParameter.Column ->
+                        is PendingStatementParameter.Column -> {
                             buildJsonObject {
                                 put("Column", JsonPrimitive(p.name))
                             }
-                        PendingStatementParameter.Id -> JsonPrimitive("Id")
-                        PendingStatementParameter.Rest -> JsonPrimitive("Rest")
+                        }
+
+                        PendingStatementParameter.Id -> {
+                            JsonPrimitive("Id")
+                        }
+
+                        PendingStatementParameter.Rest -> {
+                            JsonPrimitive("Rest")
+                        }
                     }
                 },
             )

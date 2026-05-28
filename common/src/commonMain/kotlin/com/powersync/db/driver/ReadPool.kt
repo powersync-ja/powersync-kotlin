@@ -66,7 +66,7 @@ internal class ReadPool(
         val obtainedConnections = mutableListOf<Pair<SQLiteConnection, CompletableDeferred<Unit>>>()
 
         try {
-            /**
+            /*
              * This attempts to receive (all) the number of available connections.
              * This creates a hold for each connection received. This means that subsequent
              * receive operations must return unique connections until all the available connections

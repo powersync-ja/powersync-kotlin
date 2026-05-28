@@ -97,9 +97,18 @@ private data class ToTypedEntry(
                 // Note: Array and object values never appear in a CRUD row (they would be
                 // represented as strings instead). We also use TypedRows to represent stream
                 // parameters though, and those can be arrays/objects.
-                is JsonArray -> map { it.asData() }
-                is JsonObject -> mapValues { it.value.asData() }
-                JsonNull -> null
+                is JsonArray -> {
+                    map { it.asData() }
+                }
+
+                is JsonObject -> {
+                    mapValues { it.value.asData() }
+                }
+
+                JsonNull -> {
+                    null
+                }
+
                 is JsonPrimitive -> {
                     if (isString) {
                         content
