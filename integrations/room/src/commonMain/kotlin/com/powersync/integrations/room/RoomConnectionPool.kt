@@ -143,6 +143,14 @@ private class RoomTransactionLease(
         block: (SQLiteStatement) -> R,
     ): R = transactor.usePrepared(sql, block)
 
+    override suspend fun <R> usePreparedAsync(
+        sql: String,
+        block: suspend (SQLiteStatement) -> R
+    ): R = transactor.usePrepared(sql) {
+        // TODO: This is suspending in Room3, where we can avoid the runBlocking here.
+        stmt -> runBlocking { block(stmt) }
+    }
+
     override fun isInTransactionSync(): Boolean =
         runBlocking(context) {
             isInTransaction()
