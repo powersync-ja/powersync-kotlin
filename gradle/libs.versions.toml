@@ -30,7 +30,7 @@ compose = "1.11.0" # This is for the multiplatform compose
 androidCompose = "2026.05.01"
 compose-preview = "1.11.2"
 compose-lifecycle = "2.10.0"
-androidxSqlite = "2.6.2"
+androidxSqlite = "2.7.0-alpha05"
 androidxSplashscreen = "1.2.0"
 room = "2.8.4"
 sqldelight = "2.3.2"
@@ -100,6 +100,7 @@ supabase-client = { module = "io.github.jan-tennert.supabase:postgrest-kt", vers
 supabase-auth = { module = "io.github.jan-tennert.supabase:auth-kt", version.ref = "supabase" }
 supabase-storage = { module = "io.github.jan-tennert.supabase:storage-kt", version.ref = "supabase" }
 androidx-sqlite-sqlite = { module = "androidx.sqlite:sqlite", version.ref = "androidxSqlite" }
+androidx-sqlite-async = { module = "androidx.sqlite:sqlite-async", version.ref = "androidxSqlite" }
 androidx-sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "androidxSqlite" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }

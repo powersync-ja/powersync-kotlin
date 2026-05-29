@@ -26,6 +26,12 @@ import kotlinx.cinterop.toKStringFromUtf8
 import kotlinx.cinterop.utf16
 import kotlinx.cinterop.value
 
+// Work around for a Kotlin compiler bug (?), the metadata compilation tasks don't see the
+// actual SQLiteConnection interface
+internal interface SyncSqliteConnection {
+    fun prepare(sql: String): SQLiteStatement
+}
+
 /**
  * A simple implementation of the [SQLiteConnection] interface backed by a synchronous `sqlite3*`
  * database pointer and the SQLite C APIs called via cinterop.
@@ -36,7 +42,8 @@ import kotlinx.cinterop.value
  */
 public class Database(
     private val ptr: CPointer<sqlite3>,
-) : SQLiteConnection {
+) : SQLiteConnection,
+    SyncSqliteConnection {
     override fun inTransaction(): Boolean {
         // We're in a transaction if autocommit is disabled
         return sqlite3_get_autocommit(ptr) == 0

@@ -12,7 +12,8 @@ kotlin {
     powersyncTargets(
         android = {
             namespace = "com.powersync.internal.testutils"
-        }
+        },
+        web = true
     )
     applyDefaultHierarchyTemplate()
 
