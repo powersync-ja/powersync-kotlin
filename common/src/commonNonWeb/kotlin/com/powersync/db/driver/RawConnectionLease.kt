@@ -30,6 +30,14 @@ internal class RawConnectionLease(
         block: (SQLiteStatement) -> R,
     ): R = usePreparedSync(sql, block)
 
+    override suspend fun <R> usePreparedAsync(
+        sql: String,
+        block: suspend (SQLiteStatement) -> R,
+    ): R {
+        checkNotCompleted()
+        return connection.prepare(sql).use { block(it) }
+    }
+
     override fun <R> usePreparedSync(
         sql: String,
         block: (SQLiteStatement) -> R,

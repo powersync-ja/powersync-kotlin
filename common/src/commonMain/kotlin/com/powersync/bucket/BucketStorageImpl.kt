@@ -33,8 +33,8 @@ internal class BucketStorageImpl(
 
     override suspend fun nextCrudItem(): CrudEntry? = db.getOptional(sql = nextCrudQuery, mapper = ::mapCrudEntry)
 
-    override fun nextCrudItem(transaction: PowerSyncTransaction): CrudEntry? =
-        transaction.getOptional(sql = nextCrudQuery, mapper = ::mapCrudEntry)
+    override suspend fun nextCrudItem(transaction: PowerSyncTransaction): CrudEntry? =
+        transaction.getOptionalAsync(sql = nextCrudQuery, mapper = ::mapCrudEntry)
 
     private val nextCrudQuery = "SELECT id, tx_id, data FROM ${InternalTable.CRUD} ORDER BY id ASC LIMIT 1"
 
@@ -52,8 +52,8 @@ internal class BucketStorageImpl(
         return res == 1L
     }
 
-    override fun hasCrud(transaction: PowerSyncTransaction): Boolean {
-        val res = transaction.getOptional(sql = hasCrudQuery, mapper = hasCrudMapper)
+    override suspend fun hasCrud(transaction: PowerSyncTransaction): Boolean {
+        val res = transaction.getOptionalAsync(sql = hasCrudQuery, mapper = hasCrudMapper)
         return res == 1L
     }
 
@@ -81,14 +81,14 @@ internal class BucketStorageImpl(
 
         logger.i { "[updateLocalTarget] Updating target to checkpoint $opId" }
 
-        return db.writeTransaction { tx ->
+        return db.writeTransactionAsync { tx ->
             if (hasCrud(tx)) {
                 logger.w { "[updateLocalTarget] ps crud is not empty" }
-                return@writeTransaction false
+                return@writeTransactionAsync false
             }
 
             val seqAfter =
-                tx.getOptional("SELECT seq FROM main.sqlite_sequence WHERE name = '${InternalTable.CRUD}'") {
+                tx.getOptionalAsync("SELECT seq FROM main.sqlite_sequence WHERE name = '${InternalTable.CRUD}'") {
                     it.getLong(0)!!
                 }
                     ?: // assert isNotEmpty
@@ -97,15 +97,15 @@ internal class BucketStorageImpl(
             if (seqAfter != seqBefore) {
                 logger.d("seqAfter != seqBefore seqAfter: $seqAfter seqBefore: $seqBefore")
                 // New crud data may have been uploaded since we got the checkpoint. Abort.
-                return@writeTransaction false
+                return@writeTransactionAsync false
             }
 
-            tx.execute(
+            tx.executeAsync(
                 "UPDATE ${InternalTable.BUCKETS} SET target_op = CAST(? as INTEGER) WHERE name='\$local'",
                 listOf(opId),
             )
 
-            return@writeTransaction true
+            return@writeTransactionAsync true
         }
     }
 
@@ -138,10 +138,10 @@ internal class BucketStorageImpl(
     }
 
     override suspend fun control(args: PowerSyncControlArguments): List<Instruction> =
-        db.writeTransaction { tx ->
+        db.writeTransactionAsync { tx ->
             logger.v { "powersync_control: $args" }
 
             val (op: String, data: Any?) = args.sqlArguments
-            tx.get("SELECT powersync_control(?, ?) AS r", listOf(op, data), ::handleControlResult)
+            tx.getAsync("SELECT powersync_control(?, ?) AS r", listOf(op, data), ::handleControlResult)
         }
 }

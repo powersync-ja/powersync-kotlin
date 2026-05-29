@@ -1,9 +1,7 @@
 package com.powersync.db.driver
 
 import androidx.sqlite.SQLiteStatement
-import com.powersync.ExperimentalPowerSyncAPI
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.runBlocking
 
 /**
  * An implementation of a connection pool providing asynchronous access to a single writer
@@ -48,35 +46,17 @@ public interface SQLiteConnectionPool {
     public suspend fun close()
 }
 
-public interface SQLiteConnectionLease {
+@Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+public expect interface SQLiteConnectionLease {
     /**
      * Queries the autocommit state on the connection.
      */
     public suspend fun isInTransaction(): Boolean
 
-    public fun isInTransactionSync(): Boolean = runBlocking { isInTransaction() }
-
-    /**
-     * Prepares [sql] as statement and runs [block] with it.
-     *
-     * Block most only run on a single-thread. The statement must not be used once [block] returns.
-     */
-    public suspend fun <R> usePrepared(
+    public suspend fun <R> usePreparedAsync(
         sql: String,
-        block: (SQLiteStatement) -> R,
+        block: suspend (SQLiteStatement) -> R,
     ): R
 
-    public fun <R> usePreparedSync(
-        sql: String,
-        block: (SQLiteStatement) -> R,
-    ): R =
-        runBlocking {
-            usePrepared(sql, block)
-        }
-
-    public suspend fun execSQL(sql: String) {
-        usePrepared(sql) {
-            it.step()
-        }
-    }
+    public open suspend fun execSQL(sql: String)
 }

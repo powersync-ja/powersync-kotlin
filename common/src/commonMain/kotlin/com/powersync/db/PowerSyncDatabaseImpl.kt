@@ -14,8 +14,10 @@ import com.powersync.db.crud.CrudRow
 import com.powersync.db.crud.CrudTransaction
 import com.powersync.db.driver.SQLiteConnectionLease
 import com.powersync.db.driver.SQLiteConnectionPool
+import com.powersync.db.internal.ConnectionContext
 import com.powersync.db.internal.InternalDatabaseImpl
 import com.powersync.db.internal.InternalTable
+import com.powersync.db.internal.PowerSyncTransaction
 import com.powersync.db.internal.PowerSyncVersion
 import com.powersync.db.schema.Schema
 import com.powersync.sync.CoreSyncStatus
@@ -111,8 +113,8 @@ internal class PowerSyncDatabaseImpl(
         checkVersion(powerSyncVersion)
         logger.d { "PowerSyncVersion: $powerSyncVersion" }
 
-        internalDb.writeTransaction { tx ->
-            tx.getOptional("SELECT powersync_init()") {}
+        internalDb.writeTransactionAsync { tx ->
+            tx.getOptionalAsync("SELECT powersync_init()") {}
         }
 
         updateSchemaInternal(schema)
@@ -393,26 +395,6 @@ internal class PowerSyncDatabaseImpl(
             emitAll(internalDb.watch(sql, parameters, throttleMs, mapper))
         }
 
-    override suspend fun <R> readLock(callback: ThrowableLockCallback<R>): R {
-        waitReady()
-        return internalDb.readLock(callback)
-    }
-
-    override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R {
-        waitReady()
-        return internalDb.writeTransaction(callback)
-    }
-
-    override suspend fun <R> writeLock(callback: ThrowableLockCallback<R>): R {
-        waitReady()
-        return internalDb.writeLock(callback)
-    }
-
-    override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R {
-        waitReady()
-        return internalDb.writeTransaction(callback)
-    }
-
     override suspend fun execute(
         sql: String,
         parameters: List<Any?>?,
@@ -425,19 +407,19 @@ internal class PowerSyncDatabaseImpl(
         lastTransactionId: Int,
         writeCheckpoint: String?,
     ) {
-        internalDb.writeTransaction { transaction ->
-            transaction.execute(
+        internalDb.writeTransactionAsync { transaction ->
+            transaction.executeAsync(
                 "DELETE FROM ps_crud WHERE id <= ?",
                 listOf(lastTransactionId.toLong()),
             )
 
             if (writeCheckpoint != null && !bucketStorage.hasCrud(transaction)) {
-                transaction.execute(
+                transaction.executeAsync(
                     "UPDATE ps_buckets SET target_op = CAST(? AS INTEGER) WHERE name='\$local'",
                     listOf(writeCheckpoint),
                 )
             } else {
-                transaction.execute(
+                transaction.executeAsync(
                     "UPDATE ps_buckets SET target_op = CAST(? AS INTEGER) WHERE name='\$local'",
                     listOf(bucketStorage.getMaxOpId()),
                 )
@@ -483,8 +465,8 @@ internal class PowerSyncDatabaseImpl(
             flags = flags or 2 // MASK_SOFT_CLEAR
         }
 
-        internalDb.writeTransaction { tx ->
-            tx.getOptional("SELECT powersync_clear(?)", listOf(flags)) {}
+        internalDb.writeTransactionAsync { tx ->
+            tx.getOptionalAsync("SELECT powersync_clear(?)", listOf(flags)) {}
         }
         currentStatus.update { copy(lastSyncedAt = null, hasSynced = false) }
     }

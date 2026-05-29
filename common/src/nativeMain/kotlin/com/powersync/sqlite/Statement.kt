@@ -36,12 +36,17 @@ import kotlinx.cinterop.toKStringFromUtf8
 import kotlinx.cinterop.usePinned
 import kotlinx.cinterop.utf16
 
+internal interface SyncStatement {
+    fun step(): Boolean
+}
+
 @OptIn(ExperimentalForeignApi::class)
 internal class Statement(
     private val sql: String,
     private val db: CPointer<sqlite3>,
     private val ptr: CPointer<sqlite3_stmt>,
-) : SQLiteStatement {
+) : SQLiteStatement,
+    SyncStatement {
     override fun bindBlob(
         index: Int,
         value: ByteArray,
