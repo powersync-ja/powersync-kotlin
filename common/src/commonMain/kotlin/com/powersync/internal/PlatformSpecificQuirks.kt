@@ -4,6 +4,7 @@ import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.HttpClientEngineConfig
 import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.coroutines.CoroutineContext
 
 /**
  * A hook installed by the `:core` project.
@@ -32,3 +33,10 @@ internal val HttpClientEngineConfig.shouldUseRSocketStream: Boolean
     }
 
 internal expect fun platformAllowsWebSockets(): Boolean
+
+/**
+ * A [CoroutineContext] suitable for IO operations.
+ *
+ * This returns `Dispatchers.IO` on non-web platforms and an empty context on the web.
+ */
+internal expect val ioCoroutineContext: CoroutineContext

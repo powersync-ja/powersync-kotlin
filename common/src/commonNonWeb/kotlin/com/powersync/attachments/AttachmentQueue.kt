@@ -493,7 +493,7 @@ public open class AttachmentQueue(
             attachmentsService.withContext { attachmentContext ->
                 val attachment =
                     attachmentContext.getAttachment(attachmentId)
-                        ?: throw error("Attachment record with id $attachmentId was not found.")
+                        ?: error("Attachment record with id $attachmentId was not found.")
 
                 db.writeTransaction { tx ->
                     updateHook.invoke(tx, attachment)

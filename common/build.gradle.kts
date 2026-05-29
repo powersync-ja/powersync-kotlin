@@ -155,7 +155,8 @@ kotlin {
     powersyncTargets(
         android = {
             namespace = "com.powersync.common"
-        }
+        },
+        web = true
     )
 
     targets.withType<KotlinNativeTarget> {
@@ -195,8 +196,17 @@ kotlin {
             dependsOn(commonTest.get())
         }
 
-        val commonJava by creating {
+        val commonNonWeb by creating {
             dependsOn(commonMain.get())
+
+            dependencies {
+                implementation(libs.rsocket.core)
+                implementation(libs.rsocket.transport.websocket)
+            }
+        }
+
+        val commonJava by creating {
+            dependsOn(commonNonWeb)
         }
 
         commonMain.configure {
@@ -206,6 +216,7 @@ kotlin {
 
             dependencies {
                 api(libs.androidx.sqlite.sqlite)
+                implementation(libs.androidx.sqlite.async)
 
                 implementation(libs.uuid)
                 implementation(libs.kotlin.stdlib)
@@ -215,8 +226,6 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.stately.concurrency)
-                implementation(libs.rsocket.core)
-                implementation(libs.rsocket.transport.websocket)
                 api(libs.ktor.client.core)
                 api(libs.kermit)
             }
@@ -231,6 +240,10 @@ kotlin {
 
         jvmMain {
             dependsOn(commonJava)
+        }
+
+        nativeMain {
+            dependsOn(commonNonWeb)
         }
 
         commonTest.dependencies {

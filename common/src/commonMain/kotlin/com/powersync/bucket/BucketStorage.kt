@@ -18,11 +18,11 @@ internal interface BucketStorage {
 
     suspend fun nextCrudItem(): CrudEntry?
 
-    fun nextCrudItem(transaction: PowerSyncTransaction): CrudEntry?
+    suspend fun nextCrudItem(transaction: PowerSyncTransaction): CrudEntry?
 
     suspend fun hasCrud(): Boolean
 
-    fun hasCrud(transaction: PowerSyncTransaction): Boolean
+    suspend fun hasCrud(transaction: PowerSyncTransaction): Boolean
 
     fun mapCrudEntry(row: SqlCursor): CrudEntry
 
