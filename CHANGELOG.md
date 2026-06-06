@@ -4,6 +4,9 @@
 
 - __Breaking change__: Aligning with Kotlin and Androidx multiplatform libraries, this 
   release removes support for `x86_64` Apple targets (`iosX64()`, `macosX64()`, `tvosX64()` and `watchosX64()`).
+- Fix a deadlock where a read query cancelled at the wrong moment would permanently leak a
+  connection from the read pool, eventually causing `updateSchema()` (and other operations that
+  acquire all connections) to hang. This is the underlying cause of #356.
 - Fix sync status to make `syncStreams` return null when the database is initializing.
 - Fix errors when subscribing to Sync Streams with object or array parameters.
 - Support versions 3.6.0 of the Supabase client libraries.

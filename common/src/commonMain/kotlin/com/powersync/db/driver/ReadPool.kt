@@ -21,7 +21,16 @@ internal class ReadPool(
     size: Int = 5,
     private val scope: CoroutineScope,
 ) {
-    private val available = Channel<Pair<SQLiteConnection, CompletableDeferred<Unit>>>()
+    private val available =
+        Channel<Pair<SQLiteConnection, CompletableDeferred<Unit>>>(
+            // If an element is sent but not delivered - e.g. the receiving read()/withAllConnections
+            // coroutine was cancelled during the channel rendezvous, or the channel is closed with an
+            // element in flight - complete its `done` so the owning worker returns the connection to
+            // the pool instead of parking in done.await() forever. Without this, a single read
+            // cancelled at the wrong moment permanently shrinks the pool and deadlocks any later
+            // withAllConnections()/updateSchema().
+            onUndeliveredElement = { (_, done) -> done.complete(Unit) },
+        )
     private val connections: List<Job> =
         List(size) {
             val driver = factory()
