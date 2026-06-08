@@ -115,7 +115,7 @@ public class RoomConnectionPool(
                 it.usePrepared(statement) { stmt ->
                     while (stmt.step()) {
                         val table = stmt.getText(0)
-                        val type = stmt.getText(1)
+                        val type = if (stmt.isNull(1)) null else stmt.getText(1)
                         allChangedTables.add(table)
                         if (type == "table" && !table.startsWith("ps_") && !table.startsWith("room_")) {
                             changedRoomTables.add(table)
