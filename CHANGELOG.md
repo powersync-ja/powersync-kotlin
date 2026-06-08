@@ -9,6 +9,7 @@
   acquire all connections) to hang. This is the underlying cause of #356.
 - Fix sync status to make `syncStreams` return null when the database is initializing.
 - Fix errors when subscribing to Sync Streams with object or array parameters.
+- Room integration: Fix writes to fts5 tables crashing the update notification mechanism.
 - Support versions 3.6.0 of the Supabase client libraries.
 
 ## 1.12.0

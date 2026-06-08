@@ -10,6 +10,8 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.execSQL
 import com.powersync.db.schema.RawTable
 import com.powersync.db.schema.RawTableSchema
 import com.powersync.db.schema.Schema
@@ -41,7 +43,7 @@ interface UserDao {
 abstract class TestDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
 
-    companion object {
+    companion object : Callback() {
         val schema =
             Schema(
                 RawTable(
@@ -49,6 +51,10 @@ abstract class TestDatabase : RoomDatabase() {
                     schema = RawTableSchema("user"),
                 ),
             )
+
+        override fun onOpen(connection: SQLiteConnection) {
+            connection.execSQL("CREATE VIRTUAL TABLE users_fts USING fts5(id UNINDEXED, name)")
+        }
     }
 }
 

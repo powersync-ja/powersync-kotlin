@@ -100,23 +100,34 @@ public class RoomConnectionPool(
             try {
                 callback(RoomTransactionLease(it, currentCoroutineContext()))
             } finally {
-                val changed =
-                    it.usePrepared("SELECT powersync_update_hooks('get')") { stmt ->
-                        check(stmt.step())
-                        Json.decodeFromString<Set<String>>(stmt.getText(0))
+                // List changed tables, excluding virtual and shadow tables for e.g. fts5
+                val statement =
+                    """
+                    SELECT
+                        value,
+                        (SELECT type FROM pragma_table_list(value))
+                    FROM json_each(powersync_update_hooks('get'))
+                    """.trimIndent()
+
+                val allChangedTables = mutableSetOf<String>()
+                val changedRoomTables = mutableListOf<String>()
+
+                it.usePrepared(statement) { stmt ->
+                    while (stmt.step()) {
+                        val table = stmt.getText(0)
+                        val type = stmt.getText(1)
+                        allChangedTables.add(table)
+                        if (type == "table" && !table.startsWith("ps_") && !table.startsWith("room_")) {
+                            changedRoomTables.add(table)
+                        }
                     }
-
-                val userTables =
-                    changed
-                        .filter { tbl ->
-                            !tbl.startsWith("ps_") && !tbl.startsWith("room_")
-                        }.toTypedArray()
-
-                if (userTables.isNotEmpty()) {
-                    db.invalidationTracker.refresh(*userTables)
                 }
 
-                _updates.emit(changed)
+                if (changedRoomTables.isNotEmpty()) {
+                    db.invalidationTracker.refresh(*changedRoomTables.toTypedArray())
+                }
+
+                _updates.emit(allChangedTables)
             }
         }
 

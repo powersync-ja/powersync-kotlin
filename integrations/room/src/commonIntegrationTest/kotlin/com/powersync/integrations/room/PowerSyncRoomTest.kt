@@ -139,6 +139,25 @@ class PowerSyncRoomTest {
             powersync.close()
         }
 
+    @Test
+    fun canWriteToVirtualTables() =
+        runTest {
+            val pool = RoomConnectionPool(database, TestDatabase.schema)
+            val powersync =
+                PowerSyncDatabase.opened(
+                    pool = pool,
+                    scope = this,
+                    schema = TestDatabase.schema,
+                    identifier = "test",
+                    logger = logger,
+                )
+
+            // After inserting into a virtual table, we should not report shadow tables as updates to
+            // Room as that causes a crash. This also means that virtual table updates can't be watched
+            // from Room, but that's a Room limitation.
+            powersync.execute("INSERT into users_fts(id, name) VAlUES (uuid(), ?)", listOf("test name"))
+        }
+
     companion object {
         private val logger = Logger(loggerConfigInit(CommonWriter()))
     }
