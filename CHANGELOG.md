@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.13.0 (unreleased)
+## 1.13.0
 
 - __Breaking change__: Aligning with Kotlin and Androidx multiplatform libraries, this 
   release removes support for `x86_64` Apple targets (`iosX64()`, `macosX64()`, `tvosX64()` and `watchosX64()`).
