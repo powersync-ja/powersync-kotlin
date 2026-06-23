@@ -62,9 +62,6 @@ jobs:
     - name: Set up XCode
       if: runner.os == 'macOS'
       uses: maxim-lobanov/setup-xcode@v1
-      with:
-        # TODO: Update to latest-stable once GH installs iOS 26 simulators
-        xcode-version: '^16.4.0'
     - name: Download prebuilts
       uses: actions/download-artifact@v8
       with:

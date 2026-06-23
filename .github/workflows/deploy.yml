@@ -56,7 +56,7 @@ jobs:
         with:
           artifact-ids: ${{ needs.fetch_prebuilts.outputs.artifact_id }}
           path: internal/prebuild-binaries/build/output/
-      - name: Gradle publish
+      - name: Generate publications
         run: |
           ./gradlew \
             --no-configuration-cache \
@@ -64,22 +64,24 @@ jobs:
             -PsigningInMemoryKey="${{ secrets.SIGNING_KEY }}" \
             -PsigningInMemoryKeyId="${{ secrets.SIGNING_KEY_ID }}" \
             -PsigningInMemoryKeyPassword="${{ secrets.SIGNING_PASSWORD }}" \
-            -PcentralPortal.username="${{secrets.SONATYPE_USERNAME}}" \
-            -PcentralPortal.password="${{secrets.SONATYPE_PASSWORD}}" \
             -Ppowersync.binaries.allPlatforms="true" \
-            publishAllPublicationsToSonatypeLocalRepository
+            generatePublishingBundle
 
-          ./gradlew \
-            --no-configuration-cache \
-            -PhasPrebuiltAssets=true \
-            -PsigningInMemoryKey="${{ secrets.SIGNING_KEY }}" \
-            -PsigningInMemoryKeyId="${{ secrets.SIGNING_KEY_ID }}" \
-            -PsigningInMemoryKeyPassword="${{ secrets.SIGNING_PASSWORD }}" \
-            -PcentralPortal.username="${{secrets.SONATYPE_USERNAME}}" \
-            -PcentralPortal.password="${{secrets.SONATYPE_PASSWORD}}" \
-            -Ppowersync.binaries.allPlatforms="true" \
-            publishAllPublicationsToSonatypeRepository
-        shell: bash
+      - name: Inspect publication
+        run: |
+          ./internal/analyze-bundle.py
+          zip -r build/sonatypeBundle.zip build/sonatypeBundle/
+
+      - name: Upload to Maven Central
+        env:
+          # printf "$SONATYPE_USERNAME:$SONATYPE_PASSWORD" | base64
+          SONATYPE_CREDENTIALS: ${{ secrets.SONATYPE_CREDENTIALS }}
+        run: |
+          tag=$(basename "${{ github.ref }}")
+          curl --fail-with-body --request POST \
+            --header "Authorization: Bearer $SONATYPE_CREDENTIALS" \
+            --form bundle=@build/sonatypeBundle.zip \
+            "https://central.sonatype.com/api/v1/publisher/upload?name=$tag&publishingType=AUTOMATIC"
 
   add_assets:
     permissions:
@@ -108,3 +110,4 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           gh release upload "${{ needs.draft_release.outputs.tag }}" prebuilt_libraries.zip
+

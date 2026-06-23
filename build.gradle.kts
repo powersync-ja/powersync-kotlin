@@ -1,3 +1,5 @@
+import com.powersync.plugins.sonatype.SonatypeCentralUploadPlugin
+
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
@@ -21,21 +23,29 @@ plugins {
     alias(libs.plugins.androidx.room) apply false
     id("org.jetbrains.dokka") version libs.versions.dokkaBase
     id("dokka-convention")
+    id("com.powersync.plugins.sonatype") apply false
 }
 
 tasks.getByName<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
 
+val sonatypePublishingBundleConfiguration by configurations.creating {
+    isCanBeConsumed = false
+}
+
 // Merges individual module docs into a single HTML output
 dependencies {
-    dokka(projects.common)
-    dokka(projects.core)
-    dokka(projects.compose)
-    dokka(projects.integrations.room)
-    dokka(projects.integrations.sqldelight)
-    dokka(projects.integrations.supabase)
-    dokka(projects.sqlite3multipleciphers)
+    // Internal published projects we don't include in the Dokka overview.
+    val undocumentedProjects = listOf(":static-sqlite-driver", ":internal:sqlite3mcandroid")
+
+    for (projectPath in SonatypeCentralUploadPlugin.publishedProjects) {
+        if (!undocumentedProjects.contains(projectPath)) {
+            dokka(project(path=projectPath))
+        }
+
+        sonatypePublishingBundleConfiguration(project(path=projectPath, configuration="sonatypePublishingBundleConfiguration"))
+    }
 }
 
 dokka {
@@ -99,4 +109,27 @@ tasks.register("serveDokka") {
         // Keep the task alive
         Thread.currentThread().join()
     }
+}
+
+val generatePublishingBundle by tasks.registering(Copy::class) {
+    group = "publishing"
+
+    val subprojects: FileCollection = sonatypePublishingBundleConfiguration
+    inputs.files(subprojects)
+
+    from(subprojects.files.toTypedArray()) {
+        exclude { fileTreeElement ->
+            val name = fileTreeElement.relativePath.lastName
+            // Skip some files: We don't need to upload maven metadata as Sonatype generates
+            // those files for us. There's no way to disable sha512 hashes in Gradle (and it
+            // insists on hashing signatures), we don't need those files either.
+            name.startsWith("maven-metadata") ||
+                name.endsWith(".sha512") ||
+                name.endsWith(".asc.md5") ||
+                name.endsWith(".asc.sha1") ||
+                name.endsWith(".asc.sha256") ||
+                name.endsWith(".asc.sha512")
+        }
+    }
+    into(layout.buildDirectory.dir("sonatypeBundle").get())
 }
