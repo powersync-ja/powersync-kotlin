@@ -36,11 +36,11 @@ val sonatypePublishingBundleConfiguration by configurations.creating {
 
 // Merges individual module docs into a single HTML output
 dependencies {
+    // Internal published projects we don't include in the Dokka overview.
     val undocumentedProjects = listOf(":static-sqlite-driver", ":internal:sqlite3mcandroid")
 
     for (projectPath in SonatypeCentralUploadPlugin.publishedProjects) {
         if (!undocumentedProjects.contains(projectPath)) {
-            // static-sqlite-driver doesn't have a public documentation, we build docs for the rest.
             dokka(project(path=projectPath))
         }
 
