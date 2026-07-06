@@ -147,7 +147,7 @@ public interface Queries {
      */
     @Throws(PowerSyncException::class, CancellationException::class)
     public suspend fun <R> writeLock(callback: ThrowableLockCallback<R>): R =
-        useConnection(readOnly = true) { connection ->
+        useConnection(readOnly = false) { connection ->
             callback.execute(connection.asContext())
         }
 
