@@ -161,7 +161,9 @@ private class RoomTransactionLease(
         transactor.usePrepared(sql) {
             // TODO: This is suspending in Room3, where we can avoid the runBlocking here.
             stmt ->
-            runBlocking(context) { block(stmt) }
+            // Don't use the context here, Room2 does that for us. We're not allowed to use the
+            // connection from different threads.
+            runBlocking { block(stmt) }
         }
 
     override fun isInTransactionSync(): Boolean =
