@@ -62,7 +62,7 @@ internal class SyncLineSerializer : KSerializer<SyncLine> {
     private val data = serializer<SyncLine.SyncDataBucket>()
 
     override val descriptor =
-        buildClassSerialDescriptor(SyncLine::class.qualifiedName!!) {
+        buildClassSerialDescriptor("SyncLine") {
             element("checkpoint", checkpoint.descriptor, isOptional = true)
             element("checkpoint_diff", checkpointDiff.descriptor, isOptional = true)
             element("checkpoint_complete", checkpointComplete.descriptor, isOptional = true)

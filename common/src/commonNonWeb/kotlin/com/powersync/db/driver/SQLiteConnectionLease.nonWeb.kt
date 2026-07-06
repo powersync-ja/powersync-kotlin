@@ -25,18 +25,15 @@ public actual interface SQLiteConnectionLease {
         block: suspend (SQLiteStatement) -> R,
     ): R
 
-    public fun isInTransactionSync(): Boolean = runBlocking { isInTransaction() }
+    public fun isInTransactionSync(): Boolean
 
     public fun <R> usePreparedSync(
         sql: String,
         block: (SQLiteStatement) -> R,
-    ): R =
-        runBlocking {
-            usePrepared(sql, block)
-        }
+    ): R
 
     public actual suspend fun execSQL(sql: String): Unit =
-        usePrepared(sql) {
+        usePreparedSync(sql) {
             it.step()
         }
 }
