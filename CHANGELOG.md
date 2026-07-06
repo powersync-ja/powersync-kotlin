@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.14.0 (unreleased)
+
+- __Breaking change__ (for Room integration): The Room integration uses Room 3.0 now.
+
 ## 1.13.0
 
 - __Breaking change__: Aligning with Kotlin and Androidx multiplatform libraries, this 

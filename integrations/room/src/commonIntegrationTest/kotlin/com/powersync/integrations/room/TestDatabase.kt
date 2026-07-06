@@ -1,15 +1,15 @@
 package com.powersync.integrations.room
 
-import androidx.room.ConstructedBy
-import androidx.room.Dao
-import androidx.room.Database
-import androidx.room.Delete
-import androidx.room.Entity
-import androidx.room.Insert
-import androidx.room.PrimaryKey
-import androidx.room.Query
-import androidx.room.RoomDatabase
-import androidx.room.RoomDatabaseConstructor
+import androidx.room3.ConstructedBy
+import androidx.room3.Dao
+import androidx.room3.Database
+import androidx.room3.Delete
+import androidx.room3.Entity
+import androidx.room3.Insert
+import androidx.room3.PrimaryKey
+import androidx.room3.Query
+import androidx.room3.RoomDatabase
+import androidx.room3.RoomDatabaseConstructor
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
 import com.powersync.db.schema.RawTable
@@ -52,7 +52,7 @@ abstract class TestDatabase : RoomDatabase() {
                 ),
             )
 
-        override fun onOpen(connection: SQLiteConnection) {
+        override suspend fun onOpen(connection: SQLiteConnection) {
             connection.execSQL("CREATE VIRTUAL TABLE users_fts USING fts5(id UNINDEXED, name)")
         }
     }

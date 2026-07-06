@@ -1,10 +1,10 @@
 package com.powersync.integrations.room
 
-import androidx.room.RoomDatabase
-import androidx.room.Transactor
-import androidx.room.execSQL
-import androidx.room.useReaderConnection
-import androidx.room.useWriterConnection
+import androidx.room3.RoomDatabase
+import androidx.room3.Transactor
+import androidx.room3.executeSQL
+import androidx.room3.useReaderConnection
+import androidx.room3.useWriterConnection
 import androidx.sqlite.SQLiteException
 import androidx.sqlite.SQLiteStatement
 import com.powersync.db.driver.SQLiteConnectionLease
@@ -15,7 +15,6 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.Json
 import kotlin.coroutines.CoroutineContext
 
 /**
@@ -94,7 +93,7 @@ public class RoomConnectionPool(
         db.useWriterConnection {
             if (!hasInstalledUpdateHook) {
                 hasInstalledUpdateHook = true
-                it.execSQL("SELECT powersync_update_hooks('install')")
+                it.executeSQL("SELECT powersync_update_hooks('install')")
             }
 
             try {
@@ -157,14 +156,7 @@ private class RoomTransactionLease(
     override suspend fun <R> usePreparedAsync(
         sql: String,
         block: suspend (SQLiteStatement) -> R,
-    ): R =
-        transactor.usePrepared(sql) {
-            // TODO: This is suspending in Room3, where we can avoid the runBlocking here.
-            stmt ->
-            // Don't use the context here, Room2 does that for us. We're not allowed to use the
-            // connection from different threads.
-            runBlocking { block(stmt) }
-        }
+    ): R = transactor.usePrepared(sql, block)
 
     override fun isInTransactionSync(): Boolean =
         runBlocking(context) {

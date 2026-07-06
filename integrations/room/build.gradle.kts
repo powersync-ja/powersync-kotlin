@@ -17,7 +17,8 @@ kotlin {
     powersyncTargets(
         android = {
             namespace = "com.powersync.integrations.room"
-        }
+        },
+        legacyJavaSupport = false
     )
 
     explicitApi()
