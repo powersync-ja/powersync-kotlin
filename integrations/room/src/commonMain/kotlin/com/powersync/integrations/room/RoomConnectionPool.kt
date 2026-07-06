@@ -7,15 +7,13 @@ import androidx.room3.useReaderConnection
 import androidx.room3.useWriterConnection
 import androidx.sqlite.SQLiteException
 import androidx.sqlite.SQLiteStatement
+import androidx.sqlite.async.step
 import com.powersync.db.driver.SQLiteConnectionLease
 import com.powersync.db.driver.SQLiteConnectionPool
 import com.powersync.db.schema.Schema
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
-import kotlin.coroutines.CoroutineContext
 
 /**
  * A [SQLiteConnectionPool] implementation for the PowerSync SDK that is backed by a [RoomDatabase].
@@ -52,7 +50,7 @@ public class RoomConnectionPool(
 
     override suspend fun <T> read(callback: suspend (SQLiteConnectionLease) -> T): T =
         db.useReaderConnection {
-            callback(RoomTransactionLease(it, currentCoroutineContext()))
+            callback(it.asConnectionLease())
         }
 
     /**
@@ -97,7 +95,7 @@ public class RoomConnectionPool(
             }
 
             try {
-                callback(RoomTransactionLease(it, currentCoroutineContext()))
+                callback(it.asConnectionLease())
             } finally {
                 // List changed tables, excluding virtual and shadow tables for e.g. fts5
                 val statement =
@@ -138,36 +136,15 @@ public class RoomConnectionPool(
     }
 }
 
-private class RoomTransactionLease(
-    private val transactor: Transactor,
-    /**
-     * The context to use for [runBlocking] calls to avoid the "Attempted to use connection on a
-     * different coroutine" error.
-     */
-    private val context: CoroutineContext,
+internal expect suspend fun Transactor.asConnectionLease(): SQLiteConnectionLease
+
+internal abstract class RoomTransactionLease(
+    protected val transactor: Transactor,
 ) : SQLiteConnectionLease {
     override suspend fun isInTransaction(): Boolean = transactor.inTransaction()
-
-    override suspend fun <R> usePrepared(
-        sql: String,
-        block: (SQLiteStatement) -> R,
-    ): R = transactor.usePrepared(sql, block)
 
     override suspend fun <R> usePreparedAsync(
         sql: String,
         block: suspend (SQLiteStatement) -> R,
     ): R = transactor.usePrepared(sql, block)
-
-    override fun isInTransactionSync(): Boolean =
-        runBlocking(context) {
-            isInTransaction()
-        }
-
-    override fun <R> usePreparedSync(
-        sql: String,
-        block: (SQLiteStatement) -> R,
-    ): R =
-        runBlocking(context) {
-            usePrepared(sql, block)
-        }
 }
