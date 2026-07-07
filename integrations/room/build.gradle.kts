@@ -17,7 +17,9 @@ kotlin {
     powersyncTargets(
         android = {
             namespace = "com.powersync.integrations.room"
-        }
+        },
+        legacyJavaSupport = false,
+        web = true
     )
 
     explicitApi()
@@ -33,9 +35,27 @@ kotlin {
         commonMain.dependencies {
             api(projects.common)
             api(libs.androidx.room.runtime)
-            api(libs.androidx.sqlite.bundled)
 
+            implementation(libs.androidx.sqlite.async)
             implementation(libs.kotlinx.serialization.json)
+        }
+
+        val commonNonWeb by creating {
+            dependsOn(commonMain.get())
+
+            dependencies {
+                api(libs.androidx.sqlite.bundled)
+            }
+        }
+
+        jvmMain {
+            dependsOn(commonNonWeb)
+        }
+        nativeMain {
+            dependsOn(commonNonWeb)
+        }
+        androidMain {
+            dependsOn(commonNonWeb)
         }
 
         commonTest.dependencies {
@@ -44,12 +64,14 @@ kotlin {
             implementation(libs.test.kotest.assertions)
             implementation(libs.test.coroutines)
             implementation(libs.test.turbine)
-
-            implementation(libs.androidx.sqlite.bundled)
         }
 
         val commonIntegrationTest by creating {
             dependsOn(commonTest.get())
+
+            dependencies {
+                implementation(libs.androidx.sqlite.bundled)
+            }
         }
 
         // We're putting the native libraries into our JAR, so integration tests for the JVM can run as part of the unit
