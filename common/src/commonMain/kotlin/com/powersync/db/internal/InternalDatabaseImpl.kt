@@ -3,8 +3,6 @@ package com.powersync.db.internal
 import co.touchlab.kermit.Logger
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.db.SqlCursor
-import com.powersync.db.ThrowableLockCallback
-import com.powersync.db.ThrowableTransactionCallback
 import com.powersync.db.driver.SQLiteConnectionLease
 import com.powersync.db.driver.SQLiteConnectionPool
 import com.powersync.db.runWrapped
@@ -25,19 +23,11 @@ internal class InternalDatabaseImpl(
     private val pool: SQLiteConnectionPool,
     private val logger: Logger,
 ) : InternalDatabase {
-    override suspend fun execute(
-        sql: String,
-        parameters: List<Any?>?,
-    ): Long =
-        writeLock { context ->
-            context.execute(sql, parameters)
-        }
-
     override suspend fun updateSchema(schemaJson: String) {
         runWrapped {
             pool.withAllConnections { writer, readers ->
                 writer.runTransaction { tx ->
-                    tx.getOptional(
+                    tx.getOptionalAsync(
                         "SELECT powersync_replace_schema(?);",
                         listOf(schemaJson),
                     ) {}
@@ -50,24 +40,6 @@ internal class InternalDatabaseImpl(
             }
         }
     }
-
-    override suspend fun <RowType : Any> get(
-        sql: String,
-        parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType,
-    ): RowType = readLock { connection -> connection.get(sql, parameters, mapper) }
-
-    override suspend fun <RowType : Any> getAll(
-        sql: String,
-        parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType,
-    ): List<RowType> = readLock { connection -> connection.getAll(sql, parameters, mapper) }
-
-    override suspend fun <RowType : Any> getOptional(
-        sql: String,
-        parameters: List<Any?>?,
-        mapper: (SqlCursor) -> RowType,
-    ): RowType? = readLock { connection -> connection.getOptional(sql, parameters, mapper) }
 
     override fun onChange(
         tables: Set<String>,
@@ -148,52 +120,11 @@ internal class InternalDatabaseImpl(
         readOnly: Boolean,
         block: suspend (SQLiteConnectionLease) -> T,
     ): T =
-        if (readOnly) {
-            pool.read(block)
-        } else {
-            pool.write(block)
-        }
-
-    /**
-     * Creates a read lock while providing an internal transactor for transactions
-     */
-    @OptIn(ExperimentalPowerSyncAPI::class)
-    private suspend fun <R> internalReadLock(callback: suspend (SQLiteConnectionLease) -> R): R =
         runWrapped {
-            useConnection(true) { connection ->
-                callback(connection)
-            }
-        }
-
-    override suspend fun <R> readLock(callback: ThrowableLockCallback<R>): R =
-        internalReadLock {
-            callback.execute(ConnectionContextImplementation(it))
-        }
-
-    override suspend fun <R> readTransaction(callback: ThrowableTransactionCallback<R>): R =
-        internalReadLock {
-            it.runTransaction { tx ->
-                callback.execute(tx)
-            }
-        }
-
-    @OptIn(ExperimentalPowerSyncAPI::class)
-    private suspend fun <R> internalWriteLock(callback: suspend (SQLiteConnectionLease) -> R): R =
-        runWrapped {
-            pool.write { writer ->
-                callback(writer)
-            }
-        }
-
-    override suspend fun <R> writeLock(callback: ThrowableLockCallback<R>): R =
-        internalWriteLock {
-            callback.execute(ConnectionContextImplementation(it))
-        }
-
-    override suspend fun <R> writeTransaction(callback: ThrowableTransactionCallback<R>): R =
-        internalWriteLock {
-            it.runTransaction { tx ->
-                callback.execute(tx)
+            if (readOnly) {
+                pool.read(block)
+            } else {
+                pool.write(block)
             }
         }
 

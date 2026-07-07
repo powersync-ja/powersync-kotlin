@@ -32,7 +32,6 @@ import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.readAvailable
 import io.ktor.utils.io.readBuffer
 import io.ktor.utils.io.readLineStrict
-import io.rsocket.kotlin.RSocketError
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineName
@@ -121,10 +120,10 @@ internal class StreamingSyncClient(
                     invalidCredentials = false
                 }
                 result = streamingSyncIteration()
-            } catch (e: RSocketError) {
+            } catch (e: PowerSyncRSocketError) {
                 // RSocketError extends Throwable directly (not Exception), so it needs its own
                 // catch block to avoid accidentally catching JVM Errors (OutOfMemoryError, etc.).
-                if (e is RSocketError.Setup.Rejected) {
+                if (e.indicatesInvalidCredentials()) {
                     // The server rejected the RSocket SETUP frame, most likely due to an invalid
                     // token. Invalidate credentials so a fresh token is fetched on the next attempt.
                     connector.invalidateCredentials()

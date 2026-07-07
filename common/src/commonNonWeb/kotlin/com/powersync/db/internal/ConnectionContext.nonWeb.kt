@@ -1,45 +1,70 @@
 package com.powersync.db.internal
 
 import androidx.sqlite.SQLiteStatement
-import androidx.sqlite.async.step
-import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncException
 import com.powersync.db.SqlCursor
 import com.powersync.db.StatementBasedCursor
 import com.powersync.db.driver.SQLiteConnectionLease
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
-public expect interface ConnectionContext {
-    public suspend fun executeAsync(
+public actual interface ConnectionContext {
+    public actual suspend fun executeAsync(
+        sql: String,
+        parameters: List<Any?>?,
+    ): Long
+
+    public actual suspend fun <RowType : Any> getOptionalAsync(
+        sql: String,
+        parameters: List<Any?>?,
+        mapper: (SqlCursor) -> RowType,
+    ): RowType?
+
+    public actual suspend fun <RowType : Any> getAllAsync(
+        sql: String,
+        parameters: List<Any?>?,
+        mapper: (SqlCursor) -> RowType,
+    ): List<RowType>
+
+    public actual suspend fun <RowType : Any> getAsync(
+        sql: String,
+        parameters: List<Any?>?,
+        mapper: (SqlCursor) -> RowType,
+    ): RowType
+
+    @Throws(PowerSyncException::class)
+    public fun execute(
         sql: String,
         parameters: List<Any?>? = listOf(),
     ): Long
 
-    public suspend fun <RowType : Any> getOptionalAsync(
+    @Throws(PowerSyncException::class)
+    public fun <RowType : Any> getOptional(
         sql: String,
         parameters: List<Any?>? = listOf(),
         mapper: (SqlCursor) -> RowType,
     ): RowType?
 
-    public suspend fun <RowType : Any> getAllAsync(
+    @Throws(PowerSyncException::class)
+    public fun <RowType : Any> getAll(
         sql: String,
         parameters: List<Any?>? = listOf(),
         mapper: (SqlCursor) -> RowType,
     ): List<RowType>
 
-    public suspend fun <RowType : Any> getAsync(
+    @Throws(PowerSyncException::class)
+    public fun <RowType : Any> get(
         sql: String,
         parameters: List<Any?>? = listOf(),
         mapper: (SqlCursor) -> RowType,
     ): RowType
 }
 
-internal expect fun SQLiteConnectionLease.asContext(): ConnectionContext
+internal actual fun SQLiteConnectionLease.asContext(): ConnectionContext = LeaseContext(this)
 
-internal abstract class BaseConnectionContextImplementation(
-    protected val rawConnection: SQLiteConnectionLease,
-) : ConnectionContext {
-    override suspend fun executeAsync(
+private class LeaseContext(
+    rawConnection: SQLiteConnectionLease,
+) : BaseConnectionContextImplementation(rawConnection) {
+    override fun execute(
         sql: String,
         parameters: List<Any?>?,
     ): Long {
@@ -55,7 +80,7 @@ internal abstract class BaseConnectionContextImplementation(
         }
     }
 
-    override suspend fun <RowType : Any> getOptionalAsync(
+    override fun <RowType : Any> getOptional(
         sql: String,
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType,
@@ -68,7 +93,7 @@ internal abstract class BaseConnectionContextImplementation(
             }
         }
 
-    override suspend fun <RowType : Any> getAllAsync(
+    override fun <RowType : Any> getAll(
         sql: String,
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType,
@@ -82,59 +107,23 @@ internal abstract class BaseConnectionContextImplementation(
             }
         }
 
-    override suspend fun <RowType : Any> getAsync(
+    override fun <RowType : Any> get(
         sql: String,
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType,
     ): RowType =
-        getOptionalAsync(sql, parameters, mapper) ?: throw PowerSyncException("get() called with query that returned no rows", null)
+        getOptional(sql, parameters, mapper) ?: throw PowerSyncException(
+            "get() called with query that returned no rows",
+            null,
+        )
 
-    private suspend inline fun <T> withStatement(
+    private inline fun <T> withStatement(
         sql: String,
         parameters: List<Any?>?,
-        crossinline block: suspend (SQLiteStatement) -> T,
+        crossinline block: (SQLiteStatement) -> T,
     ): T =
-        rawConnection.usePreparedAsync(sql) { stmt ->
+        rawConnection.usePreparedSync(sql) { stmt ->
             stmt.bind(parameters)
             block(stmt)
         }
-}
-
-internal fun SQLiteStatement.bind(parameters: List<Any?>?) {
-    parameters?.forEachIndexed { i, parameter ->
-        // SQLite parameters are 1-indexed
-        val index = i + 1
-
-        when (parameter) {
-            is Boolean -> {
-                bindBoolean(index, parameter)
-            }
-
-            is String -> {
-                bindText(index, parameter)
-            }
-
-            is Long -> {
-                bindLong(index, parameter)
-            }
-
-            is Int -> {
-                bindLong(index, parameter.toLong())
-            }
-
-            is Double -> {
-                bindDouble(index, parameter)
-            }
-
-            is ByteArray -> {
-                bindBlob(index, parameter)
-            }
-
-            else -> {
-                if (parameter != null) {
-                    throw IllegalArgumentException("Unsupported parameter type: ${parameter::class}, at index $index")
-                }
-            }
-        }
-    }
 }

@@ -2,9 +2,8 @@ package com.powersync.attachments.storage
 
 import com.powersync.attachments.LocalStorage
 import com.powersync.db.runWrapped
+import com.powersync.internal.ioCoroutineContext
 import io.ktor.utils.io.core.remaining
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
@@ -27,7 +26,7 @@ public open class IOLocalStorageAdapter(
         data: Flow<ByteArray>,
     ): Long =
         runWrapped {
-            withContext(Dispatchers.IO) {
+            withContext(ioCoroutineContext) {
                 var totalSize = 0L
                 fileSystem.sink(Path(filePath)).use { sink ->
                     // Copy to a buffer in order to write
@@ -62,32 +61,32 @@ public open class IOLocalStorageAdapter(
                     } while (remaining > 0)
                 }
             }
-        }.flowOn(Dispatchers.IO)
+        }.flowOn(ioCoroutineContext)
 
     public override suspend fun deleteFile(filePath: String): Unit =
         runWrapped {
-            withContext(Dispatchers.IO) {
+            withContext(ioCoroutineContext) {
                 fileSystem.delete(Path(filePath))
             }
         }
 
     public override suspend fun fileExists(filePath: String): Boolean =
         runWrapped {
-            withContext(Dispatchers.IO) {
+            withContext(ioCoroutineContext) {
                 fileSystem.exists(Path(filePath))
             }
         }
 
     public override suspend fun makeDir(path: String): Unit =
         runWrapped {
-            withContext(Dispatchers.IO) {
+            withContext(ioCoroutineContext) {
                 fileSystem.createDirectories(Path(path))
             }
         }
 
     public override suspend fun rmDir(path: String): Unit =
         runWrapped {
-            withContext(Dispatchers.IO) {
+            withContext(ioCoroutineContext) {
                 for (item in fileSystem.list(Path(path))) {
                     // Can't delete directories with files in them. Need to go down the file tree
                     // and clear the directory.
@@ -106,7 +105,7 @@ public open class IOLocalStorageAdapter(
         targetPath: String,
     ): Unit =
         runWrapped {
-            withContext(Dispatchers.IO) {
+            withContext(ioCoroutineContext) {
                 fileSystem.source(Path(sourcePath)).use { source ->
                     fileSystem.sink(Path(targetPath)).use { sink ->
                         source.buffered().transferTo(sink.buffered())

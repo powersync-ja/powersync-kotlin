@@ -23,8 +23,8 @@ internal class StreamTracker(
     val currentlyReferencedStreams = MutableStateFlow(listOf<SubscriptionGroup>())
 
     suspend fun subscriptionsCommand(command: RustSubscriptionChangeRequest) {
-        db.writeTransaction { tx ->
-            tx.execute("SELECT powersync_control(?,?)", listOf("subscriptions", jsonDontEncodeDefaults.encodeToString(command)))
+        db.writeTransactionAsync { tx ->
+            tx.executeAsync("SELECT powersync_control(?,?)", listOf("subscriptions", jsonDontEncodeDefaults.encodeToString(command)))
         }
         db.resolveOfflineSyncStatusIfNotConnected()
     }

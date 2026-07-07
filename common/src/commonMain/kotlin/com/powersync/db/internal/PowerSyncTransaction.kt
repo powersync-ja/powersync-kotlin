@@ -7,60 +7,61 @@ import com.powersync.db.driver.SQLiteConnectionLease
 
 public interface PowerSyncTransaction : ConnectionContext
 
-@ExperimentalPowerSyncAPI
-internal class PowerSyncTransactionImpl(
-    private val lease: SQLiteConnectionLease,
+internal abstract class BasePowerSyncTransactionImpl(
+    protected val lease: SQLiteConnectionLease,
 ) : PowerSyncTransaction,
     ConnectionContext {
-    private val delegate = ConnectionContextImplementation(lease)
+    protected val delegate = lease.asContext()
 
-    private fun checkInTransaction() {
-        if (!lease.isInTransactionSync()) {
+    private suspend fun checkInTransaction() {
+        if (!lease.isInTransaction()) {
             throw PowerSyncException("Tried executing statement on a transaction that has been rolled back", cause = null)
         }
     }
 
-    override fun execute(
+    override suspend fun executeAsync(
         sql: String,
         parameters: List<Any?>?,
     ): Long {
         checkInTransaction()
-        return delegate.execute(sql, parameters)
+        return delegate.executeAsync(sql, parameters)
     }
 
-    override fun <RowType : Any> getOptional(
+    override suspend fun <RowType : Any> getOptionalAsync(
         sql: String,
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType,
     ): RowType? {
         checkInTransaction()
-        return delegate.getOptional(sql, parameters, mapper)
+        return delegate.getOptionalAsync(sql, parameters, mapper)
     }
 
-    override fun <RowType : Any> getAll(
+    override suspend fun <RowType : Any> getAllAsync(
         sql: String,
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType,
     ): List<RowType> {
         checkInTransaction()
-        return delegate.getAll(sql, parameters, mapper)
+        return delegate.getAllAsync(sql, parameters, mapper)
     }
 
-    override fun <RowType : Any> get(
+    override suspend fun <RowType : Any> getAsync(
         sql: String,
         parameters: List<Any?>?,
         mapper: (SqlCursor) -> RowType,
     ): RowType {
         checkInTransaction()
-        return delegate.get(sql, parameters, mapper)
+        return delegate.getAsync(sql, parameters, mapper)
     }
 }
 
-@ExperimentalPowerSyncAPI
+internal expect fun createTransactionImpl(original: SQLiteConnectionLease): PowerSyncTransaction
+
+@OptIn(ExperimentalPowerSyncAPI::class)
 internal suspend fun <T> SQLiteConnectionLease.runTransaction(cb: suspend (PowerSyncTransaction) -> T): T {
     execSQL("BEGIN")
     return try {
-        val result = cb(PowerSyncTransactionImpl(this))
+        val result = cb(createTransactionImpl(this))
 
         check(isInTransaction())
         execSQL("COMMIT")

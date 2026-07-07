@@ -6,7 +6,9 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.plugins.ExtensionAware
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 
+@OptIn(ExperimentalWasmDsl::class)
 public fun KotlinMultiplatformExtension.powersyncTargets(
     native: Boolean = true,
     jvm: Boolean = true,
@@ -14,6 +16,7 @@ public fun KotlinMultiplatformExtension.powersyncTargets(
     includeTargetsWithoutComposeSupport: Boolean = true,
     watchOS: Boolean = true,
     legacyJavaSupport: Boolean = true,
+    web: Boolean = false,
 ) {
     if (jvm) {
         android?.let { configureAndroid ->
@@ -62,6 +65,16 @@ public fun KotlinMultiplatformExtension.powersyncTargets(
 
                 watchosSimulatorArm64() // aarch64-apple-watchos-simulator
             }
+        }
+    }
+
+    if (web) {
+        js {
+            browser()
+        }
+
+        wasmJs {
+            browser()
         }
     }
 }
