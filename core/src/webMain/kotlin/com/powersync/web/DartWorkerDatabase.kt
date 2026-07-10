@@ -140,9 +140,14 @@ private class VirtualWorkerStatement(
         parameters[index - 1] = value.toJsNumber()
     }
 
+    override fun bindInt(index: Int, value: Int) {
+        ensureParameterCapacity(index)
+        parameters[index - 1] = bigInt(value.toJsNumber())
+    }
+
     override fun bindLong(index: Int, value: Long) {
         ensureParameterCapacity(index)
-        parameters[index - 1] = value.toJsBigInt()
+        parameters[index - 1] = value.toSuitableJavaScriptRepresentation()
     }
 
     override fun bindText(index: Int, value: String) {
@@ -171,6 +176,10 @@ private class VirtualWorkerStatement(
 
     override fun getLong(index: Int): Long {
         return bigInt(rawValue(index)).toLong()
+    }
+
+    override fun getInt(index: Int): Int {
+        return number(rawValue(index)).toInt()
     }
 
     override fun getText(index: Int): String {

@@ -26,7 +26,7 @@ stately = "2.1.0"
 supabase = "3.6.0"
 junit = "4.13.2"
 
-compose = "1.11.0" # This is for the multiplatform compose
+compose = "1.11.1" # This is for the multiplatform compose
 androidCompose = "2026.05.01"
 compose-preview = "1.11.2"
 compose-lifecycle = "2.10.0"
