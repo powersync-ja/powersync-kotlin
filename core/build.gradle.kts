@@ -88,9 +88,11 @@ kotlin {
 
         webMain {
             dependencies {
+                api(libs.androidx.sqlite.sqlite)
+
                 implementation(libs.ktor.client.js)
-               //implementation(npm("sqlite3-web", "0.2.0"))
-                implementation(npm(file("/Users/simon/src/sqlite3.dart/sqlite3_web/extra/js-package")))
+                implementation(npm("sqlite3-web", "0.2.4"))
+                implementation(npm(file("/Users/simon/src/powersync.dart/packages/js-assets")))
             }
         }
 

@@ -71,6 +71,7 @@ public fun KotlinMultiplatformExtension.powersyncTargets(
     if (web) {
         js {
             browser()
+            useEsModules()
         }
 
         wasmJs {
