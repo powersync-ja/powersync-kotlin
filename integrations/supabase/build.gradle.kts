@@ -15,7 +15,7 @@ kotlin {
     // The Supabase KMP project does not support arm64 watchOS builds
     powersyncTargets(watchOS = false, android = {
         namespace = "com.powersync.connector.supabase"
-    })
+    }, web = true)
 
     targets.withType<KotlinNativeTarget> {
         compilations.named("main") {
@@ -35,6 +35,20 @@ kotlin {
             implementation(libs.supabase.client)
             api(libs.supabase.auth)
             api(libs.supabase.storage)
+        }
+
+        val commonNonWebMain by creating {
+            dependsOn(commonMain.get())
+        }
+
+        jvmMain {
+            dependsOn(commonNonWebMain)
+        }
+        androidMain {
+            dependsOn(commonNonWebMain)
+        }
+        nativeMain {
+            dependsOn(commonNonWebMain)
         }
 
         val commonIntegrationTest by creating {

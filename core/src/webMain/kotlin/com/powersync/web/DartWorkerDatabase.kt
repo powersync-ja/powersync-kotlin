@@ -181,7 +181,7 @@ private class VirtualWorkerStatement(
     }
 
     override fun getLong(index: Int): Long {
-        return bigInt(rawValue(index)).toLong()
+        return bigInt(rawValue(index)).interpretAsLong()
     }
 
     override fun getInt(index: Int): Int {
@@ -261,7 +261,7 @@ private fun newUint8Array(length: JsNumber): JsArray<JsNumber> = js("new Uint8Ar
 
 private fun string(content: JsAny?): JsString = js("String(content)")
 
-private fun bigInt(content: JsAny?): JsBigInt = js("BigInt(content)")
+internal fun bigInt(content: JsAny?): JsBigInt = js("BigInt(content)")
 
 private fun number(content: JsAny?): JsNumber = js("Number(content)")
 
@@ -271,7 +271,7 @@ private fun columnType(content: JsAny?): JsNumber = js("""{
   const type = typeof content;
   switch (type) {
     case "bigint": return 1;
-    case "number": return 2;
+    case "number": return Number.isSafeInteger(content) ? 1 : 2;
     case "string": return 3;
     default: return 4;
   }

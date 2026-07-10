@@ -1,4 +1,5 @@
 import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
@@ -37,6 +38,9 @@ kotlin {
     jvm()
     iosArm64()
     iosSimulatorArm64()
+    js { browser() }
+    @OptIn(ExperimentalWasmDsl::class)
+    wasmJs { browser() }
 
     sourceSets {
         commonMain.dependencies {

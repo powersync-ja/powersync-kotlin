@@ -1,3 +1,0 @@
-- Web app:
-    - Wasm target (faster, modern browsers): `./gradlew :demos:web-minimal:wasmJsBrowserDevelopmentRun`
-    - JS target (slower, supports older browsers): `./gradlew :demos:web-minimal:jsBrowserDevelopmentRun --continuous`

@@ -8,13 +8,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import com.powersync.PersistentConnectionFactory
 import com.powersync.PowerSyncDatabase
 import com.powersync.compose.composeState
 import com.powersync.connector.supabase.SupabaseConnector
 import com.powersync.connectors.PowerSyncBackendConnector
+import com.powersync.db.schema.Schema
 import com.powersync.demos.components.EditDialog
 import com.powersync.demos.powersync.ListContent
 import com.powersync.demos.powersync.ListItem
@@ -24,7 +25,7 @@ import com.powersync.demos.screens.HomeScreen
 import com.powersync.demos.screens.SignInScreen
 import com.powersync.demos.screens.SignUpScreen
 import com.powersync.demos.screens.TodosScreen
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 import org.koin.compose.KoinApplication
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -37,7 +38,6 @@ import org.koin.dsl.module
 val sharedAppModule = module {
     // This is overridden by the androidBackgroundSync example
     single { AuthOptions(connectFromViewModel = true) }
-    single { PowerSyncDatabase(get(), schema) }
     single {
         SupabaseConnector(
             powerSyncEndpoint = Config.POWERSYNC_URL,
@@ -52,11 +52,11 @@ val sharedAppModule = module {
 
 @Composable
 fun App(
-    factory: PersistentConnectionFactory,
+    openPowerSync: (Schema) -> PowerSyncDatabase,
     modifier: Modifier = Modifier,
 ) {
     fun KoinApplication.withDatabase() {
-        modules(module { single { factory } }, sharedAppModule)
+        modules(module { single { openPowerSync(schema) } }, sharedAppModule)
     }
 
     KoinApplication(application = KoinApplication::withDatabase) {
@@ -71,6 +71,7 @@ fun AppContent(
 ) {
 
     val status by db.currentStatus.composeState()
+    val coroutineScope = rememberCoroutineScope()
 
     val authViewModel = koinViewModel<AuthViewModel>()
     val navController = koinInject<NavController>()
@@ -96,7 +97,7 @@ fun AppContent(
     val todosInputText by todos.value.inputText.collectAsState()
 
     fun handleSignOut() {
-        runBlocking {
+        coroutineScope.launch {
             authViewModel.signOut()
         }
     }

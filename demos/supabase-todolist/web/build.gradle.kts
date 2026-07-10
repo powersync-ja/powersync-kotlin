@@ -21,10 +21,8 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(projects.core)
-
+            implementation(projects.demos.supabaseTodolist.shared)
             implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.material)
             implementation(compose.ui)
         }
     }

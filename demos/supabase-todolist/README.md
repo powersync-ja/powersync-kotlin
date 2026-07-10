@@ -69,3 +69,11 @@ For Android, this demo contains two Android apps:
   that it uses a foreground service managing the synchronization process. The service is started
   in the main activity and keeps running even after the app is closed.
   For more notes on background sync, see [this document](docs/BackgroundSync.md).
+
+### Web support
+
+Please note that web support is experimental. To run this demo on the web, use one of the following
+run configurations:
+
+- Wasm target (faster, modern browsers): `./gradlew :demos:supabase-todolist:web:wasmJsBrowserDevelopmentRun`
+- JS target (slower, supports older browsers): `./gradlew :demos:supabase-todolist:web:jsBrowserDevelopmentRun --continuous`

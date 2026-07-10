@@ -30,6 +30,7 @@ class WebDatabaseTests {
                 stmt.isNull(0) shouldBe true
                 stmt.getText(1) shouldBe "Hello from Kotlin"
                 stmt.getInt(2) shouldBe 123
+                stmt.getLong(2) shouldBe 123L
                 stmt.getDouble(3) shouldBe 1.23
 
                 stmt.step() shouldBe false

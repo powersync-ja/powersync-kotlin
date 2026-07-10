@@ -2,13 +2,18 @@
 
 package com.powersync.web
 
+import com.powersync.db.driver.SQLiteConnectionLease
 import com.powersync.db.driver.SQLiteConnectionPool
 import com.powersync.internal.InternalPowerSyncAPI
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.await
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.promise
 import kotlin.js.ExperimentalWasmJsInterop
 import kotlin.js.JsAny
@@ -88,6 +93,41 @@ public class WebConnectionFactory internal constructor(
         val results = sqlite.runFeatureDetection(featureDetectionOptions(databaseName)).await()
         val implementation = pickImplementation(results)
         return open(databaseName, implementation)
+    }
+
+    public fun openPool(openInner: suspend WebConnectionFactory.() -> SQLiteConnectionPool): SQLiteConnectionPool {
+        val asyncPool = coroutineScope.async { openInner() }
+        val updates = MutableSharedFlow<Set<String>>()
+
+        val forwardUpdates = coroutineScope.launch {
+            val pool = asyncPool.await()
+            updates.emitAll(pool.updates)
+        }
+
+        return object : SQLiteConnectionPool {
+            override suspend fun <T> read(callback: suspend (SQLiteConnectionLease) -> T): T {
+                val pool = asyncPool.await()
+                return pool.read(callback)
+            }
+
+            override suspend fun <T> write(callback: suspend (SQLiteConnectionLease) -> T): T {
+                val pool = asyncPool.await()
+                return pool.write(callback)
+            }
+
+            override suspend fun <R> withAllConnections(action: suspend (writer: SQLiteConnectionLease, readers: List<SQLiteConnectionLease>) -> R) {
+                val pool = asyncPool.await()
+                return pool.withAllConnections(action)
+            }
+
+            override val updates: SharedFlow<Set<String>>
+                get() = updates
+
+            override suspend fun close() {
+                asyncPool.await().close()
+                forwardUpdates.cancel()
+            }
+        }
     }
 
     internal fun markClosed(db: WorkerConnectionPool) {

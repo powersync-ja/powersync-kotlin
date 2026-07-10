@@ -12,3 +12,5 @@ import kotlin.js.JsAny
  * that's impossible.
  */
 internal expect fun Long.toSuitableJavaScriptRepresentation(): JsAny
+
+internal expect fun JsAny.interpretAsLong(): Long

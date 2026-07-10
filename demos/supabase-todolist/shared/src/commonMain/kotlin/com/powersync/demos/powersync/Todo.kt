@@ -33,7 +33,7 @@ internal class Todo(
                 WHERE list_id = ?
                 ORDER by id
             """,
-        if(listId != null) listOf(listId) else null
+        listOf(listId)
         ) { cursor ->
             TodoItem(
                 id = cursor.getString("id"),
@@ -65,8 +65,8 @@ internal class Todo(
 
     fun onItemDeleteClicked(item: TodoItem) {
         viewModelScope.launch {
-            db.writeTransaction { tx ->
-                tx.execute("DELETE FROM $TODOS_TABLE WHERE id = ?", listOf(item.id))
+            db.writeTransactionAsync { tx ->
+                tx.executeAsync("DELETE FROM $TODOS_TABLE WHERE id = ?", listOf(item.id))
             }
         }
     }
@@ -79,8 +79,8 @@ internal class Todo(
         }
 
         viewModelScope.launch {
-            db.writeTransaction { tx ->
-                tx.execute(
+            db.writeTransactionAsync { tx ->
+                tx.executeAsync(
                     "INSERT INTO $TODOS_TABLE (id, created_at, created_by, description, list_id) VALUES (uuid(), datetime(), ?, ?, ?)",
                     listOf(userId, _inputText.value, listId)
                 )
@@ -122,8 +122,8 @@ internal class Todo(
         viewModelScope.launch {
             val updatedItem = transformer(item)
             Logger.i("Updating item: $updatedItem")
-            db.writeTransaction { tx ->
-                tx.execute(
+            db.writeTransactionAsync { tx ->
+                tx.executeAsync(
                     "UPDATE $TODOS_TABLE SET description = ?, completed = ?, completed_by = ?, completed_at = ? WHERE id = ?",
                     listOf(updatedItem.description, updatedItem.completed, updatedItem.completedBy, updatedItem.completedAt, item.id)
                 )
