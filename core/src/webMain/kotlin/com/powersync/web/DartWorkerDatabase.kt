@@ -1,15 +1,17 @@
-@file:OptIn(ExperimentalWasmJsInterop::class)
+@file:OptIn(ExperimentalWasmJsInterop::class, InternalPowerSyncAPI::class)
 
 package com.powersync.web
 
 import androidx.sqlite.SQLiteStatement
 import com.powersync.db.driver.SQLiteConnectionLease
 import com.powersync.db.driver.SQLiteConnectionPool
+import com.powersync.internal.InternalPowerSyncAPI
 
 import kotlinx.coroutines.await
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.promise
 import kotlin.js.ExperimentalWasmJsInterop
 import kotlin.js.JsAny
@@ -34,9 +36,15 @@ import kotlin.js.toList
 import kotlin.js.toLong
 
 internal class WorkerConnectionPool(
+    private val factory: WebConnectionFactory,
+    internal var streamUpdatesId: String,
     private val db: Database
 ): SQLiteConnectionPool {
-    private val _updates = MutableSharedFlow<Set<String>>()
+
+    internal val updatesController = MutableSharedFlow<Set<String>>()
+
+    override val updates: SharedFlow<Set<String>>
+        get() = updatesController.asSharedFlow()
 
     private suspend fun <T> lock(callback: suspend (SQLiteConnectionLease) -> T): T {
         return coroutineScope {
@@ -65,10 +73,8 @@ internal class WorkerConnectionPool(
         lock { action(it, emptyList()) }
     }
 
-    override val updates: SharedFlow<Set<String>>
-        get() = _updates
-
     override suspend fun close() {
+        factory.markClosed(this)
         db.close().await()
     }
 
@@ -240,7 +246,7 @@ private class CopiedResultSet(val columnNames: List<String>, val rows: Iterator<
         fun fromRaw(raw: ResultSet): CopiedResultSet {
             val numColumns = raw.columnNames.length
             val columnNames = buildList(numColumns) {
-                for (i in 0..numColumns) {
+                for (i in 0..< numColumns) {
                     add(raw.columnNames[i].toString())
                 }
             }

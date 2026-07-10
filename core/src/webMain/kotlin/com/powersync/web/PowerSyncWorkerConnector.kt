@@ -1,6 +1,7 @@
-@file:OptIn(ExperimentalWasmJsInterop::class)
+@file:OptIn(ExperimentalWasmJsInterop::class, InternalPowerSyncAPI::class)
 package com.powersync.web
 
+import com.powersync.internal.InternalPowerSyncAPI
 import kotlin.js.ExperimentalWasmJsInterop
 import kotlin.js.JsAny
 import kotlin.js.JsBoolean

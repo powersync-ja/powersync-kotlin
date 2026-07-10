@@ -2,6 +2,7 @@
 @file:OptIn(ExperimentalWasmJsInterop::class)
 package com.powersync.web
 
+import com.powersync.internal.InternalPowerSyncAPI
 import kotlin.js.ExperimentalWasmJsInterop
 import kotlin.js.JsAny
 import kotlin.js.JsArray
@@ -11,30 +12,36 @@ import kotlin.js.JsNumber
 import kotlin.js.JsString
 import kotlin.js.Promise
 
+@InternalPowerSyncAPI
 public external interface WorkerHandle: JsAny {
     public val targetForErrorEvents: JsAny
     public fun postMessage(msg: JsAny, transfer: JsArray<JsAny>)
 }
 
+@InternalPowerSyncAPI
 public external interface WorkerConnector: JsAny {
     public fun spawnDedicatedWorker(): WorkerHandle?
     public fun spawnSharedWorker(): WorkerHandle?
 }
 
+@InternalPowerSyncAPI
 public external interface ClientInitializationOptions: JsAny {
     public val workers: WorkerConnector
     public val wasmUri: String
     public var handleCustomRequest: ((JsAny?) -> Promise<JsAny?>)?
 }
 
+@InternalPowerSyncAPI
 public external interface RunFeatureDetectionOptions: JsAny {
     public val databaseName: String
 }
 
+@InternalPowerSyncAPI
 public external interface ConnectOptions: JsAny {
     // TODO: Expose prepared statements cache size (other options aren't used here)
 }
 
+@InternalPowerSyncAPI
 public external interface WebSqlite: JsAny {
     public fun deleteDatabase(name: String, storage: String): Promise<JsAny>
     public fun runFeatureDetection(options: RunFeatureDetectionOptions): Promise<RawFeatureDetectionResult>
@@ -43,6 +50,7 @@ public external interface WebSqlite: JsAny {
     public fun close()
 }
 
+@InternalPowerSyncAPI
 public external interface DatabaseExecuteOptions {
     public val parameters: JsArray<JsAny?>
     public val checkInTransaction: JsBoolean
@@ -50,39 +58,47 @@ public external interface DatabaseExecuteOptions {
     public val abort: JsAny?
 }
 
+@InternalPowerSyncAPI
 public external interface BaseDatabaseResult: JsAny {
     public val autocommit: JsBoolean
     public val lastInsertRowId: JsNumber
 }
 
+@InternalPowerSyncAPI
 public external interface ResultSetDatabaseResult: BaseDatabaseResult {
     public val result: ResultSet
 }
 
+@InternalPowerSyncAPI
 public external interface ResultSet: JsAny {
     public val columnNames: JsArray<JsString>
     public val rows: JsArray<JsArray<JsAny?>>
 }
 
+@InternalPowerSyncAPI
 public external interface Database: JsAny {
     public fun execute(sql: JsString, options: DatabaseExecuteOptions): Promise<BaseDatabaseResult>
     public fun select(sql: JsString, options: DatabaseExecuteOptions): Promise<ResultSetDatabaseResult>
     public fun requestLock(body: (JsNumber) -> Promise<JsAny?>): Promise<JsAny?>
+    public fun customRequest(request: JsAny): Promise<JsAny?>
 
     public fun close(): Promise<JsAny>
 }
 
+@InternalPowerSyncAPI
 public external interface ConnectToRecommendedResult: JsAny {
     public val database: Database
     public val features: RawFeatureDetectionResult
     public val implementation: DatabaseImplementation
 }
 
+@InternalPowerSyncAPI
 public external interface RawExistingDatabase: JsAny {
     public val name: JsString
     public val storage: JsString
 }
 
+@InternalPowerSyncAPI
 public external interface RawFeatureDetectionResult: JsAny {
     public val missingFeatures: JsArray<JsString>
     public val existingDatabases: JsArray<RawExistingDatabase>
@@ -135,6 +151,8 @@ public external class DatabaseImplementation: JsAny {
     }
 }
 
+@InternalPowerSyncAPI
 public external fun defaultWorkerConnector(uri: String): WorkerConnector
 
+@InternalPowerSyncAPI
 public external fun openWebSqlite(options: ClientInitializationOptions): WebSqlite
