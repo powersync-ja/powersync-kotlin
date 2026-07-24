@@ -33,7 +33,7 @@ internal class TypedParameters {
      * An array buffer encoding parameter types.
      */
     fun takeTypes(): ArrayBuffer {
-        return types.toArrayBuffer(parameters.size)
+        return types.copyAsArrayBuffer(parameters.size)
     }
 
     fun clear() {
@@ -56,7 +56,7 @@ internal class TypedParameters {
 
     fun bindBlob(index: Int, value: ByteArray) {
         ensureParameterCapacity(index)
-        parameters[index - 1] = Uint8Array(value.toArrayBuffer())
+        parameters[index - 1] = Uint8Array(value.copyAsArrayBuffer())
         types[index - 1] = TypeCodes.BLOB
     }
 
@@ -106,19 +106,9 @@ internal fun decodeTyped(source: JsAny?, typeCode: Byte): Any? {
         TypeCodes.BIG_INTEGER -> source!!.bigIntToLong()
         TypeCodes.FLOAT -> source!!.unsafeCast<JsNumber>().toDouble()
         TypeCodes.TEXT -> source!!.unsafeCast<JsString>().toString()
-        TypeCodes.BLOB -> source!!.asByteArray()
+        TypeCodes.BLOB -> source!!.unsafeCast<Uint8Array>().asByteArray()
         else -> null
     }
-}
-
-private fun ByteArray.toArrayBuffer(length: Int = size): ArrayBuffer {
-    val buffer = ArrayBuffer(length)
-    val dataView = DataView(buffer)
-    forEachIndexed { index, b ->
-        if (index >= length) return@forEachIndexed
-        dataView.setInt8(index, b.toInt())
-    }
-    return buffer
 }
 
 /**

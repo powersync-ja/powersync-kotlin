@@ -2,6 +2,8 @@
 
 package com.powersync.web
 
+import com.powersync.internal.InternalPowerSyncAPI
+
 internal actual fun Long.toBigInt(): JsAny {
     throw UnsupportedOperationException("Binding long values larger than 32 bits is not supported on Kotlin/JS.")
 }
@@ -19,8 +21,15 @@ private fun bigIntShiftRight(a: JsAny, b: JsAny) = js("a >> b")
 
 private fun bigIntLowBits(bigInt: JsAny): JsNumber = js("Number(bigInt) | 0")
 
-internal actual fun JsAny.asByteArray(): ByteArray {
+@InternalPowerSyncAPI
+internal actual fun Uint8Array.asByteArray(): ByteArray {
     // Kotlin uses Int8Array as a byte array representation, so we just need to convert.
     val array = this
     return js("new Int8Array(array.buffer, array.byteOffset, array.byteLength)")
+}
+
+@InternalPowerSyncAPI
+internal actual fun ByteArray.copyAsArrayBuffer(length: Int): ArrayBuffer {
+    val source = this
+    return js("source.slice(0, length).buffer")
 }

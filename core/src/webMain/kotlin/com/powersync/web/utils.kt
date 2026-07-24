@@ -51,7 +51,23 @@ public external class Uint8Array: JsAny {
     public constructor(buffer: ArrayBuffer)
 }
 
-internal expect fun JsAny.asByteArray(): ByteArray
+/**
+ * Converts a JavaScript Uint8Array to a Kotlin byte array.
+ *
+ * This is a cheap cast on Kotlin/JS, on Kotlin/Wasm we have to copy.
+ */
+@InternalPowerSyncAPI
+internal expect fun Uint8Array.asByteArray(): ByteArray
+
+/**
+ * Converts a Kotlin byte array to a JavaScript array buffer.
+ *
+ * This always copies, but this is still much cheaper on Kotlin/JS because we can use
+ * JavaScript methods that boil down to a `memcpy`. For Kotlin/Wasm, this needs to copy
+ * byte-by-byte.
+ */
+@InternalPowerSyncAPI
+internal expect fun ByteArray.copyAsArrayBuffer(length: Int = size): ArrayBuffer
 
 /**
  * Awaits on a promise created by the `sqlite3_web` package.
