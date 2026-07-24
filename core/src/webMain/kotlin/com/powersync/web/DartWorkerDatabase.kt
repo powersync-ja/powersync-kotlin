@@ -189,7 +189,7 @@ private class VirtualWorkerStatement(
 
     override fun getInt(index: Int): Int = getLong(index).toInt()
 
-    override fun getText(index: Int): String = decodedValue(index) as String
+    override fun getText(index: Int): String = decodedValue(index).toString()
 
     override fun isNull(index: Int): Boolean = requireNotNull(resultSet).typeCode(index) == TypeCodes.NULL
 
