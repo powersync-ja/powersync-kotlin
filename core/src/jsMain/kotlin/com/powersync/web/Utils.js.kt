@@ -12,7 +12,7 @@ internal actual fun JsAny.bigIntToLong(): Long {
     // compose the long value.
     val high = bigIntLowBits(bigIntShiftRight(this, i32BigInt)).toLong()
     val low = bigIntLowBits(this).toLong()
-    return (high shr 32) or low
+    return (high shl 32) or (low and 0xFFFFFFFFL)
 }
 
 private val i32BigInt = bigInt(32.toJsNumber())

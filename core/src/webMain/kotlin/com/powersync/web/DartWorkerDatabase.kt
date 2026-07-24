@@ -137,7 +137,8 @@ internal class DartWorkerDatabase(
 }
 
 /**
- * A "pretend" statement implementation that will internally use a single select call to execute.
+ * A virtual statement implementation that will internally use a single select call to fetch
+ * results instead of invoking the worker once per call to [step].
  *
  * We might replace this with a proper statement implementation in the future, but that would
  * require worker changes.
@@ -151,37 +152,27 @@ private class VirtualWorkerStatement(
     override fun bindBlob(
         index: Int,
         value: ByteArray,
-    ) {
-        parameters.bindBlob(index, value)
-    }
+    ) = parameters.bindBlob(index, value)
 
     override fun bindDouble(
         index: Int,
         value: Double,
-    ) {
-        parameters.bindDouble(index, value)
-    }
+    ) = parameters.bindDouble(index, value)
 
     override fun bindInt(
         index: Int,
         value: Int,
-    ) {
-        parameters.bindInt(index, value)
-    }
+    ) = parameters.bindInt(index, value)
 
     override fun bindLong(
         index: Int,
         value: Long,
-    ) {
-        parameters.bindLong(index, value)
-    }
+    ) = parameters.bindLong(index, value)
 
     override fun bindText(
         index: Int,
         value: String,
-    ) {
-        parameters.bindText(index, value)
-    }
+    ) = parameters.bindText(index, value)
 
     override fun bindNull(index: Int) = parameters.bindNull(index)
 
@@ -251,8 +242,8 @@ private class CopiedResultSet(
     /**
      * A data view containing one byte per value in the result set.
      *
-     * This encodes the JavaScript encoding of SQLite types (an integer `3` and a double `3.0` would
-     * both encode to the same JavaScript number for example, this lets us keep them apart).
+     * This describes the JavaScript encoding of SQLite types (an integer `3` and a double `3.0`
+     * would both encode to the same JavaScript number for example, this lets us keep them apart).
      */
     val types: DataView,
 ) {

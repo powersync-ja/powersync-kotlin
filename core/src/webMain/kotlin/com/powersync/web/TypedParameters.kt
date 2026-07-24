@@ -46,7 +46,7 @@ internal class TypedParameters {
             }
         }
 
-        if (types.size < index - 1) {
+        if (types.size < index) {
             types = types.copyOf(maxOf(index, types.size * 2))
         }
     }

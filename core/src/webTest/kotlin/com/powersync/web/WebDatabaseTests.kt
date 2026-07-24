@@ -6,11 +6,8 @@ import io.kotest.assertions.failure
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
-import io.kotest.matchers.types.shouldBeSameInstanceAs
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.time.Duration.Companion.seconds
@@ -91,16 +88,42 @@ class WebDatabaseTests {
     @Test
     fun tableUpdates() =
         runTest {
-            val db = WebConnectionFactory(this).open("tableUpdates.db", DatabaseImplementation.inMemoryShared)
-            db.write { it.execSQL("CREATE TABLE users (name TEXT);") }
+            val factory = WebConnectionFactory(this)
+            val pool = factory.openPool { open("openPoolUpdates.db", DatabaseImplementation.inMemoryShared) }
+            pool.write { it.execSQL("CREATE TABLE users (name TEXT);") }
 
             turbineScope(timeout = 1.seconds) {
-                val updates = db.updates.testIn(this)
-                db.write { it.execSQL("INSERT INTO users (name) VALUES ('Web user')") }
+                val updates = pool.updates.testIn(this)
+                pool.write { it.execSQL("INSERT INTO users (name) VALUES ('Web user')") }
 
                 updates.awaitItem() shouldBe setOf("users")
                 updates.cancelAndIgnoreRemainingEvents()
             }
+
+            pool.close()
+        }
+
+    @Test
+    fun bindManyParameters() =
+        runTest {
+            val db = WebConnectionFactory(this).open("manyParameters.db", DatabaseImplementation.inMemoryShared)
+            db.read { context ->
+                val count = 40
+                val placeholders = List(count) { "?" }.joinToString(",")
+
+                context.usePreparedAsync("SELECT $placeholders") { stmt ->
+                    for (i in 1..count) {
+                        stmt.bindInt(i, i)
+                    }
+
+                    stmt.step() shouldBe true
+                    for (i in 1..count) {
+                        stmt.getInt(i - 1) shouldBe i
+                    }
+                    stmt.step() shouldBe false
+                }
+            }
+            db.close()
         }
 
     @Test

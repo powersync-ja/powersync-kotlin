@@ -1,3 +1,9 @@
+/*
+This file contains raw bindings to the sqlite3-web package: www.npmjs.com/package/sqlite3-web.
+
+Interfaces and external classes need to be declared public to avoid Kotlin mangling their names.
+All classes in here are conceptually internal though, and should not be used by users.
+ */
 @file:JsModule("sqlite3-web")
 @file:OptIn(ExperimentalWasmJsInterop::class)
 

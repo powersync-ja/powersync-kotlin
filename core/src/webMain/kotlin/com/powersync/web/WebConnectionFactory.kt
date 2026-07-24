@@ -160,12 +160,12 @@ public class WebConnectionFactory internal constructor(
      */
     public fun openPool(openInner: suspend WebConnectionFactory.() -> SQLiteConnectionPool): SQLiteConnectionPool {
         val asyncPool = coroutineScope.async { openInner() }
-        val updates = MutableSharedFlow<Set<String>>()
+        val updatesFlow = MutableSharedFlow<Set<String>>()
 
         val forwardUpdates =
             coroutineScope.launch {
                 val pool = asyncPool.await()
-                updates.emitAll(pool.updates)
+                updatesFlow.emitAll(pool.updates)
             }
 
         return object : SQLiteConnectionPool {
@@ -187,7 +187,7 @@ public class WebConnectionFactory internal constructor(
             }
 
             override val updates: SharedFlow<Set<String>>
-                get() = updates
+                get() = updatesFlow
 
             override suspend fun close() {
                 asyncPool.await().close()
