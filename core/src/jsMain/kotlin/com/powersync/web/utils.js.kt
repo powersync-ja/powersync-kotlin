@@ -2,22 +2,13 @@
 
 package com.powersync.web
 
-internal actual fun Long.toSuitableJavaScriptRepresentation(): JsAny {
-    val asInt = toInt()
-    if (this == asInt.toLong()) {
-        return asInt.toJsNumber()
-    }
-
+internal actual fun Long.toBigInt(): JsAny {
     throw UnsupportedOperationException("Binding long values larger than 32 bits is not supported on Kotlin/JS.")
 }
 
-internal actual fun JsAny.interpretAsLong(): Long {
-    if (this is JsNumber) {
-        return this.toLong()
-    }
-
-    // It's a big int, which we can't represent in Kotlin directly. Extract high and low i32 to
-    // compose long.
+internal actual fun JsAny.bigIntToLong(): Long {
+    // We can't represent big integers in Kotlin directly, extract high and low i32 values to
+    // compose the long value.
     val high = bigIntLowBits(bigIntShiftRight(this, i32BigInt)).toLong()
     val low = bigIntLowBits(this).toLong()
     return (high shr 32) or low
@@ -27,3 +18,9 @@ private val i32BigInt = bigInt(32.toJsNumber())
 private fun bigIntShiftRight(a: JsAny, b: JsAny) = js("a >> b")
 
 private fun bigIntLowBits(bigInt: JsAny): JsNumber = js("Number(bigInt) | 0")
+
+internal actual fun JsAny.asByteArray(): ByteArray {
+    // Kotlin uses Int8Array as a byte array representation, so we just need to convert.
+    val array = this
+    return js("new Int8Array(array.buffer, array.byteOffset, array.byteLength)")
+}

@@ -91,8 +91,8 @@ kotlin {
                 api(libs.androidx.sqlite.sqlite)
 
                 implementation(libs.ktor.client.js)
-                implementation(npm("sqlite3-web", "0.2.4"))
-                implementation(npm(file("/Users/simon/src/powersync.dart/packages/js-assets")))
+                implementation(npm("sqlite3-web", "^0.2.4"))
+                implementation(npm("@powersync/dart-wasm-bundles", "2.3.2"))
             }
         }
 

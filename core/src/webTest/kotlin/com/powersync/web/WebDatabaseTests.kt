@@ -2,6 +2,7 @@ package com.powersync.web
 
 import app.cash.turbine.turbineScope
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeSameInstanceAs
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.time.Duration.Companion.seconds
@@ -20,23 +21,61 @@ class WebDatabaseTests {
     fun bindValues() = runTest {
         val db = WebConnectionFactory(this).open("bindValues.db", DatabaseImplementation.inMemoryShared)
         db.read { context ->
-            context.usePreparedAsync("SELECT ?, ?, ?, ?") { stmt ->
-                stmt.bindNull(1)
-                stmt.bindText(2, "Hello from Kotlin")
-                stmt.bindInt(3, 123)
-                stmt.bindDouble(4, 1.23)
+            context.usePreparedAsync("SELECT typeof(?)") { stmt ->
+                suspend fun expectType(expectedType: String) {
+                    stmt.step() shouldBe true
+                    stmt.getText(0) shouldBe expectedType
+                    stmt.step() shouldBe false
+                    stmt.reset()
+                }
 
+                stmt.bindNull(1)
+                expectType("null")
+
+                stmt.bindText(1, "Hello from Kotlin")
+                expectType("text")
+
+                stmt.bindInt(1, 3)
+                expectType("integer")
+                stmt.bindLong(1, 3)
+                expectType("integer")
+
+                stmt.bindDouble(1, 3.0)
+                expectType("real")
+
+                stmt.bindBlob(1, byteArrayOf(1, 2, 3))
+                expectType("blob")
+            }
+        }
+        db.close()
+    }
+
+    @Test
+    fun readValues() = runTest {
+        val db = WebConnectionFactory(this).open("readValues.db", DatabaseImplementation.inMemoryShared)
+        db.read { context ->
+            context.usePreparedAsync("SELECT NULL, 'Hello from SQLite', 3, 3.0, x'1234'") { stmt ->
                 stmt.step() shouldBe true
+
                 stmt.isNull(0) shouldBe true
-                stmt.getText(1) shouldBe "Hello from Kotlin"
-                stmt.getInt(2) shouldBe 123
-                stmt.getLong(2) shouldBe 123L
-                stmt.getDouble(3) shouldBe 1.23
+                stmt.getColumnType(0) shouldBe 5 // SQLITE_NULL
+
+                stmt.isNull(1) shouldBe false
+                stmt.getColumnType(1) shouldBe 3 // SQLITE_TEXT
+                stmt.getText(1) shouldBe "Hello from SQLite"
+
+                stmt.getColumnType(2) shouldBe 1 // SQLITE_INTEGER
+                stmt.getInt(2) shouldBe 3
+
+                stmt.getColumnType(3) shouldBe 2 // SQLITE_FLOAT
+                stmt.getDouble(3) shouldBe 3.0
+
+                stmt.getColumnType(4) shouldBe 4 // SQLITE_BLOB
+                stmt.getBlob(4) shouldBe byteArrayOf(0x12, 0x34)
 
                 stmt.step() shouldBe false
             }
         }
-        db.close()
     }
 
     @Test

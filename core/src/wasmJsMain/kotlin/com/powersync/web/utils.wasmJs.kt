@@ -2,10 +2,22 @@
 
 package com.powersync.web
 
-internal actual fun Long.toSuitableJavaScriptRepresentation(): JsAny {
+import kotlin.js.length
+
+internal actual fun Long.toBigInt(): JsAny {
     return toJsBigInt()
 }
 
-internal actual fun JsAny.interpretAsLong(): Long {
+internal actual fun JsAny.bigIntToLong(): Long {
     return unsafeCast<JsBigInt>().toLong()
+}
+
+internal actual fun JsAny.asByteArray(): ByteArray {
+    val sourceArray = unsafeCast<JsArray<JsNumber>>()
+    val array = ByteArray(sourceArray.length)
+    for (i in 0..<sourceArray.length) {
+        array[i] = sourceArray[i]!!.toInt().toByte()
+    }
+
+    return array
 }

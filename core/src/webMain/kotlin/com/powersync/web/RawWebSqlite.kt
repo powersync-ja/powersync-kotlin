@@ -73,6 +73,7 @@ public external interface ResultSetDatabaseResult: BaseDatabaseResult {
 public external interface ResultSet: JsAny {
     public val columnNames: JsArray<JsString>
     public val rows: JsArray<JsArray<JsAny?>>
+    public val types: ArrayBuffer
 }
 
 @InternalPowerSyncAPI

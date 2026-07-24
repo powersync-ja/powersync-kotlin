@@ -89,7 +89,8 @@ internal class WorkerConnectionPool(
         ): R {
             val stmt = VirtualWorkerStatement { params ->
                 val result = db.select(sql.toJsString(), databaseExecuteOptions(
-                    params,
+                    params.takeParameters(),
+                    types = params.takeTypes(),
                     lockToken.toJsNumber(),
                     null,
                 )).await()
@@ -103,6 +104,7 @@ internal class WorkerConnectionPool(
         override suspend fun execSQL(sql: String) {
             val result = db.execute(sql.toJsString(), databaseExecuteOptions(
                 JsArray(),
+                types = ArrayBuffer(0),
                 lockToken.toJsNumber(),
                 null
             )).await()
@@ -118,81 +120,59 @@ internal class WorkerConnectionPool(
  * require worker changes.
  */
 private class VirtualWorkerStatement(
-    private val select: suspend (JsArray<JsAny?>) -> ResultSet
+    private val select: suspend (TypedParameters) -> ResultSet
 ): SQLiteStatement {
-    private val parameters = mutableListOf<JsAny?>()
+    private val parameters = TypedParameters()
     var resultSet: CopiedResultSet? = null
 
-    private fun ensureParameterCapacity(index: Int) {
-        check(index > 0) // 1-based index
-
-        if (parameters.size < index) {
-            repeat(index - parameters.size) {
-                parameters.add(null)
-            }
-        }
-    }
-
     override fun bindBlob(index: Int, value: ByteArray) {
-        ensureParameterCapacity(index)
-        val bytes = newUint8Array(value.size.toJsNumber())
-        value.forEachIndexed { i, byte -> bytes[i] = byte.toInt().toJsNumber() }
-
-        parameters[index - 1] = bytes
+        parameters.bindBlob(index, value)
     }
 
     override fun bindDouble(index: Int, value: Double) {
-        ensureParameterCapacity(index)
-        parameters[index - 1] = value.toJsNumber()
+        parameters.bindDouble(index, value)
     }
 
     override fun bindInt(index: Int, value: Int) {
-        ensureParameterCapacity(index)
-        parameters[index - 1] = bigInt(value.toJsNumber())
+        parameters.bindInt(index, value)
     }
 
     override fun bindLong(index: Int, value: Long) {
-        ensureParameterCapacity(index)
-        parameters[index - 1] = value.toSuitableJavaScriptRepresentation()
+        parameters.bindLong(index, value)
     }
 
     override fun bindText(index: Int, value: String) {
-        ensureParameterCapacity(index)
-        parameters[index - 1] = value.toJsString()
+        parameters.bindText(index, value)
     }
 
-    override fun bindNull(index: Int) {
-        ensureParameterCapacity(index)
-        parameters[index - 1] = null
-    }
+    override fun bindNull(index: Int) = parameters.bindNull(index)
 
-    private fun requireRow() = requireNotNull(requireNotNull(resultSet).currentRow)
-
-    private fun rawValue(index: Int): JsAny? {
-        return requireRow()[index]
+    private fun decodedValue(index: Int): Any? {
+        val resultSet = requireNotNull(resultSet)
+        return resultSet.kotlinValue(index)
     }
 
     override fun getBlob(index: Int): ByteArray {
-        TODO("Not yet implemented")
+        return decodedValue(index) as ByteArray
     }
 
     override fun getDouble(index: Int): Double {
-        return number(rawValue(index)).toDouble()
+        return decodedValue(index) as Double
     }
 
     override fun getLong(index: Int): Long {
-        return bigInt(rawValue(index)).interpretAsLong()
+        return decodedValue(index) as Long
     }
 
     override fun getInt(index: Int): Int {
-        return number(rawValue(index)).toInt()
+        return getLong(index).toInt()
     }
 
     override fun getText(index: Int): String {
-        return string(rawValue(index)).toString()
+        return decodedValue(index) as String
     }
 
-    override fun isNull(index: Int): Boolean = rawValue(index) == null
+    override fun isNull(index: Int): Boolean = requireNotNull(resultSet).typeCode(index) == TypeCodes.NULL
 
     override fun getColumnCount(): Int {
         return requireNotNull(resultSet).columnNames.size
@@ -203,7 +183,15 @@ private class VirtualWorkerStatement(
     }
 
     override fun getColumnType(index: Int): Int {
-        return columnType(rawValue(index)).toInt()
+        val transportType = requireNotNull(resultSet).typeCode(index)
+        // For values, see https://sqlite.org/c3ref/c_blob.html
+        return when (transportType) {
+            TypeCodes.INTEGER, TypeCodes.BIG_INTEGER -> 1
+            TypeCodes.FLOAT -> 2
+            TypeCodes.TEXT -> 3
+            TypeCodes.BLOB -> 4
+            else -> 5
+        }
     }
 
     override suspend fun step(): Boolean {
@@ -211,7 +199,7 @@ private class VirtualWorkerStatement(
             return rs.step()
         }
 
-        val rawResults = select(parameters.toJsArray())
+        val rawResults = select(parameters)
         val results = CopiedResultSet.fromRaw(rawResults)
         resultSet = results
         return results.step()
@@ -230,16 +218,34 @@ private class VirtualWorkerStatement(
     }
 }
 
-private class CopiedResultSet(val columnNames: List<String>, val rows: Iterator<JsArray<JsAny?>>) {
+private class CopiedResultSet(
+    val columnNames: List<String>,
+    val rows: Iterator<JsArray<JsAny?>>,
+    val types: DataView,
+) {
     var currentRow: JsArray<JsAny?>? = null
+    var typeOffset = 0
 
     fun step(): Boolean {
+        if (currentRow != null) {
+            typeOffset += columnNames.size
+        }
+
         if (rows.hasNext()) {
             currentRow = rows.next()
             return true
         }
 
         return false
+    }
+
+    fun typeCode(index: Int): Byte {
+        return types.getInt8(typeOffset + index).toByte()
+    }
+
+    fun kotlinValue(index: Int): Any? {
+        val row = requireNotNull(currentRow)
+        return decodeTyped(row[index], typeCode(index))
     }
 
     companion object {
@@ -252,33 +258,14 @@ private class CopiedResultSet(val columnNames: List<String>, val rows: Iterator<
             }
 
             val rows = raw.rows.toList().iterator()
-            return CopiedResultSet(columnNames, rows)
+            return CopiedResultSet(columnNames, rows, DataView(raw.types))
         }
     }
 }
 
-private fun newUint8Array(length: JsNumber): JsArray<JsNumber> = js("new Uint8Array(length)")
-
-private fun string(content: JsAny?): JsString = js("String(content)")
-
-internal fun bigInt(content: JsAny?): JsBigInt = js("BigInt(content)")
-
-private fun number(content: JsAny?): JsNumber = js("Number(content)")
-
-// For type codes, see https://sqlite.org/c3ref/c_blob.html
-private fun columnType(content: JsAny?): JsNumber = js("""{
-  if (content == null) return 5;
-  const type = typeof content;
-  switch (type) {
-    case "bigint": return 1;
-    case "number": return Number.isSafeInteger(content) ? 1 : 2;
-    case "string": return 3;
-    default: return 4;
-  }
-}""")
-
 private fun databaseExecuteOptions(
     parameters: JsArray<JsAny?>,
+    types: ArrayBuffer,
     token: JsNumber,
     abort: JsAny?
-): DatabaseExecuteOptions = js("""({ parameters: parameters, token: token, abort: abort })""")
+): DatabaseExecuteOptions = js("""({ parameters: parameters, types: types, token: token, abort: abort })""")

@@ -46,5 +46,5 @@ private fun workerConnector(
     spawnShared: () -> WorkerHandle?
 ): WorkerConnector = js("""({ spawnDedicatedWorker: spawnDedicated, spawnSharedWorker: spawnShared })""")
 
-internal fun dartWorkerUri(): String = js("""new URL("@powersync/dart-sdk-assets/worker.js", import.meta.url).href""")
-internal fun sqlite3WasmUri(): String = js("""new URL("@powersync/dart-sdk-assets/sqlite3.wasm", import.meta.url).href""")
+internal fun dartWorkerUri(): String = js("""new URL("@powersync/dart-wasm-bundles/worker.js", import.meta.url).href""")
+internal fun sqlite3WasmUri(): String = js("""new URL("@powersync/dart-wasm-bundles/sqlite3.wasm", import.meta.url).href""")
