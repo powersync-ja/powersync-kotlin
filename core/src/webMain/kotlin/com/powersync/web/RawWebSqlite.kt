@@ -2,6 +2,7 @@
 @file:OptIn(ExperimentalWasmJsInterop::class)
 package com.powersync.web
 
+import androidx.sqlite.SQLiteException
 import com.powersync.internal.InternalPowerSyncAPI
 import kotlin.js.ExperimentalWasmJsInterop
 import kotlin.js.JsAny
@@ -11,6 +12,7 @@ import kotlin.js.JsModule
 import kotlin.js.JsNumber
 import kotlin.js.JsString
 import kotlin.js.Promise
+import kotlin.js.toInt
 
 @InternalPowerSyncAPI
 public external interface WorkerHandle: JsAny {
@@ -80,7 +82,7 @@ public external interface ResultSet: JsAny {
 public external interface Database: JsAny {
     public fun execute(sql: JsString, options: DatabaseExecuteOptions): Promise<BaseDatabaseResult>
     public fun select(sql: JsString, options: DatabaseExecuteOptions): Promise<ResultSetDatabaseResult>
-    public fun requestLock(body: (JsNumber) -> Promise<JsAny?>): Promise<JsAny?>
+    public fun requestLock(body: (JsNumber) -> Promise<JsAny?>, options: JsAny): Promise<JsAny?>
     public fun customRequest(request: JsAny): Promise<JsAny?>
 
     public fun close(): Promise<JsAny>
@@ -150,6 +152,21 @@ public external class DatabaseImplementation: JsAny {
          */
         public val opfsShared: DatabaseImplementation
     }
+}
+
+@InternalPowerSyncAPI
+public external class RemoteError: JsAny {
+    public val cause: JsAny? /* DOMException | SqliteException */
+}
+
+@InternalPowerSyncAPI
+public external interface SqliteException: JsAny {
+    public val extendedResultCode: JsNumber
+    public val message: JsString?
+    public val explanation: JsString?
+    public val causingStatement: JsString?
+    public val operation: JsString?
+    public val offset: JsNumber?
 }
 
 @InternalPowerSyncAPI

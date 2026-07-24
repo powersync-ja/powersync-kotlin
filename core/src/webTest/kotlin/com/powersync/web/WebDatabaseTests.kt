@@ -1,8 +1,16 @@
 package com.powersync.web
 
+import androidx.sqlite.SQLiteException
 import app.cash.turbine.turbineScope
+import io.kotest.assertions.failure
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeSameInstanceAs
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.time.Duration.Companion.seconds
@@ -89,6 +97,30 @@ class WebDatabaseTests {
 
             updates.awaitItem() shouldBe setOf("users")
             updates.cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun throwsSqliteException() = runTest {
+        val db = WebConnectionFactory(this).open("exceptions.db", DatabaseImplementation.inMemoryShared)
+        val exception = shouldThrow<SQLiteException> {
+            db.read { it.execSQL("SELECT this is a syntax error") }
+        }
+
+        exception.toString() shouldContain "SqliteException(1): while executing, near \"error\": syntax error, SQL logic error (code 1)"
+    }
+
+    @Test
+    fun forwardsCancellations() = runTest {
+        val db = WebConnectionFactory(this).open("cancellations.db", DatabaseImplementation.inMemoryShared)
+
+        db.write {
+            val job = async {
+                db.write { failure("Should not grant a second write") }
+            }
+
+            job.cancel()
+            shouldThrow<CancellationException> { job.await() }
         }
     }
 }

@@ -7,8 +7,6 @@ import kotlin.js.JsAny
 import kotlin.js.JsArray
 import kotlin.js.JsNumber
 import kotlin.js.JsString
-import kotlin.js.get
-import kotlin.js.length
 import kotlin.js.toDouble
 import kotlin.js.toInt
 import kotlin.js.toJsArray

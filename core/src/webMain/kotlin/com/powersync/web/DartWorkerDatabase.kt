@@ -47,13 +47,13 @@ internal class WorkerConnectionPool(
         get() = updatesController.asSharedFlow()
 
     private suspend fun <T> lock(callback: suspend (SQLiteConnectionLease) -> T): T {
-        return coroutineScope {
-            val promise = db.requestLock { token ->
+        return withAbortSignal { signal ->
+            val promise = db.requestLock({ token ->
                 val id = token.toInt()
                 promise {
                     callback(Lease(id))?.toJsReference()
                 }
-            }
+            }, requestLockOptions(signal))
 
             val result = promise.await() as JsReference<*>
             @Suppress("UNCHECKED_CAST")
@@ -79,6 +79,11 @@ internal class WorkerConnectionPool(
     }
 
     private inner class Lease(val lockToken: Int): SQLiteConnectionLease {
+        /**
+         * Whether we're currently in a transaction.
+         *
+         * This can only be changed by statements, so we query its value after every statement.
+         */
         var inTransaction = false
 
         override suspend fun isInTransaction(): Boolean = inTransaction
@@ -88,12 +93,14 @@ internal class WorkerConnectionPool(
             block: suspend (SQLiteStatement) -> R
         ): R {
             val stmt = VirtualWorkerStatement { params ->
-                val result = db.select(sql.toJsString(), databaseExecuteOptions(
-                    params.takeParameters(),
-                    types = params.takeTypes(),
-                    lockToken.toJsNumber(),
-                    null,
-                )).await()
+                val result = withAbortSignal { signal ->
+                    db.select(sql.toJsString(), databaseExecuteOptions(
+                        params.takeParameters(),
+                        types = params.takeTypes(),
+                        token = lockToken.toJsNumber(),
+                        abort = signal,
+                    )).awaitSafe()
+                }
 
                 inTransaction = !result.autocommit.toBoolean()
                 result.result
@@ -102,12 +109,15 @@ internal class WorkerConnectionPool(
         }
 
         override suspend fun execSQL(sql: String) {
-            val result = db.execute(sql.toJsString(), databaseExecuteOptions(
-                JsArray(),
-                types = ArrayBuffer(0),
-                lockToken.toJsNumber(),
-                null
-            )).await()
+            val result = withAbortSignal { signal ->
+                db.execute(sql.toJsString(), databaseExecuteOptions(
+                    JsArray(),
+                    types = ArrayBuffer(0),
+                    token = lockToken.toJsNumber(),
+                    abort = signal
+                )).awaitSafe()
+            }
+
             inTransaction = !result.autocommit.toBoolean()
         }
     }
@@ -269,3 +279,5 @@ private fun databaseExecuteOptions(
     token: JsNumber,
     abort: JsAny?
 ): DatabaseExecuteOptions = js("""({ parameters: parameters, types: types, token: token, abort: abort })""")
+
+private fun requestLockOptions(abort: JsAny): JsAny = js("({ abort: abort })")

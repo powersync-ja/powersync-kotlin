@@ -80,17 +80,17 @@ public class WebConnectionFactory internal constructor(
     }
 
     public suspend fun open(databaseName: String): SQLiteConnectionPool {
-        val db = sqlite.connectToRecommended(databaseName, connectOptions()).await()
+        val db = sqlite.connectToRecommended(databaseName, connectOptions()).awaitSafe()
         return wrapDatabase(db.database)
     }
 
     public suspend fun open(databaseName: String, implementation: DatabaseImplementation): SQLiteConnectionPool {
-        val db = sqlite.connect(databaseName, implementation, connectOptions()).await()
+        val db = sqlite.connect(databaseName, implementation, connectOptions()).awaitSafe()
         return wrapDatabase(db)
     }
 
     public suspend fun open(databaseName: String, pickImplementation: (RawFeatureDetectionResult) -> DatabaseImplementation): SQLiteConnectionPool {
-        val results = sqlite.runFeatureDetection(featureDetectionOptions(databaseName)).await()
+        val results = sqlite.runFeatureDetection(featureDetectionOptions(databaseName)).awaitSafe()
         val implementation = pickImplementation(results)
         return open(databaseName, implementation)
     }
