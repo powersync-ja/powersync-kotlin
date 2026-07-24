@@ -1,5 +1,6 @@
 @file:JsModule("sqlite3-web")
 @file:OptIn(ExperimentalWasmJsInterop::class)
+
 package com.powersync.web
 
 import com.powersync.internal.InternalPowerSyncAPI
@@ -13,40 +14,59 @@ import kotlin.js.JsString
 import kotlin.js.Promise
 
 @InternalPowerSyncAPI
-public external interface WorkerHandle: JsAny {
+public external interface WorkerHandle : JsAny {
     public val targetForErrorEvents: JsAny
-    public fun postMessage(msg: JsAny, transfer: JsArray<JsAny>)
+
+    public fun postMessage(
+        msg: JsAny,
+        transfer: JsArray<JsAny>,
+    )
 }
 
 @InternalPowerSyncAPI
-public external interface WorkerConnector: JsAny {
+public external interface WorkerConnector : JsAny {
     public fun spawnDedicatedWorker(): WorkerHandle?
+
     public fun spawnSharedWorker(): WorkerHandle?
 }
 
 @InternalPowerSyncAPI
-public external interface ClientInitializationOptions: JsAny {
+public external interface ClientInitializationOptions : JsAny {
     public val workers: WorkerConnector
     public val wasmUri: String
     public var handleCustomRequest: ((JsAny?) -> Promise<JsAny?>)?
 }
 
 @InternalPowerSyncAPI
-public external interface RunFeatureDetectionOptions: JsAny {
+public external interface RunFeatureDetectionOptions : JsAny {
     public val databaseName: String
 }
 
 @InternalPowerSyncAPI
-public external interface ConnectOptions: JsAny {
+public external interface ConnectOptions : JsAny {
     // TODO: Expose prepared statements cache size (other options aren't used here)
 }
 
 @InternalPowerSyncAPI
-public external interface WebSqlite: JsAny {
-    public fun deleteDatabase(name: String, storage: String): Promise<JsAny>
+public external interface WebSqlite : JsAny {
+    public fun deleteDatabase(
+        name: String,
+        storage: String,
+    ): Promise<JsAny>
+
     public fun runFeatureDetection(options: RunFeatureDetectionOptions): Promise<RawFeatureDetectionResult>
-    public fun connect(name: String, implementation: DatabaseImplementation, options: ConnectOptions): Promise<Database>
-    public fun connectToRecommended(name: String, options: ConnectOptions): Promise<ConnectToRecommendedResult>
+
+    public fun connect(
+        name: String,
+        implementation: DatabaseImplementation,
+        options: ConnectOptions,
+    ): Promise<Database>
+
+    public fun connectToRecommended(
+        name: String,
+        options: ConnectOptions,
+    ): Promise<ConnectToRecommendedResult>
+
     public fun close()
 }
 
@@ -59,48 +79,60 @@ public external interface DatabaseExecuteOptions {
 }
 
 @InternalPowerSyncAPI
-public external interface BaseDatabaseResult: JsAny {
+public external interface BaseDatabaseResult : JsAny {
     public val autocommit: JsBoolean
     public val lastInsertRowId: JsNumber
 }
 
 @InternalPowerSyncAPI
-public external interface ResultSetDatabaseResult: BaseDatabaseResult {
+public external interface ResultSetDatabaseResult : BaseDatabaseResult {
     public val result: ResultSet
 }
 
 @InternalPowerSyncAPI
-public external interface ResultSet: JsAny {
+public external interface ResultSet : JsAny {
     public val columnNames: JsArray<JsString>
     public val rows: JsArray<JsArray<JsAny?>>
     public val types: ArrayBuffer
 }
 
 @InternalPowerSyncAPI
-public external interface Database: JsAny {
-    public fun execute(sql: JsString, options: DatabaseExecuteOptions): Promise<BaseDatabaseResult>
-    public fun select(sql: JsString, options: DatabaseExecuteOptions): Promise<ResultSetDatabaseResult>
-    public fun requestLock(body: (JsNumber) -> Promise<JsAny?>, options: JsAny): Promise<JsAny?>
+public external interface Database : JsAny {
+    public fun execute(
+        sql: JsString,
+        options: DatabaseExecuteOptions,
+    ): Promise<BaseDatabaseResult>
+
+    public fun select(
+        sql: JsString,
+        options: DatabaseExecuteOptions,
+    ): Promise<ResultSetDatabaseResult>
+
+    public fun requestLock(
+        body: (JsNumber) -> Promise<JsAny?>,
+        options: JsAny,
+    ): Promise<JsAny?>
+
     public fun customRequest(request: JsAny): Promise<JsAny?>
 
     public fun close(): Promise<JsAny>
 }
 
 @InternalPowerSyncAPI
-public external interface ConnectToRecommendedResult: JsAny {
+public external interface ConnectToRecommendedResult : JsAny {
     public val database: Database
     public val features: RawFeatureDetectionResult
     public val implementation: DatabaseImplementation
 }
 
 @InternalPowerSyncAPI
-public external interface RawExistingDatabase: JsAny {
+public external interface RawExistingDatabase : JsAny {
     public val name: JsString
     public val storage: JsString
 }
 
 @InternalPowerSyncAPI
-public external interface RawFeatureDetectionResult: JsAny {
+public external interface RawFeatureDetectionResult : JsAny {
     public val missingFeatures: JsArray<JsString>
     public val existingDatabases: JsArray<RawExistingDatabase>
     public val availableImplementations: JsArray<DatabaseImplementation>
@@ -113,7 +145,7 @@ public external interface RawFeatureDetectionResult: JsAny {
  * implementations are available. This library can automatically pick one after feature detection,
  * but it's also possible to open databases with a selected implementation.
  */
-public external class DatabaseImplementation private constructor(): JsAny {
+public external class DatabaseImplementation private constructor() : JsAny {
     /**
      * The storage implementation.
      *
@@ -135,10 +167,12 @@ public external class DatabaseImplementation private constructor(): JsAny {
          * This isn't all that useful as it provides no persistence, but it's convenient for testing.
          */
         public val inMemoryShared: DatabaseImplementation
+
         /**
          * Opens a SQLite database stored in IndexedDB in a shared worker.
          */
         public val indexedDbShared: DatabaseImplementation
+
         /**
          * Opens a synchronous database stored in OPFS.
          *
@@ -146,6 +180,7 @@ public external class DatabaseImplementation private constructor(): JsAny {
          * ensure two tabs don't access the same database concurrently.
          */
         public val opfsWithExternalLocks: DatabaseImplementation
+
         /**
          * Opens a synchronous database stored in OPFS.
          *
@@ -153,6 +188,7 @@ public external class DatabaseImplementation private constructor(): JsAny {
          * It works by opening file handles on most database accesses, which is substantially slower.
          */
         public val opfsWithExternalLocksWorkaround: DatabaseImplementation
+
         /**
          * Open a synchronous database stored in OPFS.
          *
@@ -164,12 +200,12 @@ public external class DatabaseImplementation private constructor(): JsAny {
 }
 
 @InternalPowerSyncAPI
-public external class RemoteError: JsAny {
-    public val cause: JsAny? /* DOMException | SqliteException */
+public external class RemoteError : JsAny {
+    public val cause: JsAny? // DOMException | SqliteException
 }
 
 @InternalPowerSyncAPI
-public external interface SqliteException: JsAny {
+public external interface SqliteException : JsAny {
     public val extendedResultCode: JsNumber
     public val message: JsString?
     public val explanation: JsString?

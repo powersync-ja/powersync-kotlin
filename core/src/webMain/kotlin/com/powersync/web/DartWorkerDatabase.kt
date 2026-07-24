@@ -6,9 +6,7 @@ import androidx.sqlite.SQLiteStatement
 import com.powersync.db.driver.SQLiteConnectionLease
 import com.powersync.db.driver.SQLiteConnectionPool
 import com.powersync.internal.InternalPowerSyncAPI
-
 import kotlinx.coroutines.await
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -16,24 +14,17 @@ import kotlinx.coroutines.promise
 import kotlin.js.ExperimentalWasmJsInterop
 import kotlin.js.JsAny
 import kotlin.js.JsArray
-import kotlin.js.JsBigInt
 import kotlin.js.JsNumber
 import kotlin.js.JsReference
-import kotlin.js.JsString
 import kotlin.js.get
 import kotlin.js.js
 import kotlin.js.length
-import kotlin.js.set
 import kotlin.js.toBoolean
-import kotlin.js.toDouble
 import kotlin.js.toInt
-import kotlin.js.toJsArray
-import kotlin.js.toJsBigInt
 import kotlin.js.toJsNumber
 import kotlin.js.toJsReference
 import kotlin.js.toJsString
 import kotlin.js.toList
-import kotlin.js.toLong
 
 /**
  * A worker "connection pool" implemented by a single connection to a worker hosting a SQLite
@@ -41,7 +32,7 @@ import kotlin.js.toLong
  *
  * In the future, we may want to scale this to multiple workers after the Dart SDK supports that.
  */
-internal class WorkerConnectionPool(
+internal class DartWorkerDatabase(
     private val factory: WebConnectionFactory,
     /**
      * An obtained id for table notifications that the worker sends to clients.
@@ -50,37 +41,35 @@ internal class WorkerConnectionPool(
     /**
      * The underlying database, managed by the `sqlite3_web` npm package.
      */
-    private val db: Database
-): SQLiteConnectionPool {
+    private val db: Database,
+) : SQLiteConnectionPool {
     internal val updatesController = MutableSharedFlow<Set<String>>()
 
     override val updates: SharedFlow<Set<String>>
         get() = updatesController.asSharedFlow()
 
-    private suspend fun <T> lock(callback: suspend (SQLiteConnectionLease) -> T): T {
-        return withAbortSignal { signal ->
-            val promise = db.requestLock({ token ->
-                val id = token.toInt()
-                promise {
-                    callback(Lease(id))?.toJsReference()
-                }
-            }, requestLockOptions(signal))
+    private suspend fun <T> lock(callback: suspend (SQLiteConnectionLease) -> T): T =
+        withAbortSignal { signal ->
+            val promise =
+                db.requestLock({ token ->
+                    val id = token.toInt()
+                    promise {
+                        callback(Lease(id))?.toJsReference()
+                    }
+                }, requestLockOptions(signal))
 
             val result = promise.await() as JsReference<*>
             @Suppress("UNCHECKED_CAST")
             result.get() as T
         }
-    }
 
-    override suspend fun <T> read(callback: suspend (SQLiteConnectionLease) -> T): T {
-        return lock(callback)
-    }
+    override suspend fun <T> read(callback: suspend (SQLiteConnectionLease) -> T): T = lock(callback)
 
-    override suspend fun <T> write(callback: suspend (SQLiteConnectionLease) -> T): T {
-        return lock(callback)
-    }
+    override suspend fun <T> write(callback: suspend (SQLiteConnectionLease) -> T): T = lock(callback)
 
-    override suspend fun <R> withAllConnections(action: suspend (writer: SQLiteConnectionLease, readers: List<SQLiteConnectionLease>) -> R) {
+    override suspend fun <R> withAllConnections(
+        action: suspend (writer: SQLiteConnectionLease, readers: List<SQLiteConnectionLease>) -> R,
+    ) {
         lock { action(it, emptyList()) }
     }
 
@@ -89,7 +78,9 @@ internal class WorkerConnectionPool(
         db.close().await()
     }
 
-    private inner class Lease(val lockToken: Int): SQLiteConnectionLease {
+    private inner class Lease(
+        val lockToken: Int,
+    ) : SQLiteConnectionLease {
         /**
          * Whether we're currently in a transaction.
          *
@@ -101,33 +92,44 @@ internal class WorkerConnectionPool(
 
         override suspend fun <R> usePreparedAsync(
             sql: String,
-            block: suspend (SQLiteStatement) -> R
+            block: suspend (SQLiteStatement) -> R,
         ): R {
-            val stmt = VirtualWorkerStatement { params ->
-                val result = withAbortSignal { signal ->
-                    db.select(sql.toJsString(), databaseExecuteOptions(
-                        params.takeParameters(),
-                        types = params.takeTypes(),
-                        token = lockToken.toJsNumber(),
-                        abort = signal,
-                    )).awaitSafe()
-                }
+            val stmt =
+                VirtualWorkerStatement { params ->
+                    val result =
+                        withAbortSignal { signal ->
+                            db
+                                .select(
+                                    sql.toJsString(),
+                                    databaseExecuteOptions(
+                                        params.takeParameters(),
+                                        types = params.takeTypes(),
+                                        token = lockToken.toJsNumber(),
+                                        abort = signal,
+                                    ),
+                                ).awaitSafe()
+                        }
 
-                inTransaction = !result.autocommit.toBoolean()
-                result.result
-            }
+                    inTransaction = !result.autocommit.toBoolean()
+                    result.result
+                }
             return block(stmt)
         }
 
         override suspend fun execSQL(sql: String) {
-            val result = withAbortSignal { signal ->
-                db.execute(sql.toJsString(), databaseExecuteOptions(
-                    JsArray(),
-                    types = ArrayBuffer(0),
-                    token = lockToken.toJsNumber(),
-                    abort = signal
-                )).awaitSafe()
-            }
+            val result =
+                withAbortSignal { signal ->
+                    db
+                        .execute(
+                            sql.toJsString(),
+                            databaseExecuteOptions(
+                                JsArray(),
+                                types = ArrayBuffer(0),
+                                token = lockToken.toJsNumber(),
+                                abort = signal,
+                            ),
+                        ).awaitSafe()
+                }
 
             inTransaction = !result.autocommit.toBoolean()
         }
@@ -141,28 +143,43 @@ internal class WorkerConnectionPool(
  * require worker changes.
  */
 private class VirtualWorkerStatement(
-    private val select: suspend (TypedParameters) -> ResultSet
-): SQLiteStatement {
+    private val select: suspend (TypedParameters) -> ResultSet,
+) : SQLiteStatement {
     private val parameters = TypedParameters()
     var resultSet: CopiedResultSet? = null
 
-    override fun bindBlob(index: Int, value: ByteArray) {
+    override fun bindBlob(
+        index: Int,
+        value: ByteArray,
+    ) {
         parameters.bindBlob(index, value)
     }
 
-    override fun bindDouble(index: Int, value: Double) {
+    override fun bindDouble(
+        index: Int,
+        value: Double,
+    ) {
         parameters.bindDouble(index, value)
     }
 
-    override fun bindInt(index: Int, value: Int) {
+    override fun bindInt(
+        index: Int,
+        value: Int,
+    ) {
         parameters.bindInt(index, value)
     }
 
-    override fun bindLong(index: Int, value: Long) {
+    override fun bindLong(
+        index: Int,
+        value: Long,
+    ) {
         parameters.bindLong(index, value)
     }
 
-    override fun bindText(index: Int, value: String) {
+    override fun bindText(
+        index: Int,
+        value: String,
+    ) {
         parameters.bindText(index, value)
     }
 
@@ -173,35 +190,21 @@ private class VirtualWorkerStatement(
         return resultSet.kotlinValue(index)
     }
 
-    override fun getBlob(index: Int): ByteArray {
-        return decodedValue(index) as ByteArray
-    }
+    override fun getBlob(index: Int): ByteArray = decodedValue(index) as ByteArray
 
-    override fun getDouble(index: Int): Double {
-        return decodedValue(index) as Double
-    }
+    override fun getDouble(index: Int): Double = decodedValue(index) as Double
 
-    override fun getLong(index: Int): Long {
-        return decodedValue(index) as Long
-    }
+    override fun getLong(index: Int): Long = decodedValue(index) as Long
 
-    override fun getInt(index: Int): Int {
-        return getLong(index).toInt()
-    }
+    override fun getInt(index: Int): Int = getLong(index).toInt()
 
-    override fun getText(index: Int): String {
-        return decodedValue(index) as String
-    }
+    override fun getText(index: Int): String = decodedValue(index) as String
 
     override fun isNull(index: Int): Boolean = requireNotNull(resultSet).typeCode(index) == TypeCodes.NULL
 
-    override fun getColumnCount(): Int {
-        return requireNotNull(resultSet).columnNames.size
-    }
+    override fun getColumnCount(): Int = requireNotNull(resultSet).columnNames.size
 
-    override fun getColumnName(index: Int): String {
-        return requireNotNull(resultSet).columnNames[index]
-    }
+    override fun getColumnName(index: Int): String = requireNotNull(resultSet).columnNames[index]
 
     override fun getColumnType(index: Int): Int {
         val transportType = requireNotNull(resultSet).typeCode(index)
@@ -269,9 +272,7 @@ private class CopiedResultSet(
         return false
     }
 
-    fun typeCode(index: Int): Byte {
-        return types.getInt8(typeOffset + index).toByte()
-    }
+    fun typeCode(index: Int): Byte = types.getInt8(typeOffset + index).toByte()
 
     fun kotlinValue(index: Int): Any? {
         val row = requireNotNull(currentRow)
@@ -281,11 +282,12 @@ private class CopiedResultSet(
     companion object {
         fun fromRaw(raw: ResultSet): CopiedResultSet {
             val numColumns = raw.columnNames.length
-            val columnNames = buildList(numColumns) {
-                for (i in 0..< numColumns) {
-                    add(raw.columnNames[i].toString())
+            val columnNames =
+                buildList(numColumns) {
+                    for (i in 0..<numColumns) {
+                        add(raw.columnNames[i].toString())
+                    }
                 }
-            }
 
             val rows = raw.rows.toList().iterator()
             return CopiedResultSet(columnNames, rows, DataView(raw.types))
@@ -297,7 +299,7 @@ private fun databaseExecuteOptions(
     parameters: JsArray<JsAny?>,
     types: ArrayBuffer,
     token: JsNumber,
-    abort: JsAny?
+    abort: JsAny?,
 ): DatabaseExecuteOptions = js("""({ parameters: parameters, types: types, token: token, abort: abort })""")
 
 private fun requestLockOptions(abort: JsAny): JsAny = js("({ abort: abort })")

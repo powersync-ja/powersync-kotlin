@@ -3,15 +3,10 @@
 package com.powersync.web
 
 import com.powersync.internal.InternalPowerSyncAPI
-import kotlin.js.length
 
-internal actual fun Long.toBigInt(): JsAny {
-    return toJsBigInt()
-}
+internal actual fun Long.toBigInt(): JsAny = toJsBigInt()
 
-internal actual fun JsAny.bigIntToLong(): Long {
-    return unsafeCast<JsBigInt>().toLong()
-}
+internal actual fun JsAny.bigIntToLong(): Long = unsafeCast<JsBigInt>().toLong()
 
 @InternalPowerSyncAPI
 internal actual fun Uint8Array.asByteArray(): ByteArray {

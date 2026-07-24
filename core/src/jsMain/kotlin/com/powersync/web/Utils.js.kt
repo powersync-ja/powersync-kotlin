@@ -4,9 +4,8 @@ package com.powersync.web
 
 import com.powersync.internal.InternalPowerSyncAPI
 
-internal actual fun Long.toBigInt(): JsAny {
+internal actual fun Long.toBigInt(): JsAny =
     throw UnsupportedOperationException("Binding long values larger than 32 bits is not supported on Kotlin/JS.")
-}
 
 internal actual fun JsAny.bigIntToLong(): Long {
     // We can't represent big integers in Kotlin directly, extract high and low i32 values to
@@ -17,7 +16,11 @@ internal actual fun JsAny.bigIntToLong(): Long {
 }
 
 private val i32BigInt = bigInt(32.toJsNumber())
-private fun bigIntShiftRight(a: JsAny, b: JsAny) = js("a >> b")
+
+private fun bigIntShiftRight(
+    a: JsAny,
+    b: JsAny,
+) = js("a >> b")
 
 private fun bigIntLowBits(bigInt: JsAny): JsNumber = js("Number(bigInt) | 0")
 

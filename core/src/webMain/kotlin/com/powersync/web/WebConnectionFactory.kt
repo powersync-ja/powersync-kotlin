@@ -18,7 +18,6 @@ import kotlinx.coroutines.promise
 import kotlin.js.ExperimentalWasmJsInterop
 import kotlin.js.JsAny
 import kotlin.js.JsArray
-import kotlin.js.JsBoolean
 import kotlin.js.JsString
 import kotlin.js.get
 import kotlin.js.js
@@ -55,9 +54,8 @@ import kotlin.js.unsafeCast
  */
 public class WebConnectionFactory internal constructor(
     private val coroutineScope: CoroutineScope,
-    options: ClientInitializationOptions
+    options: ClientInitializationOptions,
 ) {
-
     private val sqlite = openWebSqlite(options)
 
     /**
@@ -76,11 +74,12 @@ public class WebConnectionFactory internal constructor(
                 if (message.rawKind.toString() == "notifyUpdates") {
                     val id = message.rawSql.toString()
                     val rawUpdatedTables = message.rawParameters.unsafeCast<JsArray<JsString>>()
-                    val updatedTables = buildSet(rawUpdatedTables.length) {
-                        for (i in 0..< rawUpdatedTables.length) {
-                            add(rawUpdatedTables[i].toString())
+                    val updatedTables =
+                        buildSet(rawUpdatedTables.length) {
+                            for (i in 0..<rawUpdatedTables.length) {
+                                add(rawUpdatedTables[i].toString())
+                            }
                         }
-                    }
 
                     activeUpdateStreams[id]?.emit(updatedTables)
                 }
@@ -95,18 +94,21 @@ public class WebConnectionFactory internal constructor(
         coroutineScope: CoroutineScope = GlobalScope,
         wasmUri: String = sqlite3WasmUri(),
         workers: PowerSyncWorkerConnector = PowerSyncWorkerConnector(),
-    ): this(coroutineScope, clientInitializationOptions(workers.asWorkerConnector(), wasmUri))
+    ) : this(coroutineScope, clientInitializationOptions(workers.asWorkerConnector(), wasmUri))
 
-    private suspend fun wrapDatabase(opened: Database): WorkerConnectionPool {
+    private suspend fun wrapDatabase(opened: Database): DartWorkerDatabase {
         val updateStreamId = (nextStreamId++).toString()
 
-        val pool = WorkerConnectionPool(this, updateStreamId, opened)
+        val pool = DartWorkerDatabase(this, updateStreamId, opened)
         activeUpdateStreams[updateStreamId] = pool.updatesController
-        opened.customRequest(customRequest(
-            "updateSubscriptionManagement".toJsString(),
-            updateStreamId.toJsString(),
-            arrayOf(true.toJsBoolean()).toJsArray(),
-        )).await()
+        opened
+            .customRequest(
+                customRequest(
+                    "updateSubscriptionManagement".toJsString(),
+                    updateStreamId.toJsString(),
+                    arrayOf(true.toJsBoolean()).toJsArray(),
+                ),
+            ).await()
 
         return pool
     }
@@ -123,14 +125,16 @@ public class WebConnectionFactory internal constructor(
         return wrapDatabase(db.database)
     }
 
-
     /**
      * Opens a database with a known [DatabaseImplementation].
      *
      * This should only be used if it's guaranteed that the implementation will be available, as not
      * all implementations are supported on all browsers.
      */
-    public suspend fun open(databaseName: String, implementation: DatabaseImplementation): SQLiteConnectionPool {
+    public suspend fun open(
+        databaseName: String,
+        implementation: DatabaseImplementation,
+    ): SQLiteConnectionPool {
         val db = sqlite.connect(databaseName, implementation, connectOptions()).awaitSafe()
         return wrapDatabase(db)
     }
@@ -139,7 +143,10 @@ public class WebConnectionFactory internal constructor(
      * Starts a feature detection for available [DatabaseImplementation]s in the current browser,
      * then runs [pickImplementation] to query with implementation to use.
      */
-    public suspend fun open(databaseName: String, pickImplementation: (RawFeatureDetectionResult) -> DatabaseImplementation): SQLiteConnectionPool {
+    public suspend fun open(
+        databaseName: String,
+        pickImplementation: (RawFeatureDetectionResult) -> DatabaseImplementation,
+    ): SQLiteConnectionPool {
         val results = sqlite.runFeatureDetection(featureDetectionOptions(databaseName)).awaitSafe()
         val implementation = pickImplementation(results)
         return open(databaseName, implementation)
@@ -155,10 +162,11 @@ public class WebConnectionFactory internal constructor(
         val asyncPool = coroutineScope.async { openInner() }
         val updates = MutableSharedFlow<Set<String>>()
 
-        val forwardUpdates = coroutineScope.launch {
-            val pool = asyncPool.await()
-            updates.emitAll(pool.updates)
-        }
+        val forwardUpdates =
+            coroutineScope.launch {
+                val pool = asyncPool.await()
+                updates.emitAll(pool.updates)
+            }
 
         return object : SQLiteConnectionPool {
             override suspend fun <T> read(callback: suspend (SQLiteConnectionLease) -> T): T {
@@ -171,7 +179,9 @@ public class WebConnectionFactory internal constructor(
                 return pool.write(callback)
             }
 
-            override suspend fun <R> withAllConnections(action: suspend (writer: SQLiteConnectionLease, readers: List<SQLiteConnectionLease>) -> R) {
+            override suspend fun <R> withAllConnections(
+                action: suspend (writer: SQLiteConnectionLease, readers: List<SQLiteConnectionLease>) -> R,
+            ) {
                 val pool = asyncPool.await()
                 return pool.withAllConnections(action)
             }
@@ -186,7 +196,7 @@ public class WebConnectionFactory internal constructor(
         }
     }
 
-    internal fun markClosed(db: WorkerConnectionPool) {
+    internal fun markClosed(db: DartWorkerDatabase) {
         activeUpdateStreams.remove(db.streamUpdatesId)
     }
 }
@@ -200,10 +210,14 @@ private fun connectOptions(): ConnectOptions = js("({})")
 
 private fun featureDetectionOptions(dbName: String): RunFeatureDetectionOptions = js("({ databaseName: dbName })")
 
-private external interface CustomDatabaseMessage: JsAny {
+private external interface CustomDatabaseMessage : JsAny {
     val rawKind: JsString
     val rawSql: JsString
     val rawParameters: JsAny
 }
 
-private fun customRequest(rawKind: JsString, rawSql: JsString, rawParameters: JsAny): CustomDatabaseMessage = js("({rawKind: rawKind, rawSql: rawSql, rawParameters: rawParameters})")
+private fun customRequest(
+    rawKind: JsString,
+    rawSql: JsString,
+    rawParameters: JsAny,
+): CustomDatabaseMessage = js("({rawKind: rawKind, rawSql: rawSql, rawParameters: rawParameters})")

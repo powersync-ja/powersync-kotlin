@@ -1,4 +1,5 @@
 @file:OptIn(ExperimentalWasmJsInterop::class, InternalPowerSyncAPI::class)
+
 package com.powersync.web
 
 import com.powersync.internal.InternalPowerSyncAPI
@@ -25,16 +26,12 @@ internal class TypedParameters {
     private val parameters = mutableListOf<JsAny?>()
     private var types = ByteArray(32)
 
-    fun takeParameters(): JsArray<JsAny?> {
-        return parameters.toJsArray()
-    }
+    fun takeParameters(): JsArray<JsAny?> = parameters.toJsArray()
 
     /**
      * An array buffer encoding parameter types.
      */
-    fun takeTypes(): ArrayBuffer {
-        return types.copyAsArrayBuffer(parameters.size)
-    }
+    fun takeTypes(): ArrayBuffer = types.copyAsArrayBuffer(parameters.size)
 
     fun clear() {
         parameters.clear()
@@ -54,25 +51,37 @@ internal class TypedParameters {
         }
     }
 
-    fun bindBlob(index: Int, value: ByteArray) {
+    fun bindBlob(
+        index: Int,
+        value: ByteArray,
+    ) {
         ensureParameterCapacity(index)
         parameters[index - 1] = Uint8Array(value.copyAsArrayBuffer())
         types[index - 1] = TypeCodes.BLOB
     }
 
-    fun bindDouble(index: Int, value: Double) {
+    fun bindDouble(
+        index: Int,
+        value: Double,
+    ) {
         ensureParameterCapacity(index)
         parameters[index - 1] = value.toJsNumber()
         types[index - 1] = TypeCodes.FLOAT
     }
 
-    fun bindInt(index: Int, value: Int) {
+    fun bindInt(
+        index: Int,
+        value: Int,
+    ) {
         ensureParameterCapacity(index)
         parameters[index - 1] = value.toJsNumber()
         types[index - 1] = TypeCodes.INTEGER
     }
 
-    fun bindLong(index: Int, value: Long) {
+    fun bindLong(
+        index: Int,
+        value: Long,
+    ) {
         ensureParameterCapacity(index)
         val isInt = value.toInt().toLong() == value
         if (isInt) {
@@ -84,7 +93,10 @@ internal class TypedParameters {
         }
     }
 
-    fun bindText(index: Int, value: String) {
+    fun bindText(
+        index: Int,
+        value: String,
+    ) {
         ensureParameterCapacity(index)
         parameters[index - 1] = value.toJsString()
         types[index - 1] = TypeCodes.TEXT
@@ -100,8 +112,11 @@ internal class TypedParameters {
 /**
  * Decodes a JavaScript value representing a SQLite result to Kotlin.
  */
-internal fun decodeTyped(source: JsAny?, typeCode: Byte): Any? {
-    return when(typeCode) {
+internal fun decodeTyped(
+    source: JsAny?,
+    typeCode: Byte,
+): Any? =
+    when (typeCode) {
         TypeCodes.INTEGER -> source!!.unsafeCast<JsNumber>().toInt().toLong()
         TypeCodes.BIG_INTEGER -> source!!.bigIntToLong()
         TypeCodes.FLOAT -> source!!.unsafeCast<JsNumber>().toDouble()
@@ -109,7 +124,6 @@ internal fun decodeTyped(source: JsAny?, typeCode: Byte): Any? {
         TypeCodes.BLOB -> source!!.unsafeCast<Uint8Array>().asByteArray()
         else -> null
     }
-}
 
 /**
  * A code describing the type and encoding of a SQLite value.
