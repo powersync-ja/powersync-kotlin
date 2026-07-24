@@ -35,12 +35,23 @@ import kotlin.js.toJsString
 import kotlin.js.toList
 import kotlin.js.toLong
 
+/**
+ * A worker "connection pool" implemented by a single connection to a worker hosting a SQLite
+ * database.
+ *
+ * In the future, we may want to scale this to multiple workers after the Dart SDK supports that.
+ */
 internal class WorkerConnectionPool(
     private val factory: WebConnectionFactory,
+    /**
+     * An obtained id for table notifications that the worker sends to clients.
+     */
     internal var streamUpdatesId: String,
+    /**
+     * The underlying database, managed by the `sqlite3_web` npm package.
+     */
     private val db: Database
 ): SQLiteConnectionPool {
-
     internal val updatesController = MutableSharedFlow<Set<String>>()
 
     override val updates: SharedFlow<Set<String>>
@@ -228,9 +239,18 @@ private class VirtualWorkerStatement(
     }
 }
 
+/**
+ * A decoded result set from a worker message where we iterate through rows as a JS array.
+ */
 private class CopiedResultSet(
     val columnNames: List<String>,
     val rows: Iterator<JsArray<JsAny?>>,
+    /**
+     * A data view containing one byte per value in the result set.
+     *
+     * This encodes the JavaScript encoding of SQLite types (an integer `3` and a double `3.0` would
+     * both encode to the same JavaScript number for example, this lets us keep them apart).
+     */
     val types: DataView,
 ) {
     var currentRow: JsArray<JsAny?>? = null

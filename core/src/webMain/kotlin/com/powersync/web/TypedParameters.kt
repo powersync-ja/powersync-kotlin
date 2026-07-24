@@ -14,6 +14,13 @@ import kotlin.js.toJsNumber
 import kotlin.js.toJsString
 import kotlin.js.unsafeCast
 
+/**
+ * A typed buffer of SQL statement parameters.
+ *
+ * Statement parameters are encoded as JS values to send them to the Dart worker. Additionally, we
+ * encode the type of parameters to allow workers to well integers encoded as doubles and actual
+ * doubles apart.
+ */
 internal class TypedParameters {
     private val parameters = mutableListOf<JsAny?>()
     private var types = ByteArray(32)
@@ -22,6 +29,9 @@ internal class TypedParameters {
         return parameters.toJsArray()
     }
 
+    /**
+     * An array buffer encoding parameter types.
+     */
     fun takeTypes(): ArrayBuffer {
         return types.toArrayBuffer(parameters.size)
     }
@@ -87,6 +97,9 @@ internal class TypedParameters {
     }
 }
 
+/**
+ * Decodes a JavaScript value representing a SQLite result to Kotlin.
+ */
 internal fun decodeTyped(source: JsAny?, typeCode: Byte): Any? {
     return when(typeCode) {
         TypeCodes.INTEGER -> source!!.unsafeCast<JsNumber>().toInt().toLong()
@@ -108,6 +121,11 @@ private fun ByteArray.toArrayBuffer(length: Int = size): ArrayBuffer {
     return buffer
 }
 
+/**
+ * A code describing the type and encoding of a SQLite value.
+ *
+ * For more information, see https://github.com/simolus3/sqlite3.dart/blob/268e9b585d9e7b337d205e0b6d342f92a8e00a79/sqlite3_web/lib/src/protocol/messages.dart#L195
+ */
 internal object TypeCodes {
     /**
      * An integer value encoded as JavaScript number.
@@ -138,5 +156,4 @@ internal object TypeCodes {
      * The null value.
      */
     const val NULL: Byte = 6
-    const val BOOLEAN: Byte = 7 // Unused, we encode booleans as integers.
 }

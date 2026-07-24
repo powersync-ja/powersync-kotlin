@@ -29,13 +29,13 @@ fun main() {
 private fun openPowerSyncDatabase(schema: Schema): PowerSyncDatabase {
     val scope = GlobalScope
     val identifier = "demo.db"
-    val factory = WebConnectionFactory()
+    val factory = WebConnectionFactory(scope)
 
     return PowerSyncDatabase.opened(
         pool = factory.openPool { open(identifier, DatabaseImplementation.inMemoryShared) },
         scope = scope,
         schema = schema,
-        identifier = "demo.db",
+        identifier = identifier,
         logger = Logger(loggerConfigInit(platformLogWriter()))
     )
 }

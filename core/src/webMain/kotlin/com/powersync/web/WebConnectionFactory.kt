@@ -28,12 +28,44 @@ import kotlin.js.toJsBoolean
 import kotlin.js.toJsString
 import kotlin.js.unsafeCast
 
+/**
+ * An asynchronous connection factory opening databases hosted in a web worker.
+ *
+ * Note that web support in the Kotlin SDK is currently both experimental and incomplete and should
+ * only be used for testing.
+ *
+ * To open a [SQLiteConnectionPool] that can be used with [com.powersync.PowerSyncDatabase.opened]
+ * classes, use [WebConnectionFactory.openPool], e.g. like this:
+ *
+ * ```Kotlin
+ * fun openPowerSyncDatabase(): PowerSyncDatabase {
+ *   val scope = GlobalScope
+ *   val identifier = "demo.db"
+ *   val factory = WebConnectionFactory(scope)
+ *
+ *   return PowerSyncDatabase.opened(
+ *     pool = factory.openPool { open(identifier) }
+ *     scope = scope
+ *     schema = Schema(...),
+ *     identifier = identifier,
+ *     logger = Logger(loggerConfigInit(platformLogWriter()))
+ *   )
+ * }
+ * ```
+ */
 public class WebConnectionFactory internal constructor(
     private val coroutineScope: CoroutineScope,
     options: ClientInitializationOptions
 ) {
 
     private val sqlite = openWebSqlite(options)
+
+    /**
+     * The next id to request as update streams.
+     *
+     * Workers attach a stream id when sending table updates, which allows us to associate them with
+     * a specific database instance.
+     */
     private var nextStreamId = 0
     private val activeUpdateStreams = mutableMapOf<String, MutableSharedFlow<Set<String>>>()
 
@@ -79,22 +111,46 @@ public class WebConnectionFactory internal constructor(
         return pool
     }
 
+    /**
+     * Opens a database with the recommended implementation.
+     *
+     * While the other open methods provide more control over the implementation and storage
+     * location (e.g. IndexedDB or OPFS), this is a suitable default and picks a suitable
+     * implementation automatically based on available browser features.
+     */
     public suspend fun open(databaseName: String): SQLiteConnectionPool {
         val db = sqlite.connectToRecommended(databaseName, connectOptions()).awaitSafe()
         return wrapDatabase(db.database)
     }
 
+
+    /**
+     * Opens a database with a known [DatabaseImplementation].
+     *
+     * This should only be used if it's guaranteed that the implementation will be available, as not
+     * all implementations are supported on all browsers.
+     */
     public suspend fun open(databaseName: String, implementation: DatabaseImplementation): SQLiteConnectionPool {
         val db = sqlite.connect(databaseName, implementation, connectOptions()).awaitSafe()
         return wrapDatabase(db)
     }
 
+    /**
+     * Starts a feature detection for available [DatabaseImplementation]s in the current browser,
+     * then runs [pickImplementation] to query with implementation to use.
+     */
     public suspend fun open(databaseName: String, pickImplementation: (RawFeatureDetectionResult) -> DatabaseImplementation): SQLiteConnectionPool {
         val results = sqlite.runFeatureDetection(featureDetectionOptions(databaseName)).awaitSafe()
         val implementation = pickImplementation(results)
         return open(databaseName, implementation)
     }
 
+    /**
+     * Turns the asynchronous open methods on this class into a method that can return as connection
+     * pool synchronously.
+     *
+     * The pool is opened in a deferred coroutine that is awaited when the pool is used.
+     */
     public fun openPool(openInner: suspend WebConnectionFactory.() -> SQLiteConnectionPool): SQLiteConnectionPool {
         val asyncPool = coroutineScope.async { openInner() }
         val updates = MutableSharedFlow<Set<String>>()

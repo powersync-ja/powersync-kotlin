@@ -22,9 +22,9 @@ import kotlin.js.toInt
 import kotlin.js.unsafeCast
 
 /**
- * On Kotlin/JS, [Long.toJsBigInt] doesn't actually return a big int.
+ * On Kotlin/JS, [Long.toJsBigInt] doesn't actually return a JavaScript big int.
  *
- * This attempts to convert the long value into an exact JS representation, or fails if
+ * This attempts to convert the long value into an exact JS big int representation, or fails if
  * that's impossible.
  */
 internal expect fun Long.toBigInt(): JsAny

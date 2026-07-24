@@ -2,7 +2,6 @@
 @file:OptIn(ExperimentalWasmJsInterop::class)
 package com.powersync.web
 
-import androidx.sqlite.SQLiteException
 import com.powersync.internal.InternalPowerSyncAPI
 import kotlin.js.ExperimentalWasmJsInterop
 import kotlin.js.JsAny
@@ -12,7 +11,6 @@ import kotlin.js.JsModule
 import kotlin.js.JsNumber
 import kotlin.js.JsString
 import kotlin.js.Promise
-import kotlin.js.toInt
 
 @InternalPowerSyncAPI
 public external interface WorkerHandle: JsAny {
@@ -115,8 +113,19 @@ public external interface RawFeatureDetectionResult: JsAny {
  * implementations are available. This library can automatically pick one after feature detection,
  * but it's also possible to open databases with a selected implementation.
  */
-public external class DatabaseImplementation: JsAny {
+public external class DatabaseImplementation private constructor(): JsAny {
+    /**
+     * The storage implementation.
+     *
+     * This will either be `opfs` for the [origin-private file system](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system),
+     * `indexedDb` (for an IndexedDB database storing SQLite file contents) or `inMemory`.
+     */
     public val storage: String
+
+    /**
+     * How the database is accessed. This will either be `throughSharedWorker` or
+     * `throughDedicatedWorker`.
+     */
     public val access: String
 
     public companion object {
