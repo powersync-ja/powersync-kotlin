@@ -19,16 +19,32 @@ kotlin {
         legacyJavaSupport = false,
         android = {
             namespace = "com.powersync.compose"
-        }
+        },
+        web = true,
     )
 
     explicitApi()
+    applyDefaultHierarchyTemplate()
 
     sourceSets {
         commonMain.dependencies {
             api(projects.core)
             implementation(compose.runtime)
         }
+        val commonNonWebMain by creating {
+            dependsOn(commonMain.get())
+        }
+
+        jvmMain {
+            dependsOn(commonNonWebMain)
+        }
+        androidMain {
+            dependsOn(commonNonWebMain)
+        }
+        nativeMain {
+            dependsOn(commonNonWebMain)
+        }
+
         androidMain.dependencies {
             implementation(compose.foundation)
         }

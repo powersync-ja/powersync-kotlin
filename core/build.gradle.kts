@@ -27,7 +27,8 @@ kotlin {
                     file("proguard-rules.pro")
                 }
             }
-        }
+        },
+        web = true
     )
 
     targets.withType<KotlinNativeTarget> {
@@ -53,6 +54,10 @@ kotlin {
             dependsOn(commonTest.get())
         }
 
+        val commonNonWeb by creating {
+            dependsOn(commonMain.get())
+        }
+
         commonMain.configure {
             dependencies {
                 api(projects.common)
@@ -60,6 +65,8 @@ kotlin {
         }
 
         androidMain {
+            dependsOn(commonNonWeb)
+
             dependencies {
                 api(libs.androidx.sqlite.bundled)
                 implementation(libs.ktor.client.okhttp)
@@ -67,9 +74,25 @@ kotlin {
         }
 
         jvmMain {
+            dependsOn(commonNonWeb)
+
             dependencies {
                 api(libs.androidx.sqlite.bundled)
                 implementation(libs.ktor.client.okhttp)
+            }
+        }
+
+        nativeMain {
+            dependsOn(commonNonWeb)
+        }
+
+        webMain {
+            dependencies {
+                api(libs.androidx.sqlite.sqlite)
+
+                implementation(libs.ktor.client.js)
+                implementation(npm("sqlite3-web", "^0.2.4"))
+                implementation(npm("@powersync/dart-wasm-bundles", "2.3.2"))
             }
         }
 

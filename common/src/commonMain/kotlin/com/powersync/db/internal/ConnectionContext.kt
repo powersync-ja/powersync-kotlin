@@ -106,6 +106,10 @@ internal fun SQLiteStatement.bind(parameters: List<Any?>?) {
         val index = i + 1
 
         when (parameter) {
+            null -> {
+                bindNull(index)
+            }
+
             is Boolean -> {
                 bindBoolean(index, parameter)
             }

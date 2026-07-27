@@ -22,7 +22,7 @@ dependencyResolutionManagement {
 }
 
 plugins {
-    id("com.gradle.develocity") version "4.1"
+    id("com.gradle.develocity") version "4.5.0"
 }
 
 rootProject.name = "powersync-root"
@@ -52,6 +52,7 @@ include(":demos:supabase-todolist:androidBackgroundSync")
 include(":demos:supabase-todolist:desktopApp")
 include(":demos:supabase-todolist:iosApp")
 include(":demos:supabase-todolist:shared")
+include(":demos:supabase-todolist:web")
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 

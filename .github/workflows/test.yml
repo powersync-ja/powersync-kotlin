@@ -34,6 +34,9 @@ jobs:
           - os: ubuntu-latest
             name: ubuntu
             targets: testDebugUnitTest testReleaseUnitTest jvmTest lintKotlin
+          - os: ubuntu-latest
+            name: web
+            targets: jsTest wasmJsTest
           - os: windows-latest
             name: windows
             targets: jvmTest
