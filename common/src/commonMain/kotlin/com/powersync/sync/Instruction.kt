@@ -208,12 +208,12 @@ private object InstantTimestampSerializer : KSerializer<Instant> {
     override val descriptor: SerialDescriptor
         get() = PrimitiveSerialDescriptor("kotlinx.datetime.Instant", PrimitiveKind.LONG)
 
-    override fun deserialize(decoder: Decoder): Instant = Instant.fromEpochSeconds(decoder.decodeLong())
+    override fun deserialize(decoder: Decoder): Instant = Instant.fromEpochMilliseconds(decoder.decodeLong() / 1000)
 
     override fun serialize(
         encoder: Encoder,
         value: Instant,
     ) {
-        encoder.encodeLong(value.epochSeconds)
+        encoder.encodeLong(value.toEpochMilliseconds() * 1000)
     }
 }
