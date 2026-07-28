@@ -17,12 +17,6 @@ internal class BucketStorageImpl(
 ) : BucketStorage {
     private var hasCompletedSync = AtomicBoolean(false)
 
-    companion object {
-        const val MAX_OP_ID = "9223372036854775807"
-    }
-
-    override fun getMaxOpId(): String = MAX_OP_ID
-
     override suspend fun getClientId(): String {
         val id =
             db.getOptional("SELECT powersync_client_id() as client_id") {
@@ -62,14 +56,12 @@ internal class BucketStorageImpl(
         it.getLong(0)!!
     }
 
-    override suspend fun updateLocalTarget(checkpointCallback: suspend () -> String): Boolean {
-        db.getOptional(
-            "SELECT target_op FROM ${InternalTable.BUCKETS} WHERE name = '\$local' AND target_op = ?",
-            parameters = listOf(MAX_OP_ID),
-            mapper = { cursor -> cursor.getLong(0)!! },
-        )
-            ?: // Nothing to update
+    override suspend fun updateLocalTarget(checkpointCallback: suspend () -> Long): Boolean {
+        val existingCheckpointRequest = db.readTransactionAsync { it.targetCheckpointRequestId() }
+        if (existingCheckpointRequest != BucketStorage.MAX_OP_ID) {
+            // Nothing to update
             return false
+        }
 
         val seqBefore =
             db.getOptional("SELECT seq FROM main.sqlite_sequence WHERE name = '${InternalTable.CRUD}'") {
@@ -100,11 +92,7 @@ internal class BucketStorageImpl(
                 return@writeTransactionAsync false
             }
 
-            tx.executeAsync(
-                "UPDATE ${InternalTable.BUCKETS} SET target_op = CAST(? as INTEGER) WHERE name='\$local'",
-                listOf(opId),
-            )
-
+            tx.targetCheckpointRequestId(opId)
             return@writeTransactionAsync true
         }
     }

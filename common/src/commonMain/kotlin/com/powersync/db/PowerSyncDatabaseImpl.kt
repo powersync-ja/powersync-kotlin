@@ -7,6 +7,7 @@ import com.powersync.PowerSyncException
 import com.powersync.bucket.BucketStorage
 import com.powersync.bucket.BucketStorageImpl
 import com.powersync.bucket.StreamPriority
+import com.powersync.bucket.targetCheckpointRequestId
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.crud.CrudBatch
 import com.powersync.db.crud.CrudEntry
@@ -413,17 +414,13 @@ internal class PowerSyncDatabaseImpl(
                 listOf(lastTransactionId.toLong()),
             )
 
-            if (writeCheckpoint != null && !bucketStorage.hasCrud(transaction)) {
-                transaction.executeAsync(
-                    "UPDATE ps_buckets SET target_op = CAST(? AS INTEGER) WHERE name='\$local'",
-                    listOf(writeCheckpoint),
-                )
-            } else {
-                transaction.executeAsync(
-                    "UPDATE ps_buckets SET target_op = CAST(? AS INTEGER) WHERE name='\$local'",
-                    listOf(bucketStorage.getMaxOpId()),
-                )
-            }
+            val resolvedCheckpoint =
+                writeCheckpoint
+                    .takeIf { !bucketStorage.hasCrud(transaction) }
+                    ?.toLong()
+                    ?: BucketStorage.MAX_OP_ID
+
+            transaction.targetCheckpointRequestId(resolvedCheckpoint)
         }
     }
 

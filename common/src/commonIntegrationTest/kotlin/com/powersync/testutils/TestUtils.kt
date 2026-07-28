@@ -82,7 +82,7 @@ internal class ActiveDatabaseTest(
     var syncLinesContentType = ContentType("application", "x-ndjson")
     var requestedSyncStreams = mutableListOf<JsonElement>()
     var checkpointResponse: () -> WriteCheckpointResponse = {
-        WriteCheckpointResponse(WriteCheckpointData("1000"))
+        WriteCheckpointResponse(WriteCheckpointData(1000))
     }
 
     val testDirectory by lazy { getTempDir() }

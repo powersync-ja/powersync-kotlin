@@ -605,7 +605,7 @@ class SyncIntegrationTest : AbstractSyncTest() {
             val requestedCheckpoint = CompletableDeferred<Unit>()
             checkpointResponse = {
                 requestedCheckpoint.complete(Unit)
-                WriteCheckpointResponse(WriteCheckpointData("1"))
+                WriteCheckpointResponse(WriteCheckpointData(1))
             }
             completeUpload.complete(Unit)
             requestedCheckpoint.await()
@@ -629,7 +629,7 @@ class SyncIntegrationTest : AbstractSyncTest() {
             val uploadCompleted = CompletableDeferred<Unit>()
             checkpointResponse = {
                 uploadCompleted.complete(Unit)
-                WriteCheckpointResponse(WriteCheckpointData("1"))
+                WriteCheckpointResponse(WriteCheckpointData(1))
             }
 
             database.execute(
