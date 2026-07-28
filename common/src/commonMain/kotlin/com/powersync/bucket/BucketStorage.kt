@@ -12,8 +12,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
 internal interface BucketStorage {
-    fun getMaxOpId(): String
-
     suspend fun getClientId(): String
 
     suspend fun nextCrudItem(): CrudEntry?
@@ -26,11 +24,36 @@ internal interface BucketStorage {
 
     fun mapCrudEntry(row: SqlCursor): CrudEntry
 
-    suspend fun updateLocalTarget(checkpointCallback: suspend () -> String): Boolean
+    suspend fun updateLocalTarget(checkpointCallback: suspend () -> Long): Boolean
 
     suspend fun hasCompletedSync(): Boolean
 
     suspend fun control(args: PowerSyncControlArguments): List<Instruction>
+
+    companion object {
+        const val MAX_OP_ID = 9223372036854775807L
+    }
+}
+
+/**
+ * Reads the current target checkpoint request id, or updates it when the update parameter
+ * is set.
+ *
+ * The target checkpoint request is a checkpoint the sync service needs to include in a
+ * `checkpoint_complete` message for new changes to be applied locally. This guards against uploaded
+ * changes that have not yet been synced to flicker if we apply an intermediate checkpoint.
+ *
+ * [BucketStorage.MAX_OP_ID] can be used as a sentinel value in case there are pending changes that
+ * have been uploaded, but for which no checkpoint request has been created yet.
+ */
+internal suspend fun PowerSyncTransaction.targetCheckpointRequestId(update: Long? = null): Long? {
+    var previousCheckpointRequest: Long? = null
+
+    getAsync("SELECT powersync_control(?, ?)", listOf("target_checkpoint_request_id", update)) { row ->
+        // We can't return nullable values here, so write to the outer local
+        previousCheckpointRequest = row.getLong(0)
+    }
+    return previousCheckpointRequest
 }
 
 internal sealed interface PowerSyncControlArguments {

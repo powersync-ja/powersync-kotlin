@@ -92,7 +92,7 @@ kotlin {
 
                 implementation(libs.ktor.client.js)
                 implementation(npm("sqlite3-web", "^0.2.4"))
-                implementation(npm("@powersync/dart-wasm-bundles", "2.3.2"))
+                implementation(npm("@powersync/dart-wasm-bundles", "2.3.3"))
             }
         }
 

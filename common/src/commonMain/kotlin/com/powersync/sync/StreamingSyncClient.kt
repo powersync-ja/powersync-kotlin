@@ -223,7 +223,7 @@ internal class StreamingSyncClient(
         status.update { copy(uploading = false) }
     }
 
-    private suspend fun getWriteCheckpoint(): String {
+    private suspend fun getWriteCheckpoint(): Long {
         val credentials = connector.getCredentialsCached()
         require(credentials != null) { "Not logged in" }
         val uri = credentials.endpointUri("write-checkpoint2.json?client_id=$clientId")

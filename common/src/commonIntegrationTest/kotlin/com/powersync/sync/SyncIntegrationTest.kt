@@ -32,6 +32,7 @@ import com.powersync.utils.JsonParam
 import com.powersync.utils.JsonUtil
 import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -52,6 +53,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.fail
+import kotlin.time.Clock
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.measureTime
 
@@ -605,7 +608,7 @@ class SyncIntegrationTest : AbstractSyncTest() {
             val requestedCheckpoint = CompletableDeferred<Unit>()
             checkpointResponse = {
                 requestedCheckpoint.complete(Unit)
-                WriteCheckpointResponse(WriteCheckpointData("1"))
+                WriteCheckpointResponse(WriteCheckpointData(1))
             }
             completeUpload.complete(Unit)
             requestedCheckpoint.await()
@@ -629,7 +632,7 @@ class SyncIntegrationTest : AbstractSyncTest() {
             val uploadCompleted = CompletableDeferred<Unit>()
             checkpointResponse = {
                 uploadCompleted.complete(Unit)
-                WriteCheckpointResponse(WriteCheckpointData("1"))
+                WriteCheckpointResponse(WriteCheckpointData(1))
             }
 
             database.execute(
@@ -1078,5 +1081,40 @@ class SyncIntegrationTest : AbstractSyncTest() {
                 turbine.waitFor { it.connected }
                 turbine.cancelAndIgnoreRemainingEvents()
             }
+        }
+
+    @Test
+    fun `reports correct times`() =
+        databaseTest {
+            turbineScope(timeout = 10.0.seconds) {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                database.connect(TestConnector(), options = getOptions())
+                turbine.waitFor { it.connected }
+
+                syncLines.send(
+                    SyncLine.FullCheckpoint(
+                        Checkpoint(
+                            lastOpId = "0",
+                            checksums =
+                                listOf(
+                                    BucketChecksum(
+                                        bucket = "bkt",
+                                        priority = StreamPriority(1),
+                                        checksum = 0,
+                                    ),
+                                ),
+                        ),
+                    ),
+                )
+                syncLines.send(
+                    SyncLine.CheckpointComplete(lastOpId = "0"),
+                )
+                turbine.waitFor { it.hasSynced == true }
+                turbine.cancelAndIgnoreRemainingEvents()
+            }
+
+            // Decoded last sync time should be close to actual system time.
+            val lastSyncedAt = database.currentStatus.lastSyncedAt!!
+            (Clock.System.now() - lastSyncedAt) shouldBeLessThan 5.seconds
         }
 }

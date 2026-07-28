@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.14.0 (unreleased)
+## 1.14.0
 
 - __Breaking change__ (for Room integration): The Room integration uses Room 3.0 now.
 - Add `WebConnectionFactory`, which can be used to open PowerSync databases on the web.
