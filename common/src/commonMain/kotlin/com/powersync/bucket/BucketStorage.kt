@@ -3,7 +3,6 @@ package com.powersync.bucket
 import com.powersync.db.SqlCursor
 import com.powersync.db.StreamKey
 import com.powersync.db.crud.CrudEntry
-import com.powersync.db.getLongOptional
 import com.powersync.db.internal.PowerSyncTransaction
 import com.powersync.db.schema.Schema
 import com.powersync.sync.Instruction
