@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.14.1
+
+- Fix publish structure for Sonatype bundles.
+
 ## 1.14.0
 
 - __Breaking change__ (for Room integration): The Room integration uses Room 3.0 now.

@@ -70,7 +70,7 @@ jobs:
       - name: Inspect publication
         run: |
           ./internal/analyze-bundle.py
-          zip -r build/sonatypeBundle.zip build/sonatypeBundle/
+          cd build/sonatypeBundle && zip -r ../sonatypeBundle.zip .
 
       - name: Upload to Maven Central
         env:
@@ -110,4 +110,3 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           gh release upload "${{ needs.draft_release.outputs.tag }}" prebuilt_libraries.zip
-
