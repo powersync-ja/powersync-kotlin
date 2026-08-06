@@ -37,7 +37,7 @@ kotlin {
             api(libs.supabase.storage)
         }
 
-        val commonNonWebMain by creating {
+        val commonNonWebMain = create("commonNonWebMain") {
             dependsOn(commonMain.get())
         }
 
@@ -51,7 +51,7 @@ kotlin {
             dependsOn(commonNonWebMain)
         }
 
-        val commonIntegrationTest by creating {
+        val commonIntegrationTest = create("commonIntegrationTest") {
             dependsOn(commonTest.get())
 
             dependencies {

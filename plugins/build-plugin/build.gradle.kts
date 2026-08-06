@@ -4,7 +4,7 @@ plugins {
 
 gradlePlugin {
     // Define the plugin
-    val sharedBuild by plugins.creating {
+    plugins.create("sharedBuild") {
         id = "com.powersync.plugins.sharedbuild"
         implementationClass = "com.powersync.plugins.sharedbuild.SharedBuildPlugin"
     }

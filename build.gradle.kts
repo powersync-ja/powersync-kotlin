@@ -30,7 +30,7 @@ tasks.getByName<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
 
-val sonatypePublishingBundleConfiguration by configurations.creating {
+val sonatypePublishingBundleConfiguration = configurations.create("sonatypePublishingBundleConfiguration") {
     isCanBeConsumed = false
 }
 
@@ -111,7 +111,7 @@ tasks.register("serveDokka") {
     }
 }
 
-val generatePublishingBundle by tasks.registering(Copy::class) {
+val generatePublishingBundle = tasks.register<Copy>("generatePublishingBundle") {
     group = "publishing"
 
     val subprojects: FileCollection = sonatypePublishingBundleConfiguration

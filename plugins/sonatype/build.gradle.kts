@@ -7,12 +7,12 @@ plugins {
 
 gradlePlugin {
     // Define the plugin
-    val sonatypeCentralUpload by plugins.creating {
+    plugins.create("sonatypeCentralUpload") {
         id = "com.powersync.plugins.sonatype"
         implementationClass = "com.powersync.plugins.sonatype.SonatypeCentralUploadPlugin"
     }
 
-    val versionPlugin by plugins.creating {
+    plugins.create("versionPlugin") {
         id = "com.powersync.plugins.version"
         implementationClass = "com.powersync.plugins.PowerSyncVersionPlugin"
     }

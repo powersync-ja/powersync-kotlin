@@ -8,7 +8,7 @@ plugins {
     alias(libs.plugins.downloadPlugin)
 }
 
-val downloadPowersyncFramework by tasks.registering(Download::class) {
+val downloadPowersyncFramework = tasks.register<Download>("downloadPowersyncFramework") {
     val url = libs.versions.powersync.core.map { coreVersion ->
         "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/powersync-sqlite-core.xcframework.zip"
     }
@@ -19,7 +19,7 @@ val downloadPowersyncFramework by tasks.registering(Download::class) {
     onlyIfModified(true)
 }
 
-val unzipPowerSyncFramework by tasks.registering(Exec::class) {
+val unzipPowerSyncFramework = tasks.register<Exec>("unzipPowerSyncFramework") {
     inputs.files(downloadPowersyncFramework.map { it.outputFiles })
 
     val zipfile = downloadPowersyncFramework.get().dest
@@ -36,7 +36,7 @@ val unzipPowerSyncFramework by tasks.registering(Exec::class) {
     outputs.dir(destination)
 }
 
-val downloadPowerSyncStaticLibraries by tasks.registering(Download::class) {
+val downloadPowerSyncStaticLibraries = tasks.register<Download>("downloadPowerSyncStaticLibraries") {
     val url = libs.versions.powersync.core.map { coreVersion ->
         "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v$coreVersion/static_libs.zip"
     }
@@ -46,7 +46,7 @@ val downloadPowerSyncStaticLibraries by tasks.registering(Download::class) {
     onlyIfModified(true)
 }
 
-val unzipPowerSyncStaticLibraries by tasks.registering(Copy::class) {
+val unzipPowerSyncStaticLibraries = tasks.register<Copy>("unzipPowerSyncStaticLibraries") {
     val source = downloadPowerSyncStaticLibraries.map { it.outputFiles.single() }
     val dest = project.layout.buildDirectory.dir("binaries/static").map { it.asFile }
 
@@ -54,11 +54,11 @@ val unzipPowerSyncStaticLibraries by tasks.registering(Copy::class) {
     into(dest)
 }
 
-val powersyncFrameworkConfiguration by configurations.creating {
+val powersyncFrameworkConfiguration =configurations.create("powersyncFrameworkConfiguration") {
     isCanBeResolved = false
 }
 
-val powersyncStaticLibrariesConfiguration by configurations.creating {
+val powersyncStaticLibrariesConfiguration =configurations.create("powersyncStaticLibrariesConfiguration") {
     isCanBeResolved = false
 }
 

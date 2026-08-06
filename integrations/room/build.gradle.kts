@@ -40,7 +40,7 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
         }
 
-        val commonNonWeb by creating {
+        val commonNonWeb = create("commonNonWeb") {
             dependsOn(commonMain.get())
 
             dependencies {
@@ -66,7 +66,7 @@ kotlin {
             implementation(libs.test.turbine)
         }
 
-        val commonIntegrationTest by creating {
+        val commonIntegrationTest = create("commonIntegrationTest") {
             dependsOn(commonTest.get())
 
             dependencies {
