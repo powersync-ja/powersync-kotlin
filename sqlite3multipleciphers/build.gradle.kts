@@ -14,13 +14,13 @@ plugins {
     id("dokka-convention")
 }
 
-val nativeSqliteConfiguration: Configuration by configurations.creating {
+val nativeSqliteConfiguration = configurations.create("nativeSqliteConfiguration") {
     isCanBeConsumed = false
 }
-val jniSqlite3McConfiguration: Configuration by configurations.creating {
+val jniSqlite3McConfiguration = configurations.create("jniSqlite3McConfiguration") {
     isCanBeConsumed = false
 }
-val androidBuildSourceConfiguration by configurations.creating {
+val androidBuildSourceConfiguration = configurations.create("androidBuildSourceConfiguration") {
     isCanBeConsumed = false
 }
 
@@ -64,7 +64,7 @@ kotlin {
             }
         }
 
-        val jvmAndroidMain by creating {
+        val jvmAndroidMain = create("jvmAndroidMain") {
             dependsOn(commonMain.get())
         }
 
@@ -104,7 +104,7 @@ kotlin {
     }
 }
 
-val generateCmake by tasks.registering(Copy::class) {
+val generateCmake = tasks.register<Copy>("generateCmake") {
     from(androidBuildSourceConfiguration)
     into(layout.buildDirectory.dir("androidJniBuild"))
 }

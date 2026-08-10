@@ -24,7 +24,7 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
         }
 
-        val commonIntegrationTest by creating {
+        val commonIntegrationTest = create("commonIntegrationTest") {
             dependsOn(commonTest.get())
 
             dependencies {

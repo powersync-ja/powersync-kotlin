@@ -50,11 +50,11 @@ kotlin {
             }
         }
 
-        val commonIntegrationTest by creating {
+        val commonIntegrationTest = create("commonIntegrationTest") {
             dependsOn(commonTest.get())
         }
 
-        val commonNonWeb by creating {
+        val commonNonWeb = create("commonNonWeb") {
             dependsOn(commonMain.get())
         }
 
@@ -122,7 +122,7 @@ kotlin {
 }
 
 // We want to build with recent JDKs, but need to make sure we support Java 8. https://jakewharton.com/build-on-latest-java-test-through-lowest-java/
-val testWithJava8 by tasks.registering(KotlinJvmTest::class) {
+val testWithJava8 = tasks.register<KotlinJvmTest>("testWithJava8") {
     javaLauncher =
         javaToolchains.launcherFor {
             languageVersion = JavaLanguageVersion.of(8)

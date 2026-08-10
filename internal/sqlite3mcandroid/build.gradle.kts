@@ -9,7 +9,7 @@ plugins {
     id("com.powersync.plugins.sonatype")
 }
 
-val androidBuildSourceConfiguration by configurations.creating {
+val androidBuildSourceConfiguration =configurations.create("androidBuildSourceConfiguration") {
     isCanBeConsumed = false
 }
 
@@ -53,7 +53,7 @@ android {
     }
 }
 
-val generateCmake by tasks.registering(Copy::class) {
+val generateCmake = tasks.register<Copy>("generateCmake") {
     from(androidBuildSourceConfiguration)
     into(layout.buildDirectory.dir("androidJniBuild"))
 }

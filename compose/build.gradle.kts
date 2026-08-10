@@ -31,7 +31,7 @@ kotlin {
             api(projects.core)
             implementation(compose.runtime)
         }
-        val commonNonWebMain by creating {
+        val commonNonWebMain = create("commonNonWebMain") {
             dependsOn(commonMain.get())
         }
 

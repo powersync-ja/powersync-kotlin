@@ -29,7 +29,7 @@ kotlin {
             api(libs.ktor.client.mock)
         }
 
-        val platformMain by creating {
+        val platformMain = create("platformMain") {
             dependsOn(commonMain.get())
 
             dependencies {

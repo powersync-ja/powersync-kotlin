@@ -26,12 +26,12 @@ plugins {
     id("dokka-convention")
 }
 
-val powersyncStaticLibrariesConfiguration: Configuration by configurations.creating {
+val powersyncStaticLibrariesConfiguration = configurations.create("powersyncStaticLibrariesConfiguration") {
     isCanBeConsumed = false
 }
 
 val binariesFolder = project.layout.buildDirectory.dir("binaries/desktop")
-val downloadPowersyncDesktopBinaries by tasks.registering(Download::class) {
+val downloadPowersyncDesktopBinaries = tasks.register<Download>("downloadPowersyncDesktopBinaries") {
     description = "Download PowerSync core extensions for JVM builds and releases"
 
     val coreVersion =
@@ -124,7 +124,7 @@ fun linkCoreExtensionStatically(target: KotlinNativeTarget): TaskProvider<Create
     return buildCInteropDef
 }
 
-val generateVersionConstant by tasks.registering {
+val generateVersionConstant = tasks.register("generateVersionConstant") {
     val target = project.layout.buildDirectory.dir("generated/constants")
     val packageName = "com.powersync.build"
 
@@ -192,11 +192,11 @@ kotlin {
             }
         }
 
-        val commonIntegrationTest by creating {
+        val commonIntegrationTest = create("commonIntegrationTest") {
             dependsOn(commonTest.get())
         }
 
-        val commonNonWeb by creating {
+        val commonNonWeb = create("commonNonWeb") {
             dependsOn(commonMain.get())
 
             dependencies {
@@ -205,7 +205,7 @@ kotlin {
             }
         }
 
-        val commonJava by creating {
+        val commonJava = create("commonJava") {
             dependsOn(commonNonWeb)
         }
 
@@ -268,7 +268,7 @@ tasks.named<ProcessResources>(kotlin.jvm().compilations["main"].processResources
 }
 
 // We want to build with recent JDKs, but need to make sure we support Java 8. https://jakewharton.com/build-on-latest-java-test-through-lowest-java/
-val testWithJava8 by tasks.registering(KotlinJvmTest::class) {
+val testWithJava8 = tasks.register<KotlinJvmTest>("testWithJava8") {
     javaLauncher =
         javaToolchains.launcherFor {
             languageVersion = JavaLanguageVersion.of(8)

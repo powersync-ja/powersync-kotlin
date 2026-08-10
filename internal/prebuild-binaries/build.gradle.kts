@@ -28,7 +28,7 @@ data class CompiledAsset(
 
 val xCodeInstallation = ClangCompile.resolveXcode(providers)
 
-val downloadSQLiteSources by tasks.registering(Download::class) {
+val downloadSQLiteSources = tasks.register<Download>("downloadSQLiteSources") {
     val zipFileName = "sqlite-amalgamation-$sqlite3ExpandedVersion.zip"
     src("https://www.sqlite.org/$sqlite3ReleaseYear/$zipFileName")
     dest(layout.buildDirectory.dir("downloads").map { it.file(zipFileName) })
@@ -36,7 +36,7 @@ val downloadSQLiteSources by tasks.registering(Download::class) {
     overwrite(false)
 }
 
-val downloadSqlite3MultipleCipherSources by tasks.registering(Download::class) {
+val downloadSqlite3MultipleCipherSources = tasks.register<Download>("downloadSqlite3MultipleCipherSources") {
     val zipFileName = "sqlite3mc-$sqlite3McVersion.zip"
     src("https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v$sqlite3McVersion/sqlite3mc-$sqlite3McVersion-sqlite-$sqlite3BaseVersion-amalgamation.zip")
     dest(layout.buildDirectory.dir("downloads").map { it.file(zipFileName) })
@@ -44,7 +44,7 @@ val downloadSqlite3MultipleCipherSources by tasks.registering(Download::class) {
     overwrite(false)
 }
 
-val downloadPrebuiltsFromRelease by tasks.registering(Download::class) {
+val downloadPrebuiltsFromRelease = tasks.register<Download>("downloadPrebuiltsFromRelease") {
     val zipFileName = "prebuilts-$lastKotlinSdkRelease.zip"
     src("https://github.com/powersync-ja/powersync-kotlin/releases/download/v$lastKotlinSdkRelease/prebuilt_libraries.zip")
     dest(layout.buildDirectory.dir("downloads").map { it.file(zipFileName) })
@@ -52,7 +52,7 @@ val downloadPrebuiltsFromRelease by tasks.registering(Download::class) {
     overwrite(false)
 }
 
-val unzipSQLiteSources by tasks.registering(UnzipSqlite::class) {
+val unzipSQLiteSources = tasks.register<UnzipSqlite>("unzipSQLiteSources") {
     val zip = downloadSQLiteSources.map { it.outputs.files.singleFile }
     inputs.file(zip)
 
@@ -62,7 +62,7 @@ val unzipSQLiteSources by tasks.registering(UnzipSqlite::class) {
     )
 }
 
-val unzipSqlite3MultipleCipherSources by tasks.registering(UnzipSqlite::class) {
+val unzipSqlite3MultipleCipherSources = tasks.register<UnzipSqlite>("unzipSqlite3MultipleCipherSources") {
     val zip = downloadSqlite3MultipleCipherSources.map { it.outputs.files.singleFile }
     inputs.file(zip)
 
@@ -82,7 +82,7 @@ abstract class ExtractPrebuilts: Copy() {
     }
 }
 
-val unzipPrebuiltsFromLastRelease by tasks.registering(ExtractPrebuilts::class) {
+val unzipPrebuiltsFromLastRelease = tasks.register<ExtractPrebuilts>("unzipPrebuiltsFromLastRelease") {
     val zip = downloadPrebuiltsFromRelease.map { it.outputs.files.singleFile }
 
     from(zipTree(zip)) {
@@ -100,7 +100,7 @@ val unzipPrebuiltsFromLastRelease by tasks.registering(ExtractPrebuilts::class) 
     outputDir.set(layout.buildDirectory.dir("downloads/from_last_release"))
 }
 
-val prepareAndroidBuild by tasks.registering(Copy::class) {
+val prepareAndroidBuild = tasks.register<Copy>("prepareAndroidBuild") {
     from(unzipSqlite3MultipleCipherSources.flatMap { it.destination }) {
         include(
             "sqlite3mc_amalgamation.c",
@@ -195,7 +195,7 @@ val kotlinNativeCompileTasks = buildList {
     }
 }
 
-val compileNative by tasks.registering(Copy::class) {
+val compileNative = tasks.register<Copy>("compileNative") {
     into(project.layout.buildDirectory.dir("output/static"))
 
     for (task in kotlinNativeCompileTasks) {
@@ -211,7 +211,7 @@ val jniCompileTasks: Map<JniTarget, CompiledAsset> = buildMap {
     }
 }
 
-val compileJni by tasks.registering(Copy::class) {
+val compileJni = tasks.register<Copy>("compileJni") {
     into(project.layout.buildDirectory.dir("output/jni"))
 
     val targets = if (isLinux) {
@@ -228,7 +228,7 @@ val compileJni by tasks.registering(Copy::class) {
     }
 }
 
-val compileAll by tasks.registering {
+val compileAll = tasks.register("compileAll") {
     if (!isLinux) {
         dependsOn(compileNative)
     }
@@ -237,13 +237,13 @@ val compileAll by tasks.registering {
 }
 
 
-val nativeSqliteConfiguration by configurations.creating {
+val nativeSqliteConfiguration = configurations.create("nativeSqliteConfiguration") {
     isCanBeResolved = false
 }
-val jniSqlite3McConfiguration by configurations.creating {
+val jniSqlite3McConfiguration = configurations.create("jniSqlite3McConfiguration") {
     isCanBeResolved = false
 }
-val androidBuildSourceConfiguration by configurations.creating {
+val androidBuildSourceConfiguration = configurations.create("androidBuildSourceConfiguration") {
     // We share the downloaded sqlite3mc sources with the sqlite3multipleciphers project, which uses it to
     // setup a cmake-based NDK build. Since these work on all platforms and only run when needed, there's no
     // need to prebuild them.
