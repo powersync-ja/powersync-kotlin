@@ -4,8 +4,8 @@ import co.touchlab.kermit.Logger
 import co.touchlab.stately.concurrency.AtomicBoolean
 import co.touchlab.stately.concurrency.Synchronizable
 import co.touchlab.stately.concurrency.synchronize
-import com.powersync.utils.localMutex
 import com.powersync.utils.maybeSharedMutex
+import kotlinx.coroutines.sync.Mutex
 
 /**
  * Returns an object that, when deallocated, calls [ActiveDatabaseResource.dispose].
@@ -27,7 +27,7 @@ internal class ActiveDatabaseGroup(
 ) {
     internal var refCount = 0 // Guarded by companion object
     internal val syncMutex = maybeSharedMutex("sync-$identifier")
-    internal val writeLockMutex = localMutex() // Not used on the web, can be local.
+    internal val writeLockMutex = Mutex() // Not used on the web, can be local.
 
     fun removeUsage() {
         collection.synchronize {
