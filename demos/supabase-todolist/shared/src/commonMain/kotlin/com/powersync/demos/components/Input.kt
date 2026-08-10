@@ -8,8 +8,6 @@ import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -17,6 +15,9 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.unit.dp
 import com.powersync.demos.Screen
 import com.powersync.demos.onKeyUp
+import org.jetbrains.compose.resources.painterResource
+import powersync_root.demos.supabase_todolist.shared.generated.resources.Res
+import powersync_root.demos.supabase_todolist.shared.generated.resources.add
 
 @Composable
 internal fun Input(
@@ -39,7 +40,7 @@ internal fun Input(
 
         IconButton(onClick = onAddClicked) {
             Icon(
-                imageVector = Icons.Default.Add,
+                painter = painterResource(Res.drawable.add),
                 contentDescription = null
             )
         }

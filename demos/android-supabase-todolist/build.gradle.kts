@@ -128,7 +128,6 @@ dependencies {
     implementation(projects.core) // "com.powersync:core:latest.release"
     implementation(projects.integrations.supabase) // "com.powersync:connector-supabase:latest.release"
     implementation(projects.compose) // "com.powersync:compose:latest.release"
-    implementation(libs.uuid)
     implementation(libs.kermit)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.activity.ktx)

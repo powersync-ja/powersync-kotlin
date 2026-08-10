@@ -8,8 +8,6 @@ import androidx.compose.material.Checkbox
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,6 +16,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.powersync.demos.MARGIN_SCROLLBAR
 import com.powersync.demos.powersync.TodoItem
+import org.jetbrains.compose.resources.painterResource
+import powersync_root.demos.supabase_todolist.shared.generated.resources.Res
+import powersync_root.demos.supabase_todolist.shared.generated.resources.delete
 
 @Composable
 internal fun TodoItem(
@@ -48,7 +49,7 @@ internal fun TodoItem(
 
         IconButton(onClick = onDeleteClicked) {
             Icon(
-                imageVector = Icons.Default.Delete,
+                painter = painterResource(Res.drawable.delete),
                 contentDescription = null
             )
         }

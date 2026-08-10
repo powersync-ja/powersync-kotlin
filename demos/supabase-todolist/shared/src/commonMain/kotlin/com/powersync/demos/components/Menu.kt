@@ -1,9 +1,10 @@
 package com.powersync.demos.components
 
 import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.runtime.*
+import org.jetbrains.compose.resources.painterResource
+import powersync_root.demos.supabase_todolist.shared.generated.resources.Res
+import powersync_root.demos.supabase_todolist.shared.generated.resources.menu
 
 @Composable
 fun Menu(
@@ -17,7 +18,7 @@ fun Menu(
             title = { Text("Your App") },
             navigationIcon = {
                 IconButton(onClick = { expanded = true }) {
-                    Icon(Icons.Default.Menu, contentDescription = "Menu")
+                    Icon(painter = painterResource(Res.drawable.menu), contentDescription = "Menu")
                 }
             }
         )

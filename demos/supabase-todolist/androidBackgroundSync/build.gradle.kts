@@ -44,7 +44,7 @@ dependencies {
 
     implementation(projects.demos.supabaseTodolist.shared)
 
-    implementation(compose.material)
+    implementation(libs.compose.material)
     implementation(libs.androidx.core)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.service)

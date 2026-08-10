@@ -10,7 +10,7 @@ plugins {
     id("com.powersync.plugins.sonatype")
 }
 
-val nativeSqliteConfiguration: Configuration by configurations.creating {
+val nativeSqliteConfiguration = configurations.create("nativeSqliteConfiguration") {
     isCanBeConsumed = false
 }
 

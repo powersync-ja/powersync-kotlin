@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.15.0 (unreleased)
+
+- Update Kotlin to 2.4.10.
+- Compile against Android SDK 37.
+
 ## 1.14.1
 
 - Fix publish structure for Sonatype bundles.

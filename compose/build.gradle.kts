@@ -29,7 +29,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(projects.core)
-            implementation(compose.runtime)
+            implementation(libs.compose.runtime)
         }
         val commonNonWebMain = create("commonNonWebMain") {
             dependsOn(commonMain.get())
@@ -46,7 +46,7 @@ kotlin {
         }
 
         androidMain.dependencies {
-            implementation(compose.foundation)
+            implementation(libs.compose.foundation)
         }
     }
 }
