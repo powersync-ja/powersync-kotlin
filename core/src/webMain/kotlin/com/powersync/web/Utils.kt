@@ -5,10 +5,6 @@ package com.powersync.web
 import androidx.sqlite.SQLiteException
 import com.powersync.internal.InternalPowerSyncAPI
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -111,42 +107,6 @@ internal suspend fun <T : JsAny?> Promise<T>.awaitSafe(): T =
             },
         )
     }
-
-/**
- * Runs a suspending function with a JavaScript abort signal hooked to its job.
- */
-@OptIn(InternalPowerSyncAPI::class)
-internal suspend fun <T> withAbortSignal(block: suspend CoroutineScope.(JsAny) -> T): T {
-    val controller = AbortController()
-    var isCompleted = false
-
-    return coroutineScope {
-        val abortOnCancellation =
-            launch {
-                try {
-                    awaitCancellation()
-                } finally {
-                    if (!isCompleted) {
-                        controller.abort()
-                    }
-                }
-            }
-
-        try {
-            block(controller.signal)
-        } finally {
-            isCompleted = true
-            abortOnCancellation.cancel()
-        }
-    }
-}
-
-@InternalPowerSyncAPI
-public external class AbortController : JsAny {
-    public val signal: JsAny
-
-    public fun abort()
-}
 
 private fun isSqliteException(exception: JsAny): Boolean = js("'extendedResultCode' in exception")
 
