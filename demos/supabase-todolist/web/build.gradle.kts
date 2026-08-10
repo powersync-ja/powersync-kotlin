@@ -22,8 +22,8 @@ kotlin {
         commonMain.dependencies {
             implementation(projects.core)
             implementation(projects.demos.supabaseTodolist.shared)
-            implementation(compose.runtime)
-            implementation(compose.ui)
+            implementation(libs.compose.runtime)
+            implementation(libs.compose.ui)
         }
     }
 }

@@ -15,7 +15,7 @@ plugins {
 version = "1.0-SNAPSHOT"
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "com.powersync.demos.shared"
         compileSdk =
             libs.versions.android.compileSdk
@@ -49,12 +49,10 @@ kotlin {
             api(projects.core) // "com.powersync:core"
             implementation(projects.integrations.supabase) // "com.powersync:connector-supabase"
             implementation(projects.compose) // "com.powersync:compose"
-            implementation(libs.uuid)
-            implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.material)
-            implementation(compose.components.resources)
-            implementation(compose.materialIconsExtended)
+            implementation(libs.compose.runtime)
+            implementation(libs.compose.foundation)
+            implementation(libs.compose.material)
+            implementation(libs.compose.components.resources)
             implementation(libs.kmp.lifecycle.compose)
             implementation(libs.supabase.client)
             api(libs.koin.core)
@@ -68,7 +66,7 @@ kotlin {
         }
 
         jvmMain.dependencies {
-            implementation(compose.desktop.common)
+            implementation(libs.compose.desktop)
             implementation(libs.kotlinx.coroutines.swing)
         }
     }

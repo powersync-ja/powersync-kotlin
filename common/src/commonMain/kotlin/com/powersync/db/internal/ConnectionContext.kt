@@ -135,9 +135,7 @@ internal fun SQLiteStatement.bind(parameters: List<Any?>?) {
             }
 
             else -> {
-                if (parameter != null) {
-                    throw IllegalArgumentException("Unsupported parameter type: ${parameter::class}, at index $index")
-                }
+                throw IllegalArgumentException("Unsupported parameter type: ${parameter::class}, at index $index")
             }
         }
     }

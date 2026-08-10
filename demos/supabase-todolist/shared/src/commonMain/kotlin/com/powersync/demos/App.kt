@@ -33,6 +33,7 @@ import org.koin.core.KoinApplication
 import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.core.module.dsl.withOptions
+import org.koin.dsl.koinConfiguration
 import org.koin.dsl.module
 
 val sharedAppModule = module {
@@ -59,7 +60,7 @@ fun App(
         modules(module { single { openPowerSync(schema) } }, sharedAppModule)
     }
 
-    KoinApplication(application = KoinApplication::withDatabase) {
+    KoinApplication(koinConfiguration { withDatabase() }) {
         AppContent(modifier=modifier)
     }
 }

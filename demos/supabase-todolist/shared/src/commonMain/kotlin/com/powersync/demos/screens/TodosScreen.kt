@@ -10,8 +10,6 @@ import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.Text
 import androidx.compose.material.TopAppBar
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -23,6 +21,9 @@ import com.powersync.demos.components.TodoList
 import com.powersync.demos.components.WifiIcon
 import com.powersync.demos.powersync.TodoItem
 import com.powersync.sync.SyncStatusData
+import org.jetbrains.compose.resources.painterResource
+import powersync_root.demos.supabase_todolist.shared.generated.resources.Res
+import powersync_root.demos.supabase_todolist.shared.generated.resources.arrow_back
 
 @Composable
 internal fun TodosScreen(
@@ -48,7 +49,7 @@ internal fun TodosScreen(
             },
             navigationIcon = {
                 IconButton(onClick = { navController.navigate(Screen.Home) }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Go back")
+                    Icon(painter = painterResource(Res.drawable.arrow_back), contentDescription = "Go back")
                 }
             },
             actions = {

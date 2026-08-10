@@ -218,7 +218,6 @@ kotlin {
                 api(libs.androidx.sqlite.sqlite)
                 implementation(libs.androidx.sqlite.async)
 
-                implementation(libs.uuid)
                 implementation(libs.kotlin.stdlib)
                 implementation(libs.ktor.client.contentnegotiation)
                 implementation(libs.ktor.serialization.json)

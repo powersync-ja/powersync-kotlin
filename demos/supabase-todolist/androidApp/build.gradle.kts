@@ -6,7 +6,7 @@ plugins {
 
 dependencies {
     implementation(projects.demos.supabaseTodolist.shared)
-    implementation(compose.material)
+    implementation(libs.compose.material)
 }
 
 android {
