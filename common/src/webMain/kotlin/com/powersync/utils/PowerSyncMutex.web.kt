@@ -40,11 +40,12 @@ private class NavigatorLocksMutex(
 
         locks.request(name, options) { lock ->
             Promise { resolve, _ ->
-                if (lock == null) {
+                acquiredLock.complete(if (lock == null) {
                     resolve(null)
+                    null
                 } else {
-                    acquiredLock.complete(PromiseBasedHeldMutex(resolve))
-                }
+                    PromiseBasedHeldMutex(resolve)
+                })
             }
         }.catch { rejection ->
             if (isAbortError(rejection as JsAny).toBoolean()) {
