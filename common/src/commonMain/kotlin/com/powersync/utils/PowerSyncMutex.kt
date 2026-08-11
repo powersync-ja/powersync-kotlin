@@ -13,7 +13,7 @@ internal interface PowerSyncMutex {
     suspend fun tryAcquire(owner: Any? = null): HeldMutex?
 }
 
-private class LocalMutex: PowerSyncMutex {
+private class LocalMutex : PowerSyncMutex {
     private val mutex = Mutex()
 
     override suspend fun acquire(owner: Any?): HeldMutex {
@@ -50,4 +50,4 @@ internal fun localMutex(): PowerSyncMutex = LocalMutex()
  */
 internal expect fun maybeSharedMutex(name: String): PowerSyncMutex
 
-internal interface HeldMutex: AutoCloseable
+internal interface HeldMutex : AutoCloseable

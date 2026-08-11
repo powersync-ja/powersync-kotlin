@@ -21,39 +21,42 @@ import kotlin.time.Duration.Companion.milliseconds
 
 class PowerSyncMutexTest {
     @Test
-    fun `can acquire mutex`() = runTest {
-        val mutex = maybeSharedMutex("can-acquire")
-        mutex.acquire().use {  }
-    }
-
-    @Test
-    fun `can abort`() = runTest {
-        val mutex = maybeSharedMutex("can-abort")
-        val held = mutex.acquire()
-
-        withContext(Dispatchers.Default) {
-            shouldThrow<CancellationException> {
-                withTimeout(100.milliseconds) {
-                    mutex.acquire()
-                }
-            }
+    fun `can acquire mutex`() =
+        runTest {
+            val mutex = maybeSharedMutex("can-acquire")
+            mutex.acquire().use { }
         }
 
-        // Should not have a pending lock request after aborting.
-        val pending = pendingRequests().await()
-        pending.length shouldBe 0
+    @Test
+    fun `can abort`() =
+        runTest {
+            val mutex = maybeSharedMutex("can-abort")
+            val held = mutex.acquire()
 
-        held.close()
-    }
+            withContext(Dispatchers.Default) {
+                shouldThrow<CancellationException> {
+                    withTimeout(100.milliseconds) {
+                        mutex.acquire()
+                    }
+                }
+            }
+
+            // Should not have a pending lock request after aborting.
+            val pending = pendingRequests().await()
+            pending.length shouldBe 0
+
+            held.close()
+        }
 
     @Test
-    fun tryAcquire() = runTest {
-        val mutex = maybeSharedMutex("try-acquire")
-        val held = mutex.tryAcquire()!!
+    fun tryAcquire() =
+        runTest {
+            val mutex = maybeSharedMutex("try-acquire")
+            val held = mutex.tryAcquire()!!
 
-        mutex.tryAcquire() shouldBe null
-        held.close()
-    }
+            mutex.tryAcquire() shouldBe null
+            held.close()
+        }
 }
 
 private fun pendingRequests(): Promise<JsArray<JsAny>> = js("navigator.locks.query().then((e) => e.pending)")

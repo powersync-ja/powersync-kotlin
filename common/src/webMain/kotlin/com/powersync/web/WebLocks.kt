@@ -7,18 +7,18 @@ import kotlin.js.JsAny
 import kotlin.js.Promise
 import kotlin.js.js
 
-internal external interface LockManager: JsAny {
+internal external interface LockManager : JsAny {
     fun request(
         name: String,
         options: JsAny,
-        callback: (lock: Lock?) -> Promise<JsAny?>
+        callback: (lock: Lock?) -> Promise<JsAny?>,
     ): Promise<JsAny>
 }
 
-internal external interface NavigatorLocksOwner: JsAny {
+internal external interface NavigatorLocksOwner : JsAny {
     val locks: LockManager
 }
 
-internal external interface Lock {}
+internal external interface Lock
 
 internal fun navigator(): NavigatorLocksOwner = js("navigator")
