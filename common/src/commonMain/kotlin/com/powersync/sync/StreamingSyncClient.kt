@@ -125,13 +125,9 @@ internal class StreamingSyncClient(
     private suspend fun downloadLoop() {
         var invalidCredentials = false
         clientId = bucketStorage.getClientId()
-        var result = SyncIterationResult()
 
         while (true) {
-            if (!result.hideDisconnectStateAndReconnectImmediately) {
-                status.update { copy(connecting = true) }
-            }
-            result = SyncIterationResult()
+            var result = SyncIterationResult()
 
             try {
                 if (invalidCredentials) {
@@ -166,13 +162,6 @@ internal class StreamingSyncClient(
                 status.update { copy(downloadError = e) }
             } finally {
                 if (!result.hideDisconnectStateAndReconnectImmediately) {
-                    status.update {
-                        copy(
-                            connected = false,
-                            connecting = true,
-                            downloading = false,
-                        )
-                    }
                     delay(retryDelay)
                 }
             }
@@ -489,9 +478,7 @@ internal class StreamingSyncClient(
                 }
 
                 is Instruction.UpdateSyncStatus -> {
-                    status.update {
-                        applyCoreChanges(instruction.status)
-                    }
+                    status.update { copy(core=instruction.status) }
                 }
 
                 is Instruction.FetchCredentials -> {
