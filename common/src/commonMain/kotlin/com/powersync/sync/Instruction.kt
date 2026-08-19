@@ -101,11 +101,11 @@ internal sealed interface Instruction {
                         }
 
                         4 -> {
-                            decodeSerializableElement(descriptor, 5, closeSyncStream)
+                            decodeSerializableElement(descriptor, 4, closeSyncStream)
                         }
 
                         5 -> {
-                            decodeSerializableElement(descriptor, 6, didCompleteSync)
+                            decodeSerializableElement(descriptor, 5, didCompleteSync)
                             DidCompleteSync
                         }
 
