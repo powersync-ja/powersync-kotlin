@@ -31,7 +31,6 @@ import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.readAvailable
 import io.ktor.utils.io.readBuffer
 import io.ktor.utils.io.readLineStrict
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -55,12 +54,14 @@ import kotlinx.io.readByteArray
 import kotlinx.io.readIntLe
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalPowerSyncAPI::class)
 internal class StreamingSyncClient(
+    private val status: SyncStatus,
     private val bucketStorage: BucketStorage,
     private val connector: PowerSyncBackendConnector,
     private val uploadCrud: suspend () -> Unit,
@@ -83,11 +84,6 @@ internal class StreamingSyncClient(
             capacity = 1,
             onBufferOverflow = BufferOverflow.DROP_OLDEST,
         )
-
-    /**
-     * The current sync status. This instance is mutated as changes occur
-     */
-    val status = SyncStatus()
 
     private var clientId: String? = null
 
@@ -230,12 +226,11 @@ internal class StreamingSyncClient(
                     break
                 }
             } catch (e: Exception) {
-                status.update { copy(uploading = false, uploadError = e) }
-
                 if (e is CancellationException) {
                     throw e
                 }
 
+                status.update { copy(uploading = false, uploadError = e) }
                 logger.e { "Error uploading crud: ${e.message}" }
                 delay(retryDelay)
                 break
@@ -470,7 +465,7 @@ internal class StreamingSyncClient(
                     val hideDisconnect = instruction.hideDisconnect
                     logger.v { "Closing sync stream connection. Hide disconnect: $hideDisconnect" }
                     result = SyncIterationResult(hideDisconnect)
-                    fetchLinesJob!!.cancelAndJoin()
+                    fetchLinesJob?.cancelAndJoin()
                     fetchLinesJob = null
                     logger.v { "Sync stream connection shut down" }
                 }

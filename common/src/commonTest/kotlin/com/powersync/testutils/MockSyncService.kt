@@ -122,15 +122,20 @@ internal class MockSyncService(
     private object Config : HttpClientEngineConfig()
 }
 
-suspend inline fun ReceiveTurbine<SyncStatusData>.waitFor(matcher: (SyncStatusData) -> Boolean) {
+suspend inline fun ReceiveTurbine<SyncStatusData>.waitFor(
+    allowError: Boolean = false,
+    matcher: (SyncStatusData) -> Boolean
+) {
     while (true) {
         val item = awaitItem()
         if (matcher(item)) {
             break
         }
 
-        item.anyError?.let {
-            error("Unexpected error in $item")
+        if (!allowError) {
+            item.anyError?.let {
+                error("Unexpected error in $item")
+            }
         }
     }
 }
