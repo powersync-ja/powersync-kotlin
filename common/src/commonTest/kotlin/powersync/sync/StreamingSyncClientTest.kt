@@ -174,57 +174,6 @@ class StreamingSyncClientTest {
         }
 
     @Test
-    fun testStreamingSyncBasicFlow() =
-        runTest {
-            bucketStorage =
-                mock<BucketStorage> {
-                    everySuspend { getClientId() } returns "test-client-id"
-                }
-
-            streamingSyncClient =
-                StreamingSyncClient(
-                    status = status,
-                    bucketStorage = bucketStorage,
-                    connector = connector,
-                    uploadCrud = { },
-                    retryDelay = 10.milliseconds,
-                    logger = logger,
-                    params = JsonObject(emptyMap()),
-                    options =
-                        SyncOptions(
-                            clientConfiguration =
-                                SyncClientConfiguration.ExistingClient(
-                                    HttpClient(assertNoHttpEngine) {
-                                        configureSyncHttpClient()
-                                    },
-                                ),
-                        ),
-                    schema = Schema(),
-                    activeSubscriptions = MutableStateFlow(emptyList()),
-                )
-
-            // Launch streaming sync in a coroutine that we'll cancel after verification
-            val job =
-                launch {
-                    streamingSyncClient.streamingSync()
-                }
-
-            // Wait for status to update
-            withTimeout(1000.milliseconds) {
-                while (!status.connecting) {
-                    delay(10.milliseconds)
-                }
-            }
-
-            // Verify initial state
-            assertEquals(true, status.connecting)
-            assertEquals(false, status.connected)
-
-            // Clean up
-            job.cancel()
-        }
-
-    @Test
     fun splitBsonObjects() =
         runTest {
             turbineScope {

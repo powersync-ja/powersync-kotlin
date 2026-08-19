@@ -423,15 +423,6 @@ internal class PowerSyncDatabaseImpl(
             syncJob.join()
             syncSupervisorJob = null
         }
-
-        currentStatus.update {
-            copy(
-                connected = false,
-                connecting = false,
-                downloading = false,
-                downloadProgress = null,
-            )
-        }
     }
 
     override suspend fun disconnectAndClear(
@@ -451,7 +442,7 @@ internal class PowerSyncDatabaseImpl(
         internalDb.writeTransactionAsync { tx ->
             tx.getOptionalAsync("SELECT powersync_clear(?)", listOf(flags)) {}
         }
-        currentStatus.update { copy(lastSyncedAt = null, hasSynced = false) }
+        resolveOfflineSyncStatus()
     }
 
     internal suspend fun resolveOfflineSyncStatusIfNotConnected() {
@@ -470,7 +461,7 @@ internal class PowerSyncDatabaseImpl(
             }
 
         currentStatus.update {
-            applyCoreChanges(offlineSyncStatus)
+            copy(core=offlineSyncStatus)
         }
     }
 

@@ -16,26 +16,28 @@ public data class PriorityStatusEntry internal constructor(
 )
 
 public sealed class SyncStatusData {
+    internal abstract val core: CoreSyncStatus?
+
     /**
      * true if currently connected.
      *
      * This means the PowerSync connection is ready to download, and [PowerSyncBackendConnector.uploadData] may be called for any local changes.
      */
-    public abstract val connected: Boolean
+    public val connected: Boolean get() = core?.connected ?: false
 
     /**
      * true if the PowerSync connection is busy connecting.
      *
      * During this stage, [PowerSyncBackendConnector.uploadData] may already be called, and [uploading] may be true.
      */
-    public abstract val connecting: Boolean
+    public val connecting: Boolean get() = core?.connecting ?: false
 
     /**
      * true if actively downloading changes.
      *
      * This is only true when [connected] is also true.
      */
-    public abstract val downloading: Boolean
+    public val downloading: Boolean get() = core?.downloading != null
 
     /**
      * Realtime progress information about downloaded operations during an active sync.
@@ -44,7 +46,7 @@ public sealed class SyncStatusData {
      * For more information on what progress is reported, see [SyncDownloadProgress].
      * This value will be non-null only if [downloading] is true.
      */
-    public abstract val downloadProgress: SyncDownloadProgress?
+    public val downloadProgress: SyncDownloadProgress? get() = core?.downloading?.let { SyncDownloadProgress(it.buckets) }
 
     /**
      * true if uploading changes
@@ -56,14 +58,18 @@ public sealed class SyncStatusData {
      *
      * Currently this is reset to null after a restart.
      */
-    public abstract val lastSyncedAt: Instant?
+    public val lastSyncedAt: Instant? get() {
+        return statusForPriority(StreamPriority.FULL_SYNC_PRIORITY).lastSyncedAt
+    }
 
     /**
      * Indicates whether there has been at least one full sync, if any.
      *
      * Is null when unknown, for example when state is still being loaded from the database.
      */
-    public abstract val hasSynced: Boolean?
+    public val hasSynced: Boolean? get() {
+        return statusForPriority(StreamPriority.FULL_SYNC_PRIORITY).hasSynced
+    }
 
     /**
      * Error during uploading.
@@ -82,7 +88,7 @@ public sealed class SyncStatusData {
     /**
      * Convenience getter for either the value of downloadError or uploadError
      */
-    public abstract val anyError: Any?
+    public val anyError: Any? get() = downloadError ?: uploadError
 
     /**
      * Available [PriorityStatusEntry] reporting the sync status for buckets within priorities.
@@ -91,26 +97,27 @@ public sealed class SyncStatusData {
      * and [lastSyncedAt] are set to indicate that a partial (but no complete) sync has completed.
      * A completed [PriorityStatusEntry] at one priority level always includes all higher priorities too.
      */
-    public abstract val priorityStatusEntries: List<PriorityStatusEntry>
-
-    internal abstract val internalSubscriptions: List<CoreActiveStreamSubscription>?
+    public val priorityStatusEntries: List<PriorityStatusEntry> get() {
+        return core?.priorityStatus?.map(this::exposePriorityStatus) ?: emptyList()
+    }
 
     /**
      * Status information for whether buckets in [priority] have been synchronized.
      */
     public fun statusForPriority(priority: StreamPriority): PriorityStatusEntry {
-        val byDescendingPriorities = priorityStatusEntries.sortedByDescending { it.priority }
+        val statusEntries = core?.priorityStatus ?: return PriorityStatusEntry(priority, null, null)
 
-        for (entry in byDescendingPriorities) {
+        // Note: statusEntries is always sorted by descending bucket priority
+        for (entry in statusEntries) {
             // Lower-priority buckets are synchronized after higher-priority buckets, so we look for the first
             // entry that doesn't have a higher priority.
             if (entry.priority <= priority) {
-                return entry
+                return exposePriorityStatus(entry)
             }
         }
 
         // A complete sync necessarily includes all priorities.
-        return PriorityStatusEntry(priority, lastSyncedAt, hasSynced)
+        return PriorityStatusEntry(priority, null, false)
     }
 
     /**
@@ -120,14 +127,14 @@ public sealed class SyncStatusData {
      * information about included streams yet. Once non-null, an empty list means the database
      * is initialized but no streams are active.
      */
-    public val syncStreams: List<SyncStreamStatus>? get() = internalSubscriptions?.map(this::exposeStreamStatus)
+    public val syncStreams: List<SyncStreamStatus>? get() = core?.streams?.map(this::exposeStreamStatus)
 
     /**
      * Status information for [stream], if it's a stream that is currently tracked by the sync
      * client.
      */
     public fun forStream(stream: SyncStreamDescription): SyncStreamStatus? {
-        val raw = internalSubscriptions?.firstOrNull { it.name == stream.name && it.parameters == stream.parameters } ?: return null
+        val raw = core?.streams?.firstOrNull { it.name == stream.name && it.parameters == stream.parameters } ?: return null
         return exposeStreamStatus(raw)
     }
 
@@ -143,51 +150,29 @@ public sealed class SyncStatusData {
 
         return SyncStreamStatus(progress, internal)
     }
+
+    private fun exposePriorityStatus(internal: CorePriorityStatus): PriorityStatusEntry =
+        PriorityStatusEntry(
+            priority = internal.priority,
+            lastSyncedAt = internal.lastSyncedAt,
+            hasSynced = internal.hasSynced,
+        )
 }
 
 internal data class SyncStatusDataContainer(
-    override val connected: Boolean = false,
-    override val connecting: Boolean = false,
-    override val downloading: Boolean = false,
-    override val downloadProgress: SyncDownloadProgress? = null,
+    override val core: CoreSyncStatus?,
     override val uploading: Boolean = false,
-    override val lastSyncedAt: Instant? = null,
-    override val hasSynced: Boolean? = null,
     override val uploadError: Any? = null,
     override val downloadError: Any? = null,
-    override val priorityStatusEntries: List<PriorityStatusEntry> = emptyList(),
-    override val internalSubscriptions: List<CoreActiveStreamSubscription>? = null,
-) : SyncStatusData() {
-    override val anyError
-        get() = downloadError ?: uploadError
-
-    internal fun applyCoreChanges(status: CoreSyncStatus): SyncStatusDataContainer {
-        val completeSync = status.priorityStatus.firstOrNull { it.priority == StreamPriority.FULL_SYNC_PRIORITY }
-
-        return copy(
-            connected = status.connected,
-            connecting = status.connecting,
-            downloading = status.downloading != null,
-            downloadProgress = status.downloading?.let { SyncDownloadProgress(it.buckets) },
-            lastSyncedAt = completeSync?.lastSyncedAt,
-            hasSynced = completeSync != null,
-            priorityStatusEntries =
-                status.priorityStatus.map {
-                    PriorityStatusEntry(
-                        priority = it.priority,
-                        lastSyncedAt = it.lastSyncedAt,
-                        hasSynced = it.hasSynced,
-                    )
-                },
-            internalSubscriptions = status.streams,
-        )
-    }
-}
+) : SyncStatusData()
 
 @ConsistentCopyVisibility
 public data class SyncStatus internal constructor(
-    private var data: SyncStatusDataContainer = SyncStatusDataContainer(),
+    private var data: SyncStatusDataContainer = SyncStatusDataContainer(null),
 ) : SyncStatusData() {
+    override val core: CoreSyncStatus?
+        get() = data.core
+
     private val stateFlow: MutableStateFlow<SyncStatusDataContainer> = MutableStateFlow(data)
 
     /**
@@ -203,47 +188,14 @@ public data class SyncStatus internal constructor(
         stateFlow.value = data
     }
 
-    internal suspend fun trackOther(source: SyncStatus) {
-        source.stateFlow.collect {
-            update { it }
-        }
-    }
-
-    override val anyError: Any?
-        get() = data.anyError
-
-    override val connected: Boolean
-        get() = data.connected
-
-    override val connecting: Boolean
-        get() = data.connecting
-
-    override val downloading: Boolean
-        get() = data.downloading
-
-    override val downloadProgress: SyncDownloadProgress?
-        get() = data.downloadProgress
-
     override val uploading: Boolean
         get() = data.uploading
-
-    override val lastSyncedAt: Instant?
-        get() = data.lastSyncedAt
-
-    override val hasSynced: Boolean?
-        get() = data.hasSynced
 
     override val uploadError: Any?
         get() = data.uploadError
 
     override val downloadError: Any?
         get() = data.downloadError
-
-    override val priorityStatusEntries: List<PriorityStatusEntry>
-        get() = data.priorityStatusEntries
-
-    override val internalSubscriptions: List<CoreActiveStreamSubscription>?
-        get() = data.internalSubscriptions
 
     override fun toString(): String =
         "SyncStatus(connected=$connected, connecting=$connecting, downloading=$downloading, uploading=$uploading, lastSyncedAt=$lastSyncedAt, hasSynced=$hasSynced, error=$anyError)"
