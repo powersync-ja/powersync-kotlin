@@ -461,7 +461,7 @@ internal class PowerSyncDatabaseImpl(
             }
 
         currentStatus.update {
-            copy(core=offlineSyncStatus)
+            copy(core = offlineSyncStatus)
         }
     }
 

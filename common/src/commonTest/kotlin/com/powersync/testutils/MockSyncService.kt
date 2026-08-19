@@ -124,7 +124,7 @@ internal class MockSyncService(
 
 suspend inline fun ReceiveTurbine<SyncStatusData>.waitFor(
     allowError: Boolean = false,
-    matcher: (SyncStatusData) -> Boolean
+    matcher: (SyncStatusData) -> Boolean,
 ) {
     while (true) {
         val item = awaitItem()

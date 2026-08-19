@@ -41,6 +41,7 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ProducerScope
 import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.coroutines.channels.consume
 import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.coroutineScope
@@ -354,10 +355,11 @@ internal class StreamingSyncClient(
      * improving performance.
      */
     private inner class ActiveIteration {
-        private var needsCredentialsRefresh = Channel<Unit>(
-            capacity = 1,
-            onBufferOverflow = BufferOverflow.DROP_OLDEST,
-        )
+        private var needsCredentialsRefresh =
+            Channel<Unit>(
+                capacity = 1,
+                onBufferOverflow = BufferOverflow.DROP_OLDEST,
+            )
 
         suspend fun syncIteration(): SyncIterationResult {
             return try {
@@ -375,8 +377,14 @@ internal class StreamingSyncClient(
                                     logger.v { "Closing sync stream connection. Hide disconnect: $hideDisconnect" }
                                     return@coroutineScope SyncIterationResult(hideDisconnect)
                                 }
-                                is Instruction.EstablishSyncStream -> error("Already has stream")
-                                is Instruction.NonInterruptingInstruction -> handleInstruction(instruction)
+
+                                is Instruction.EstablishSyncStream -> {
+                                    error("Already has stream")
+                                }
+
+                                is Instruction.NonInterruptingInstruction -> {
+                                    handleInstruction(instruction)
+                                }
                             }
                         }
                     }
@@ -404,15 +412,16 @@ internal class StreamingSyncClient(
         private suspend fun start(): Pair<Instruction.EstablishSyncStream, List<SubscriptionGroup>>? {
             val subscriptions = activeSubscriptions.value
 
-            val startInstructions = bucketStorage.control(
-                PowerSyncControlArguments.Start(
-                    parameters = params,
-                    schema = schema,
-                    includeDefaults = options.includeDefaultStreams,
-                    activeStreams = subscriptions.map { it.key },
-                    appMetadata = appMetadata,
-                ),
-            )
+            val startInstructions =
+                bucketStorage.control(
+                    PowerSyncControlArguments.Start(
+                        parameters = params,
+                        schema = schema,
+                        includeDefaults = options.includeDefaultStreams,
+                        activeStreams = subscriptions.map { it.key },
+                        appMetadata = appMetadata,
+                    ),
+                )
             var start: Instruction.EstablishSyncStream? = null
 
             for (instruction in startInstructions) {
@@ -420,10 +429,14 @@ internal class StreamingSyncClient(
                     is Instruction.EstablishSyncStream -> {
                         start = instruction
                     }
+
                     is Instruction.CloseSyncStream -> {
                         return null
                     }
-                    is Instruction.NonInterruptingInstruction -> handleInstruction(instruction)
+
+                    is Instruction.NonInterruptingInstruction -> {
+                        handleInstruction(instruction)
+                    }
                 }
             }
 
@@ -487,17 +500,17 @@ internal class StreamingSyncClient(
                     needsCredentialsRefresh.consumeEach {
                         try {
                             connector.updateCredentials()
+
+                            logger.v { "Stopping because new credentials are available" }
+                            // Token has been refreshed, start another iteration
+                            send(PowerSyncControlArguments.DidRefreshToken)
                         } catch (e: Exception) {
-                            if (e !is CancellationException) {
-                                logger.w(throwable=e) { "Failure in updateCredentials" }
+                            if (e is CancellationException) {
+                                throw e
+                            } else {
+                                logger.w(throwable = e) { "Failure in updateCredentials" }
                             }
-
-                            throw e
                         }
-
-                        logger.v { "Stopping because new credentials are available" }
-                        // Token has been refreshed, start another iteration
-                        send(PowerSyncControlArguments.DidRefreshToken)
                     }
                 }
             }
@@ -518,9 +531,11 @@ internal class StreamingSyncClient(
                         throwable = null,
                     )
                 }
+
                 is Instruction.UpdateSyncStatus -> {
-                    status.update { copy(core=instruction.status) }
+                    status.update { copy(core = instruction.status) }
                 }
+
                 is Instruction.FetchCredentials -> {
                     if (instruction.didExpire) {
                         connector.invalidateCredentials()
@@ -529,9 +544,11 @@ internal class StreamingSyncClient(
                         needsCredentialsRefresh.send(Unit)
                     }
                 }
+
                 Instruction.DidCompleteSync -> {
                     status.update { copy(downloadError = null) }
                 }
+
                 is Instruction.UnknownInstruction -> {
                     logger.w { "Unknown instruction received from core extension: ${instruction.raw}" }
                 }
