@@ -23,16 +23,21 @@ import kotlin.time.Instant
  */
 @Serializable(with = Instruction.Serializer::class)
 internal sealed interface Instruction {
+    /**
+     * An [Instruction] that doesn't start or stop a sync iteration.
+     */
+    sealed interface NonInterruptingInstruction: Instruction
+
     @Serializable
     data class LogLine(
         val severity: String,
         val line: String,
-    ) : Instruction
+    ) : NonInterruptingInstruction
 
     @Serializable
     data class UpdateSyncStatus(
         val status: CoreSyncStatus,
-    ) : Instruction
+    ) : NonInterruptingInstruction
 
     @Serializable
     data class EstablishSyncStream(
@@ -43,9 +48,7 @@ internal sealed interface Instruction {
     data class FetchCredentials(
         @SerialName("did_expire")
         val didExpire: Boolean,
-    ) : Instruction
-
-    data object FlushSileSystem : Instruction
+    ) : NonInterruptingInstruction
 
     @Serializable
     data class CloseSyncStream(
@@ -53,18 +56,17 @@ internal sealed interface Instruction {
         val hideDisconnect: Boolean,
     ) : Instruction
 
-    data object DidCompleteSync : Instruction
+    data object DidCompleteSync : NonInterruptingInstruction
 
     data class UnknownInstruction(
         val raw: JsonElement?,
-    ) : Instruction
+    ) : NonInterruptingInstruction
 
     class Serializer : KSerializer<Instruction> {
         private val logLine = serializer<LogLine>()
         private val updateSyncStatus = serializer<UpdateSyncStatus>()
         private val establishSyncStream = serializer<EstablishSyncStream>()
         private val fetchCredentials = serializer<FetchCredentials>()
-        private val flushFileSystem = serializer<JsonObject>()
         private val closeSyncStream = serializer<CloseSyncStream>()
         private val didCompleteSync = serializer<JsonObject>()
 
@@ -74,7 +76,6 @@ internal sealed interface Instruction {
                 element("UpdateSyncStatus", updateSyncStatus.descriptor, isOptional = true)
                 element("EstablishSyncStream", establishSyncStream.descriptor, isOptional = true)
                 element("FetchCredentials", fetchCredentials.descriptor, isOptional = true)
-                element("FlushFileSystem", flushFileSystem.descriptor, isOptional = true)
                 element("CloseSyncStream", closeSyncStream.descriptor, isOptional = true)
                 element("DidCompleteSync", didCompleteSync.descriptor, isOptional = true)
             }
@@ -100,15 +101,10 @@ internal sealed interface Instruction {
                         }
 
                         4 -> {
-                            decodeSerializableElement(descriptor, 4, flushFileSystem)
-                            FlushSileSystem
-                        }
-
-                        5 -> {
                             decodeSerializableElement(descriptor, 5, closeSyncStream)
                         }
 
-                        6 -> {
+                        5 -> {
                             decodeSerializableElement(descriptor, 6, didCompleteSync)
                             DidCompleteSync
                         }
