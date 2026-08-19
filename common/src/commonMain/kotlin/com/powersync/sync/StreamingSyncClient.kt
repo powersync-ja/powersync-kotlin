@@ -31,12 +31,18 @@ import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.readAvailable
 import io.ktor.utils.io.readBuffer
 import io.ktor.utils.io.readLineStrict
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ProducerScope
+import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.coroutines.channels.consumeEach
+import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -136,7 +142,7 @@ internal class StreamingSyncClient(
                     connector.invalidateCredentials()
                     invalidCredentials = false
                 }
-                result = streamingSyncIteration()
+                result = ActiveIteration().syncIteration()
             } catch (e: PowerSyncRSocketError) {
                 // RSocketError extends Throwable directly (not Exception), so it needs its own
                 // catch block to avoid accidentally catching JVM Errors (OutOfMemoryError, etc.).
@@ -180,6 +186,7 @@ internal class StreamingSyncClient(
                         completedCrudUploads.send(Unit)
                     }
                 }
+
                 launch { delay(crudUploadThrottle) }
             }
 
@@ -339,21 +346,6 @@ internal class StreamingSyncClient(
         }
     }
 
-    private suspend fun streamingSyncIteration(): SyncIterationResult =
-        coroutineScope {
-            val iteration = ActiveIteration(this)
-
-            try {
-                iteration.start()
-            } finally {
-                // This can't be canceled because we need to send a stop message, which is async, to
-                // clean up resources.
-                withContext(NonCancellable) {
-                    iteration.stop()
-                }
-            }
-        }
-
     /**
      * Implementation of a sync iteration that delegates to helper functions implemented in the
      * Rust core extension.
@@ -361,26 +353,58 @@ internal class StreamingSyncClient(
      * This avoids us having to decode sync lines in Kotlin, unlocking the RSocket protocol and
      * improving performance.
      */
-    private inner class ActiveIteration(
-        val scope: CoroutineScope,
-    ) {
-        var fetchLinesJob: Job? = null
-        var credentialsInvalidation: Job? = null
+    private inner class ActiveIteration {
+        private var needsCredentialsRefresh = Channel<Unit>(
+            capacity = 1,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST,
+        )
 
-        // Using a channel for control invocations so that they're handled by a single coroutine,
-        // avoiding races between concurrent jobs like fetching credentials.
-        private val controlInvocations = Channel<PowerSyncControlArguments>()
-        private var result = SyncIterationResult()
+        suspend fun syncIteration(): SyncIterationResult {
+            return try {
+                val (establishConnection, subscriptions) = start() ?: return SyncIterationResult()
 
-        private suspend fun invokeControl(args: PowerSyncControlArguments) {
-            val instructions = bucketStorage.control(args)
-            instructions.forEach { handleInstruction(it) }
+                coroutineScope {
+                    val channel = produceEvents(establishConnection, subscriptions)
+
+                    channel.consumeEach { line ->
+                        val instructions = bucketStorage.control(line)
+                        for (instruction in instructions) {
+                            when (instruction) {
+                                is Instruction.CloseSyncStream -> {
+                                    val hideDisconnect = instruction.hideDisconnect
+                                    logger.v { "Closing sync stream connection. Hide disconnect: $hideDisconnect" }
+                                    return@coroutineScope SyncIterationResult(hideDisconnect)
+                                }
+                                is Instruction.EstablishSyncStream -> error("Already has stream")
+                                is Instruction.NonInterruptingInstruction -> handleInstruction(instruction)
+                            }
+                        }
+                    }
+
+                    SyncIterationResult()
+                }
+            } finally {
+                // This can't be canceled because we need to send a stop message, which is async, to
+                // clean up resources.
+                withContext(NonCancellable) {
+                    stop()
+                }
+
+                logger.v { "Sync stream connection shut down" }
+            }
         }
 
-        suspend fun start(): SyncIterationResult {
-            var subscriptions = activeSubscriptions.value
+        /**
+         * Passes current subscriptions and other options to the core extension to begin a sync
+         * iteration.
+         *
+         * Returns the start instruction and  used subscriptions (to compare them against later
+         * changes).
+         */
+        private suspend fun start(): Pair<Instruction.EstablishSyncStream, List<SubscriptionGroup>>? {
+            val subscriptions = activeSubscriptions.value
 
-            invokeControl(
+            val startInstructions = bucketStorage.control(
                 PowerSyncControlArguments.Start(
                     parameters = params,
                     schema = schema,
@@ -389,80 +413,98 @@ internal class StreamingSyncClient(
                     appMetadata = appMetadata,
                 ),
             )
+            var start: Instruction.EstablishSyncStream? = null
 
-            val listenForUpdatedSubscriptions =
-                scope.launch {
+            for (instruction in startInstructions) {
+                when (instruction) {
+                    is Instruction.EstablishSyncStream -> {
+                        start = instruction
+                    }
+                    is Instruction.CloseSyncStream -> {
+                        return null
+                    }
+                    is Instruction.NonInterruptingInstruction -> handleInstruction(instruction)
+                }
+            }
+
+            return start?.let { it to subscriptions }
+        }
+
+        /**
+         * Sends a stop command and uses returned instructions to e.g. clean up the sync status.
+         */
+        private suspend fun stop() {
+            val instructions = bucketStorage.control(PowerSyncControlArguments.Stop)
+            // We don't need to handle interrupting instructions since we're unconditionally
+            // ending the sync iteration at this point.
+            for (instruction in instructions) {
+                if (instruction is Instruction.NonInterruptingInstruction) {
+                    handleInstruction(instruction)
+                }
+            }
+        }
+
+        /**
+         * Produces events the sync client needs to react to.
+         *
+         * Decoded sync lines received from the PowerSync service are the main source for events.
+         * Additionally, this watches local events (changed subscriptions, completed uploads) to
+         * forward those to the stream client.
+         */
+        @OptIn(ExperimentalCoroutinesApi::class)
+        private fun CoroutineScope.produceEvents(
+            instruction: Instruction.EstablishSyncStream,
+            initialSubscriptions: List<SubscriptionGroup>,
+        ): ReceiveChannel<PowerSyncControlArguments> {
+            var currentSubscriptions = initialSubscriptions
+
+            return produce(CoroutineName("produceEvents")) {
+                launch(CoroutineName("Receive lines from PowerSync service")) {
+                    receiveTextOrBinaryLines(instruction.request).collect {
+                        send(it)
+                    }
+                }
+
+                launch(CoroutineName("Watch subscription updates")) {
                     activeSubscriptions.collect {
-                        if (subscriptions !== it) {
-                            subscriptions = it
-                            controlInvocations.send(
+                        if (currentSubscriptions !== it) {
+                            currentSubscriptions = it
+                            send(
                                 PowerSyncControlArguments.UpdateSubscriptions(activeSubscriptions.value.map { it.key }),
                             )
                         }
                     }
                 }
 
-            var hadSyncLine = false
-            for (line in controlInvocations) {
-                val instructions = bucketStorage.control(line)
-                instructions.forEach { handleInstruction(it) }
+                launch(CoroutineName("Track completed CRUD uploads")) {
+                    while (true) {
+                        completedCrudUploads.receive()
+                        send(PowerSyncControlArguments.CompletedUpload)
+                    }
+                }
 
-                if (!hadSyncLine && (line is PowerSyncControlArguments.TextLine || line is PowerSyncControlArguments.BinaryLine)) {
-                    // Trigger a crud upload when receiving the first sync line: We could have
-                    // pending local writes made while disconnected, so in addition to listening on
-                    // updates to `ps_crud`, we also need to trigger a CRUD upload in some other
-                    // cases. We do this on the first sync line because the client is likely to be
-                    // online in that case.
-                    hadSyncLine = true
+                launch(CoroutineName("Prefetch credentials")) {
+                    needsCredentialsRefresh.consumeEach {
+                        try {
+                            connector.updateCredentials()
+                        } catch (e: Exception) {
+                            if (e !is CancellationException) {
+                                logger.w(throwable=e) { "Failure in updateCredentials" }
+                            }
+
+                            throw e
+                        }
+
+                        logger.v { "Stopping because new credentials are available" }
+                        // Token has been refreshed, start another iteration
+                        send(PowerSyncControlArguments.DidRefreshToken)
+                    }
                 }
             }
-
-            listenForUpdatedSubscriptions.cancel()
-            return result
         }
 
-        suspend fun stop() {
-            invokeControl(PowerSyncControlArguments.Stop)
-            fetchLinesJob?.join()
-        }
-
-        private suspend fun handleInstruction(instruction: Instruction) {
+        private suspend fun handleInstruction(instruction: Instruction.NonInterruptingInstruction) {
             when (instruction) {
-                is Instruction.EstablishSyncStream -> {
-                    fetchLinesJob?.cancelAndJoin()
-                    fetchLinesJob =
-                        scope
-                            .launch {
-                                launch {
-                                    logger.v { "listening for completed uploads" }
-                                    for (completion in completedCrudUploads) {
-                                        controlInvocations.send(PowerSyncControlArguments.CompletedUpload)
-                                    }
-                                }
-
-                                launch {
-                                    connect(instruction)
-                                }
-                            }.also {
-                                it.invokeOnCompletion {
-                                    controlInvocations.close()
-                                }
-                            }
-                }
-
-                is Instruction.CloseSyncStream -> {
-                    val hideDisconnect = instruction.hideDisconnect
-                    logger.v { "Closing sync stream connection. Hide disconnect: $hideDisconnect" }
-                    result = SyncIterationResult(hideDisconnect)
-                    fetchLinesJob?.cancelAndJoin()
-                    fetchLinesJob = null
-                    logger.v { "Sync stream connection shut down" }
-                }
-
-                Instruction.FlushSileSystem -> {
-                    // We have durable file systems, so flushing is not necessary
-                }
-
                 is Instruction.LogLine -> {
                     logger.log(
                         severity =
@@ -476,46 +518,23 @@ internal class StreamingSyncClient(
                         throwable = null,
                     )
                 }
-
                 is Instruction.UpdateSyncStatus -> {
                     status.update { copy(core=instruction.status) }
                 }
-
                 is Instruction.FetchCredentials -> {
                     if (instruction.didExpire) {
                         connector.invalidateCredentials()
                     } else {
                         // Token expires soon - refresh it in the background
-                        if (credentialsInvalidation == null) {
-                            val job =
-                                scope.launch {
-                                    connector.updateCredentials()
-                                    logger.v { "Stopping because new credentials are available" }
-
-                                    // Token has been refreshed, start another iteration
-                                    controlInvocations.send(PowerSyncControlArguments.DidRefreshToken)
-                                }
-                            job.invokeOnCompletion {
-                                credentialsInvalidation = null
-                            }
-                            credentialsInvalidation = job
-                        }
+                        needsCredentialsRefresh.send(Unit)
                     }
                 }
-
                 Instruction.DidCompleteSync -> {
                     status.update { copy(downloadError = null) }
                 }
-
                 is Instruction.UnknownInstruction -> {
                     logger.w { "Unknown instruction received from core extension: ${instruction.raw}" }
                 }
-            }
-        }
-
-        private suspend fun connect(start: Instruction.EstablishSyncStream) {
-            receiveTextOrBinaryLines(start.request).collect {
-                controlInvocations.send(it)
             }
         }
     }
