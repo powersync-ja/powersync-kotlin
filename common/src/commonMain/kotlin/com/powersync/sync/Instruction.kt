@@ -1,10 +1,13 @@
 package com.powersync.sync
 
+import com.powersync.bucket.CheckpointRequestPayload
 import com.powersync.bucket.StreamPriority
 import com.powersync.db.crud.TypedRow
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerialInfo
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.LongAsStringSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -42,6 +45,8 @@ internal sealed interface Instruction {
     @Serializable
     data class EstablishSyncStream(
         val request: JsonObject,
+        @SerialName("checkpoint_request")
+        val checkpointRequest: CheckpointRequestPayload?,
     ) : Instruction
 
     @Serializable
@@ -150,6 +155,9 @@ internal data class CoreSyncStatus(
     @SerialName("priority_status")
     val priorityStatus: List<CorePriorityStatus>,
     val streams: List<CoreActiveStreamSubscription>,
+    @SerialName("internal_last_applied_checkpoint_request_id")
+    @Serializable(with = LongAsStringSerializer::class)
+    val lastAppliedCheckpointRequestId: Long?,
 )
 
 @Serializable

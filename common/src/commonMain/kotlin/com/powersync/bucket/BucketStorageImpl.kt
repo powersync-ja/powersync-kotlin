@@ -132,4 +132,9 @@ internal class BucketStorageImpl(
             val (op: String, data: Any?) = args.sqlArguments
             tx.getAsync("SELECT powersync_control(?, ?) AS r", listOf(op, data), ::handleControlResult)
         }
+
+    override suspend fun readOrUpdateCheckpoint(
+        variant: String,
+        update: Long?,
+    ): Long? = db.writeTransactionAsync { tx -> tx.readOrUpdateCheckpoint(variant, update) }
 }

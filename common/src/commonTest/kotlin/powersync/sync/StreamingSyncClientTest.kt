@@ -19,11 +19,9 @@ import com.powersync.sync.SyncOptions
 import com.powersync.sync.SyncStatus
 import com.powersync.sync.configureSyncHttpClient
 import com.powersync.test.TestConnector
-import com.powersync.test.waitFor
 import dev.mokkery.answering.returns
 import dev.mokkery.everySuspend
 import dev.mokkery.mock
-import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeTypeOf
@@ -31,21 +29,17 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.utils.io.ByteChannel
 import io.ktor.utils.io.writeByteArray
-import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.withTimeout
 import kotlinx.io.EOFException
 import kotlinx.serialization.json.JsonObject
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalKermitApi::class, ExperimentalPowerSyncAPI::class)

@@ -1,9 +1,13 @@
 package com.powersync.sync
 
+import com.powersync.ExperimentalCheckpointRequestsApi
+import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import kotlin.native.HiddenFromObjC
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Configuration options for the [PowerSyncDatabase.connect] method, allowing customization of
@@ -53,6 +57,10 @@ public class SyncOptions(
      * when they don't have an explicit subscription.
      */
     public val includeDefaultStreams: Boolean = true,
+    /**
+     * The mode used to request checkpoint requests from the PowerSync service.
+     */
+    public val checkpointMode: CheckpointMode = CheckpointMode.Legacy,
 ) {
     public companion object {
         /**
@@ -65,6 +73,50 @@ public class SyncOptions(
     init {
         check(newClientImplementation) {
             "Support for newClientImplementation = false has been removed"
+        }
+    }
+}
+
+/**
+ * The mechanism used to request checkpoints from the PowerSync service.
+ *
+ * Checkpoint requests are used after a client uploads local mutations (or when explicitly requested
+ * on the database). The PowerSync service later references them in downloaded data, allowing the
+ * SDK to assume that uploaded data has been synced down again.
+ *
+ * There are two ways to send checkpoint requests: A [Legacy] (but default and stable) format
+ * supported by all PowerSync service versions, and a newer [Requests] method which is only
+ * available from PowerSync service version 1.24.0 or later.
+ *
+ * Note that the requests checkpoint mode is an alpha API.
+ */
+public sealed class CheckpointMode {
+    /**
+     * Uses a legacy but stable endpoint to request checkpoints.
+     */
+    public object Legacy : CheckpointMode()
+
+    /**
+     * Adopts a new and more efficient checkpoint protocol with better support for switching users
+     * on devices.
+     */
+    @ExperimentalCheckpointRequestsApi
+    public data class Requests(
+        /**
+         * The periodic interval before re-posting the latest checkpoint request to the service if
+         * it has not been applied in time.
+         */
+        val retryDelay: Duration = defaultRetryDelay,
+    ) : CheckpointMode() {
+        init {
+            require(retryDelay >= minimumRetryDelay) {
+                "The retry delay for checkpoints must be at least $minimumRetryDelay"
+            }
+        }
+
+        private companion object {
+            val minimumRetryDelay: Duration = 10.seconds
+            val defaultRetryDelay = minimumRetryDelay
         }
     }
 }

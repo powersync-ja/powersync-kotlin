@@ -66,6 +66,8 @@ internal class ActiveDatabaseTest(
 
     lateinit var database: PowerSyncDatabaseImpl
 
+    val checkpointState = CheckpointRequestsTestState()
+
     val logWriter =
         PowerSyncTestLogWriter(
             loggable = Severity.Verbose,
@@ -136,6 +138,7 @@ internal class ActiveDatabaseTest(
                 lines = { syncLines },
                 generateCheckpoint = { checkpointResponse() },
                 syncLinesContentType = { syncLinesContentType },
+                requestCheckpoints = checkpointState,
                 trackSyncRequest = {
                     val parsed =
                         JsonUtil.json.parseToJsonElement(it.body.toByteArray().decodeToString())

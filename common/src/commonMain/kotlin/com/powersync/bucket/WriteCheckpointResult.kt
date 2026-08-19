@@ -15,3 +15,24 @@ internal data class WriteCheckpointData(
     @Serializable(with = LongAsStringSerializer::class)
     val writeCheckpoint: Long,
 )
+
+@Serializable
+internal class CheckpointRequestPayload(
+    @SerialName("client_id")
+    val clientId: String,
+    @SerialName("checkpoint_request_id")
+    @Serializable(with = LongAsStringSerializer::class)
+    val checkpointRequestId: Long,
+)
+
+@Serializable
+internal class CheckpointRequestResponse(
+    val data: CheckpointRequestResponseData,
+)
+
+@Serializable
+internal class CheckpointRequestResponseData(
+    @SerialName("checkpoint_request_id")
+    @Serializable(with = LongAsStringSerializer::class)
+    val id: Long,
+)

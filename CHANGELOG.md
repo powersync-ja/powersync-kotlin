@@ -5,6 +5,8 @@
 - Update Kotlin to 2.4.10.
 - Compile against Android SDK 37.
 - Web: Use navigator locks to guard the sync client.
+- Add `SyncOptions.checkpointMode`. When set to `CheckpointMode.Requests()`, the sync client uses a
+  a new protocol for checkpoints after crud uploads with better support for switching users.
 
 ## 1.14.1
 

@@ -15,6 +15,7 @@ internal object JsonUtil {
         Json {
             encodeDefaults = true
             ignoreUnknownKeys = true
+            explicitNulls = false
         }
 }
 
