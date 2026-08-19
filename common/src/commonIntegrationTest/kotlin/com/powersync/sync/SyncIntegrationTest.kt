@@ -161,7 +161,7 @@ class SyncIntegrationTest : AbstractSyncTest() {
 
                 database.disconnect()
                 turbine.waitFor { !it.connected }
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
 
             // Disconnecting should have closed the channel
@@ -359,7 +359,7 @@ class SyncIntegrationTest : AbstractSyncTest() {
                 database.disconnect()
 
                 turbine.waitFor { !it.connecting && !it.connected }
-                turbine.cancel()
+                turbine.cancelAndIgnoreRemainingEvents()
             }
         }
 
@@ -721,7 +721,7 @@ class SyncIntegrationTest : AbstractSyncTest() {
             var attempt = 0
             val connector =
                 object : PowerSyncBackendConnector() {
-                    override suspend fun fetchCredentials(): PowerSyncCredentials? {
+                    override suspend fun fetchCredentials(): PowerSyncCredentials {
                         attempt++
                         if (attempt == 1) {
                             fail("Expected exception from fetchCredentials")
@@ -744,7 +744,12 @@ class SyncIntegrationTest : AbstractSyncTest() {
                 database.currentStatus.downloadError?.toString() shouldContain "Expected exception from fetchCredentials"
 
                 // Should retry, and the second fetchCredentials call will work
-                turbine.waitFor { it.connected }
+                turbine.waitFor(allowError = true) { it.connected }
+
+                // The download error is cleared after a complete sync.
+                syncLines.send(SyncLine.FullCheckpoint(Checkpoint(lastOpId = "0", checksums = emptyList())))
+                syncLines.send(SyncLine.CheckpointComplete(lastOpId = "0"))
+                turbine.waitFor(allowError = true) { it.downloadError == null }
 
                 turbine.cancelAndIgnoreRemainingEvents()
             }
@@ -1077,7 +1082,7 @@ class SyncIntegrationTest : AbstractSyncTest() {
                 }
 
                 syncLines = Channel()
-                turbine.waitFor { it.connected }
+                turbine.waitFor(allowError = true) { it.connected }
                 turbine.cancelAndIgnoreRemainingEvents()
             }
         }

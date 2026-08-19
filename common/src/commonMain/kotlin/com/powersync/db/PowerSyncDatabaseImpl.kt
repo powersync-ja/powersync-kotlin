@@ -28,7 +28,6 @@ import com.powersync.sync.SyncStream
 import com.powersync.utils.HeldMutex
 import com.powersync.utils.JsonParam
 import com.powersync.utils.JsonUtil
-import com.powersync.utils.throttle
 import com.powersync.utils.toJsonObject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -158,6 +157,7 @@ internal class PowerSyncDatabaseImpl(
 
             connectInternal { scope ->
                 StreamingSyncClient(
+                    status = currentStatus,
                     bucketStorage = bucketStorage,
                     connector = connector,
                     uploadCrud = suspend { connector.uploadData(this) },
@@ -216,10 +216,6 @@ internal class PowerSyncDatabaseImpl(
                     ensureActive()
                     stream.streamingSync()
                 }
-            }
-
-            launch {
-                currentStatus.trackOther(stream.status)
             }
 
             launch {

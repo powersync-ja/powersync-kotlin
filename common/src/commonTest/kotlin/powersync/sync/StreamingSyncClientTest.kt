@@ -16,6 +16,7 @@ import com.powersync.sync.StreamingSyncClient
 import com.powersync.sync.StreamingSyncClient.Companion.bsonObjects
 import com.powersync.sync.SyncClientConfiguration
 import com.powersync.sync.SyncOptions
+import com.powersync.sync.SyncStatus
 import com.powersync.sync.configureSyncHttpClient
 import com.powersync.test.TestConnector
 import com.powersync.test.waitFor
@@ -49,6 +50,7 @@ import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalKermitApi::class, ExperimentalPowerSyncAPI::class)
 class StreamingSyncClientTest {
+    private lateinit var status: SyncStatus
     private lateinit var bucketStorage: BucketStorage
     private lateinit var connector: PowerSyncBackendConnector
     private lateinit var streamingSyncClient: StreamingSyncClient
@@ -70,6 +72,7 @@ class StreamingSyncClientTest {
 
     @BeforeTest
     fun setup() {
+        status = SyncStatus()
         bucketStorage =
             mock<BucketStorage> {
                 everySuspend { getClientId() } returns "test-client-id"
@@ -82,6 +85,7 @@ class StreamingSyncClientTest {
         runTest {
             streamingSyncClient =
                 StreamingSyncClient(
+                    status = status,
                     bucketStorage = bucketStorage,
                     connector = connector,
                     uploadCrud = {},
@@ -126,6 +130,7 @@ class StreamingSyncClientTest {
 
             streamingSyncClient =
                 StreamingSyncClient(
+                    status = status,
                     bucketStorage = bucketStorage,
                     connector = connector,
                     uploadCrud = { },
@@ -178,6 +183,7 @@ class StreamingSyncClientTest {
 
             streamingSyncClient =
                 StreamingSyncClient(
+                    status = status,
                     bucketStorage = bucketStorage,
                     connector = connector,
                     uploadCrud = { },
@@ -205,14 +211,14 @@ class StreamingSyncClientTest {
 
             // Wait for status to update
             withTimeout(1000.milliseconds) {
-                while (!streamingSyncClient.status.connecting) {
+                while (!status.connecting) {
                     delay(10.milliseconds)
                 }
             }
 
             // Verify initial state
-            assertEquals(true, streamingSyncClient.status.connecting)
-            assertEquals(false, streamingSyncClient.status.connected)
+            assertEquals(true, status.connecting)
+            assertEquals(false, status.connected)
 
             // Clean up
             job.cancel()
