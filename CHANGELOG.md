@@ -4,6 +4,7 @@
 
 - Update Kotlin to 2.4.10.
 - Compile against Android SDK 37.
+- Web: Use navigator locks to guard the sync client.
 
 ## 1.14.1
 

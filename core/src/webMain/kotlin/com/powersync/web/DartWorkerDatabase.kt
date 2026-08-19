@@ -6,6 +6,7 @@ import androidx.sqlite.SQLiteStatement
 import com.powersync.db.driver.SQLiteConnectionLease
 import com.powersync.db.driver.SQLiteConnectionPool
 import com.powersync.internal.InternalPowerSyncAPI
+import com.powersync.utils.withAbortSignal
 import kotlinx.coroutines.await
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow

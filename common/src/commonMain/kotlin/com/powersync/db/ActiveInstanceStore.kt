@@ -4,6 +4,7 @@ import co.touchlab.kermit.Logger
 import co.touchlab.stately.concurrency.AtomicBoolean
 import co.touchlab.stately.concurrency.Synchronizable
 import co.touchlab.stately.concurrency.synchronize
+import com.powersync.utils.maybeSharedMutex
 import kotlinx.coroutines.sync.Mutex
 
 /**
@@ -12,7 +13,7 @@ import kotlinx.coroutines.sync.Mutex
 internal expect fun disposeWhenDeallocated(resource: ActiveDatabaseResource): Any
 
 /**
- * An collection of PowerSync databases with the same path / identifier.
+ * A collection of PowerSync databases with the same path / identifier.
  *
  * We expect that each group will only ever have one database because we encourage users to write their databases as
  * singletons. We print a warning when two databases are part of the same group.
@@ -25,8 +26,8 @@ internal class ActiveDatabaseGroup(
     private val collection: GroupsCollection,
 ) {
     internal var refCount = 0 // Guarded by companion object
-    internal val syncMutex = Mutex()
-    internal val writeLockMutex = Mutex()
+    internal val syncMutex = maybeSharedMutex("sync-$identifier")
+    internal val writeLockMutex = Mutex() // Not used on the web, can be local.
 
     fun removeUsage() {
         collection.synchronize {

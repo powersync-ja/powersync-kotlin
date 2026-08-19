@@ -15,10 +15,8 @@ import com.powersync.db.crud.CrudRow
 import com.powersync.db.crud.CrudTransaction
 import com.powersync.db.driver.SQLiteConnectionLease
 import com.powersync.db.driver.SQLiteConnectionPool
-import com.powersync.db.internal.ConnectionContext
 import com.powersync.db.internal.InternalDatabaseImpl
 import com.powersync.db.internal.InternalTable
-import com.powersync.db.internal.PowerSyncTransaction
 import com.powersync.db.internal.PowerSyncVersion
 import com.powersync.db.schema.Schema
 import com.powersync.sync.CoreSyncStatus
@@ -27,6 +25,7 @@ import com.powersync.sync.SyncOptions
 import com.powersync.sync.SyncStatus
 import com.powersync.sync.SyncStatusData
 import com.powersync.sync.SyncStream
+import com.powersync.utils.HeldMutex
 import com.powersync.utils.JsonParam
 import com.powersync.utils.JsonUtil
 import com.powersync.utils.throttle
@@ -36,7 +35,6 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.completeWith
 import kotlinx.coroutines.ensureActive
@@ -196,12 +194,12 @@ internal class PowerSyncDatabaseImpl(
                 val streamMutex = resource.group.syncMutex
 
                 // Poke the streaming mutex to see if another client is using it
-                var obtainedLock = false
+                var obtainedLock: HeldMutex? = null
                 try {
                     // This call will throw if the lock is already held by this db client.
                     // We should never reach that point since we disconnect before connecting.
-                    obtainedLock = streamMutex.tryLock(db)
-                    if (!obtainedLock) {
+                    obtainedLock = streamMutex.tryAcquire(db)
+                    if (obtainedLock == null) {
                         // The mutex is held already by another PowerSync instance (owner).
                         // (The tryLock should throw if this client already holds the lock).
                         logger.w(streamConflictMessage)
@@ -211,17 +209,15 @@ internal class PowerSyncDatabaseImpl(
                 }
 
                 // This effectively queues operations
-                if (!obtainedLock) {
+                if (obtainedLock == null) {
                     // This will throw a CancellationException if the job was cancelled while waiting.
-                    streamMutex.lock(db)
+                    obtainedLock = streamMutex.acquire(db)
                 }
 
                 // We have a lock if we reached here
-                try {
+                obtainedLock.use {
                     ensureActive()
                     stream.streamingSync()
-                } finally {
-                    streamMutex.unlock(db)
                 }
             }
 
