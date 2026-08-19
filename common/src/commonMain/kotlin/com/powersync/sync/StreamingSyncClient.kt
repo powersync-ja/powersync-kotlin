@@ -34,14 +34,10 @@ import io.ktor.utils.io.readLineStrict
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.ProducerScope
+import kotlinx.coroutines.channels.Channel.Factory.CONFLATED
 import kotlinx.coroutines.channels.ReceiveChannel
-import kotlinx.coroutines.channels.consume
 import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.coroutineScope
@@ -63,7 +59,6 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalPowerSyncAPI::class)
@@ -81,16 +76,8 @@ internal class StreamingSyncClient(
     private val activeSubscriptions: StateFlow<List<SubscriptionGroup>>,
     private val appMetadata: Map<String, String> = emptyMap(),
 ) {
-    private var requestedCrudUploads =
-        Channel<Unit>(
-            capacity = 1,
-            onBufferOverflow = BufferOverflow.DROP_OLDEST,
-        )
-    private var completedCrudUploads =
-        Channel<Unit>(
-            capacity = 1,
-            onBufferOverflow = BufferOverflow.DROP_OLDEST,
-        )
+    private val requestedCrudUploads = Channel<Unit>(CONFLATED)
+    private val completedCrudUploads = Channel<Unit>(CONFLATED)
 
     private var clientId: String? = null
 
@@ -178,17 +165,15 @@ internal class StreamingSyncClient(
     private suspend fun crudUploadLoop() {
         while (true) {
             coroutineScope {
-                // Start the initial CRUD upload on connect. Then, keep polling until we're done.
-                launch {
-                    try {
-                        uploadAllCrud()
-                    } finally {
-                        logger.v { "crud upload: notify completion" }
-                        completedCrudUploads.send(Unit)
-                    }
-                }
-
+                // To throttle, ensure we spend at least this much time in the iteration.
                 launch { delay(crudUploadThrottle) }
+
+                try {
+                    uploadAllCrud()
+                } finally {
+                    logger.v { "crud upload: notify completion" }
+                    completedCrudUploads.send(Unit)
+                }
             }
 
             requestedCrudUploads.receive()
@@ -224,6 +209,7 @@ internal class StreamingSyncClient(
                 }
             } catch (e: Exception) {
                 if (e is CancellationException) {
+                    status.update { copy(uploading = false) }
                     throw e
                 }
 
@@ -355,11 +341,7 @@ internal class StreamingSyncClient(
      * improving performance.
      */
     private inner class ActiveIteration {
-        private var needsCredentialsRefresh =
-            Channel<Unit>(
-                capacity = 1,
-                onBufferOverflow = BufferOverflow.DROP_OLDEST,
-            )
+        private val needsCredentialsRefresh = Channel<Unit>(CONFLATED)
 
         suspend fun syncIteration(): SyncIterationResult {
             return try {
@@ -479,11 +461,11 @@ internal class StreamingSyncClient(
                 }
 
                 launch(CoroutineName("Watch subscription updates")) {
-                    activeSubscriptions.collect {
-                        if (currentSubscriptions !== it) {
-                            currentSubscriptions = it
+                    activeSubscriptions.collect { newSubscriptions ->
+                        if (currentSubscriptions !== newSubscriptions) {
+                            currentSubscriptions = newSubscriptions
                             send(
-                                PowerSyncControlArguments.UpdateSubscriptions(activeSubscriptions.value.map { it.key }),
+                                PowerSyncControlArguments.UpdateSubscriptions(newSubscriptions.map { it.key }),
                             )
                         }
                     }
