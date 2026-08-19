@@ -26,7 +26,7 @@ internal sealed interface Instruction {
     /**
      * An [Instruction] that doesn't start or stop a sync iteration.
      */
-    sealed interface NonInterruptingInstruction: Instruction
+    sealed interface NonInterruptingInstruction : Instruction
 
     @Serializable
     data class LogLine(
