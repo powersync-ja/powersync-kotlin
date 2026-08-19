@@ -2,7 +2,6 @@ package com.powersync.sync
 
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
-import co.touchlab.stately.concurrency.AtomicReference
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncException
 import com.powersync.bucket.BucketStorage
@@ -33,8 +32,6 @@ import io.ktor.utils.io.readAvailable
 import io.ktor.utils.io.readBuffer
 import io.ktor.utils.io.readLineStrict
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -58,23 +55,34 @@ import kotlinx.io.readByteArray
 import kotlinx.io.readIntLe
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalPowerSyncAPI::class)
 internal class StreamingSyncClient(
     private val bucketStorage: BucketStorage,
     private val connector: PowerSyncBackendConnector,
     private val uploadCrud: suspend () -> Unit,
-    private val retryDelayMs: Long = 5000L,
+    private val retryDelay: Duration = 5.seconds,
+    private val crudUploadThrottle: Duration = 1.seconds,
     private val logger: Logger,
     private val params: JsonObject,
-    private val uploadScope: CoroutineScope,
     private val options: SyncOptions,
     private val schema: Schema,
     private val activeSubscriptions: StateFlow<List<SubscriptionGroup>>,
     private val appMetadata: Map<String, String> = emptyMap(),
 ) {
-    private var isUploadingCrud = AtomicReference<PendingCrudUpload?>(null)
-    private var completedCrudUploads = Channel<Unit>(onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    private var requestedCrudUploads =
+        Channel<Unit>(
+            capacity = 1,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST,
+        )
+    private var completedCrudUploads =
+        Channel<Unit>(
+            capacity = 1,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST,
+        )
 
     /**
      * The current sync status. This instance is mutated as changes occur
@@ -101,7 +109,24 @@ internal class StreamingSyncClient(
         connector.invalidateCredentials()
     }
 
+    /**
+     * Triggers a crud upload without awaiting it.
+     *
+     * A crud upload will be started at some point after this call, but the upload actor throttles
+     * these requests.
+     */
+    suspend fun triggerCrudUpload() {
+        requestedCrudUploads.send(Unit)
+    }
+
     suspend fun streamingSync() {
+        coroutineScope {
+            launch { downloadLoop() }
+            launch { crudUploadLoop() }
+        }
+    }
+
+    private suspend fun downloadLoop() {
         var invalidCredentials = false
         clientId = bucketStorage.getClientId()
         var result = SyncIterationResult()
@@ -152,34 +177,30 @@ internal class StreamingSyncClient(
                             downloading = false,
                         )
                     }
-                    delay(retryDelayMs)
+                    delay(retryDelay)
                 }
             }
         }
     }
 
-    fun triggerCrudUploadAsync(): Job =
-        uploadScope.launch(CoroutineName("triggerCrudUploadAsync")) {
-            val thisIteration = PendingCrudUpload(CompletableDeferred())
-            var holdingUploadLock = false
-
-            try {
-                if (!status.connected || !isUploadingCrud.compareAndSet(null, thisIteration)) {
-                    return@launch
+    private suspend fun crudUploadLoop() {
+        while (true) {
+            coroutineScope {
+                // Start the initial CRUD upload on connect. Then, keep polling until we're done.
+                launch {
+                    try {
+                        uploadAllCrud()
+                    } finally {
+                        logger.v { "crud upload: notify completion" }
+                        completedCrudUploads.send(Unit)
+                    }
                 }
-
-                holdingUploadLock = true
-                uploadAllCrud()
-            } finally {
-                if (holdingUploadLock) {
-                    logger.v { "crud upload: notify completion" }
-                    completedCrudUploads.send(Unit)
-                    isUploadingCrud.set(null)
-                }
-
-                thisIteration.done.complete(Unit)
+                launch { delay(crudUploadThrottle) }
             }
+
+            requestedCrudUploads.receive()
         }
+    }
 
     private suspend fun uploadAllCrud() {
         var checkedCrudItem: CrudEntry? = null
@@ -216,7 +237,7 @@ internal class StreamingSyncClient(
                 }
 
                 logger.e { "Error uploading crud: ${e.message}" }
-                delay(retryDelayMs)
+                delay(retryDelay)
                 break
             }
         }
@@ -409,7 +430,6 @@ internal class StreamingSyncClient(
                     // cases. We do this on the first sync line because the client is likely to be
                     // online in that case.
                     hadSyncLine = true
-                    triggerCrudUploadAsync()
                 }
             }
 
@@ -585,10 +605,6 @@ internal class StreamingSyncClient(
         }
     }
 }
-
-private class PendingCrudUpload(
-    val done: CompletableDeferred<Unit>,
-)
 
 private class SyncIterationResult(
     val hideDisconnectStateAndReconnectImmediately: Boolean = false,

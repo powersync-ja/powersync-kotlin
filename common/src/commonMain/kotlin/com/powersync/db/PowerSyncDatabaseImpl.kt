@@ -156,15 +156,15 @@ internal class PowerSyncDatabaseImpl(
         mutex.withLock {
             disconnectInternal()
 
-            connectInternal(crudThrottleMs) { scope ->
+            connectInternal { scope ->
                 StreamingSyncClient(
                     bucketStorage = bucketStorage,
                     connector = connector,
                     uploadCrud = suspend { connector.uploadData(this) },
-                    retryDelayMs = retryDelayMs,
+                    retryDelay = retryDelayMs.milliseconds,
+                    crudUploadThrottle = crudThrottleMs.milliseconds,
                     logger = logger,
                     params = params.toJsonObject(),
-                    uploadScope = scope,
                     options = options,
                     schema = schema,
                     activeSubscriptions = streams.currentlyReferencedStreams,
@@ -174,10 +174,7 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 
-    private fun connectInternal(
-        crudThrottleMs: Long,
-        createStream: (CoroutineScope) -> StreamingSyncClient,
-    ) {
+    private fun connectInternal(createStream: (CoroutineScope) -> StreamingSyncClient) {
         val db = this
         val job = SupervisorJob(scope.coroutineContext[Job])
         syncSupervisorJob = job
@@ -229,10 +226,7 @@ internal class PowerSyncDatabaseImpl(
                 internalDb
                     .updatesOnTables()
                     .filter { it.contains(InternalTable.CRUD.toString()) }
-                    .throttle(crudThrottleMs.milliseconds)
-                    .collect {
-                        stream.triggerCrudUploadAsync().join()
-                    }
+                    .collect { stream.triggerCrudUpload() }
             }
         }
 
