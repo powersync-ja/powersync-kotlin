@@ -18,9 +18,11 @@ import com.powersync.sync.SyncClientConfiguration
 import com.powersync.sync.SyncOptions
 import com.powersync.sync.configureSyncHttpClient
 import com.powersync.test.TestConnector
+import com.powersync.test.waitFor
 import dev.mokkery.answering.returns
 import dev.mokkery.everySuspend
 import dev.mokkery.mock
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeTypeOf
@@ -28,8 +30,11 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.utils.io.ByteChannel
 import io.ktor.utils.io.writeByteArray
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
@@ -39,6 +44,8 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalKermitApi::class, ExperimentalPowerSyncAPI::class)
 class StreamingSyncClientTest {
@@ -80,7 +87,6 @@ class StreamingSyncClientTest {
                     uploadCrud = {},
                     logger = logger,
                     params = JsonObject(emptyMap()),
-                    uploadScope = this,
                     options =
                         SyncOptions(
                             clientConfiguration =
@@ -114,6 +120,7 @@ class StreamingSyncClientTest {
                 )
             bucketStorage =
                 mock<BucketStorage> {
+                    everySuspend { getClientId() } returns "test-id"
                     everySuspend { nextCrudItem() } returns mockCrudEntry
                 }
 
@@ -122,10 +129,9 @@ class StreamingSyncClientTest {
                     bucketStorage = bucketStorage,
                     connector = connector,
                     uploadCrud = { },
-                    retryDelayMs = 10,
+                    retryDelay = 10.seconds,
                     logger = logger,
                     params = JsonObject(emptyMap()),
-                    uploadScope = this,
                     options =
                         SyncOptions(
                             clientConfiguration =
@@ -139,12 +145,13 @@ class StreamingSyncClientTest {
                     activeSubscriptions = MutableStateFlow(emptyList()),
                 )
 
-            streamingSyncClient.status.update { copy(connected = true) }
-            streamingSyncClient.triggerCrudUploadAsync().join()
+            val sync = launch { streamingSyncClient.streamingSync() }
+            delay(2.seconds)
+            sync.cancelAndJoin()
 
-            testLogWriter.assertCount(2)
+            val logs = testLogWriter.logs.filter { it.message.contains("CRUD") }
 
-            with(testLogWriter.logs[0]) {
+            with(logs[0]) {
                 assertContains(
                     message,
                     "Potentially previously uploaded CRUD entries are still present in the upload queue.",
@@ -152,7 +159,7 @@ class StreamingSyncClientTest {
                 assertEquals(Severity.Warn, severity)
             }
 
-            with(testLogWriter.logs[1]) {
+            with(logs[1]) {
                 assertEquals(
                     message,
                     "Error uploading crud: Delaying due to previously encountered CRUD item.",
@@ -174,10 +181,9 @@ class StreamingSyncClientTest {
                     bucketStorage = bucketStorage,
                     connector = connector,
                     uploadCrud = { },
-                    retryDelayMs = 10,
+                    retryDelay = 10.milliseconds,
                     logger = logger,
                     params = JsonObject(emptyMap()),
-                    uploadScope = this,
                     options =
                         SyncOptions(
                             clientConfiguration =
@@ -198,9 +204,9 @@ class StreamingSyncClientTest {
                 }
 
             // Wait for status to update
-            withTimeout(1000) {
+            withTimeout(1000.milliseconds) {
                 while (!streamingSyncClient.status.connecting) {
-                    delay(10)
+                    delay(10.milliseconds)
                 }
             }
 
