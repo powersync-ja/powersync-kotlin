@@ -180,7 +180,7 @@ internal class StreamingSyncClient(
                     // Wait for the delay, or another component wanting to request a checkpoint.
                     withTimeoutOrNull(retryDelay) {
                         checkpointSignals.waitForCheckpointWaiter()
-                        logger.v { "Resuming due to pendin checkpoint waiter" }
+                        logger.v { "Resuming due to pending checkpoint waiter" }
                     }
                 }
             }
