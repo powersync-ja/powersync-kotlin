@@ -19,10 +19,9 @@ internal class CheckpointStateSignals {
      * seed was performed in the next iteration.
      */
     fun downloadIterationEnded() {
-        state.value = CheckpointState.Pending
-
         // Checkpoint waiters called after this should be able to resume the download iteration.
         val old = waitingForCheckpointsReady.exchange(createNotifyWaitChannel())
+        state.value = CheckpointState.Pending
         old.cancel()
     }
 

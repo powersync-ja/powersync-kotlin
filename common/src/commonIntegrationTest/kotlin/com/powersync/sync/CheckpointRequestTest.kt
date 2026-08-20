@@ -161,7 +161,7 @@ class CheckpointRequestTest : AbstractSyncTest() {
                         listOf("restart plz"),
                     )
 
-                    database.currentStatus.asFlow().first { it.connected }
+                    database.currentStatus.asFlow().first { it.connecting }
                 }
             timeToReconnect shouldBeLessThan 5.seconds
         }
