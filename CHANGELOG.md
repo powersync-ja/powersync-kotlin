@@ -7,6 +7,8 @@
 - Web: Use navigator locks to guard the sync client.
 - Add `SyncOptions.checkpointMode`. When set to `CheckpointMode.Requests()`, the sync client uses a
   a new protocol for checkpoints after crud uploads with better support for switching users.
+- Add `PowerSyncDatabase.requestCheckpoint()`, which can be used to request sync updates explicitly
+  and wait for those to complete.
 
 ## 1.14.1
 

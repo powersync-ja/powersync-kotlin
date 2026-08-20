@@ -12,6 +12,7 @@ import com.powersync.bucket.PowerSyncControlArguments
 import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.connectors.CustomCheckpointRequestConnector
 import com.powersync.connectors.PowerSyncBackendConnector
+import com.powersync.db.PowerSyncDatabaseImpl
 import com.powersync.db.SubscriptionGroup
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.schema.Schema
@@ -78,7 +79,7 @@ internal class StreamingSyncClient(
     private val crudUploadThrottle: Duration = 1.seconds,
     private val logger: Logger,
     private val params: JsonObject,
-    private val options: SyncOptions,
+    val options: SyncOptions,
     private val schema: Schema,
     private val activeSubscriptions: StateFlow<List<SubscriptionGroup>>,
     private val appMetadata: Map<String, String> = emptyMap(),
@@ -123,6 +124,15 @@ internal class StreamingSyncClient(
      */
     suspend fun triggerCrudUpload() {
         requestedCrudUploads.send(Unit)
+    }
+
+    suspend fun requestCheckpoint(db: PowerSyncDatabaseImpl): CheckpointRequest {
+        if (options.checkpointMode !is CheckpointMode.Requests) {
+            throw CheckpointRequestException.Disabled()
+        }
+
+        val requestId = requestNextCheckpointFromService()
+        return CheckpointRequest(requestId, db)
     }
 
     suspend fun streamingSync() {

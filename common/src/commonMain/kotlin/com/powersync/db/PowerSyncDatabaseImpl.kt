@@ -22,6 +22,8 @@ import com.powersync.db.internal.InternalTable
 import com.powersync.db.internal.PowerSyncVersion
 import com.powersync.db.schema.Schema
 import com.powersync.sync.CheckpointMode
+import com.powersync.sync.CheckpointRequest
+import com.powersync.sync.CheckpointRequestException
 import com.powersync.sync.StreamingSyncClient
 import com.powersync.sync.SyncOptions
 import com.powersync.sync.SyncStatus
@@ -35,7 +37,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.completeWith
 import kotlinx.coroutines.ensureActive
@@ -95,7 +97,7 @@ internal class PowerSyncDatabaseImpl(
     override val currentStatus: SyncStatus = SyncStatus()
 
     private val mutex = Mutex()
-    private var syncSupervisorJob: Job? = null
+    private var syncClient: Pair<Job, StreamingSyncClient>? = null
 
     // This is set before the initialization job completes
     private lateinit var powerSyncVersion: String
@@ -132,7 +134,7 @@ internal class PowerSyncDatabaseImpl(
 
     private suspend fun updateSchemaInternal(schema: Schema) {
         mutex.withLock {
-            if (this.syncSupervisorJob != null) {
+            if (this.syncClient != null) {
                 throw PowerSyncException(
                     "Cannot update schema while connected",
                     cause = Exception("PowerSync client is already connected"),
@@ -143,6 +145,11 @@ internal class PowerSyncDatabaseImpl(
             this.schema = schema
         }
     }
+
+    internal suspend inline fun <T> inspectCurrentStreamClient(inspect: (StreamingSyncClient?) -> T): T =
+        mutex.withLock {
+            inspect(syncClient?.second)
+        }
 
     override suspend fun connect(
         connector: PowerSyncBackendConnector,
@@ -156,7 +163,7 @@ internal class PowerSyncDatabaseImpl(
         mutex.withLock {
             disconnectInternal()
 
-            connectInternal { scope ->
+            connectInternal {
                 @OptIn(ExperimentalCheckpointRequestsApi::class)
                 if (connector is CustomCheckpointRequestConnector && options.checkpointMode == CheckpointMode.Legacy) {
                     logger.w {
@@ -182,63 +189,58 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 
-    private fun connectInternal(createStream: (CoroutineScope) -> StreamingSyncClient) {
+    private fun connectInternal(createStream: () -> StreamingSyncClient) {
         val db = this
-        val job = SupervisorJob(scope.coroutineContext[Job])
-        syncSupervisorJob = job
-        var activeStream: StreamingSyncClient? = null
+        val stream = createStream()
+        val syncJob =
+            scope.launch {
+                launch {
+                    // Get a global lock for checking mutex maps
+                    val streamMutex = resource.group.syncMutex
 
-        scope.launch(job) {
-            // Create the stream in this scope so that everything launched by the stream is bound to
-            // this coroutine scope that can be cancelled independently.
-            val stream = createStream(this)
-            activeStream = stream
-
-            launch {
-                // Get a global lock for checking mutex maps
-                val streamMutex = resource.group.syncMutex
-
-                // Poke the streaming mutex to see if another client is using it
-                var obtainedLock: HeldMutex? = null
-                try {
-                    // This call will throw if the lock is already held by this db client.
-                    // We should never reach that point since we disconnect before connecting.
-                    obtainedLock = streamMutex.tryAcquire(db)
-                    if (obtainedLock == null) {
-                        // The mutex is held already by another PowerSync instance (owner).
-                        // (The tryLock should throw if this client already holds the lock).
-                        logger.w(streamConflictMessage)
+                    // Poke the streaming mutex to see if another client is using it
+                    var obtainedLock: HeldMutex? = null
+                    try {
+                        // This call will throw if the lock is already held by this db client.
+                        // We should never reach that point since we disconnect before connecting.
+                        obtainedLock = streamMutex.tryAcquire(db)
+                        if (obtainedLock == null) {
+                            // The mutex is held already by another PowerSync instance (owner).
+                            // (The tryLock should throw if this client already holds the lock).
+                            logger.w(streamConflictMessage)
+                        }
+                    } catch (_: IllegalStateException) {
+                        logger.e { "The streaming sync client did not disconnect before connecting" }
                     }
-                } catch (_: IllegalStateException) {
-                    logger.e { "The streaming sync client did not disconnect before connecting" }
+
+                    // This effectively queues operations
+                    if (obtainedLock == null) {
+                        // This will throw a CancellationException if the job was cancelled while waiting.
+                        obtainedLock = streamMutex.acquire(db)
+                    }
+
+                    // We have a lock if we reached here
+                    obtainedLock.use {
+                        ensureActive()
+                        stream.streamingSync()
+                    }
                 }
 
-                // This effectively queues operations
-                if (obtainedLock == null) {
-                    // This will throw a CancellationException if the job was cancelled while waiting.
-                    obtainedLock = streamMutex.acquire(db)
+                launch {
+                    internalDb
+                        .updatesOnTables()
+                        .filter { it.contains(InternalTable.CRUD.toString()) }
+                        .collect { stream.triggerCrudUpload() }
                 }
 
-                // We have a lock if we reached here
-                obtainedLock.use {
-                    ensureActive()
-                    stream.streamingSync()
+                try {
+                    awaitCancellation()
+                } catch (e: DisconnectRequestedException) {
+                    stream.invalidateCredentials()
+                    throw e
                 }
             }
-
-            launch {
-                internalDb
-                    .updatesOnTables()
-                    .filter { it.contains(InternalTable.CRUD.toString()) }
-                    .collect { stream.triggerCrudUpload() }
-            }
-        }
-
-        job.invokeOnCompletion {
-            if (it is DisconnectRequestedException) {
-                activeStream?.invalidateCredentials()
-            }
-        }
+        syncClient = syncJob to stream
     }
 
     override suspend fun getCrudBatch(limit: Int): CrudBatch? {
@@ -325,6 +327,22 @@ internal class PowerSyncDatabaseImpl(
         name: String,
         parameters: Map<String, JsonParam>?,
     ): SyncStream = PendingStream(streams, name, parameters)
+
+    @ExperimentalCheckpointRequestsApi
+    override suspend fun requestCheckpoint(): CheckpointRequest {
+        waitReady()
+
+        return inspectCurrentStreamClient { client ->
+            if (client == null) {
+                throw CheckpointRequestException.Disconnected()
+            }
+            if (client.options.checkpointMode !is CheckpointMode.Requests) {
+                throw CheckpointRequestException.Disabled()
+            }
+
+            client.requestCheckpoint(this)
+        }
+    }
 
     override suspend fun getPowerSyncVersion(): String {
         // The initialization sets powerSyncVersion.
@@ -424,12 +442,12 @@ internal class PowerSyncDatabaseImpl(
     }
 
     private suspend fun disconnectInternal() {
-        val syncJob = syncSupervisorJob
+        val syncJob = syncClient?.first
         if (syncJob != null && syncJob.isActive) {
             // Using this exception type will also make the sync job invalidate credentials.
             syncJob.cancel(DisconnectRequestedException())
             syncJob.join()
-            syncSupervisorJob = null
+            syncClient = null
         }
     }
 
@@ -455,7 +473,7 @@ internal class PowerSyncDatabaseImpl(
 
     internal suspend fun resolveOfflineSyncStatusIfNotConnected() {
         mutex.withLock {
-            if (syncSupervisorJob == null) {
+            if (syncClient == null) {
                 // Not connected or connecting
                 resolveOfflineSyncStatus()
             }
