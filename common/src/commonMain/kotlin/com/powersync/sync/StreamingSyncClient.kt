@@ -2,7 +2,6 @@ package com.powersync.sync
 
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
-import co.touchlab.stately.concurrency.AtomicReference
 import com.powersync.ExperimentalCheckpointRequestsApi
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncException
@@ -20,16 +19,17 @@ import com.powersync.utils.JsonUtil
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.call.body
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.accept
-import io.ktor.client.request.get
 import io.ktor.client.request.headers
-import io.ktor.client.request.post
 import io.ktor.client.request.preparePost
+import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.append
 import io.ktor.http.contentType
@@ -264,29 +264,43 @@ internal class StreamingSyncClient(
         )
     }
 
+    private suspend fun authenticatedRequest(
+        path: String,
+        method: HttpMethod = HttpMethod.Get,
+        configure: HttpRequestBuilder.() -> Unit = {},
+    ): HttpResponse {
+        val credentials = connector.getCredentialsCached()
+        require(credentials != null) { "Not logged in" }
+        val uri = credentials.endpointUri(path)
+
+        val response =
+            httpClient.request(uri) {
+                this.method = method
+                contentType(ContentType.Application.Json)
+                headers {
+                    append(HttpHeaders.Authorization, "Token ${credentials.token}")
+                }
+                configure()
+            }
+
+        if (response.status.value == 401) {
+            connector.invalidateCredentials()
+        }
+
+        return response
+    }
+
     private suspend fun requestCheckpointFromService(payload: CheckpointRequestPayload): Long {
         // First, check if we can use a custom checkpoint request implementation.
         (connector as? CustomCheckpointRequestConnector)?.let {
             return it.postCheckpointRequest(payload.clientId, payload.checkpointRequestId)
         }
 
-        val credentials = connector.getCredentialsCached()
-        require(credentials != null) { "Not logged in" }
-        val uri = credentials.endpointUri("sync/checkpoint-request")
-
         val response =
-            httpClient.post(uri) {
-                contentType(ContentType.Application.Json)
-                headers {
-                    append(HttpHeaders.Authorization, "Token ${credentials.token}")
-                }
-
+            authenticatedRequest(path = "sync/checkpoint-request", method = HttpMethod.Post) {
                 setBody(JsonUtil.json.encodeToString(payload))
             }
 
-        if (response.status.value == 401) {
-            connector.invalidateCredentials()
-        }
         if (response.status.value == 404) {
             throw CheckpointRequestException.InstanceNotSupported()
         }
@@ -299,20 +313,8 @@ internal class StreamingSyncClient(
     }
 
     private suspend fun getLegacyWriteCheckpoint(): Long {
-        val credentials = connector.getCredentialsCached()
-        require(credentials != null) { "Not logged in" }
-        val uri = credentials.endpointUri("write-checkpoint2.json?client_id=${loadClientId()}")
+        val response = authenticatedRequest(path = "write-checkpoint2.json?client_id=${loadClientId()}")
 
-        val response =
-            httpClient.get(uri) {
-                contentType(ContentType.Application.Json)
-                headers {
-                    append(HttpHeaders.Authorization, "Token ${credentials.token}")
-                }
-            }
-        if (response.status.value == 401) {
-            connector.invalidateCredentials()
-        }
         if (response.status.value != 200) {
             throw Exception("Error getting write checkpoint: ${response.status}")
         }

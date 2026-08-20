@@ -49,22 +49,27 @@ internal class InternalConnectionPool(
             }
         }
 
-    override suspend fun <T> write(callback: suspend (SQLiteConnectionLease) -> T): T =
-        writeLockMutex.withLock {
-            try {
+    override suspend fun <T> write(callback: suspend (SQLiteConnectionLease) -> T): T {
+        var updatedTables: Set<String> = emptySet()
+        try {
+            return writeLockMutex.withLock {
                 withContext(dispatcher) {
-                    callback(RawConnectionLease(writeConnection))
-                }
-            } finally {
-                // When we've leased a write connection, we may have to update table update flows
-                // after users ran their custom statements. Reading updates is a SQL call, but it
-                // doesn't do IO so we can do it on the main dispatcher.
-                val updatedTables = writeConnection.readPendingUpdates()
-                if (updatedTables.isNotEmpty()) {
-                    updates.emit(updatedTables)
+                    try {
+                        callback(RawConnectionLease(writeConnection))
+                    } finally {
+                        // When we've leased a write connection, we may have to update table update
+                        // flows after users ran their custom statements.
+                        updatedTables = writeConnection.readPendingUpdates()
+                    }
                 }
             }
+        } finally {
+            // Emit updates on teh main context, and outside the write lock.
+            if (updatedTables.isNotEmpty()) {
+                updates.emit(updatedTables)
+            }
         }
+    }
 
     override suspend fun <R> withAllConnections(action: suspend (SQLiteConnectionLease, List<SQLiteConnectionLease>) -> R) {
         // First get a lock on all read connections
