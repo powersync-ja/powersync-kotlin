@@ -3,9 +3,11 @@ package com.powersync.demos
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
+import com.powersync.ExperimentalCheckpointRequestsApi
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
 import com.powersync.connector.supabase.SupabaseConnector
+import com.powersync.sync.CheckpointMode
 import com.powersync.sync.SyncClientConfiguration
 import com.powersync.sync.SyncOptions
 import io.github.jan.supabase.auth.status.RefreshFailureCause
@@ -55,6 +57,12 @@ internal class AuthViewModel(
                                 options =
                                     SyncOptions(
                                         newClientImplementation = true,
+                                        checkpointMode = if (Config.USE_CHECKPOINT_REQUESTS) {
+                                            @OptIn(ExperimentalCheckpointRequestsApi::class)
+                                            CheckpointMode.Requests()
+                                        } else {
+                                            CheckpointMode.Legacy
+                                        },
                                         clientConfiguration =
                                             SyncClientConfiguration.ExtendedConfig {
                                                 install(Logging) {

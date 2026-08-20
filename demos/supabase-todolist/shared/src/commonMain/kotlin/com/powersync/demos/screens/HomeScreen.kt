@@ -6,9 +6,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.Scaffold
+import androidx.compose.material.Snackbar
+import androidx.compose.material.SnackbarHost
+import androidx.compose.material.SnackbarHostState
 import androidx.compose.material.Text
 import androidx.compose.material.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -18,6 +23,7 @@ import com.powersync.demos.components.GuardBySync
 import com.powersync.demos.components.Input
 import com.powersync.demos.components.ListContent
 import com.powersync.demos.components.Menu
+import com.powersync.demos.components.RefreshIcon
 import com.powersync.demos.components.WifiIcon
 import com.powersync.demos.powersync.ListItem
 import com.powersync.sync.SyncStatusData
@@ -34,47 +40,67 @@ internal fun HomeScreen(
     onAddItemClicked: () -> Unit,
     onInputTextChanged: (value: String) -> Unit,
 ) {
-    Column(modifier) {
-        TopAppBar(
-            title = {
-                Text(
-                    "Todo Lists",
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth().padding(end = 36.dp),
-                )
-            },
-            navigationIcon = {
-                Menu(
-                    true,
-                    onSignOutSelected,
-                )
-            },
-            actions = {
-                WifiIcon(syncStatus)
-                Spacer(modifier = Modifier.width(16.dp))
-            },
-        )
+    val snackbarHostState = remember { SnackbarHostState() }
 
-        // This assumes that the buckets for lists has a priority of 1 (but it will work fine with
-        // sync rules not defining any priorities at all too). When giving lists a higher priority
-        // than items, we can have a consistent snapshot of lists without items. In the case where
-        // many items exist (that might take longer to sync initially), this allows us to display
-        // lists earlier.
-        GuardBySync(priority = StreamPriority(1)) {
-            Input(
-                text = inputText,
-                onAddClicked = onAddItemClicked,
-                onTextChanged = onInputTextChanged,
-                screen = Screen.Home,
+    Scaffold(
+        modifier = modifier,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        "Todo Lists",
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(end = 36.dp),
+                    )
+                },
+                navigationIcon = {
+                    Menu(
+                        true,
+                        onSignOutSelected,
+                    )
+                },
+                actions = {
+                    RefreshIcon(snackbarHostState)
+                    WifiIcon(syncStatus)
+                    Spacer(modifier = Modifier.width(16.dp))
+                },
             )
+        },
+        content = {
+            // This assumes that the buckets for lists has a priority of 1 (but it will work fine with
+            // sync rules not defining any priorities at all too). When giving lists a higher priority
+            // than items, we can have a consistent snapshot of lists without items. In the case where
+            // many items exist (that might take longer to sync initially), this allows us to display
+            // lists earlier.
+            GuardBySync(priority = StreamPriority(1)) {
+                Column {
+                    Input(
+                        text = inputText,
+                        onAddClicked = onAddItemClicked,
+                        onTextChanged = onInputTextChanged,
+                        screen = Screen.Home,
+                    )
 
-            Box(Modifier.weight(1F)) {
-                ListContent(
-                    items = items,
-                    onItemClicked = onItemClicked,
-                    onItemDeleteClicked = onItemDeleteClicked,
-                )
+                    Box(Modifier.weight(1F)) {
+                        ListContent(
+                            items = items,
+                            onItemClicked = onItemClicked,
+                            onItemDeleteClicked = onItemDeleteClicked,
+                        )
+                    }
+                }
             }
+        },
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(16.dp),
+                snackbar = { data ->
+                    Snackbar {
+                        Text(data.message)
+                    }
+                }
+            )
         }
-    }
+    )
 }

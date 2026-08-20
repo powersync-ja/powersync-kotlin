@@ -1,3 +1,4 @@
+import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.BOOLEAN
 import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -97,6 +98,9 @@ buildkonfig {
         stringConfigField("POWERSYNC_URL")
         stringConfigField("SUPABASE_URL")
         stringConfigField("SUPABASE_ANON_KEY")
+
+        val useCheckpointRequests = localProperties.getProperty("USE_CHECKPOINT_REQUESTS", "false")
+        buildConfigField(BOOLEAN, "USE_CHECKPOINT_REQUESTS", useCheckpointRequests)
         
         // App version from Gradle project version
         buildConfigField(STRING, "APP_VERSION", "\"${project.version}\"")
