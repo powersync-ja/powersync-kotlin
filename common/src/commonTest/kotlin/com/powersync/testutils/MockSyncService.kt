@@ -123,7 +123,12 @@ internal class MockSyncService(
             }
 
             val request = JsonUtil.json.decodeFromString<CheckpointRequestPayload>(data.body.toByteArray().decodeToString())
-            requestCheckpoints.lastCheckpointRequest.update { max(it, request.checkpointRequestId) }
+            var checkpointResponse = 0L
+            requestCheckpoints.lastCheckpointRequest.update {
+                val resolved = max(it, request.checkpointRequestId)
+                checkpointResponse = resolved
+                resolved
+            }
             requestCheckpoints.checkpointRequestCount.update { it + 1 }
             requestCheckpoints.beforeCheckpointRequestResponse()
 
@@ -134,7 +139,7 @@ internal class MockSyncService(
                 HttpProtocolVersion.HTTP_1_1,
                 JsonUtil.json.encodeToString(
                     CheckpointRequestResponse(
-                        data = CheckpointRequestResponseData(requestCheckpoints.lastCheckpointRequest.value),
+                        data = CheckpointRequestResponseData(checkpointResponse),
                     ),
                 ),
                 context,

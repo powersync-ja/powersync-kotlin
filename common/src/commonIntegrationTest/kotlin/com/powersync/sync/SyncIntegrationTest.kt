@@ -1077,9 +1077,7 @@ class SyncIntegrationTest : AbstractSyncTest() {
 
                 syncLines.send("unterminated line".toByteArray())
                 syncLines.close()
-                turbine.waitFor { !it.connected }
-                database.currentStatus.downloadError shouldNotBeNull {
-                }
+                turbine.waitFor { !it.connected && it.downloadError != null }
 
                 syncLines = Channel()
                 turbine.waitFor(allowError = true) { it.connected }
