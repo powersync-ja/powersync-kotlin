@@ -1,12 +1,9 @@
 package com.powersync.sync
 
 import com.powersync.ExperimentalCheckpointRequestsApi
-import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.takeWhile
 import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.coroutines.cancellation.CancellationException
@@ -88,11 +85,7 @@ internal class CheckpointStateSignals {
     }
 
     companion object {
-        private fun createNotifyWaitChannel() =
-            Channel<Unit>(
-                capacity = 1,
-                onBufferOverflow = BufferOverflow.DROP_LATEST,
-            )
+        private fun createNotifyWaitChannel() = Channel<Unit>(Channel.CONFLATED)
     }
 }
 

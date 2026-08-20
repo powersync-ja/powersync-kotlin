@@ -180,6 +180,7 @@ internal class StreamingSyncClient(
                     // Wait for the delay, or another component wanting to request a checkpoint.
                     withTimeoutOrNull(retryDelay) {
                         checkpointSignals.waitForCheckpointWaiter()
+                        logger.v { "Resuming due to pendin checkpoint waiter" }
                     }
                 }
             }
@@ -570,6 +571,14 @@ internal class StreamingSyncClient(
                 if (instruction is Instruction.NonInterruptingInstruction) {
                     handleInstruction(instruction)
                 }
+            }
+
+            if (instructions.isEmpty()) {
+                // For errors reported by the core extension in powersync_control, the sync client
+                // is reset, and we don't get an updated sync status. Fall back to the offline sync
+                // status in that case.
+                val offlineStatus = bucketStorage.resolveOfflineSyncStatus()
+                status.update { copy(core = offlineStatus) }
             }
         }
 

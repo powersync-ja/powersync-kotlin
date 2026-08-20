@@ -5,6 +5,7 @@ import com.powersync.db.StreamKey
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.internal.PowerSyncTransaction
 import com.powersync.db.schema.Schema
+import com.powersync.sync.CoreSyncStatus
 import com.powersync.sync.Instruction
 import com.powersync.utils.JsonUtil
 import kotlinx.serialization.SerialName
@@ -29,6 +30,8 @@ internal interface BucketStorage {
     suspend fun hasCompletedSync(): Boolean
 
     suspend fun control(args: PowerSyncControlArguments): List<Instruction>
+
+    suspend fun resolveOfflineSyncStatus(): CoreSyncStatus
 
     suspend fun readOrUpdateCheckpoint(
         variant: String,

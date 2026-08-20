@@ -22,7 +22,6 @@ import com.powersync.db.internal.InternalTable
 import com.powersync.db.internal.PowerSyncVersion
 import com.powersync.db.schema.Schema
 import com.powersync.sync.CheckpointMode
-import com.powersync.sync.CoreSyncStatus
 import com.powersync.sync.StreamingSyncClient
 import com.powersync.sync.SyncOptions
 import com.powersync.sync.SyncStatus
@@ -46,7 +45,6 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.time.Duration.Companion.milliseconds
@@ -465,11 +463,7 @@ internal class PowerSyncDatabaseImpl(
     }
 
     private suspend fun resolveOfflineSyncStatus() {
-        val offlineSyncStatus =
-            internalDb.get("SELECT powersync_offline_sync_status()") {
-                JsonUtil.json.decodeFromString<CoreSyncStatus>(it.getString(0)!!)
-            }
-
+        val offlineSyncStatus = bucketStorage.resolveOfflineSyncStatus()
         currentStatus.update {
             copy(core = offlineSyncStatus)
         }

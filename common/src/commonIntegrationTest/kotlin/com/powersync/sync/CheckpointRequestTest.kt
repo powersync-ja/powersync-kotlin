@@ -26,7 +26,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.testTimeSource
-import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertNotNull
 import kotlin.time.Duration.Companion.hours
@@ -137,8 +136,6 @@ class CheckpointRequestTest : AbstractSyncTest() {
 
     @Test
     @OptIn(ExperimentalCoroutinesApi::class)
-    // TODO: Un-ignore this test. It's currently broken due to missing crud uploads.
-    @Ignore
     fun `download is retried on checkpoint request`() =
         databaseTest {
             database.connect(connector, retryDelayMs = 10_000, options = optionsWithRequests())
@@ -147,7 +144,8 @@ class CheckpointRequestTest : AbstractSyncTest() {
             syncLines.send(
                 SyncLine.FullCheckpoint(Checkpoint(lastOpId = "invalid line", checksums = emptyList())),
             )
-            database.waitForStatus { it.downloadError != null }
+            waitForSyncLinesChannelClosed()
+            database.waitForStatus { it.downloadError != null && !it.connected }
 
             val timeToReconnect =
                 scope.testTimeSource.measureTime {

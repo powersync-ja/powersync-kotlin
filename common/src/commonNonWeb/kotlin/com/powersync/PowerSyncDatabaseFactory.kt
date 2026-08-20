@@ -9,7 +9,10 @@ import com.powersync.db.schema.Schema
 import com.powersync.utils.generateLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.IO
+import kotlin.coroutines.CoroutineContext
 
 public const val DEFAULT_DB_FILENAME: String = "powersync.db"
 
@@ -49,6 +52,7 @@ internal fun createPowerSyncDatabaseImpl(
     scope: CoroutineScope,
     logger: Logger,
     dbDirectory: String?,
+    databaseIoDispatcher: CoroutineContext = Dispatchers.IO,
 ): PowerSyncDatabaseImpl {
     val identifier = dbDirectory + dbFilename
     val activeDatabaseGroup = ActiveDatabaseGroup.referenceDatabase(logger, identifier)
@@ -61,6 +65,7 @@ internal fun createPowerSyncDatabaseImpl(
                 dbFilename,
                 dbDirectory,
                 activeDatabaseGroup.first.group.writeLockMutex,
+                databaseIoDispatcher,
             )
         }
 

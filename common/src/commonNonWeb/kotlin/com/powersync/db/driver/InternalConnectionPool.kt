@@ -6,33 +6,29 @@ import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PersistentConnectionFactory
 import com.powersync.utils.JsonUtil
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.CoroutineContext
 
 @OptIn(ExperimentalPowerSyncAPI::class)
 internal class InternalConnectionPool(
     private val factory: PersistentConnectionFactory,
-    private val scope: CoroutineScope,
+    scope: CoroutineScope,
     private val dbFilename: String,
     private val dbDirectory: String?,
     private val writeLockMutex: Mutex,
+    /**
+     * Database calls are synchronous/blocking, so we always run them on Dispatchers.IO instead of
+     * inheriting the caller-provided scope context. The provided scope is still used for
+     * lifecycle-bound pool coroutines like read workers and update emission.
+     */
+    private val dispatcher: CoroutineContext,
 ) : SQLiteConnectionPool {
     private val writeConnection = newConnection(false)
     private val readPool = ReadPool({ newConnection(true) }, scope = scope)
-
-    // MutableSharedFlow to emit batched table updates
-    private val tableUpdatesFlow = MutableSharedFlow<Set<String>>(replay = 0)
-
-    // Database calls are synchronous/blocking, so we always run them on Dispatchers.IO instead of
-    // inheriting the caller-provided scope context. The provided scope is still used for
-    // lifecycle-bound pool coroutines like read workers and update emission.
-    private val dispatcher = Dispatchers.IO
 
     private fun newConnection(readOnly: Boolean): SQLiteConnection {
         val connection =
@@ -55,18 +51,17 @@ internal class InternalConnectionPool(
 
     override suspend fun <T> write(callback: suspend (SQLiteConnectionLease) -> T): T =
         writeLockMutex.withLock {
-            withContext(dispatcher) {
-                try {
+            try {
+                withContext(dispatcher) {
                     callback(RawConnectionLease(writeConnection))
-                } finally {
-                    // When we've leased a write connection, we may have to update table update flows
-                    // after users ran their custom statements.
-                    val updatedTables = writeConnection.readPendingUpdates()
-                    if (updatedTables.isNotEmpty()) {
-                        scope.launch {
-                            tableUpdatesFlow.emit(updatedTables)
-                        }
-                    }
+                }
+            } finally {
+                // When we've leased a write connection, we may have to update table update flows
+                // after users ran their custom statements. Reading updates is a SQL call, but it
+                // doesn't do IO so we can do it on the main dispatcher.
+                val updatedTables = writeConnection.readPendingUpdates()
+                if (updatedTables.isNotEmpty()) {
+                    updates.emit(updatedTables)
                 }
             }
         }
@@ -83,8 +78,9 @@ internal class InternalConnectionPool(
         }
     }
 
+    // MutableSharedFlow to emit batched table updates
     override val updates: SharedFlow<Set<String>>
-        get() = tableUpdatesFlow
+        field = MutableSharedFlow<Set<String>>(replay = 0)
 
     override suspend fun close() {
         writeConnection.close()
