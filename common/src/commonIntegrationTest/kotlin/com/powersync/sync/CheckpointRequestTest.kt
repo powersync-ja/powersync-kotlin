@@ -21,10 +21,12 @@ import com.powersync.testutils.databaseTest
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.testTimeSource
 import kotlin.test.Test
 import kotlin.test.assertNotNull
@@ -104,6 +106,9 @@ class CheckpointRequestTest : AbstractSyncTest() {
 
             database.waitForStatus { it.downloadError != null }
             database.currentStatus.connected shouldBe false
+
+            val error = database.currentStatus.downloadError
+            error.toString() shouldContain "The PowerSync service does not support checkpoint requests"
         }
 
     @Test
@@ -183,15 +188,17 @@ class CheckpointRequestTest : AbstractSyncTest() {
             database.connect(connector, options = optionsWithRequests())
             checkpointState.checkpointRequestCount.first { it == 1 }
             database.waitForStatus { it.connected }
-            scope.testScheduler.runCurrent()
 
             // Simulate what would happen if we suddenly switched users after the old token expired. The
             // client expects a checkpoint of 100, for another user the service wouldn't have that counter
             // yet. The client must request a checkpoint with the existing id, allowing the service to
             // recognize that this device + user combo needs higher checkpoint ids.
+            val closed = scope.launch { waitForSyncLinesChannelClosed() }
             checkpointState.lastCheckpointRequest.value = 0
             syncLines.send(SyncLine.KeepAlive(tokenExpiresIn = 0))
-            checkpointState.checkpointRequestCount.first { it == 2 }
+            closed.join()
+
+            checkpointState.checkpointRequestCount.first { it > 1 }
             checkpointState.lastCheckpointRequest.value shouldBe 100
         }
 

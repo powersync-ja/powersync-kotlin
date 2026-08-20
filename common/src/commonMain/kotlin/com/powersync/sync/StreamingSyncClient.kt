@@ -420,7 +420,7 @@ internal class StreamingSyncClient(
             try {
                 checkpointSignals.waitForCheckpointRequestsReady(wakeDownloadLoop = false)
 
-                val requestId = bucketStorage.readOrUpdateCheckpoint("current") ?: continue
+                val requestId = bucketStorage.readOrUpdateCheckpoint("current")
                 // Give the request some time to sync.
                 delay(retryDelay)
 
@@ -430,7 +430,7 @@ internal class StreamingSyncClient(
                 }
 
                 // If the request was applied, we don't need to retry.
-                if (status.isCheckpointRequestApplied(requestId)) {
+                if (requestId == null || status.isCheckpointRequestApplied(requestId)) {
                     continue
                 }
 
@@ -479,6 +479,10 @@ internal class StreamingSyncClient(
                     val channel = produceEvents(establishConnection, subscriptions)
 
                     channel.consumeEach { line ->
+                        if (line is PowerSyncControlArguments.CheckpointSeedFailed) {
+                            throw line.cause
+                        }
+
                         val instructions = bucketStorage.control(line)
                         for (instruction in instructions) {
                             when (instruction) {
