@@ -5,6 +5,7 @@ import com.powersync.db.StreamKey
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.internal.PowerSyncTransaction
 import com.powersync.db.schema.Schema
+import com.powersync.sync.CoreSyncStatus
 import com.powersync.sync.Instruction
 import com.powersync.utils.JsonUtil
 import kotlinx.serialization.SerialName
@@ -30,6 +31,13 @@ internal interface BucketStorage {
 
     suspend fun control(args: PowerSyncControlArguments): List<Instruction>
 
+    suspend fun resolveOfflineSyncStatus(): CoreSyncStatus
+
+    suspend fun readOrUpdateCheckpoint(
+        variant: String,
+        update: Long? = null,
+    ): Long?
+
     companion object {
         const val MAX_OP_ID = 9223372036854775807L
     }
@@ -46,14 +54,19 @@ internal interface BucketStorage {
  * [BucketStorage.MAX_OP_ID] can be used as a sentinel value in case there are pending changes that
  * have been uploaded, but for which no checkpoint request has been created yet.
  */
-internal suspend fun PowerSyncTransaction.targetCheckpointRequestId(update: Long? = null): Long? {
-    var previousCheckpointRequest: Long? = null
+internal suspend fun PowerSyncTransaction.targetCheckpointRequestId(update: Long? = null): Long? = readOrUpdateCheckpoint("target", update)
 
-    getAsync("SELECT powersync_control(?, ?)", listOf("target_checkpoint_request_id", update)) { row ->
+internal suspend fun PowerSyncTransaction.readOrUpdateCheckpoint(
+    variant: String,
+    update: Long? = null,
+): Long? {
+    var readValue: Long? = null
+
+    getAsync("SELECT powersync_control(?, ?)", listOf("${variant}_checkpoint_request_id", update)) { row ->
         // We can't return nullable values here, so write to the outer local
-        previousCheckpointRequest = row.getLong(0)
+        readValue = row.getLong(0)
     }
-    return previousCheckpointRequest
+    return readValue
 }
 
 internal sealed interface PowerSyncControlArguments {
@@ -72,6 +85,8 @@ internal sealed interface PowerSyncControlArguments {
         val activeStreams: List<StreamKey>,
         @SerialName("app_metadata")
         val appMetadata: Map<String, String>,
+        @SerialName("checkpoint_mode")
+        val checkpointMode: String,
     ) : PowerSyncControlArguments {
         override val sqlArguments: Pair<String, Any?>
             get() = "start" to JsonUtil.json.encodeToString(this)
@@ -109,6 +124,13 @@ internal sealed interface PowerSyncControlArguments {
 
     data object ResponseStreamEnd : PowerSyncControlArguments {
         override val sqlArguments: Pair<String, Any?> = "connection" to "end"
+    }
+
+    data class CheckpointSeedFailed(
+        val cause: Exception,
+    ) : PowerSyncControlArguments {
+        override val sqlArguments: Pair<String, Any?>
+            get() = throw IllegalStateException("Has no control arguments")
     }
 
     class UpdateSubscriptions(

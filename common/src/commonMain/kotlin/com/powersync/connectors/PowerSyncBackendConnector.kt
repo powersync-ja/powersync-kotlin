@@ -1,5 +1,7 @@
 package com.powersync.connectors
 
+import com.powersync.ExperimentalCheckpointRequestsApi
+import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
 import com.powersync.PowerSyncException
 import com.powersync.db.runWrapped
@@ -38,7 +40,6 @@ public abstract class PowerSyncBackendConnector {
      *
      * These credentials may have expired already.
      */
-    @Throws(PowerSyncException::class, CancellationException::class)
     public open suspend fun getCredentialsCached(): PowerSyncCredentials? {
         return runWrapped {
             cachedCredentials?.let { return@runWrapped it }
@@ -115,7 +116,6 @@ public abstract class PowerSyncBackendConnector {
      *
      * This token is kept for the duration of a sync connection.
      */
-    @Throws(PowerSyncException::class, CancellationException::class)
     public abstract suspend fun fetchCredentials(): PowerSyncCredentials?
 
     /**
@@ -125,8 +125,35 @@ public abstract class PowerSyncBackendConnector {
      *
      * Any thrown errors will result in a retry after the configured wait period (default: 5 seconds).
      */
-    @Throws(PowerSyncException::class, CancellationException::class)
     public abstract suspend fun uploadData(database: PowerSyncDatabase)
+}
+
+/**
+ * A [PowerSyncBackendConnector] capable of requesting checkpoints.
+ *
+ * Extend this class instead of [PowerSyncBackendConnector] when uploads are processed
+ * asynchronously by the backend (for example through a message queue): The sync client as part of
+ * the PowerSync Kotlin SDK generates a checkpoint request id and hands it to your backend via this
+ * class, which is responsible for creating a matching checkpoint once the uploads preceding the
+ * request have been processed.
+ * For more details, see [asynchronous backend uploads](https://docs.powersync.com/client-sdks/advanced/checkpoint-requests#asynchronous-upload-backends).
+ *
+ * To use this connector, using [com.powersync.sync.CheckpointMode.Requests] is required. Note that
+ * this requires PowerSync service version 1.24.0 or later.
+ */
+@ExperimentalCheckpointRequestsApi
+public abstract class CustomCheckpointRequestConnector : PowerSyncBackendConnector() {
+    /**
+     * Posts a client-generated checkpoint request to the backend and returns the effective
+     * checkpoint request state.
+     *
+     * @param clientId The PowerSync client ID for the current device.
+     * @param requestId The client-generated checkpoint request ID.
+     */
+    public abstract suspend fun postCheckpointRequest(
+        clientId: String,
+        requestId: Long,
+    ): Long
 }
 
 // Not using this indirection causes linker errors in tests: https://youtrack.jetbrains.com/issue/CMP-3318

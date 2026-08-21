@@ -1,6 +1,9 @@
 package com.powersync.testutils
 
 import app.cash.turbine.ReceiveTurbine
+import com.powersync.bucket.CheckpointRequestPayload
+import com.powersync.bucket.CheckpointRequestResponse
+import com.powersync.bucket.CheckpointRequestResponseData
 import com.powersync.bucket.WriteCheckpointResponse
 import com.powersync.sync.SyncStatusData
 import com.powersync.utils.JsonUtil
@@ -8,6 +11,7 @@ import io.ktor.client.engine.HttpClientEngineBase
 import io.ktor.client.engine.HttpClientEngineCapability
 import io.ktor.client.engine.HttpClientEngineConfig
 import io.ktor.client.engine.callContext
+import io.ktor.client.engine.mock.toByteArray
 import io.ktor.client.plugins.HttpTimeoutCapability
 import io.ktor.client.request.HttpRequestData
 import io.ktor.client.request.HttpResponseData
@@ -25,7 +29,13 @@ import io.ktor.utils.io.writer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.consume
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.serialization.json.JsonElement
+import kotlin.concurrent.atomics.AtomicLong
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.math.max
 
 /**
  * A mock HTTP engine providing sync lines read from a coroutines [ReceiveChannel].
@@ -37,6 +47,7 @@ import kotlinx.serialization.json.JsonElement
 internal class MockSyncService(
     private val lines: () -> ReceiveChannel<Any>,
     private val syncLinesContentType: () -> ContentType,
+    private val requestCheckpoints: CheckpointRequestsTestState,
     private val generateCheckpoint: () -> WriteCheckpointResponse,
     private val trackSyncRequest: suspend (HttpRequestData) -> Unit,
 ) : HttpClientEngineBase("sync-service") {
@@ -53,7 +64,8 @@ internal class MockSyncService(
         val context = callContext()
         val scope = CoroutineScope(context)
 
-        return if (data.url.encodedPath == "/sync/stream") {
+        val path = data.url.encodedPath
+        return if (path == "/sync/stream") {
             trackSyncRequest(data)
             val job =
                 scope.writer {
@@ -98,7 +110,41 @@ internal class MockSyncService(
                 job.channel,
                 context,
             )
-        } else if (data.url.encodedPath == "/write-checkpoint2.json") {
+        } else if (path == "/sync/checkpoint-request") {
+            if (!requestCheckpoints.checkpointRequestsSupported) {
+                return HttpResponseData(
+                    HttpStatusCode.NotFound,
+                    GMTDate(),
+                    headersOf(),
+                    HttpProtocolVersion.HTTP_1_1,
+                    body = "",
+                    context,
+                )
+            }
+
+            val request = JsonUtil.json.decodeFromString<CheckpointRequestPayload>(data.body.toByteArray().decodeToString())
+            var checkpointResponse = 0L
+            requestCheckpoints.lastCheckpointRequest.update {
+                val resolved = max(it, request.checkpointRequestId)
+                checkpointResponse = resolved
+                resolved
+            }
+            requestCheckpoints.checkpointRequestCount.update { it + 1 }
+            requestCheckpoints.beforeCheckpointRequestResponse()
+
+            HttpResponseData(
+                HttpStatusCode.OK,
+                GMTDate(),
+                headersOf(HttpHeaders.ContentType, "application/json"),
+                HttpProtocolVersion.HTTP_1_1,
+                JsonUtil.json.encodeToString(
+                    CheckpointRequestResponse(
+                        data = CheckpointRequestResponseData(checkpointResponse),
+                    ),
+                ),
+                context,
+            )
+        } else if (path == "/write-checkpoint2.json") {
             HttpResponseData(
                 HttpStatusCode.OK,
                 GMTDate(),
@@ -138,4 +184,11 @@ suspend inline fun ReceiveTurbine<SyncStatusData>.waitFor(
             }
         }
     }
+}
+
+internal class CheckpointRequestsTestState {
+    val lastCheckpointRequest = MutableStateFlow(0L)
+    val checkpointRequestCount = MutableStateFlow(0)
+    var checkpointRequestsSupported = true
+    var beforeCheckpointRequestResponse: suspend () -> Unit = {}
 }

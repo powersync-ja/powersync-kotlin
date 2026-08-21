@@ -27,6 +27,8 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.files.Path
 import kotlinx.serialization.json.JsonElement
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.resume
 
 fun generatePrintLogWriter() =
@@ -65,6 +67,8 @@ internal class ActiveDatabaseTest(
     private val cleanupItems: MutableList<suspend () -> Unit> = mutableListOf()
 
     lateinit var database: PowerSyncDatabaseImpl
+
+    val checkpointState = CheckpointRequestsTestState()
 
     val logWriter =
         PowerSyncTestLogWriter(
@@ -112,7 +116,10 @@ internal class ActiveDatabaseTest(
         }
     }
 
-    fun openDatabase(schema: Schema = Schema(UserRow.table)): PowerSyncDatabaseImpl {
+    fun openDatabase(
+        schema: Schema = Schema(UserRow.table),
+        databaseIoDispatcher: CoroutineContext = EmptyCoroutineContext,
+    ): PowerSyncDatabaseImpl {
         logger.d { "Opening database $databaseName in directory $testDirectory" }
         val db =
             createPowerSyncDatabaseImpl(
@@ -122,6 +129,8 @@ internal class ActiveDatabaseTest(
                 dbDirectory = testDirectory,
                 logger = logger,
                 scope = scope,
+                // To make tests more consistent, avoid using Dispatchers.IO.
+                databaseIoDispatcher = databaseIoDispatcher,
             )
         doOnCleanup { db.close() }
         return db
@@ -136,6 +145,7 @@ internal class ActiveDatabaseTest(
                 lines = { syncLines },
                 generateCheckpoint = { checkpointResponse() },
                 syncLinesContentType = { syncLinesContentType },
+                requestCheckpoints = checkpointState,
                 trackSyncRequest = {
                     val parsed =
                         JsonUtil.json.parseToJsonElement(it.body.toByteArray().decodeToString())

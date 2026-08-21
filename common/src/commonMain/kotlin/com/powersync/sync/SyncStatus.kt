@@ -138,6 +138,11 @@ public sealed class SyncStatusData {
         return exposeStreamStatus(raw)
     }
 
+    internal fun isCheckpointRequestApplied(request: Long): Boolean {
+        val lastApplied = core?.lastAppliedCheckpointRequestId ?: return false
+        return lastApplied >= request
+    }
+
     private fun exposeStreamStatus(internal: CoreActiveStreamSubscription): SyncStreamStatus {
         val progress =
             if (this.downloadProgress == null) {

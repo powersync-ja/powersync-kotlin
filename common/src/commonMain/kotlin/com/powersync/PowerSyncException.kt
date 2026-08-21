@@ -1,6 +1,6 @@
 package com.powersync
 
-public class PowerSyncException(
+public open class PowerSyncException(
     message: String,
     cause: Throwable?,
 ) : Exception(message, cause)

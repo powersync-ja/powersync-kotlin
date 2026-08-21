@@ -43,8 +43,8 @@ internal sealed interface SyncLine {
         val bucket: String,
         val data: List<OplogEntry>,
         @SerialName("has_more") val hasMore: Boolean = false,
-        val after: String?,
-        @SerialName("next_after")val nextAfter: String?,
+        val after: String? = null,
+        @SerialName("next_after")val nextAfter: String? = null,
     ) : SyncLine
 
     data class KeepAlive(

@@ -10,3 +10,14 @@ package com.powersync
     AnnotationTarget.VALUE_PARAMETER,
 )
 public annotation class ExperimentalPowerSyncAPI
+
+@RequiresOptIn(message = "Checkpoint requests are in alpha and might change.")
+@Retention(AnnotationRetention.BINARY)
+@Target(
+    AnnotationTarget.CLASS,
+    AnnotationTarget.FUNCTION,
+    AnnotationTarget.CONSTRUCTOR,
+    AnnotationTarget.PROPERTY,
+    AnnotationTarget.VALUE_PARAMETER,
+)
+public annotation class ExperimentalCheckpointRequestsApi

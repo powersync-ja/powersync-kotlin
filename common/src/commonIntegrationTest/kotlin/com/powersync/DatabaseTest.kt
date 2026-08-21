@@ -23,6 +23,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
@@ -98,7 +99,8 @@ class DatabaseTest {
 
     @Test
     fun testConcurrentReads() =
-        databaseTest {
+        databaseTest(createInitialDatabase = false) {
+            database = openDatabase(databaseIoDispatcher = Dispatchers.IO)
             database.execute(
                 "INSERT INTO users (id, name, email) VALUES (uuid(), ?, ?)",
                 listOf(
@@ -254,7 +256,8 @@ class DatabaseTest {
 
     @Test
     fun testClosingReadPool() =
-        databaseTest {
+        databaseTest(createInitialDatabase = false) {
+            database = openDatabase(databaseIoDispatcher = Dispatchers.IO)
             val pausedLock = CompletableDeferred<Unit>()
             val inLock = CompletableDeferred<Unit>()
             // Request a lock

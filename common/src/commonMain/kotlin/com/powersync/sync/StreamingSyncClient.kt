@@ -2,11 +2,15 @@ package com.powersync.sync
 
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
+import com.powersync.ExperimentalCheckpointRequestsApi
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncException
 import com.powersync.bucket.BucketStorage
+import com.powersync.bucket.CheckpointRequestPayload
+import com.powersync.bucket.CheckpointRequestResponse
 import com.powersync.bucket.PowerSyncControlArguments
 import com.powersync.bucket.WriteCheckpointResponse
+import com.powersync.connectors.CustomCheckpointRequestConnector
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.SubscriptionGroup
 import com.powersync.db.crud.CrudEntry
@@ -15,15 +19,17 @@ import com.powersync.utils.JsonUtil
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.call.body
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.accept
-import io.ktor.client.request.get
 import io.ktor.client.request.headers
 import io.ktor.client.request.preparePost
+import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.append
 import io.ktor.http.contentType
@@ -52,6 +58,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.io.EOFException
 import kotlinx.io.readByteArray
 import kotlinx.io.readIntLe
@@ -61,7 +68,7 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
-@OptIn(ExperimentalPowerSyncAPI::class)
+@OptIn(ExperimentalPowerSyncAPI::class, ExperimentalCheckpointRequestsApi::class)
 internal class StreamingSyncClient(
     private val status: SyncStatus,
     private val bucketStorage: BucketStorage,
@@ -78,6 +85,7 @@ internal class StreamingSyncClient(
 ) {
     private val requestedCrudUploads = Channel<Unit>(CONFLATED)
     private val completedCrudUploads = Channel<Unit>(CONFLATED)
+    private val checkpointSignals = CheckpointStateSignals()
 
     private var clientId: String? = null
 
@@ -99,6 +107,14 @@ internal class StreamingSyncClient(
         connector.invalidateCredentials()
     }
 
+    private suspend fun loadClientId(): String {
+        clientId?.let { return it }
+
+        val id = bucketStorage.getClientId()
+        clientId = id
+        return id
+    }
+
     /**
      * Triggers a crud upload without awaiting it.
      *
@@ -110,15 +126,20 @@ internal class StreamingSyncClient(
     }
 
     suspend fun streamingSync() {
-        coroutineScope {
-            launch { downloadLoop() }
-            launch { crudUploadLoop() }
+        try {
+            coroutineScope {
+                launch { downloadLoop() }
+                launch { crudUploadLoop() }
+                launch { repostUnacknowledgedCheckpointRequests() }
+            }
+        } finally {
+            checkpointSignals.disconnected()
         }
     }
 
     private suspend fun downloadLoop() {
         var invalidCredentials = false
-        clientId = bucketStorage.getClientId()
+        loadClientId()
 
         while (true) {
             var result = SyncIterationResult()
@@ -156,7 +177,11 @@ internal class StreamingSyncClient(
                 status.update { copy(downloadError = e) }
             } finally {
                 if (!result.hideDisconnectStateAndReconnectImmediately) {
-                    delay(retryDelay)
+                    // Wait for the delay, or another component wanting to request a checkpoint.
+                    withTimeoutOrNull(retryDelay) {
+                        checkpointSignals.waitForCheckpointWaiter()
+                        logger.v { "Resuming due to pending checkpoint waiter" }
+                    }
                 }
             }
         }
@@ -204,7 +229,12 @@ internal class StreamingSyncClient(
                     uploadCrud()
                 } else {
                     // Uploading is completed
-                    bucketStorage.updateLocalTarget { getWriteCheckpoint() }
+                    bucketStorage.updateLocalTarget {
+                        when (options.checkpointMode) {
+                            CheckpointMode.Legacy -> getLegacyWriteCheckpoint()
+                            is CheckpointMode.Requests -> requestNextCheckpointFromService()
+                        }
+                    }
                     break
                 }
             } catch (e: Exception) {
@@ -222,21 +252,69 @@ internal class StreamingSyncClient(
         status.update { copy(uploading = false) }
     }
 
-    private suspend fun getWriteCheckpoint(): Long {
+    private suspend fun requestNextCheckpointFromService(): Long {
+        checkpointSignals.waitForCheckpointRequestsReady()
+
+        val nextCheckpointRequestId = bucketStorage.readOrUpdateCheckpoint("next")!!
+        return requestCheckpointFromService(
+            CheckpointRequestPayload(
+                clientId = loadClientId(),
+                checkpointRequestId = nextCheckpointRequestId,
+            ),
+        )
+    }
+
+    private suspend fun authenticatedRequest(
+        path: String,
+        method: HttpMethod = HttpMethod.Get,
+        configure: HttpRequestBuilder.() -> Unit = {},
+    ): HttpResponse {
         val credentials = connector.getCredentialsCached()
         require(credentials != null) { "Not logged in" }
-        val uri = credentials.endpointUri("write-checkpoint2.json?client_id=$clientId")
+        val uri = credentials.endpointUri(path)
 
         val response =
-            httpClient.get(uri) {
+            httpClient.request(uri) {
+                this.method = method
                 contentType(ContentType.Application.Json)
                 headers {
                     append(HttpHeaders.Authorization, "Token ${credentials.token}")
                 }
+                configure()
             }
+
         if (response.status.value == 401) {
             connector.invalidateCredentials()
         }
+
+        return response
+    }
+
+    private suspend fun requestCheckpointFromService(payload: CheckpointRequestPayload): Long {
+        // First, check if we can use a custom checkpoint request implementation.
+        (connector as? CustomCheckpointRequestConnector)?.let {
+            return it.postCheckpointRequest(payload.clientId, payload.checkpointRequestId)
+        }
+
+        val response =
+            authenticatedRequest(path = "sync/checkpoint-request", method = HttpMethod.Post) {
+                setBody(JsonUtil.json.encodeToString(payload))
+            }
+
+        if (response.status.value == 404) {
+            throw CheckpointRequestException.InstanceNotSupported()
+        }
+        if (response.status.value != 200) {
+            throw CheckpointRequestException("Error getting checkpoint request: ${response.status}")
+        }
+
+        val body = JsonUtil.json.decodeFromString<CheckpointRequestResponse>(response.body())
+        return body.data.id
+    }
+
+    private suspend fun getLegacyWriteCheckpoint(): Long {
+        val response = authenticatedRequest(path = "write-checkpoint2.json?client_id=${loadClientId()}")
+
         if (response.status.value != 200) {
             throw Exception("Error getting write checkpoint: ${response.status}")
         }
@@ -333,6 +411,58 @@ internal class StreamingSyncClient(
         }
     }
 
+    private suspend fun repostUnacknowledgedCheckpointRequests() {
+        val retryDelay =
+            when (val mode = options.checkpointMode) {
+                CheckpointMode.Legacy -> return
+                is CheckpointMode.Requests -> mode.retryDelay
+            }
+
+        while (true) {
+            try {
+                checkpointSignals.waitForCheckpointRequestsReady(wakeDownloadLoop = false)
+
+                val requestId = bucketStorage.readOrUpdateCheckpoint("current")
+                // Give the request some time to sync.
+                delay(retryDelay)
+
+                // If a new request was made, reset the timer.
+                if (requestId != bucketStorage.readOrUpdateCheckpoint("current")) {
+                    continue
+                }
+
+                // If the request was applied, we don't need to retry.
+                if (requestId == null || status.isCheckpointRequestApplied(requestId)) {
+                    continue
+                }
+
+                // Make sure we're online and ready before making the request
+                checkpointSignals.waitForCheckpointRequestsReady(wakeDownloadLoop = false)
+
+                // It's safe if this request races with a new one. The service will reject it.
+                logger.d { "Retry checkpoint request $requestId" }
+                requestCheckpointFromService(
+                    CheckpointRequestPayload(
+                        clientId = loadClientId(),
+                        checkpointRequestId = requestId,
+                    ),
+                )
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) {
+                    throw e
+                }
+
+                logger.w(throwable = e) { "Error retrying checkpoint request." }
+                delay(retryDelay)
+            }
+        }
+    }
+
+    private suspend fun seedCheckpointRequestState(request: CheckpointRequestPayload) {
+        val seed = requestCheckpointFromService(request)
+        bucketStorage.readOrUpdateCheckpoint("seed", seed)
+    }
+
     /**
      * Implementation of a sync iteration that delegates to helper functions implemented in the
      * Rust core extension.
@@ -351,6 +481,10 @@ internal class StreamingSyncClient(
                     val channel = produceEvents(establishConnection, subscriptions)
 
                     channel.consumeEach { line ->
+                        if (line is PowerSyncControlArguments.CheckpointSeedFailed) {
+                            throw line.cause
+                        }
+
                         val instructions = bucketStorage.control(line)
                         for (instruction in instructions) {
                             when (instruction) {
@@ -374,6 +508,8 @@ internal class StreamingSyncClient(
                     SyncIterationResult()
                 }
             } finally {
+                checkpointSignals.downloadIterationEnded()
+
                 // This can't be canceled because we need to send a stop message, which is async, to
                 // clean up resources.
                 withContext(NonCancellable) {
@@ -402,6 +538,11 @@ internal class StreamingSyncClient(
                         includeDefaults = options.includeDefaultStreams,
                         activeStreams = subscriptions.map { it.key },
                         appMetadata = appMetadata,
+                        checkpointMode =
+                            when (options.checkpointMode) {
+                                CheckpointMode.Legacy -> "legacy"
+                                is CheckpointMode.Requests -> "requests"
+                            },
                     ),
                 )
             var start: Instruction.EstablishSyncStream? = null
@@ -436,6 +577,14 @@ internal class StreamingSyncClient(
                 if (instruction is Instruction.NonInterruptingInstruction) {
                     handleInstruction(instruction)
                 }
+            }
+
+            if (instructions.isEmpty()) {
+                // For errors reported by the core extension in powersync_control, the sync client
+                // is reset, and we don't get an updated sync status. Fall back to the offline sync
+                // status in that case.
+                val offlineStatus = bucketStorage.resolveOfflineSyncStatus()
+                status.update { copy(core = offlineStatus) }
             }
         }
 
@@ -492,6 +641,24 @@ internal class StreamingSyncClient(
                             } else {
                                 logger.w(throwable = e) { "Failure in updateCredentials" }
                             }
+                        }
+                    }
+                }
+
+                instruction.checkpointRequest?.let { seedRequest ->
+                    launch(CoroutineName("Seed checkpoint state")) {
+                        // Start checkpoint request validation concurrently, without blocking
+                        // line processing on it. We need to do this at the start of every sync
+                        // iteration to ensure service and clients align on checkpoint ids, even
+                        // if the active user has changed between iterations.
+                        try {
+                            checkpointSignals.markCheckpointsReady {
+                                seedCheckpointRequestState(seedRequest)
+                            }
+                        } catch (e: Exception) {
+                            if (e is CancellationException) throw e
+
+                            send(PowerSyncControlArguments.CheckpointSeedFailed(e))
                         }
                     }
                 }

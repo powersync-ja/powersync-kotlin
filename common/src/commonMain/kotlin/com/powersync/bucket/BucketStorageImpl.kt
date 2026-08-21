@@ -8,6 +8,7 @@ import com.powersync.db.crud.CrudRow
 import com.powersync.db.internal.InternalDatabase
 import com.powersync.db.internal.InternalTable
 import com.powersync.db.internal.PowerSyncTransaction
+import com.powersync.sync.CoreSyncStatus
 import com.powersync.sync.Instruction
 import com.powersync.utils.JsonUtil
 
@@ -132,4 +133,14 @@ internal class BucketStorageImpl(
             val (op: String, data: Any?) = args.sqlArguments
             tx.getAsync("SELECT powersync_control(?, ?) AS r", listOf(op, data), ::handleControlResult)
         }
+
+    override suspend fun resolveOfflineSyncStatus(): CoreSyncStatus =
+        db.get("SELECT powersync_offline_sync_status()") {
+            JsonUtil.json.decodeFromString<CoreSyncStatus>(it.getString(0)!!)
+        }
+
+    override suspend fun readOrUpdateCheckpoint(
+        variant: String,
+        update: Long?,
+    ): Long? = db.writeTransactionAsync { tx -> tx.readOrUpdateCheckpoint(variant, update) }
 }

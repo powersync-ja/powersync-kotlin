@@ -44,6 +44,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.testTimeSource
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.jsonObject
@@ -787,6 +788,7 @@ class SyncIntegrationTest : AbstractSyncTest() {
                 syncLines.send(SyncLine.KeepAlive(tokenExpiresIn = 4000))
                 turbine.waitFor { it.connected }
                 fetchCredentialsCount shouldBe 1
+                delay(1.seconds) // Make idle, past the initial crud upload
 
                 syncLines.send(SyncLine.KeepAlive(tokenExpiresIn = 10))
                 prefetchCalled.await()
@@ -800,6 +802,7 @@ class SyncIntegrationTest : AbstractSyncTest() {
                         // Wait for a disconnect and reconnect.
                         waitForSyncLinesChannelClosed()
                         syncLines.send(SyncLine.KeepAlive(tokenExpiresIn = 4000))
+                        turbine.waitFor { it.connected }
                     }
                 // We should not wait for the reconnect delay when we reconnect due to a prefetched
                 // token (that's kind of the whole point...).
@@ -1077,9 +1080,7 @@ class SyncIntegrationTest : AbstractSyncTest() {
 
                 syncLines.send("unterminated line".toByteArray())
                 syncLines.close()
-                turbine.waitFor { !it.connected }
-                database.currentStatus.downloadError shouldNotBeNull {
-                }
+                turbine.waitFor { !it.connected && it.downloadError != null }
 
                 syncLines = Channel()
                 turbine.waitFor(allowError = true) { it.connected }
