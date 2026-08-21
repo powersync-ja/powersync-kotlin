@@ -64,7 +64,7 @@ internal class InternalConnectionPool(
                 }
             }
         } finally {
-            // Emit updates on teh main context, and outside the write lock.
+            // Emit updates on the main context and outside the write lock.
             if (updatedTables.isNotEmpty()) {
                 updates.emit(updatedTables)
             }
