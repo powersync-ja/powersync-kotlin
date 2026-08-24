@@ -245,6 +245,7 @@ internal class StreamingSyncClient(
                             is CheckpointMode.Requests -> requestNextCheckpointFromService()
                         }
                     }
+                    status.update { copy(uploading = false, uploadError = null) }
                     break
                 }
             } catch (e: Exception) {

@@ -66,14 +66,14 @@ internal fun HomeScreen(
                 },
             )
         },
-        content = {
+        content = { padding ->
             // This assumes that the buckets for lists has a priority of 1 (but it will work fine with
             // sync rules not defining any priorities at all too). When giving lists a higher priority
             // than items, we can have a consistent snapshot of lists without items. In the case where
             // many items exist (that might take longer to sync initially), this allows us to display
             // lists earlier.
             GuardBySync(priority = StreamPriority(1)) {
-                Column {
+                Column(modifier = Modifier.padding(padding)) {
                     Input(
                         text = inputText,
                         onAddClicked = onAddItemClicked,
