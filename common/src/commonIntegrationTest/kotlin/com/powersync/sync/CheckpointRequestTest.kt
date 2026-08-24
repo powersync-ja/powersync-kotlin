@@ -9,6 +9,7 @@ import com.powersync.PowerSyncDatabase
 import com.powersync.connectors.CustomCheckpointRequestConnector
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.connectors.PowerSyncCredentials
+import com.powersync.test.TestConnector
 import com.powersync.testutils.ActiveDatabaseTest
 import com.powersync.testutils.BucketChecksum
 import com.powersync.testutils.Checkpoint
@@ -18,6 +19,7 @@ import com.powersync.testutils.SyncLine
 import com.powersync.testutils.SyncLine.SyncDataBucket
 import com.powersync.testutils.UserRow
 import com.powersync.testutils.databaseTest
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.shouldBe
@@ -28,6 +30,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.testTimeSource
+import kotlin.collections.emptyList
 import kotlin.test.Test
 import kotlin.test.assertNotNull
 import kotlin.time.Duration.Companion.hours
@@ -222,6 +225,80 @@ class CheckpointRequestTest : AbstractSyncTest() {
             )
             database.waitForStatus { it.downloading }
             completeInitialRequest.complete(Unit)
+        }
+
+    @Test
+    fun `requestCheckpoint fails when disconnected`() =
+        databaseTest {
+            shouldThrow<CheckpointRequestException.Disconnected> { database.requestCheckpoint() }
+        }
+
+    @Test
+    fun `requestCheckpoint fails when connected in legacy mode`() =
+        databaseTest {
+            database.connect(connector, options = getOptions())
+
+            shouldThrow<CheckpointRequestException.Disabled> { database.requestCheckpoint() }
+        }
+
+    @Test
+    fun `requestCheckpoint waits until data is applied`() =
+        databaseTest {
+            database.connect(TestConnector(), options = optionsWithRequests())
+
+            val checkpoint = database.requestCheckpoint()
+            syncLines.send(SyncLine.FullCheckpoint(Checkpoint(lastOpId = "0", checksums = emptyList(), writeCheckpoint = "2")))
+            checkpoint.hasSynced shouldBe false
+            syncLines.send(SyncLine.CheckpointComplete(lastOpId = "0"))
+
+            checkpoint.waitForSync()
+            checkpoint.hasSynced shouldBe true
+        }
+
+    @Test
+    fun `requestCheckpoint throws on disconnect but can connect again`() =
+        databaseTest {
+            database.connect(TestConnector(), options = optionsWithRequests())
+            val checkpoint = database.requestCheckpoint()
+
+            val firstWaitForSync =
+                scope.launch {
+                    shouldThrow<CheckpointRequestException.Disconnected> { checkpoint.waitForSync() }
+                }
+            database.disconnect()
+            firstWaitForSync.join()
+            waitForSyncLinesChannelClosed()
+
+            database.connect(TestConnector(), options = optionsWithRequests())
+            syncLines.send(SyncLine.FullCheckpoint(Checkpoint(lastOpId = "0", checksums = emptyList(), writeCheckpoint = "2")))
+            syncLines.send(SyncLine.CheckpointComplete(lastOpId = "0"))
+            checkpoint.waitForSync()
+        }
+
+    @Test
+    fun `requestCheckpoint fails when reconnecting with legacy mode`() =
+        databaseTest {
+            database.connect(TestConnector(), options = optionsWithRequests())
+            val checkpoint = database.requestCheckpoint()
+
+            database.disconnect()
+            database.connect(TestConnector(), options = getOptions())
+            shouldThrow<CheckpointRequestException.Disabled> { checkpoint.waitForSync() }
+        }
+
+    @Test
+    fun `requestCheckpoint fails on sync errors`() =
+        databaseTest {
+            database.connect(TestConnector(), options = optionsWithRequests())
+            val checkpoint = database.requestCheckpoint()
+
+            val failureExpectation =
+                scope.launch {
+                    shouldThrow<CheckpointRequestException.StatusError> { checkpoint.waitForSync() }
+                }
+
+            syncLines.send("not a valid sync line")
+            failureExpectation.join()
         }
 }
 

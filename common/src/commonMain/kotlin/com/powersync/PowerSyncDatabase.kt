@@ -11,6 +11,7 @@ import com.powersync.db.crud.CrudBatch
 import com.powersync.db.crud.CrudTransaction
 import com.powersync.db.driver.SQLiteConnectionPool
 import com.powersync.db.schema.Schema
+import com.powersync.sync.CheckpointRequest
 import com.powersync.sync.SyncOptions
 import com.powersync.sync.SyncStatus
 import com.powersync.sync.SyncStream
@@ -198,6 +199,19 @@ public interface PowerSyncDatabase : Queries {
         name: String,
         parameters: Map<String, JsonParam>? = null,
     ): SyncStream
+
+    /**
+     * Requests a checkpoint from the PowerSync service.
+     *
+     * The returned request can be awaited (using [CheckpointRequest.waitForSync]) to confirm that
+     * the local database has applied server-side changes up to the checkpoint. This method requires
+     * an active or connecting sync client connected with [SyncOptions.checkpointMode] set to
+     * [com.powersync.sync.CheckpointMode.Requests] and PowerSync service version 1.24.0 or later.
+     *
+     * It can throw for connection, mode, authentication, or service request failures.
+     */
+    @ExperimentalCheckpointRequestsApi
+    public suspend fun requestCheckpoint(): CheckpointRequest
 
     /**
      * Close the sync connection.

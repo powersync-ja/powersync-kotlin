@@ -18,6 +18,10 @@ public open class CheckpointRequestException internal constructor(
 
     public class Disconnected internal constructor() : CheckpointRequestException("Cannot request checkpoints, sync client is disconnected")
 
-    public class NotEnabled internal constructor() :
+    public class Disabled internal constructor() :
         CheckpointRequestException("Connected with legacy checkpoint mode, cannot request checkpoints")
+
+    public class StatusError internal constructor(
+        cause: Throwable?,
+    ) : CheckpointRequestException("Error on sync status before checkpoint was applied", cause)
 }

@@ -56,6 +56,8 @@ POWERSYNC_URL=https://foo.powersync.journeyapps.com
 # Enter your Supabase project's URL and public anon key (Project settings > API)
 SUPABASE_URL=https://foo.supabase.co
 SUPABASE_ANON_KEY=foo
+# Whether to use checkpoint requests for explicit sync (https://docs.powersync.com/client-sdks/advanced/checkpoint-requests).
+USE_CHECKPOINT_REQUESTS=false
 ```
 
 ## Run the app
