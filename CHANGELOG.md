@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.15.0 (unreleased)
+## 1.15.0
 
 - Update Kotlin to 2.4.10.
 - Compile against Android SDK 37.
