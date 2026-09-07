@@ -304,8 +304,8 @@ class CheckpointRequestTest : AbstractSyncTest() {
 
 private fun PowerSyncBackendConnector.withCustomRequests(
     postRequest: suspend (String, Long) -> Long = { _, req -> req },
-): CustomCheckpointRequestConnector =
-    object : CustomCheckpointRequestConnector() {
+): PowerSyncBackendConnector =
+    object : PowerSyncBackendConnector(), CustomCheckpointRequestConnector {
         override suspend fun postCheckpointRequest(
             clientId: String,
             requestId: Long,
