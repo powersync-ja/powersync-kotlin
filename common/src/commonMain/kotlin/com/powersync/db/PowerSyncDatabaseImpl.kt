@@ -8,7 +8,9 @@ import com.powersync.PowerSyncException
 import com.powersync.bucket.BucketStorage
 import com.powersync.bucket.StreamPriority
 import com.powersync.bucket.targetCheckpointRequestId
+import com.powersync.connectors.Authenticator
 import com.powersync.connectors.CustomCheckpointRequestConnector
+import com.powersync.connectors.MutationUploader
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.crud.CrudBatch
 import com.powersync.db.crud.CrudEntry
@@ -189,7 +191,8 @@ internal class PowerSyncDatabaseImpl(
                 StreamingSyncClient(
                     status = currentStatus,
                     database = this,
-                    connector = connector,
+                    authenticator = connector,
+                    uploader = connector,
                     logger = logger,
                     options = options,
                     schema = schema,
@@ -197,6 +200,14 @@ internal class PowerSyncDatabaseImpl(
                 )
             }
         }
+    }
+
+    override suspend fun connect(
+        authenticator: Authenticator?,
+        uploader: MutationUploader?,
+        options: SyncOptions
+    ) {
+        TODO("Not yet implemented")
     }
 
     private fun connectInternal(createStream: () -> StreamingSyncClient) {
