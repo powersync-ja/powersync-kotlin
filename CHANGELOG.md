@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.15.1
+
+- Fix broken CRUD upload when R8 is enabled ([#377](https://github.com/powersync-ja/powersync-kotlin/issues/377)).
+
 ## 1.15.0
 
 - Update Kotlin to 2.4.10.

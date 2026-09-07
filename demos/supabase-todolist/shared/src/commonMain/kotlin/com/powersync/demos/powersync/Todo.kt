@@ -81,7 +81,7 @@ internal class Todo(
         viewModelScope.launch {
             db.writeTransactionAsync { tx ->
                 tx.executeAsync(
-                    "INSERT INTO $TODOS_TABLE (id, created_at, created_by, description, list_id) VALUES (uuid(), datetime(), ?, ?, ?)",
+                    "INSERT INTO $TODOS_TABLE (id, created_at, created_by, description, list_id, completed) VALUES (uuid(), datetime(), ?, ?, ?, false)",
                     listOf(userId, _inputText.value, listId)
                 )
             }
