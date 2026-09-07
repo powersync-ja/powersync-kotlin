@@ -229,7 +229,7 @@ internal class PowerSyncDatabaseImpl(
                 launch {
                     internalDb
                         .updatesOnTables()
-                        .filter { it.contains(InternalTable.CRUD.toString()) }
+                        .filter { it.contains(InternalTable.CRUD) }
                         .collect { stream.triggerCrudUpload() }
                 }
 
