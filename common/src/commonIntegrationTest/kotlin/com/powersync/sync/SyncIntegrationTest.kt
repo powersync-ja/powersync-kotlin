@@ -50,6 +50,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.testTimeSource
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
@@ -1202,8 +1203,8 @@ class SyncIntegrationTest : AbstractSyncTest() {
 
             requestedSyncStreams shouldHaveSingleElement {
                 val meta = it.jsonObject["app_metadata"]!!.jsonObject
-                meta["option_1"] shouldBe JsonParam.String("1")
-                meta["option_2"] shouldBe JsonParam.String("2")
+                meta["option_1"] shouldBe JsonPrimitive("1")
+                meta["option_2"] shouldBe JsonPrimitive("2")
                 true
             }
         }
