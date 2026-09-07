@@ -152,7 +152,16 @@ internal class StreamingSyncClient(
                     launch { repostUnacknowledgedCheckpointRequests() }
                 }
 
-                uploader?.let { crudUploadLoop(it) }
+                uploader.let { uploader ->
+                    if (uploader != null) {
+                        launch { crudUploadLoop(uploader) }
+                    } else if (authenticator != null) {
+                        // We can't upload mutations, but we can request a checkpoint for mutations
+                        // that have already been uploaded from a potential prior upload-only
+                        // connection.
+                        launch { updateLocalTarget() }
+                    }
+                }
             }
         } finally {
             checkpointSignals.disconnected()
@@ -251,11 +260,8 @@ internal class StreamingSyncClient(
                     uploader.uploadMutations(database)
                 } else {
                     // Uploading is completed
-                    bucketStorage.updateLocalTarget {
-                        when (options.checkpointMode) {
-                            CheckpointMode.Legacy -> getLegacyWriteCheckpoint()
-                            is CheckpointMode.Requests -> requestNextCheckpointFromService()
-                        }
+                    if (authenticator != null) {
+                        updateLocalTarget()
                     }
                     status.update { copy(uploading = false, uploadError = null) }
                     break
@@ -273,6 +279,15 @@ internal class StreamingSyncClient(
             }
         }
         status.update { copy(uploading = false) }
+    }
+
+    suspend fun updateLocalTarget() {
+        bucketStorage.updateLocalTarget {
+            when (options.checkpointMode) {
+                CheckpointMode.Legacy -> getLegacyWriteCheckpoint()
+                is CheckpointMode.Requests -> requestNextCheckpointFromService()
+            }
+        }
     }
 
     private suspend fun requestNextCheckpointFromService(): Long {

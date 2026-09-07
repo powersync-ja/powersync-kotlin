@@ -9,6 +9,7 @@ import com.powersync.PowerSyncException
 import com.powersync.bucket.StreamPriority
 import com.powersync.bucket.WriteCheckpointData
 import com.powersync.bucket.WriteCheckpointResponse
+import com.powersync.connectors.Authenticator
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.connectors.readCachedCredentials
@@ -60,6 +61,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.fail
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.measureTime
 
@@ -1208,4 +1210,89 @@ class SyncIntegrationTest : AbstractSyncTest() {
                 true
             }
         }
+
+    @Test
+    fun connectDownloadOnly() =
+        databaseTest {
+            val didUpload = CompletableDeferred<Unit>()
+            database.connect(
+                endpoint = "https://powersynctest.example.com",
+                authenticator = TestAuthenticator,
+                options = getOptions(),
+            )
+
+            turbineScope(timeout = 10.0.seconds) {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                turbine.waitFor { it.connected }
+                turbine.cancel()
+            }
+
+            // Create a local mutation, which is never uploaded
+            database.execute("INSERT INTO users (id, name) VALUES (uuid(), ?)", listOf("local mutation"))
+            delay(1.hours)
+
+            // Upgrade to a full connection, which should upload
+            database.connect(
+                endpoint = "https://powersynctest.example.com",
+                authenticator = TestAuthenticator,
+                uploader = { db ->
+                    val batch = db.getNextCrudTransaction() ?: return@connect
+                    didUpload.complete(Unit)
+                    batch.complete(null)
+                },
+                options = getOptions(),
+            )
+            didUpload.join()
+        }
+
+    @OptIn(ExperimentalPowerSyncAPI::class)
+    @Test
+    fun connectUploadOnly() =
+        databaseTest {
+            val didUpload = CompletableDeferred<Unit>()
+            val didRequestCheckpoint = CompletableDeferred<Unit>()
+            val assertNoHttpEngine =
+                MockEngine { request ->
+                    error("Unexpected HTTP request: $request")
+                }
+            checkpointResponse = {
+                didRequestCheckpoint.complete(Unit)
+                WriteCheckpointResponse(WriteCheckpointData(1))
+            }
+
+            // Connecting in upload-only mode should make no SDK-initiated HTTP requests.
+            database.connect(
+                endpoint = "https://powersynctest.example.com",
+                uploader = { db ->
+                    val batch = db.getNextCrudTransaction() ?: return@connect
+                    didUpload.complete(Unit)
+                    batch.complete(null)
+                },
+                options =
+                    SyncOptions(
+                        clientConfiguration =
+                            SyncClientConfiguration.ExistingClient(
+                                HttpClient(assertNoHttpEngine) { configureSyncHttpClient() },
+                            ),
+                    ),
+            )
+
+            database.execute("INSERT INTO users (id, name) VALUES (uuid(), ?)", listOf("local mutation"))
+            didUpload.join()
+
+            // Reconnect in download-only mode. This should request a write checkpoint because the
+            // upload-only mode can't.
+            database.connect(
+                endpoint = "https://powersynctest.example.com",
+                authenticator = TestAuthenticator,
+                options = getOptions(),
+            )
+            didRequestCheckpoint.join()
+        }
+}
+
+private object TestAuthenticator : Authenticator {
+    override suspend fun resolveCredentials(): String = "test token"
+
+    override fun invalidateCredentials() {}
 }
