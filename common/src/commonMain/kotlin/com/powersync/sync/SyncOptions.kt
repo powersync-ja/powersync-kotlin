@@ -3,10 +3,13 @@ package com.powersync.sync
 import com.powersync.ExperimentalCheckpointRequestsApi
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
+import com.powersync.utils.JsonParam
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
+import kotlinx.serialization.json.JsonObject
 import kotlin.native.HiddenFromObjC
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -36,7 +39,7 @@ public sealed class SyncClientConfiguration {
 /**
  * Options for [PowerSyncDatabase.connect] to customize the connection mechanism.
  */
-public class SyncOptions(
+public data class SyncOptions(
     /**
      * Enables the new client implementation written in Rust.
      *
@@ -44,6 +47,18 @@ public class SyncOptions(
      * removed from the PowerSync SDK).
      */
     public val newClientImplementation: Boolean = true,
+    /**
+     * The time between attempted CRUD uploads, defaults to 1 second.
+     */
+    public val crudThrottle: Duration = DEFAULT_CRUD_THROTTLE_MS.milliseconds,
+    /**
+     * The time to wait after a download or upload error before trying again, defaults to 5 seconds.
+     */
+    public val retryDelay: Duration = DEFAULT_RETRY_DELAY_MS.milliseconds,
+    /**
+     * Additional unauthenticated parameters that can be [referenced in sync streams](https://docs.powersync.com/sync/streams/parameters#connection-parameters).
+     */
+    public val params: Map<String, JsonParam?> = emptyMap(),
     /**
      * The user agent to use for requests made to the PowerSync service.
      */
@@ -61,6 +76,10 @@ public class SyncOptions(
      * The mode used to request checkpoint requests from the PowerSync service.
      */
     public val checkpointMode: CheckpointMode = CheckpointMode.Legacy,
+    /**
+     * Additional application-specific metadata that will be displayed in PowerSync service logs.
+     */
+    public val appMetadata: Map<String, String> = emptyMap(),
 ) {
     public companion object {
         /**
@@ -68,12 +87,46 @@ public class SyncOptions(
          */
         @Deprecated("Customizing sync options is no longer necessary, use constructor instead", replaceWith = ReplaceWith("SyncOptions()"))
         public val defaults: SyncOptions = SyncOptions()
+
+        internal const val DEFAULT_CRUD_THROTTLE_MS: Long = 1000L
+        internal const val DEFAULT_RETRY_DELAY_MS: Long = 5000L
     }
 
     init {
         check(newClientImplementation) {
             "Support for newClientImplementation = false has been removed"
         }
+    }
+
+    /**
+     * Applies legacy option parameters to this sync options instance.
+     */
+    internal fun merge(
+        crudThrottleMs: Long,
+        retryDelayMs: Long,
+        params: Map<String, JsonParam?>,
+        appMetadata: Map<String, String>,
+    ): SyncOptions {
+        if (params.isEmpty() && appMetadata.isEmpty() && crudThrottleMs == DEFAULT_CRUD_THROTTLE_MS &&
+            retryDelayMs == DEFAULT_RETRY_DELAY_MS
+        ) {
+            return this
+        }
+
+        return copy(
+            crudThrottle = crudThrottleMs.milliseconds,
+            retryDelay = retryDelayMs.milliseconds,
+            params =
+                buildMap {
+                    putAll(this@SyncOptions.params)
+                    putAll(params)
+                },
+            appMetadata =
+                buildMap {
+                    putAll(this@SyncOptions.appMetadata)
+                    putAll(appMetadata)
+                },
+        )
     }
 }
 

@@ -106,13 +106,56 @@ public interface PowerSyncDatabase : Queries {
      *  ```
      */
     @Throws(PowerSyncException::class, CancellationException::class)
+    @Deprecated(
+        "Use connect() method without crudThrottleMs, retryDelayMs, params and appMetadata parameters (pass them via SyncOptions instead).",
+    )
     public suspend fun connect(
         connector: PowerSyncBackendConnector,
-        crudThrottleMs: Long = 1000L,
-        retryDelayMs: Long = 5000L,
+        crudThrottleMs: Long = SyncOptions.DEFAULT_CRUD_THROTTLE_MS,
+        retryDelayMs: Long = SyncOptions.DEFAULT_RETRY_DELAY_MS,
         params: Map<String, JsonParam?> = emptyMap(),
         options: SyncOptions = SyncOptions(),
         appMetadata: Map<String, String> = emptyMap(),
+    )
+
+    /**
+     *  Connect to the PowerSync service, and keep the databases in sync.
+     *
+     *  The connection is automatically re-opened if it fails for any reason.
+     *
+     *  Use @param [connector] to specify the [PowerSyncBackendConnector].
+     *  Use @param [options] for additional options configuring the connection to the PowerSync
+     *  service. See [SyncOptions] for details.
+     *
+     *  Example usage:
+     *  ```
+     *  val params = JsonParam.Map(
+     *      mapOf(
+     *          "name" to JsonParam.String("John Doe"),
+     *          "age" to JsonParam.Number(30),
+     *          "isStudent" to JsonParam.Boolean(false)
+     *      )
+     *   )
+     *
+     *  val appMetadata = mapOf(
+     *      "appVersion" to "1.0.0",
+     *      "deviceId" to "device456"
+     *  )
+     *
+     *  connect(
+     *      connector = connector,
+     *      options = SyncOptions(
+     *        crudThrottle = 2.seconds,
+     *        retryDelay = 10.seconds,
+     *        params = params,
+     *        appMetadata = appMetadata,
+     *      ),
+     *  )
+     *  ```
+     */
+    public suspend fun connect(
+        connector: PowerSyncBackendConnector,
+        options: SyncOptions = SyncOptions(),
     )
 
     /**
