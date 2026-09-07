@@ -6,7 +6,6 @@ import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
 import com.powersync.PowerSyncException
 import com.powersync.bucket.BucketStorage
-import com.powersync.bucket.BucketStorageImpl
 import com.powersync.bucket.StreamPriority
 import com.powersync.bucket.targetCheckpointRequestId
 import com.powersync.connectors.CustomCheckpointRequestConnector
@@ -87,7 +86,7 @@ internal class PowerSyncDatabaseImpl(
 
     private val internalDb = InternalDatabaseImpl(pool, logger)
 
-    internal val bucketStorage: BucketStorage = BucketStorageImpl(internalDb, logger)
+    internal val bucketStorage: BucketStorage = BucketStorage(internalDb, logger)
 
     override var closed = false
 
@@ -151,6 +150,7 @@ internal class PowerSyncDatabaseImpl(
             inspect(syncClient?.second)
         }
 
+    @Deprecated("")
     override suspend fun connect(
         connector: PowerSyncBackendConnector,
         crudThrottleMs: Long,
@@ -158,6 +158,21 @@ internal class PowerSyncDatabaseImpl(
         params: Map<String, JsonParam?>,
         options: SyncOptions,
         appMetadata: Map<String, String>,
+    ) {
+        connect(
+            connector,
+            options.merge(
+                crudThrottleMs = crudThrottleMs,
+                retryDelayMs = retryDelayMs,
+                params = params,
+                appMetadata = appMetadata,
+            ),
+        )
+    }
+
+    override suspend fun connect(
+        connector: PowerSyncBackendConnector,
+        options: SyncOptions,
     ) {
         waitReady()
         mutex.withLock {
@@ -173,17 +188,12 @@ internal class PowerSyncDatabaseImpl(
 
                 StreamingSyncClient(
                     status = currentStatus,
-                    bucketStorage = bucketStorage,
+                    database = this,
                     connector = connector,
-                    uploadCrud = suspend { connector.uploadData(this) },
-                    retryDelay = retryDelayMs.milliseconds,
-                    crudUploadThrottle = crudThrottleMs.milliseconds,
                     logger = logger,
-                    params = params.toJsonObject(),
                     options = options,
                     schema = schema,
                     activeSubscriptions = streams.currentlyReferencedStreams,
-                    appMetadata = appMetadata,
                 )
             }
         }
