@@ -1,13 +1,10 @@
 package com.powersync.sync
 
 import com.powersync.ExperimentalCheckpointRequestsApi
-import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
 import com.powersync.utils.JsonParam
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
-import kotlinx.serialization.json.JsonObject
-import kotlin.native.HiddenFromObjC
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds

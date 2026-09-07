@@ -8,7 +8,9 @@ import com.powersync.PowerSyncException
 import com.powersync.bucket.BucketStorage
 import com.powersync.bucket.StreamPriority
 import com.powersync.bucket.targetCheckpointRequestId
+import com.powersync.connectors.Authenticator
 import com.powersync.connectors.CustomCheckpointRequestConnector
+import com.powersync.connectors.MutationUploader
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.crud.CrudBatch
 import com.powersync.db.crud.CrudEntry
@@ -179,19 +181,43 @@ internal class PowerSyncDatabaseImpl(
             disconnectInternal()
 
             connectInternal {
-                @OptIn(ExperimentalCheckpointRequestsApi::class)
-                if (connector is CustomCheckpointRequestConnector && options.checkpointMode == CheckpointMode.Legacy) {
-                    logger.w {
-                        "A CustomCheckpointRequestConnector was used with legacy checkpoints, postCheckpointRequest will not get called"
-                    }
-                }
-
                 StreamingSyncClient(
                     status = currentStatus,
                     database = this,
-                    connector = connector,
+                    authenticator = connector,
+                    uploader = connector,
                     logger = logger,
                     options = options,
+                    schema = schema,
+                    activeSubscriptions = streams.currentlyReferencedStreams,
+                )
+            }
+        }
+    }
+
+    override suspend fun connect(
+        endpoint: String,
+        authenticator: Authenticator?,
+        uploader: MutationUploader?,
+        options: SyncOptions,
+    ) {
+        check(authenticator != null || uploader != null) {
+            "Calling connect() and specifying neither an authenticator or uploader doesn't do anything"
+        }
+
+        waitReady()
+        mutex.withLock {
+            disconnectInternal()
+
+            connectInternal {
+                StreamingSyncClient(
+                    status = currentStatus,
+                    database = this,
+                    authenticator,
+                    uploader,
+                    powerSyncUrl = endpoint,
+                    logger,
+                    options,
                     schema = schema,
                     activeSubscriptions = streams.currentlyReferencedStreams,
                 )

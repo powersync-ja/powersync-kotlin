@@ -10,8 +10,11 @@ import com.powersync.bucket.CheckpointRequestPayload
 import com.powersync.bucket.CheckpointRequestResponse
 import com.powersync.bucket.PowerSyncControlArguments
 import com.powersync.bucket.WriteCheckpointResponse
+import com.powersync.connectors.Authenticator
 import com.powersync.connectors.CustomCheckpointRequestConnector
+import com.powersync.connectors.MutationUploader
 import com.powersync.connectors.PowerSyncBackendConnector
+import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.db.PowerSyncDatabaseImpl
 import com.powersync.db.SubscriptionGroup
 import com.powersync.db.crud.CrudEntry
@@ -65,16 +68,15 @@ import kotlinx.io.EOFException
 import kotlinx.io.readByteArray
 import kotlinx.io.readIntLe
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalPowerSyncAPI::class, ExperimentalCheckpointRequestsApi::class)
 internal class StreamingSyncClient(
     private val status: SyncStatus,
     private val database: PowerSyncDatabaseImpl,
-    private val connector: PowerSyncBackendConnector,
+    private val authenticator: Authenticator?,
+    private var uploader: MutationUploader?,
+    private val powerSyncUrl: String? = null,
     private val logger: Logger,
     val options: SyncOptions,
     private val schema: Schema,
@@ -88,6 +90,14 @@ internal class StreamingSyncClient(
     private val checkpointSignals = CheckpointStateSignals()
 
     private var clientId: String? = null
+
+    init {
+        if (uploader is CustomCheckpointRequestConnector && options.checkpointMode == CheckpointMode.Legacy) {
+            logger.w {
+                "A CustomCheckpointRequestConnector was used with legacy checkpoints, postCheckpointRequest will not get called"
+            }
+        }
+    }
 
     private val httpClient: HttpClient =
         when (val config = options.clientConfiguration) {
@@ -104,7 +114,7 @@ internal class StreamingSyncClient(
         }
 
     fun invalidateCredentials() {
-        connector.invalidateCredentials()
+        authenticator?.invalidateCredentials()
     }
 
     private suspend fun loadClientId(): String {
@@ -137,16 +147,28 @@ internal class StreamingSyncClient(
     suspend fun streamingSync() {
         try {
             coroutineScope {
-                launch { downloadLoop() }
-                launch { crudUploadLoop() }
-                launch { repostUnacknowledgedCheckpointRequests() }
+                authenticator?.let {
+                    launch { downloadLoop(it) }
+                    launch { repostUnacknowledgedCheckpointRequests() }
+                }
+
+                uploader.let { uploader ->
+                    if (uploader != null) {
+                        launch { crudUploadLoop(uploader) }
+                    } else if (authenticator != null) {
+                        // We can't upload mutations, but we can request a checkpoint for mutations
+                        // that have already been uploaded from a potential prior upload-only
+                        // connection.
+                        launch { updateLocalTarget() }
+                    }
+                }
             }
         } finally {
             checkpointSignals.disconnected()
         }
     }
 
-    private suspend fun downloadLoop() {
+    private suspend fun downloadLoop(authenticator: Authenticator) {
         var invalidCredentials = false
         loadClientId()
 
@@ -157,17 +179,17 @@ internal class StreamingSyncClient(
                 if (invalidCredentials) {
                     // This may error. In that case it will be retried again on the next
                     // iteration.
-                    connector.invalidateCredentials()
+                    authenticator.invalidateCredentials()
                     invalidCredentials = false
                 }
-                result = ActiveIteration().syncIteration()
+                result = ActiveIteration(authenticator).syncIteration()
             } catch (e: PowerSyncRSocketError) {
                 // RSocketError extends Throwable directly (not Exception), so it needs its own
                 // catch block to avoid accidentally catching JVM Errors (OutOfMemoryError, etc.).
                 if (e.indicatesInvalidCredentials()) {
                     // The server rejected the RSocket SETUP frame, most likely due to an invalid
                     // token. Invalidate credentials so a fresh token is fetched on the next attempt.
-                    connector.invalidateCredentials()
+                    authenticator.invalidateCredentials()
                 }
                 logger.e("Error in streamingSync: ${e.message}")
                 status.update { copy(downloadError = e) }
@@ -179,7 +201,7 @@ internal class StreamingSyncClient(
                 if (e is RSocketCredentialsExpiredException) {
                     // Auth error (PSYNC_S21xx) delivered via the RSocket transport-layer failure
                     // path. Invalidate credentials so a fresh token is fetched on the next attempt.
-                    connector.invalidateCredentials()
+                    authenticator.invalidateCredentials()
                 }
 
                 logger.e("Error in streamingSync: ${e.message}")
@@ -196,14 +218,14 @@ internal class StreamingSyncClient(
         }
     }
 
-    private suspend fun crudUploadLoop() {
+    private suspend fun crudUploadLoop(uploader: MutationUploader) {
         while (true) {
             coroutineScope {
                 // To throttle, ensure we spend at least this much time in the iteration.
                 launch { delay(options.crudThrottle) }
 
                 try {
-                    uploadAllCrud()
+                    uploadAllCrud(uploader)
                 } finally {
                     logger.v { "crud upload: notify completion" }
                     completedCrudUploads.send(Unit)
@@ -214,7 +236,7 @@ internal class StreamingSyncClient(
         }
     }
 
-    private suspend fun uploadAllCrud() {
+    private suspend fun uploadAllCrud(uploader: MutationUploader) {
         var checkedCrudItem: CrudEntry? = null
 
         while (true) {
@@ -235,14 +257,11 @@ internal class StreamingSyncClient(
 
                     checkedCrudItem = nextCrudItem
                     status.update { copy(uploading = true) }
-                    connector.uploadData(database)
+                    uploader.uploadMutations(database)
                 } else {
                     // Uploading is completed
-                    bucketStorage.updateLocalTarget {
-                        when (options.checkpointMode) {
-                            CheckpointMode.Legacy -> getLegacyWriteCheckpoint()
-                            is CheckpointMode.Requests -> requestNextCheckpointFromService()
-                        }
+                    if (authenticator != null) {
+                        updateLocalTarget()
                     }
                     status.update { copy(uploading = false, uploadError = null) }
                     break
@@ -262,6 +281,15 @@ internal class StreamingSyncClient(
         status.update { copy(uploading = false) }
     }
 
+    suspend fun updateLocalTarget() {
+        bucketStorage.updateLocalTarget {
+            when (options.checkpointMode) {
+                CheckpointMode.Legacy -> getLegacyWriteCheckpoint()
+                is CheckpointMode.Requests -> requestNextCheckpointFromService()
+            }
+        }
+    }
+
     private suspend fun requestNextCheckpointFromService(): Long {
         checkpointSignals.waitForCheckpointRequestsReady()
 
@@ -274,13 +302,42 @@ internal class StreamingSyncClient(
         )
     }
 
+    private suspend fun prefetchCredentials(authenticator: Authenticator) {
+        if (authenticator is PowerSyncBackendConnector) {
+            authenticator.updateCredentials()
+        } else {
+            authenticator.invalidateCredentials()
+            authenticator.resolveCredentials()
+        }
+    }
+
+    private suspend fun resolveCredentials(): PowerSyncCredentials {
+        val authenticator =
+            requireNotNull(authenticator) {
+                "Authenticator is required for credentials"
+            }
+
+        return if (authenticator is PowerSyncBackendConnector) {
+            requireNotNull(authenticator.getCredentialsCached()) {
+                "Not logged in"
+            }
+        } else {
+            PowerSyncCredentials(
+                endpoint =
+                    requireNotNull(powerSyncUrl) {
+                        "When connecting with an Authenticator, a PowerSync URL needs to be set"
+                    },
+                token = authenticator.resolveCredentials(),
+            )
+        }
+    }
+
     private suspend fun authenticatedRequest(
         path: String,
         method: HttpMethod = HttpMethod.Get,
         configure: HttpRequestBuilder.() -> Unit = {},
     ): HttpResponse {
-        val credentials = connector.getCredentialsCached()
-        require(credentials != null) { "Not logged in" }
+        val credentials = resolveCredentials()
         val uri = credentials.endpointUri(path)
 
         val response =
@@ -294,7 +351,7 @@ internal class StreamingSyncClient(
             }
 
         if (response.status.value == 401) {
-            connector.invalidateCredentials()
+            invalidateCredentials()
         }
 
         return response
@@ -302,7 +359,7 @@ internal class StreamingSyncClient(
 
     private suspend fun requestCheckpointFromService(payload: CheckpointRequestPayload): Long {
         // First, check if we can use a custom checkpoint request implementation.
-        (connector as? CustomCheckpointRequestConnector)?.let {
+        (uploader as? CustomCheckpointRequestConnector)?.let {
             return it.postCheckpointRequest(payload.clientId, payload.checkpointRequestId)
         }
 
@@ -340,9 +397,7 @@ internal class StreamingSyncClient(
     ): Flow<T> {
         val originalFlow =
             channelFlow<T> {
-                val credentials = connector.getCredentialsCached()
-                require(credentials != null) { "Not logged in" }
-
+                val credentials = resolveCredentials()
                 val uri = credentials.endpointUri("sync/stream")
 
                 val bodyJson = JsonUtil.json.encodeToString(req)
@@ -367,7 +422,7 @@ internal class StreamingSyncClient(
                     val isBson = httpResponse.contentType() == bsonStream
 
                     if (httpResponse.status.value == 401) {
-                        connector.invalidateCredentials()
+                        invalidateCredentials()
                     }
 
                     if (httpResponse.status != HttpStatusCode.OK) {
@@ -407,8 +462,7 @@ internal class StreamingSyncClient(
         } else {
             // Use RSocket as a fallback to ensure we have backpressure on platforms that don't support it natively.
             flow {
-                val credentials =
-                    requireNotNull(connector.getCredentialsCached()) { "Not logged in" }
+                val credentials = resolveCredentials()
 
                 emitAll(
                     httpClient.rSocketSyncStream(
@@ -480,7 +534,9 @@ internal class StreamingSyncClient(
      * This avoids us having to decode sync lines in Kotlin, unlocking the RSocket protocol and
      * improving performance.
      */
-    private inner class ActiveIteration {
+    private inner class ActiveIteration(
+        private val authenticator: Authenticator,
+    ) {
         private val needsCredentialsRefresh = Channel<Unit>(CONFLATED)
 
         suspend fun syncIteration(): SyncIterationResult {
@@ -640,7 +696,7 @@ internal class StreamingSyncClient(
                 launch(CoroutineName("Prefetch credentials")) {
                     needsCredentialsRefresh.consumeEach {
                         try {
-                            connector.updateCredentials()
+                            prefetchCredentials(authenticator)
 
                             logger.v { "Stopping because new credentials are available" }
                             // Token has been refreshed, start another iteration
@@ -697,7 +753,7 @@ internal class StreamingSyncClient(
 
                 is Instruction.FetchCredentials -> {
                     if (instruction.didExpire) {
-                        connector.invalidateCredentials()
+                        authenticator.invalidateCredentials()
                     } else {
                         // Token expires soon - refresh it in the background
                         needsCredentialsRefresh.send(Unit)
