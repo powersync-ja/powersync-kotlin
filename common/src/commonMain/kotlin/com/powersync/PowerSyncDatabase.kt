@@ -81,7 +81,7 @@ public interface PowerSyncDatabase : Queries {
      *  Use @param [params] to specify sync parameters from the client.
      *  Use @param [appMetadata] to specify application metadata that will be displayed in PowerSync service logs.
      *
-     *  Example usage:
+     * Example usage:
      *  ```
      *  val params = JsonParam.Map(
      *      mapOf(
@@ -103,7 +103,6 @@ public interface PowerSyncDatabase : Queries {
      *      params = params,
      *      appMetadata = appMetadata
      *  )
-     *  ```
      */
     @Throws(PowerSyncException::class, CancellationException::class)
     @Deprecated(
@@ -128,27 +127,21 @@ public interface PowerSyncDatabase : Queries {
      *  service. See [SyncOptions] for details.
      *
      *  Example usage:
-     *  ```
-     *  val params = JsonParam.Map(
-     *      mapOf(
-     *          "name" to JsonParam.String("John Doe"),
-     *          "age" to JsonParam.Number(30),
-     *          "isStudent" to JsonParam.Boolean(false)
-     *      )
-     *   )
-     *
-     *  val appMetadata = mapOf(
-     *      "appVersion" to "1.0.0",
-     *      "deviceId" to "device456"
-     *  )
-     *
+     *  ```Kotlin
      *  connect(
      *      connector = connector,
      *      options = SyncOptions(
-     *        crudThrottle = 2.seconds,
-     *        retryDelay = 10.seconds,
-     *        params = params,
-     *        appMetadata = appMetadata,
+     *          crudThrottle = 2.seconds,
+     *          retryDelay = 10.seconds,
+     *          params = mapOf(
+     *              "name" to JsonParam.String("John Doe"),
+     *              "age" to JsonParam.Number(30),
+     *              "isStudent" to JsonParam.Boolean(false)
+     *          ),
+     *          appMetadata = mapOf(
+     *              "appVersion" to "1.0.0",
+     *              "deviceId" to "device456"
+     *          )
      *      ),
      *  )
      *  ```
