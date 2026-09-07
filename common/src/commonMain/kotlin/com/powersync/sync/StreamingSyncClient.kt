@@ -17,6 +17,7 @@ import com.powersync.db.SubscriptionGroup
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.schema.Schema
 import com.powersync.utils.JsonUtil
+import com.powersync.utils.toJsonObject
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.call.body
@@ -72,18 +73,16 @@ import kotlin.time.Duration.Companion.seconds
 @OptIn(ExperimentalPowerSyncAPI::class, ExperimentalCheckpointRequestsApi::class)
 internal class StreamingSyncClient(
     private val status: SyncStatus,
-    private val bucketStorage: BucketStorage,
+    private val database: PowerSyncDatabaseImpl,
     private val connector: PowerSyncBackendConnector,
-    private val uploadCrud: suspend () -> Unit,
-    private val retryDelay: Duration = 5.seconds,
-    private val crudUploadThrottle: Duration = 1.seconds,
     private val logger: Logger,
-    private val params: JsonObject,
     val options: SyncOptions,
     private val schema: Schema,
     private val activeSubscriptions: StateFlow<List<SubscriptionGroup>>,
-    private val appMetadata: Map<String, String> = emptyMap(),
 ) {
+    private val bucketStorage: BucketStorage
+        get() = database.bucketStorage
+
     private val requestedCrudUploads = Channel<Unit>(CONFLATED)
     private val completedCrudUploads = Channel<Unit>(CONFLATED)
     private val checkpointSignals = CheckpointStateSignals()
@@ -188,7 +187,7 @@ internal class StreamingSyncClient(
             } finally {
                 if (!result.hideDisconnectStateAndReconnectImmediately) {
                     // Wait for the delay, or another component wanting to request a checkpoint.
-                    withTimeoutOrNull(retryDelay) {
+                    withTimeoutOrNull(options.retryDelay) {
                         checkpointSignals.waitForCheckpointWaiter()
                         logger.v { "Resuming due to pending checkpoint waiter" }
                     }
@@ -201,7 +200,7 @@ internal class StreamingSyncClient(
         while (true) {
             coroutineScope {
                 // To throttle, ensure we spend at least this much time in the iteration.
-                launch { delay(crudUploadThrottle) }
+                launch { delay(options.crudThrottle) }
 
                 try {
                     uploadAllCrud()
@@ -236,7 +235,7 @@ internal class StreamingSyncClient(
 
                     checkedCrudItem = nextCrudItem
                     status.update { copy(uploading = true) }
-                    uploadCrud()
+                    connector.uploadData(database)
                 } else {
                     // Uploading is completed
                     bucketStorage.updateLocalTarget {
@@ -256,7 +255,7 @@ internal class StreamingSyncClient(
 
                 status.update { copy(uploading = false, uploadError = e) }
                 logger.e { "Error uploading crud: ${e.message}" }
-                delay(retryDelay)
+                delay(options.retryDelay)
                 break
             }
         }
@@ -544,11 +543,11 @@ internal class StreamingSyncClient(
             val startInstructions =
                 bucketStorage.control(
                     PowerSyncControlArguments.Start(
-                        parameters = params,
+                        parameters = options.params.toJsonObject(),
                         schema = schema,
                         includeDefaults = options.includeDefaultStreams,
                         activeStreams = subscriptions.map { it.key },
-                        appMetadata = appMetadata,
+                        appMetadata = options.appMetadata,
                         checkpointMode =
                             when (options.checkpointMode) {
                                 CheckpointMode.Legacy -> "legacy"
