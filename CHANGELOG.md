@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.16.0 (unreleased)
+
+- Deprecate `crudThrottleMs`, `retryDelayMs`, `params` and `appMetadata` parameters on
+  `PowerSyncDatabase.connect()`. Pass them via the `SyncOptions` class instead.
+
 ## 1.15.1
 
 - Fix broken CRUD upload when R8 is enabled ([#377](https://github.com/powersync-ja/powersync-kotlin/issues/377)).

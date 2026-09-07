@@ -2,6 +2,7 @@ package com.powersync.sync
 
 import app.cash.turbine.turbineScope
 import co.touchlab.kermit.ExperimentalKermitApi
+import co.touchlab.kermit.Severity
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
 import com.powersync.PowerSyncException
@@ -37,6 +38,8 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.mock.MockEngine
 import io.ktor.http.ContentType
 import io.ktor.utils.io.core.toByteArray
 import kotlinx.coroutines.CompletableDeferred
@@ -50,6 +53,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
+import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
@@ -83,8 +87,10 @@ class SyncIntegrationTest : AbstractSyncTest() {
         databaseTest {
             database.connect(
                 connector,
-                options = getOptions(),
-                params = mapOf("foo" to JsonParam.String("bar")),
+                options =
+                    getOptions().copy(
+                        params = mapOf("foo" to JsonParam.String("bar")),
+                    ),
             )
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
@@ -107,10 +113,12 @@ class SyncIntegrationTest : AbstractSyncTest() {
         databaseTest {
             database.connect(
                 connector,
-                options = getOptions(),
-                appMetadata =
-                    mapOf(
-                        "app_version" to "1.0.0",
+                options =
+                    getOptions().copy(
+                        appMetadata =
+                            mapOf(
+                                "app_version" to "1.0.0",
+                            ),
                     ),
             )
             turbineScope(timeout = 10.0.seconds) {
@@ -466,13 +474,13 @@ class SyncIntegrationTest : AbstractSyncTest() {
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
 
-                database.connect(connector, 1000L, options = getOptions())
+                database.connect(connector, options = getOptions())
                 turbine.waitFor { it.connecting }
 
                 database.disconnect()
                 turbine.waitFor { !it.connecting }
 
-                database.connect(connector, 1000L, options = getOptions())
+                database.connect(connector, options = getOptions())
                 turbine.waitFor { it.connecting }
                 database.disconnect()
                 turbine.waitFor { !it.connecting }
@@ -487,13 +495,61 @@ class SyncIntegrationTest : AbstractSyncTest() {
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
 
-                database.connect(connector, 1000L, retryDelayMs = 5000, options = getOptions())
+                database.connect(connector, getOptions())
                 turbine.waitFor { it.connecting }
 
-                database.connect(connector, 1000L, retryDelayMs = 5000, options = getOptions())
+                database.connect(connector, getOptions())
                 turbine.waitFor { it.connecting }
 
                 turbine.cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @OptIn(ExperimentalPowerSyncAPI::class, ExperimentalKermitApi::class)
+    @Test
+    fun warnsWhenConnectorDoesNotUploadData() =
+        databaseTest {
+            val assertNoHttpEngine =
+                MockEngine { request ->
+                    error("Unexpected HTTP request: $request")
+                }
+
+            connector.uploadDataCallback = {}
+            database.execute("INSERT INTO users (id, name) VALUES (uuid(), ?)", listOf("local users"))
+
+            database.connect(
+                connector,
+                options =
+                    SyncOptions(
+                        retryDelay = 10.seconds,
+                        clientConfiguration =
+                            SyncClientConfiguration.ExistingClient(
+                                HttpClient(assertNoHttpEngine) {
+                                    configureSyncHttpClient()
+                                },
+                            ),
+                    ),
+            )
+
+            delay(2.seconds)
+            database.disconnect()
+
+            val logs = logWriter.logs.filter { it.message.contains("CRUD") }
+
+            with(logs[0]) {
+                assertContains(
+                    message,
+                    "Potentially previously uploaded CRUD entries are still present in the upload queue.",
+                )
+                assertEquals(Severity.Warn, severity)
+            }
+
+            with(logs[1]) {
+                assertEquals(
+                    message,
+                    "Error uploading crud: Delaying due to previously encountered CRUD item.",
+                )
+                assertEquals(Severity.Error, severity)
             }
         }
 
@@ -699,7 +755,7 @@ class SyncIntegrationTest : AbstractSyncTest() {
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
 
-                database.connect(connector, 1000L, retryDelayMs = 5000, options = getOptions())
+                database.connect(connector, getOptions())
                 turbine.waitFor { it.connecting }
 
                 syncLines.send(SyncLine.KeepAlive(tokenExpiresIn = 4000))
@@ -739,7 +795,7 @@ class SyncIntegrationTest : AbstractSyncTest() {
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
 
-                database.connect(connector, 1000L, retryDelayMs = 5000, options = getOptions())
+                database.connect(connector, getOptions())
                 turbine.waitFor { it.downloadError != null }
 
                 database.currentStatus.downloadError?.toString() shouldContain "Expected exception from fetchCredentials"
@@ -782,7 +838,7 @@ class SyncIntegrationTest : AbstractSyncTest() {
             turbineScope(timeout = 10.0.seconds) {
                 val turbine = database.currentStatus.asFlow().testIn(this)
 
-                database.connect(connector, 1000L, retryDelayMs = 5000, options = getOptions())
+                database.connect(connector, getOptions())
                 turbine.waitFor { it.connecting }
 
                 syncLines.send(SyncLine.KeepAlive(tokenExpiresIn = 4000))
@@ -1121,5 +1177,34 @@ class SyncIntegrationTest : AbstractSyncTest() {
             // Decoded last sync time should be close to actual system time.
             val lastSyncedAt = database.currentStatus.lastSyncedAt!!
             (Clock.System.now() - lastSyncedAt) shouldBeLessThan 5.seconds
+        }
+
+    @Suppress("DEPRECATION")
+    @Test
+    fun `can use legacy parameters`() =
+        databaseTest {
+            database.connect(
+                connector,
+                options =
+                    getOptions().copy(
+                        appMetadata =
+                            mapOf(
+                                "option_1" to "1",
+                            ),
+                    ),
+                appMetadata = mapOf("option_2" to "2"),
+            )
+            turbineScope(timeout = 10.0.seconds) {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                turbine.waitFor { it.connected }
+                turbine.cancel()
+            }
+
+            requestedSyncStreams shouldHaveSingleElement {
+                val meta = it.jsonObject["app_metadata"]!!.jsonObject
+                meta["option_1"] shouldBe JsonParam.String("1")
+                meta["option_2"] shouldBe JsonParam.String("2")
+                true
+            }
         }
 }
