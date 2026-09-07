@@ -181,13 +181,6 @@ internal class PowerSyncDatabaseImpl(
             disconnectInternal()
 
             connectInternal {
-                @OptIn(ExperimentalCheckpointRequestsApi::class)
-                if (connector is CustomCheckpointRequestConnector && options.checkpointMode == CheckpointMode.Legacy) {
-                    logger.w {
-                        "A CustomCheckpointRequestConnector was used with legacy checkpoints, postCheckpointRequest will not get called"
-                    }
-                }
-
                 StreamingSyncClient(
                     status = currentStatus,
                     database = this,
@@ -203,11 +196,33 @@ internal class PowerSyncDatabaseImpl(
     }
 
     override suspend fun connect(
+        endpoint: String,
         authenticator: Authenticator?,
         uploader: MutationUploader?,
-        options: SyncOptions
+        options: SyncOptions,
     ) {
-        TODO("Not yet implemented")
+        check(authenticator != null || uploader != null) {
+            "Calling connect() and specifying neither an authenticator or uploader doesn't do anything"
+        }
+
+        waitReady()
+        mutex.withLock {
+            disconnectInternal()
+
+            connectInternal {
+                StreamingSyncClient(
+                    status = currentStatus,
+                    database = this,
+                    authenticator,
+                    uploader,
+                    powerSyncUrl = endpoint,
+                    logger,
+                    options,
+                    schema = schema,
+                    activeSubscriptions = streams.currentlyReferencedStreams,
+                )
+            }
+        }
     }
 
     private fun connectInternal(createStream: () -> StreamingSyncClient) {

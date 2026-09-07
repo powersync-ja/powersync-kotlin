@@ -120,9 +120,10 @@ public interface PowerSyncDatabase : Queries {
     )
 
     public suspend fun connect(
+        endpoint: String,
         authenticator: Authenticator? = null,
         uploader: MutationUploader? = null,
-        options: SyncOptions = SyncOptions()
+        options: SyncOptions = SyncOptions(),
     )
 
     /**

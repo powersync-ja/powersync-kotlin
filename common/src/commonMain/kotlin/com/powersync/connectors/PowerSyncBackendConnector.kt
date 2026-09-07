@@ -44,7 +44,9 @@ public fun interface MutationUploader {
  * 1. Creating credentials for connecting to the PowerSync service.
  * 2. Applying local changes against the backend application server.
  */
-public abstract class PowerSyncBackendConnector: Authenticator, MutationUploader {
+public abstract class PowerSyncBackendConnector :
+    Authenticator,
+    MutationUploader {
     internal var cachedCredentials: PowerSyncCredentials? = null
     private var fetchingCredentials = Mutex()
 
@@ -153,6 +155,10 @@ public abstract class PowerSyncBackendConnector: Authenticator, MutationUploader
      * Any thrown errors will result in a retry after the configured wait period (default: 5 seconds).
      */
     public abstract suspend fun uploadData(database: PowerSyncDatabase)
+
+    override suspend fun uploadMutations(onDatabase: PowerSyncDatabase) {
+        uploadData(onDatabase)
+    }
 }
 
 /**
