@@ -2,6 +2,8 @@ package com.powersync
 
 import co.touchlab.kermit.Logger
 import com.powersync.bucket.StreamPriority
+import com.powersync.connectors.Authenticator
+import com.powersync.connectors.MutationUploader
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.ActiveDatabaseGroup
 import com.powersync.db.ActiveDatabaseResource
@@ -115,6 +117,13 @@ public interface PowerSyncDatabase : Queries {
         params: Map<String, JsonParam?> = emptyMap(),
         options: SyncOptions = SyncOptions(),
         appMetadata: Map<String, String> = emptyMap(),
+    )
+
+    public suspend fun connect(
+        endpoint: String,
+        authenticator: Authenticator? = null,
+        uploader: MutationUploader? = null,
+        options: SyncOptions = SyncOptions(),
     )
 
     /**
