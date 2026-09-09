@@ -9,7 +9,7 @@ java = "17"
 
 # Dependencies
 kermit = "2.1.0"
-kotlin = "2.4.10"
+kotlin = "2.4.20"
 ksp = "2.3.11"
 coroutines = "1.11.0"
 kotlinx-datetime = "0.8.0"
@@ -22,24 +22,24 @@ turbine = "1.2.1"
 kotest = "5.9.1" # we can't upgrade to 6.x because that requires Java 11 or above (we need Java 8 support)
 
 stately = "2.1.0"
-supabase = "3.7.0"
+supabase = "3.8.0"
 junit = "4.13.2"
 
-compose = "1.11.1" # This is for the multiplatform compose
-androidCompose = "2026.06.01"
-compose-preview = "1.11.4"
+compose = "1.12.0" # This is for the multiplatform compose
+androidCompose = "2026.08.00"
+compose-preview = "1.12.0"
 compose-lifecycle = "2.11.0"
 androidxSqlite = "2.7.0"
 androidxSplashscreen = "1.2.0"
-room = "3.0.1"
+room = "3.0.2"
 sqldelight = "2.3.2"
 
 # plugins
-android-gradle-plugin = "9.3.1"
+android-gradle-plugin = "9.3.2"
 maven-publish = "0.37.0"
 download-plugin = "5.7.0"
 mokkery = "3.4.2"
-kotlinter = "5.6.0"
+kotlinter = "5.7.0"
 buildKonfig = "0.22.0"
 
 # Sample - Android
@@ -47,7 +47,7 @@ androidx-core = "1.19.0"
 androidx-activity-compose = "1.13.0"
 materialIconsExtended = "1.7.8"
 
-androidx-appcompat = "1.7.1"
+androidx-appcompat = "1.8.0"
 androidx-espresso-core = "3.7.0"
 androidx-lifecycle = "2.11.0"
 androidx-material = "1.14.0"
