@@ -175,7 +175,7 @@ public abstract class PowerSyncBackendConnector :
  * this requires PowerSync service version 1.24.0 or later.
  */
 @ExperimentalCheckpointRequestsApi
-public interface CustomCheckpointRequestConnector : MutationUploader {
+public interface CustomCheckpointRequestConnector : Authenticator {
     /**
      * Posts a client-generated checkpoint request to the backend and returns the effective
      * checkpoint request state.

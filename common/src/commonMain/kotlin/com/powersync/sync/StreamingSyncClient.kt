@@ -92,7 +92,7 @@ internal class StreamingSyncClient(
     private var clientId: String? = null
 
     init {
-        if (uploader is CustomCheckpointRequestConnector && options.checkpointMode == CheckpointMode.Legacy) {
+        if (authenticator is CustomCheckpointRequestConnector && options.checkpointMode == CheckpointMode.Legacy) {
             logger.w {
                 "A CustomCheckpointRequestConnector was used with legacy checkpoints, postCheckpointRequest will not get called"
             }
