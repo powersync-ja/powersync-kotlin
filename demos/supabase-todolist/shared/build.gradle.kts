@@ -39,9 +39,17 @@ kotlin {
     jvm()
     iosArm64()
     iosSimulatorArm64()
-    js { browser() }
+    js {
+        browser()
+        // https://youtrack.jetbrains.com/issue/CMP-4906
+        binaries.executable()
+    }
     @OptIn(ExperimentalWasmDsl::class)
-    wasmJs { browser() }
+    wasmJs {
+        browser()
+        // https://youtrack.jetbrains.com/issue/CMP-4906
+        binaries.executable()
+    }
 
     sourceSets {
         commonMain.dependencies {
