@@ -8,7 +8,7 @@ gradleDownloadTask = "5.7.0"
 java = "17"
 
 # Dependencies
-kermit = "2.1.0"
+kermit = "2.2.0"
 kotlin = "2.4.20"
 ksp = "2.3.11"
 coroutines = "1.11.0"
@@ -26,19 +26,19 @@ supabase = "3.8.0"
 junit = "4.13.2"
 
 compose = "1.12.0" # This is for the multiplatform compose
-androidCompose = "2026.08.00"
-compose-preview = "1.12.0"
+androidCompose = "2026.09.00"
+compose-preview = "1.12.1"
 compose-lifecycle = "2.11.0"
-androidxSqlite = "2.7.0"
+androidxSqlite = "2.7.1"
 androidxSplashscreen = "1.2.0"
-room = "3.0.2"
+room = "3.0.3"
 sqldelight = "2.3.2"
 
 # plugins
 android-gradle-plugin = "9.3.2"
 maven-publish = "0.37.0"
 download-plugin = "5.7.0"
-mokkery = "3.4.2"
+mokkery = "3.5.0"
 kotlinter = "5.7.0"
 buildKonfig = "0.22.0"
 
