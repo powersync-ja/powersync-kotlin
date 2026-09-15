@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.15.2 (unreleased)
+
+- Fix CRUD uploads not being retried on failure.
+
 ## 1.15.1
 
 - Fix broken CRUD upload when R8 is enabled ([#377](https://github.com/powersync-ja/powersync-kotlin/issues/377)).

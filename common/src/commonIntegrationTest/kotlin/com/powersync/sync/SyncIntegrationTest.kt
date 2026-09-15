@@ -55,7 +55,11 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.fail
 import kotlin.time.Clock
+import kotlin.time.ComparableTimeMark
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 import kotlin.time.measureTime
 
 class SyncIntegrationTest : AbstractSyncTest() {
@@ -1121,5 +1125,36 @@ class SyncIntegrationTest : AbstractSyncTest() {
             // Decoded last sync time should be close to actual system time.
             val lastSyncedAt = database.currentStatus.lastSyncedAt!!
             (Clock.System.now() - lastSyncedAt) shouldBeLessThan 5.seconds
+        }
+
+    @OptIn(ExperimentalKermitApi::class)
+    @Test
+    fun `retries uploads`() =
+        databaseTest {
+            val connector = TestConnector()
+            val didCompleteSecondUpload = CompletableDeferred<Duration>()
+            val timer = scope.testScheduler.timeSource
+            var firstInvocation: ComparableTimeMark? = null
+
+            connector.uploadDataCallback = { database ->
+                database.getNextCrudTransaction()?.let { tx ->
+                    if (firstInvocation == null) {
+                        firstInvocation = timer.markNow()
+                        error("Intentional upload failure for test")
+                    }
+
+                    val now = timer.markNow()
+                    tx.complete(null)
+                    didCompleteSecondUpload.complete(now - firstInvocation)
+                }
+            }
+
+            database.execute("INSERT INTO users (id, name) VALUES (uuid(), ?)", listOf("user to upload"))
+            database.connect(connector, options = getOptions())
+            // Virtual time between invocations should match retry delay
+            didCompleteSecondUpload.await() shouldBe 5.seconds
+
+            logWriter.logs.any { it.message.contains("previously uploaded CRUD entries are still present in the upload queue") } shouldBe
+                false
         }
 }

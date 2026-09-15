@@ -257,7 +257,7 @@ internal class StreamingSyncClient(
                 status.update { copy(uploading = false, uploadError = e) }
                 logger.e { "Error uploading crud: ${e.message}" }
                 delay(retryDelay)
-                break
+                checkedCrudItem = null
             }
         }
         status.update { copy(uploading = false) }
