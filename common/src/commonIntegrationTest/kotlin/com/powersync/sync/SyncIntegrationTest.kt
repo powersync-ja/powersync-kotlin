@@ -33,7 +33,6 @@ import com.powersync.utils.JsonUtil
 import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.comparables.shouldBeLessThan
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
@@ -58,8 +57,6 @@ import kotlin.time.Clock
 import kotlin.time.ComparableTimeMark
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.TimeMark
-import kotlin.time.TimeSource
 import kotlin.time.measureTime
 
 class SyncIntegrationTest : AbstractSyncTest() {
