@@ -23,7 +23,7 @@ public interface Authenticator {
      *
      * If the connector returns cached tokens, it can use this as a hint to refresh its local state.
      */
-    public fun invalidateCredentials()
+    public fun invalidateCredentials() {}
 }
 
 /**
