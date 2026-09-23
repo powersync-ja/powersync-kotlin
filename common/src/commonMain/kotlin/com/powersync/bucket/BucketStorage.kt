@@ -1,8 +1,13 @@
 package com.powersync.bucket
 
+import co.touchlab.kermit.Logger
+import co.touchlab.stately.concurrency.AtomicBoolean
 import com.powersync.db.SqlCursor
 import com.powersync.db.StreamKey
 import com.powersync.db.crud.CrudEntry
+import com.powersync.db.crud.CrudRow
+import com.powersync.db.internal.InternalDatabase
+import com.powersync.db.internal.InternalTable
 import com.powersync.db.internal.PowerSyncTransaction
 import com.powersync.db.schema.Schema
 import com.powersync.sync.CoreSyncStatus
@@ -12,31 +17,137 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
-internal interface BucketStorage {
-    suspend fun getClientId(): String
+internal class BucketStorage(
+    private val db: InternalDatabase,
+    private val logger: Logger,
+) {
+    private var hasCompletedSync = AtomicBoolean(false)
 
-    suspend fun nextCrudItem(): CrudEntry?
+    suspend fun getClientId(): String {
+        val id =
+            db.getOptional("SELECT powersync_client_id() as client_id") {
+                it.getString(0)!!
+            }
+        return id ?: throw IllegalStateException("Client ID not found")
+    }
 
-    suspend fun nextCrudItem(transaction: PowerSyncTransaction): CrudEntry?
+    suspend fun nextCrudItem(): CrudEntry? = db.getOptional(sql = nextCrudQuery, mapper = ::mapCrudEntry)
 
-    suspend fun hasCrud(): Boolean
+    suspend fun nextCrudItem(transaction: PowerSyncTransaction): CrudEntry? =
+        transaction.getOptionalAsync(sql = nextCrudQuery, mapper = ::mapCrudEntry)
 
-    suspend fun hasCrud(transaction: PowerSyncTransaction): Boolean
+    private val nextCrudQuery = "SELECT id, tx_id, data FROM ${InternalTable.CRUD} ORDER BY id ASC LIMIT 1"
 
-    fun mapCrudEntry(row: SqlCursor): CrudEntry
+    fun mapCrudEntry(row: SqlCursor): CrudEntry =
+        CrudEntry.fromRow(
+            CrudRow(
+                id = row.getString(0)!!,
+                txId = row.getString(1)?.toInt(),
+                data = row.getString(2)!!,
+            ),
+        )
 
-    suspend fun updateLocalTarget(checkpointCallback: suspend () -> Long): Boolean
+    suspend fun hasCrud(): Boolean {
+        val res = db.getOptional(sql = hasCrudQuery, mapper = hasCrudMapper)
+        return res == 1L
+    }
 
-    suspend fun hasCompletedSync(): Boolean
+    suspend fun hasCrud(transaction: PowerSyncTransaction): Boolean {
+        val res = transaction.getOptionalAsync(sql = hasCrudQuery, mapper = hasCrudMapper)
+        return res == 1L
+    }
 
-    suspend fun control(args: PowerSyncControlArguments): List<Instruction>
+    private val hasCrudQuery = "SELECT 1 FROM ps_crud LIMIT 1"
+    private val hasCrudMapper: (SqlCursor) -> Long = {
+        it.getLong(0)!!
+    }
 
-    suspend fun resolveOfflineSyncStatus(): CoreSyncStatus
+    suspend fun updateLocalTarget(checkpointCallback: suspend () -> Long): Boolean {
+        val existingCheckpointRequest = db.readTransactionAsync { it.targetCheckpointRequestId() }
+        if (existingCheckpointRequest != MAX_OP_ID) {
+            // Nothing to update
+            return false
+        }
+
+        val seqBefore =
+            db.getOptional("SELECT seq FROM main.sqlite_sequence WHERE name = '${InternalTable.CRUD}'") {
+                it.getLong(0)!!
+            } ?: // Nothing to update
+                return false
+
+        val opId = checkpointCallback()
+
+        logger.i { "[updateLocalTarget] Updating target to checkpoint $opId" }
+
+        return db.writeTransactionAsync { tx ->
+            if (hasCrud(tx)) {
+                logger.w { "[updateLocalTarget] ps crud is not empty" }
+                return@writeTransactionAsync false
+            }
+
+            val seqAfter =
+                tx.getOptionalAsync("SELECT seq FROM main.sqlite_sequence WHERE name = '${InternalTable.CRUD}'") {
+                    it.getLong(0)!!
+                }
+                    ?: // assert isNotEmpty
+                    throw AssertionError("Sqlite Sequence should not be empty")
+
+            if (seqAfter != seqBefore) {
+                logger.d("seqAfter != seqBefore seqAfter: $seqAfter seqBefore: $seqBefore")
+                // New crud data may have been uploaded since we got the checkpoint. Abort.
+                return@writeTransactionAsync false
+            }
+
+            tx.targetCheckpointRequestId(opId)
+            return@writeTransactionAsync true
+        }
+    }
+
+    suspend fun hasCompletedSync(): Boolean {
+        if (hasCompletedSync.value) {
+            return true
+        }
+
+        val completedSync =
+            db.getOptional(
+                "SELECT powersync_last_synced_at()",
+                mapper = { cursor ->
+                    cursor.getString(0)!!
+                },
+            )
+
+        return if (completedSync != null) {
+            hasCompletedSync.value = true
+            true
+        } else {
+            false
+        }
+    }
+
+    private fun handleControlResult(cursor: SqlCursor): List<Instruction> {
+        val result = cursor.getString(0)!!
+        logger.v { "control result: $result" }
+
+        return JsonUtil.json.decodeFromString<List<Instruction>>(result)
+    }
+
+    suspend fun control(args: PowerSyncControlArguments): List<Instruction> =
+        db.writeTransactionAsync { tx ->
+            logger.v { "powersync_control: $args" }
+
+            val (op: String, data: Any?) = args.sqlArguments
+            tx.getAsync("SELECT powersync_control(?, ?) AS r", listOf(op, data), ::handleControlResult)
+        }
+
+    suspend fun resolveOfflineSyncStatus(): CoreSyncStatus =
+        db.get("SELECT powersync_offline_sync_status()") {
+            JsonUtil.json.decodeFromString<CoreSyncStatus>(it.getString(0)!!)
+        }
 
     suspend fun readOrUpdateCheckpoint(
         variant: String,
         update: Long? = null,
-    ): Long?
+    ): Long? = db.writeTransactionAsync { tx -> tx.readOrUpdateCheckpoint(variant, update) }
 
     companion object {
         const val MAX_OP_ID = 9223372036854775807L

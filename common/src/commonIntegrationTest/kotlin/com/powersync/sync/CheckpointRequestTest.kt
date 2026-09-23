@@ -146,7 +146,7 @@ class CheckpointRequestTest : AbstractSyncTest() {
     @OptIn(ExperimentalCoroutinesApi::class)
     fun `download is retried on checkpoint request`() =
         databaseTest {
-            database.connect(connector, retryDelayMs = 10_000, options = optionsWithRequests())
+            database.connect(connector, optionsWithRequests().copy(retryDelay = 10.seconds))
 
             // Destroy the initial connection by sending a bogus line
             syncLines.send(

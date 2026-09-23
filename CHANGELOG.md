@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.16.0 (unreleased)
+
+- Deprecate `crudThrottleMs`, `retryDelayMs`, `params` and `appMetadata` parameters on
+  `PowerSyncDatabase.connect()`. Pass them via the `SyncOptions` class instead.
+
 ## 1.15.2 (unreleased)
 
 - Fix CRUD uploads not being retried on failure.
