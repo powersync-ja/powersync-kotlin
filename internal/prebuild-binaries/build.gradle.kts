@@ -18,7 +18,7 @@ val lastKotlinSdkRelease = project.property("LIBRARY_VERSION") as String
 
 val sqlite3McVersion = "2.5.1"
 val sqlite3BaseVersion = "3.53.4"
-val sqlite3ReleaseYear = "2025"
+val sqlite3ReleaseYear = "2026"
 val sqlite3ExpandedVersion = "3530400"
 
 data class CompiledAsset(
