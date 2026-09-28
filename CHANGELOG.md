@@ -3,6 +3,7 @@
 ## 1.15.2 (unreleased)
 
 - Fix CRUD uploads not being retried on failure.
+- For Kotlin/Native, update bundled SQLite version to 3.53.4.
 
 ## 1.15.1
 
