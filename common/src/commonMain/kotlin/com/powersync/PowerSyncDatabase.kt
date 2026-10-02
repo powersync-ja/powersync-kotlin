@@ -167,8 +167,13 @@ public interface PowerSyncDatabase : Queries {
      */
     public suspend fun connect(
         endpoint: String,
-        authenticator: Authenticator? = null,
+        authenticator: Authenticator,
         uploader: MutationUploader? = null,
+        options: SyncOptions = SyncOptions(),
+    )
+
+    public suspend fun connect(
+        uploader: MutationUploader,
         options: SyncOptions = SyncOptions(),
     )
 
