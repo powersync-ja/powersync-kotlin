@@ -1249,7 +1249,7 @@ class SyncIntegrationTest : AbstractSyncTest() {
             val didUpload = CompletableDeferred<Unit>()
             database.connect(
                 endpoint = "https://powersynctest.example.com",
-                authenticator = TestAuthenticator,
+                authenticator = { "test token" },
                 options = getOptions(),
             )
 
@@ -1266,7 +1266,7 @@ class SyncIntegrationTest : AbstractSyncTest() {
             // Upgrade to a full connection, which should upload
             database.connect(
                 endpoint = "https://powersynctest.example.com",
-                authenticator = TestAuthenticator,
+                authenticator = { "test token" },
                 uploader = { db ->
                     val batch = db.getNextCrudTransaction() ?: return@connect
                     didUpload.complete(Unit)
@@ -1315,15 +1315,9 @@ class SyncIntegrationTest : AbstractSyncTest() {
             // upload-only mode can't.
             database.connect(
                 endpoint = "https://powersynctest.example.com",
-                authenticator = TestAuthenticator,
+                authenticator = { "test token" },
                 options = getOptions(),
             )
             didRequestCheckpoint.join()
         }
-}
-
-private object TestAuthenticator : Authenticator {
-    override suspend fun resolveCredentials(): String = "test token"
-
-    override fun invalidateCredentials() {}
 }
