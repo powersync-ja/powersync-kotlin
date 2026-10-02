@@ -172,7 +172,6 @@ public interface PowerSyncDatabase : Queries {
         options: SyncOptions = SyncOptions(),
     )
 
-
     /**
      * Get a batch of crud data to upload.
      *
