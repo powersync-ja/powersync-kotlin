@@ -15,6 +15,12 @@ import kotlinx.coroutines.sync.withLock
  * Authenticates the PowerSync SDK against a PowerSync service, allowing it to download changes.
  */
 public interface Authenticator {
+    /**
+     * Resolves a JWT to use when connecting to a PowerSync service.
+     *
+     * The SDK does not cache this value and will call this method multiple times while a database
+     * is connected. Implementations should consider caching credentials.
+     */
     public suspend fun resolveCredentials(): String
 
     /**

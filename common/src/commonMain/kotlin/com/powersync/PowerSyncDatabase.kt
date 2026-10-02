@@ -119,13 +119,6 @@ public interface PowerSyncDatabase : Queries {
         appMetadata: Map<String, String> = emptyMap(),
     )
 
-    public suspend fun connect(
-        endpoint: String,
-        authenticator: Authenticator? = null,
-        uploader: MutationUploader? = null,
-        options: SyncOptions = SyncOptions(),
-    )
-
     /**
      *  Connect to the PowerSync service, and keep the databases in sync.
      *
@@ -159,6 +152,26 @@ public interface PowerSyncDatabase : Queries {
         connector: PowerSyncBackendConnector,
         options: SyncOptions = SyncOptions(),
     )
+
+    /**
+     * Connects to a PowerSync endpoint.
+     *
+     * Unlike the method accepting a [PowerSyncBackendConnector], this allows passing independent
+     * [Authenticator] and [MutationUploader]s. Passing only one of them connects the database for
+     * downloads or uploads only.
+     *
+     * Each call replaces all prior connections. In particular, calling this method once with only
+     * an [Authenticator] (for download-only sync) and later with only a [MutationUploader] (for
+     * upload-only sync) would put the database into upload-only mode. They aren't combined into a
+     * full bidirectional sync mode.
+     */
+    public suspend fun connect(
+        endpoint: String,
+        authenticator: Authenticator? = null,
+        uploader: MutationUploader? = null,
+        options: SyncOptions = SyncOptions(),
+    )
+
 
     /**
      * Get a batch of crud data to upload.
