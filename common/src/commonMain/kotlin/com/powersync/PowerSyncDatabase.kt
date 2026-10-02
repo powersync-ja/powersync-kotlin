@@ -2,6 +2,8 @@ package com.powersync
 
 import co.touchlab.kermit.Logger
 import com.powersync.bucket.StreamPriority
+import com.powersync.connectors.Authenticator
+import com.powersync.connectors.MutationUploader
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.ActiveDatabaseGroup
 import com.powersync.db.ActiveDatabaseResource
@@ -148,6 +150,30 @@ public interface PowerSyncDatabase : Queries {
      */
     public suspend fun connect(
         connector: PowerSyncBackendConnector,
+        options: SyncOptions = SyncOptions(),
+    )
+
+    /**
+     * Connects to a PowerSync endpoint.
+     *
+     * Unlike the method accepting a [PowerSyncBackendConnector], this allows passing independent
+     * [Authenticator] and [MutationUploader]s. Passing only one of them connects the database for
+     * downloads or uploads only.
+     *
+     * Each call replaces all prior connections. In particular, calling this method once with only
+     * an [Authenticator] (for download-only sync) and later with only a [MutationUploader] (for
+     * upload-only sync) would put the database into upload-only mode. They aren't combined into a
+     * full bidirectional sync mode.
+     */
+    public suspend fun connect(
+        endpoint: String,
+        authenticator: Authenticator,
+        uploader: MutationUploader? = null,
+        options: SyncOptions = SyncOptions(),
+    )
+
+    public suspend fun connect(
+        uploader: MutationUploader,
         options: SyncOptions = SyncOptions(),
     )
 

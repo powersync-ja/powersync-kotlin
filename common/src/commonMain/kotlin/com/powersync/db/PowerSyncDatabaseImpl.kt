@@ -8,7 +8,9 @@ import com.powersync.PowerSyncException
 import com.powersync.bucket.BucketStorage
 import com.powersync.bucket.StreamPriority
 import com.powersync.bucket.targetCheckpointRequestId
+import com.powersync.connectors.Authenticator
 import com.powersync.connectors.CustomCheckpointRequestConnector
+import com.powersync.connectors.MutationUploader
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.crud.CrudBatch
 import com.powersync.db.crud.CrudEntry
@@ -174,24 +176,44 @@ internal class PowerSyncDatabaseImpl(
         connector: PowerSyncBackendConnector,
         options: SyncOptions,
     ) {
+        connectInternal(connector, null, connector, options)
+    }
+
+    override suspend fun connect(
+        endpoint: String,
+        authenticator: Authenticator,
+        uploader: MutationUploader?,
+        options: SyncOptions,
+    ) {
+        connectInternal(authenticator, endpoint, uploader, options)
+    }
+
+    override suspend fun connect(
+        uploader: MutationUploader,
+        options: SyncOptions,
+    ) {
+        connectInternal(null, null, uploader, options)
+    }
+
+    private suspend fun connectInternal(
+        authenticator: Authenticator?,
+        powerSyncUrl: String?,
+        uploader: MutationUploader?,
+        options: SyncOptions,
+    ) {
         waitReady()
         mutex.withLock {
             disconnectInternal()
 
-            connectInternal {
-                @OptIn(ExperimentalCheckpointRequestsApi::class)
-                if (connector is CustomCheckpointRequestConnector && options.checkpointMode == CheckpointMode.Legacy) {
-                    logger.w {
-                        "A CustomCheckpointRequestConnector was used with legacy checkpoints, postCheckpointRequest will not get called"
-                    }
-                }
-
+            startConnectTask {
                 StreamingSyncClient(
                     status = currentStatus,
                     database = this,
-                    connector = connector,
-                    logger = logger,
-                    options = options,
+                    authenticator,
+                    uploader,
+                    powerSyncUrl,
+                    logger,
+                    options,
                     schema = schema,
                     activeSubscriptions = streams.currentlyReferencedStreams,
                 )
@@ -199,7 +221,7 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 
-    private fun connectInternal(createStream: () -> StreamingSyncClient) {
+    private fun startConnectTask(createStream: () -> StreamingSyncClient) {
         val db = this
         val stream = createStream()
         val syncJob =
@@ -348,6 +370,9 @@ internal class PowerSyncDatabaseImpl(
             }
             if (client.options.checkpointMode !is CheckpointMode.Requests) {
                 throw CheckpointRequestException.Disabled()
+            }
+            if (client.authenticator == null) {
+                throw CheckpointRequestException.Disconnected()
             }
 
             client.requestCheckpoint(this)
