@@ -1294,7 +1294,6 @@ class SyncIntegrationTest : AbstractSyncTest() {
 
             // Connecting in upload-only mode should make no SDK-initiated HTTP requests.
             database.connect(
-                endpoint = "https://powersynctest.example.com",
                 uploader = { db ->
                     val batch = db.getNextCrudTransaction() ?: return@connect
                     didUpload.complete(Unit)

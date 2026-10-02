@@ -176,46 +176,42 @@ internal class PowerSyncDatabaseImpl(
         connector: PowerSyncBackendConnector,
         options: SyncOptions,
     ) {
-        waitReady()
-        mutex.withLock {
-            disconnectInternal()
-
-            connectInternal {
-                StreamingSyncClient(
-                    status = currentStatus,
-                    database = this,
-                    authenticator = connector,
-                    uploader = connector,
-                    logger = logger,
-                    options = options,
-                    schema = schema,
-                    activeSubscriptions = streams.currentlyReferencedStreams,
-                )
-            }
-        }
+        connectInternal(connector, null, connector, options)
     }
 
     override suspend fun connect(
         endpoint: String,
-        authenticator: Authenticator?,
+        authenticator: Authenticator,
         uploader: MutationUploader?,
         options: SyncOptions,
     ) {
-        check(authenticator != null || uploader != null) {
-            "Calling connect() and specifying neither an authenticator or uploader doesn't do anything"
-        }
+        connectInternal(authenticator, endpoint, uploader, options)
+    }
 
+    override suspend fun connect(
+        uploader: MutationUploader,
+        options: SyncOptions,
+    ) {
+        connectInternal(null, null, uploader, options)
+    }
+
+    private suspend fun connectInternal(
+        authenticator: Authenticator?,
+        powerSyncUrl: String?,
+        uploader: MutationUploader?,
+        options: SyncOptions,
+    ) {
         waitReady()
         mutex.withLock {
             disconnectInternal()
 
-            connectInternal {
+            startConnectTask {
                 StreamingSyncClient(
                     status = currentStatus,
                     database = this,
                     authenticator,
                     uploader,
-                    powerSyncUrl = endpoint,
+                    powerSyncUrl,
                     logger,
                     options,
                     schema = schema,
@@ -225,7 +221,7 @@ internal class PowerSyncDatabaseImpl(
         }
     }
 
-    private fun connectInternal(createStream: () -> StreamingSyncClient) {
+    private fun startConnectTask(createStream: () -> StreamingSyncClient) {
         val db = this
         val stream = createStream()
         val syncJob =
