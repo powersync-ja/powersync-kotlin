@@ -371,6 +371,9 @@ internal class PowerSyncDatabaseImpl(
             if (client.options.checkpointMode !is CheckpointMode.Requests) {
                 throw CheckpointRequestException.Disabled()
             }
+            if (client.authenticator == null) {
+                throw CheckpointRequestException.Disconnected()
+            }
 
             client.requestCheckpoint(this)
         }

@@ -74,7 +74,7 @@ import kotlin.coroutines.cancellation.CancellationException
 internal class StreamingSyncClient(
     private val status: SyncStatus,
     private val database: PowerSyncDatabaseImpl,
-    private val authenticator: Authenticator?,
+    internal val authenticator: Authenticator?,
     private var uploader: MutationUploader?,
     private val powerSyncUrl: String? = null,
     private val logger: Logger,
@@ -159,7 +159,7 @@ internal class StreamingSyncClient(
                         // We can't upload mutations, but we can request a checkpoint for mutations
                         // that have already been uploaded from a potential prior upload-only
                         // connection.
-                        launch { updateLocalTarget() }
+                        launch { updateLocalTargetUntilSuccess() }
                     }
                 }
             }
@@ -287,6 +287,25 @@ internal class StreamingSyncClient(
                 CheckpointMode.Legacy -> getLegacyWriteCheckpoint()
                 is CheckpointMode.Requests -> requestNextCheckpointFromService()
             }
+        }
+    }
+
+    private suspend fun updateLocalTargetUntilSuccess() {
+        try {
+            while (true) {
+                try {
+                    updateLocalTarget()
+                    return
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    logger.e { "Error requesting checkpoint after crud upload: $e" }
+                    status.update { copy(uploadError = e) }
+                    delay(options.retryDelay)
+                }
+            }
+        } finally {
+            status.update { copy(uploadError = null) }
         }
     }
 
