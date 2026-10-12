@@ -59,9 +59,9 @@ internal class DartWorkerDatabase(
                     }
                 }, requestLockOptions(signal))
 
-            val result = promise.await() as JsReference<*>
+            val result = promise.await() as JsReference<*>?
             @Suppress("UNCHECKED_CAST")
-            result.get() as T
+            result?.get() as T
         }
 
     override suspend fun <T> read(callback: suspend (SQLiteConnectionLease) -> T): T = lock(callback)
