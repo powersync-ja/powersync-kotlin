@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id("com.android.application")
     alias(libs.plugins.compose.compiler)
@@ -36,5 +38,7 @@ android {
 }
 
 kotlin {
-    jvmToolchain(libs.versions.java.get().toInt())
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
 }

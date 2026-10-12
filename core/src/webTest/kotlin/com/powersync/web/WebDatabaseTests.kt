@@ -2,6 +2,13 @@ package com.powersync.web
 
 import androidx.sqlite.SQLiteException
 import app.cash.turbine.turbineScope
+import co.touchlab.kermit.Logger
+import co.touchlab.kermit.loggerConfigInit
+import co.touchlab.kermit.platformLogWriter
+import com.powersync.PowerSyncDatabase
+import com.powersync.db.schema.Column
+import com.powersync.db.schema.Schema
+import com.powersync.db.schema.Table
 import io.kotest.assertions.failure
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
@@ -152,5 +159,47 @@ class WebDatabaseTests {
                 job.cancel()
                 shouldThrow<CancellationException> { job.await() }
             }
+        }
+
+    @Test
+    fun lockReturnNull() =
+        runTest {
+            // Regression test for https://github.com/powersync-ja/powersync-kotlin/issues/387
+            val db = WebConnectionFactory(this).open("null.db", DatabaseImplementation.inMemoryShared)
+            db.read { null } shouldBe null
+        }
+
+    @Test
+    fun watchQuery() =
+        runTest {
+            val factory = WebConnectionFactory(this)
+            val db =
+                PowerSyncDatabase.opened(
+                    pool = factory.openPool { open("watch.db", DatabaseImplementation.inMemoryShared) },
+                    scope = this,
+                    schema =
+                        Schema(
+                            Table(
+                                "users",
+                                listOf(
+                                    Column.text("name"),
+                                ),
+                            ),
+                        ),
+                    identifier = "watch.db",
+                    logger = Logger(loggerConfigInit(platformLogWriter())),
+                )
+
+            db.execute("INSERT INTO users (id, name) VALUES (uuid(), ?)", listOf("web user"))
+            turbineScope {
+                val query = db.watch("SELECT name FROM users") { it.getString(0)!! }.testIn(this)
+                query.awaitItem() shouldBe listOf("web user")
+
+                db.execute("DELETE FROM users")
+                query.awaitItem() shouldBe emptyList()
+                query.cancelAndIgnoreRemainingEvents()
+            }
+
+            db.close()
         }
 }
