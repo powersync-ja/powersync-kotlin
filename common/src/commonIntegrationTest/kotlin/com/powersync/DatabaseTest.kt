@@ -301,6 +301,55 @@ class DatabaseTest {
         }
 
     @Test
+    fun testClosingWriteConnection() =
+        databaseTest(createInitialDatabase = false) {
+            database = openDatabase(databaseIoDispatcher = Dispatchers.IO)
+            val pausedLock = CompletableDeferred<Unit>()
+            val inLock = CompletableDeferred<Unit>()
+            // Request a write lock that keeps using the connection after close() is called
+            val lockJob =
+                scope.async {
+                    database.writeLock { tx ->
+                        inLock.complete(Unit)
+                        runBlocking {
+                            pausedLock.await()
+                        }
+                        tx.get("SELECT 1") { it.getLong(0)!! }
+                    }
+                }
+
+            // Wait for the lock to be active
+            inLock.await()
+
+            // Close the database. The write connection must not be closed while it's in use
+            val closeJob =
+                scope.async {
+                    database.close()
+                }
+
+            try {
+                // Wait a little for testing
+                // Spawns in a different context for the delay to actually take effect
+                scope.async { withContext(Dispatchers.Default) { delay(500) } }.await()
+
+                // The database should not close yet
+                assertEquals(actual = database.closed, expected = false)
+            } finally {
+                // Release the lock, the write can still use its connection
+                pausedLock.complete(Unit)
+            }
+
+            lockJob.await() shouldBe 1L
+            closeJob.await()
+
+            database.closed shouldBe true
+
+            // Any new writeLocks should throw
+            val exception = shouldThrow<PowerSyncException> { database.writeLock {} }
+            exception.message shouldBe "Cannot process connection pool request"
+        }
+
+    @Test
     fun openDBWithDirectory() =
         databaseTest {
             val tempDir = getTempDir()
