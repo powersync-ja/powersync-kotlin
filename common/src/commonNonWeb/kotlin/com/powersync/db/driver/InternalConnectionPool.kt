@@ -4,6 +4,7 @@ import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PersistentConnectionFactory
+import com.powersync.PowerSyncException
 import com.powersync.utils.JsonUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -30,6 +31,9 @@ internal class InternalConnectionPool(
     private val writeConnection = newConnection(false)
     private val readPool = ReadPool({ newConnection(true) }, scope = scope)
 
+    // Guarded by writeLockMutex.
+    private var writeConnectionClosed = false
+
     private fun newConnection(readOnly: Boolean): SQLiteConnection {
         val connection =
             factory.openConnection(
@@ -53,6 +57,13 @@ internal class InternalConnectionPool(
         var updatedTables: Set<String> = emptySet()
         try {
             return writeLockMutex.withLock {
+                if (writeConnectionClosed) {
+                    throw PowerSyncException(
+                        message = "Cannot process connection pool request",
+                        cause = null,
+                    )
+                }
+
                 withContext(dispatcher) {
                     try {
                         callback(RawConnectionLease(writeConnection))
@@ -88,7 +99,13 @@ internal class InternalConnectionPool(
         field = MutableSharedFlow<Set<String>>(replay = 0)
 
     override suspend fun close() {
-        writeConnection.close()
+        // Wait for a running write to complete before closing its connection. This must not hold
+        // the lock while closing the read pool: withAllConnections() holds read connections while
+        // waiting for the write lock.
+        writeLockMutex.withLock {
+            writeConnectionClosed = true
+            writeConnection.close()
+        }
         readPool.close()
     }
 }
