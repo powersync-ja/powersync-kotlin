@@ -63,6 +63,8 @@ internal sealed interface Instruction {
 
     data object DidCompleteSync : NonInterruptingInstruction
 
+    data object CheckpointDelayedDueToLocalData : NonInterruptingInstruction
+
     data class UnknownInstruction(
         val raw: JsonElement?,
     ) : NonInterruptingInstruction
@@ -73,7 +75,7 @@ internal sealed interface Instruction {
         private val establishSyncStream = serializer<EstablishSyncStream>()
         private val fetchCredentials = serializer<FetchCredentials>()
         private val closeSyncStream = serializer<CloseSyncStream>()
-        private val didCompleteSync = serializer<JsonObject>()
+        private val empty = serializer<JsonObject>()
 
         override val descriptor =
             buildClassSerialDescriptor("com.powersync.sync.Instruction") {
@@ -82,7 +84,8 @@ internal sealed interface Instruction {
                 element("EstablishSyncStream", establishSyncStream.descriptor, isOptional = true)
                 element("FetchCredentials", fetchCredentials.descriptor, isOptional = true)
                 element("CloseSyncStream", closeSyncStream.descriptor, isOptional = true)
-                element("DidCompleteSync", didCompleteSync.descriptor, isOptional = true)
+                element("DidCompleteSync", empty.descriptor, isOptional = true)
+                element("CheckpointDelayedDueToLocalData", empty.descriptor, isOptional = true)
             }
 
         override fun deserialize(decoder: Decoder): Instruction =
@@ -110,8 +113,13 @@ internal sealed interface Instruction {
                         }
 
                         5 -> {
-                            decodeSerializableElement(descriptor, 5, didCompleteSync)
+                            decodeSerializableElement(descriptor, 5, empty)
                             DidCompleteSync
+                        }
+
+                        6 -> {
+                            decodeSerializableElement(descriptor, 6, empty)
+                            CheckpointDelayedDueToLocalData
                         }
 
                         CompositeDecoder.UNKNOWN_NAME -> {

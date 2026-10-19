@@ -708,6 +708,10 @@ internal class StreamingSyncClient(
                     status.update { copy(downloadError = null) }
                 }
 
+                Instruction.CheckpointDelayedDueToLocalData -> {
+                    // Error in download-only mode, which we don't support yet. Ignore.
+                }
+
                 is Instruction.UnknownInstruction -> {
                     logger.w { "Unknown instruction received from core extension: ${instruction.raw}" }
                 }
