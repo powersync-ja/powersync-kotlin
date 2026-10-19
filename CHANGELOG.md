@@ -7,6 +7,7 @@
 - Fix closing a database while a write is running: `close()` closed the write connection while the
   write could still be using it, which could corrupt SQLite's memory and crash the process. It now
   waits for the write to complete, and later writes throw a `PowerSyncException`.
+- Update PowerSync SQLite core extension to 0.5.4 ([release notes](https://github.com/powersync-ja/powersync-sqlite-core/releases/tag/v0.5.4)).
 
 ## 1.15.2
 
