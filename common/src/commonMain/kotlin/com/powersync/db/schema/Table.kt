@@ -156,12 +156,7 @@ public data class Table(
      * Name of the table that stores the underlying data.
      */
     internal val internalName: String
-        get() =
-            when {
-                direct -> name
-                options.localOnly -> "ps_data_local__$name"
-                else -> "ps_data__$name"
-            }
+        get() = if (options.localOnly) "ps_data_local__$name" else "ps_data__$name"
 
     public operator fun get(columnName: String): Column = columns.first { it.name == columnName }
 
