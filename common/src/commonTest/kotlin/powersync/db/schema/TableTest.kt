@@ -225,11 +225,11 @@ class TableTest {
     fun testDirectTable() {
         val table = Table("users", listOf(Column.text("name")), direct = true)
         table.validate()
-        assertEquals("users", table.internalName)
+        table.internalName shouldBe "users"
 
         val withOverride = Table("users", listOf(Column.text("name")), viewNameOverride = "forbidden", direct = true)
-        val exception = assertFailsWith<AssertionError> { withOverride.validate() }
-        assertEquals("Direct table users can't use a view name override", exception.message)
+        val error = shouldThrow<AssertionError> { withOverride.validate() }
+        error.message shouldBe "Direct table users can't use a view name override"
     }
 
     @Test
