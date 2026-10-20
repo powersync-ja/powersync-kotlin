@@ -222,6 +222,17 @@ class TableTest {
     }
 
     @Test
+    fun testDirectTable() {
+        val table = Table("users", listOf(Column.text("name")), direct = true)
+        table.validate()
+        assertEquals("users", table.internalName)
+
+        val withOverride = Table("users", listOf(Column.text("name")), viewNameOverride = "forbidden", direct = true)
+        val exception = assertFailsWith<AssertionError> { withOverride.validate() }
+        assertEquals("Direct table users can't use a view name override", exception.message)
+    }
+
+    @Test
     fun handlesOptions() {
         fun serialize(table: Table): JsonObject =
             JsonUtil.json.encodeToJsonElement(
