@@ -172,6 +172,13 @@ public interface PowerSyncDatabase : Queries {
         options: SyncOptions = SyncOptions(),
     )
 
+    /**
+     * Connects in upload-only mode.
+     *
+     * This doesn't require a PowerSync endpoint or authenticator resolving JWT. It does not connect
+     * to a PowerSync service at all. It only observes local mutations, which are forwarded to
+     * [MutationUploader].
+     */
     public suspend fun connect(
         uploader: MutationUploader,
         options: SyncOptions = SyncOptions(),

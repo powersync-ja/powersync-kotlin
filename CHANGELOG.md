@@ -4,6 +4,8 @@
 
 - Deprecate `crudThrottleMs`, `retryDelayMs`, `params` and `appMetadata` parameters on
   `PowerSyncDatabase.connect()`. Pass them via the `SyncOptions` class instead.
+- Introduce `Authenticator` and `MutationUploader` as superinterfaces of `PowerSyncBackendConnector`.
+- Allow connecting in download-only or upload-only mode (through overloads of `connect()`).
 - Fix closing a database while a write is running: `close()` closed the write connection while the
   write could still be using it, which could corrupt SQLite's memory and crash the process. It now
   waits for the write to complete, and later writes throw a `PowerSyncException`.

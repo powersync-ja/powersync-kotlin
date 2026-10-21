@@ -1292,12 +1292,18 @@ class SyncIntegrationTest : AbstractSyncTest() {
                 WriteCheckpointResponse(WriteCheckpointData(1))
             }
 
-            // Connecting in upload-only mode should make no SDK-initiated HTTP requests.
+            // Connecting in upload-only mode should make no SDK-initiated HTTP requests
+            var isFirstUpload = true
             database.connect(
                 uploader = { db ->
                     val batch = db.getNextCrudTransaction() ?: return@connect
-                    didUpload.complete(Unit)
+                    if (isFirstUpload) {
+                        // Verify that uploads are retried in upload-only mode too.
+                        isFirstUpload = false
+                        error("expected upload error")
+                    }
                     batch.complete(null)
+                    didUpload.complete(Unit)
                 },
                 options =
                     SyncOptions(
