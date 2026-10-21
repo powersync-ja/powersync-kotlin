@@ -3,12 +3,15 @@ package com.powersync.sync
 import app.cash.turbine.turbineScope
 import co.touchlab.kermit.ExperimentalKermitApi
 import co.touchlab.kermit.Severity
+import com.powersync.ExperimentalCheckpointRequestsApi
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
 import com.powersync.PowerSyncException
 import com.powersync.bucket.StreamPriority
 import com.powersync.bucket.WriteCheckpointData
 import com.powersync.bucket.WriteCheckpointResponse
+import com.powersync.connectors.Authenticator
+import com.powersync.connectors.CustomCheckpointRequestConnector
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.connectors.readCachedCredentials
@@ -61,6 +64,7 @@ import kotlin.test.fail
 import kotlin.time.Clock
 import kotlin.time.ComparableTimeMark
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.measureTime
 
@@ -1238,6 +1242,161 @@ class SyncIntegrationTest : AbstractSyncTest() {
                 meta["option_1"] shouldBe JsonPrimitive("1")
                 meta["option_2"] shouldBe JsonPrimitive("2")
                 true
+            }
+        }
+
+    @Test
+    fun connectDownloadOnly() =
+        databaseTest {
+            val didUpload = CompletableDeferred<Unit>()
+            database.connect(
+                endpoint = "https://powersynctest.example.com",
+                authenticator = { "test token" },
+                options = getOptions(),
+            )
+
+            turbineScope {
+                val turbine = database.currentStatus.asFlow().testIn(this)
+                turbine.waitFor { it.connected }
+
+                // Create a local mutation, which is never uploaded
+                database.execute("INSERT INTO users (id, name) VALUES (uuid(), ?)", listOf("local mutation"))
+                delay(1.hours)
+
+                // A new checkpoint can't be applied in this state, and should warn.
+                syncLines.send(
+                    SyncLine.FullCheckpoint(
+                        Checkpoint(
+                            lastOpId = "0",
+                            checksums = emptyList(),
+                        ),
+                    ),
+                )
+                syncLines.send(SyncLine.CheckpointComplete(lastOpId = "0"))
+                turbine.waitFor { it.downloadError != null }
+                database.currentStatus.downloadError.toString() shouldContain "blocked on local mutations, but no uploader is set"
+
+                turbine.cancelAndIgnoreRemainingEvents()
+            }
+
+            // Upgrade to a full connection, which should upload
+            database.connect(
+                endpoint = "https://powersynctest.example.com",
+                authenticator = { "test token" },
+                uploader = { db ->
+                    val batch = db.getNextCrudTransaction() ?: return@connect
+                    didUpload.complete(Unit)
+                    batch.complete(null)
+                },
+                options = getOptions(),
+            )
+            didUpload.join()
+        }
+
+    @OptIn(ExperimentalPowerSyncAPI::class, ExperimentalCheckpointRequestsApi::class)
+    @Test
+    fun connectUploadOnly() =
+        databaseTest {
+            val didUpload = CompletableDeferred<Unit>()
+            val assertNoHttpEngine =
+                MockEngine { request ->
+                    error("Unexpected HTTP request: $request")
+                }
+
+            // Connecting in upload-only mode should make no SDK-initiated HTTP requests
+            var isFirstUpload = true
+            database.connect(
+                uploader = { db ->
+                    val batch = db.getNextCrudTransaction() ?: return@connect
+                    if (isFirstUpload) {
+                        // Verify that uploads are retried in upload-only mode too.
+                        isFirstUpload = false
+                        error("expected upload error")
+                    }
+                    batch.complete(null)
+                    didUpload.complete(Unit)
+                },
+                options =
+                    SyncOptions(
+                        clientConfiguration =
+                            SyncClientConfiguration.ExistingClient(
+                                HttpClient(assertNoHttpEngine) { configureSyncHttpClient() },
+                            ),
+                    ),
+            )
+
+            database.execute("INSERT INTO users (id, name) VALUES (uuid(), ?)", listOf("local mutation"))
+            didUpload.join()
+
+            // Reconnect in download-only mode. This should request a checkpoint because the
+            // upload-only mode can't.
+            val targetCheckpointRequest = CompletableDeferred<Long>()
+            val releaseCheckpointRequest = CompletableDeferred<Unit>()
+            val authenticator =
+                object : CustomCheckpointRequestConnector {
+                    var isSeedRequest = true
+
+                    override suspend fun resolveCredentials(): String = "test token"
+
+                    override suspend fun postCheckpointRequest(
+                        clientId: String,
+                        requestId: Long,
+                    ): Long {
+                        if (isSeedRequest) {
+                            isSeedRequest = false
+                        } else {
+                            targetCheckpointRequest.complete(requestId)
+                            releaseCheckpointRequest.join()
+                        }
+                        return requestId
+                    }
+                }
+
+            database.connect(
+                endpoint = "https://powersynctest.example.com",
+                authenticator = authenticator,
+                options = getOptions().copy(checkpointMode = CheckpointMode.Requests()),
+            )
+
+            turbineScope {
+                val users = database.watch("SELECT name FROM users ORDER BY name") { it.getString(0)!! }.testIn(this)
+                users.awaitItem() shouldBe listOf("local mutation")
+
+                val requestId = targetCheckpointRequest.await()
+                syncLines.send(
+                    SyncLine.FullCheckpoint(
+                        Checkpoint(
+                            lastOpId = "1",
+                            writeCheckpoint = requestId.toString(),
+                            checksums = listOf(BucketChecksum("a", checksum = 0)),
+                        ),
+                    ),
+                )
+                syncLines.send(
+                    SyncDataBucket(
+                        bucket = "a",
+                        data =
+                            listOf(
+                                OplogEntry(
+                                    checksum = 0,
+                                    opId = "1",
+                                    op = OpType.PUT,
+                                    rowId = "1",
+                                    rowType = "users",
+                                    data = """{"id": "test1", "name": "from server", "email": ""}""",
+                                ),
+                            ),
+                    ),
+                )
+                syncLines.send(SyncLine.CheckpointComplete(lastOpId = "1"))
+
+                // The checkpoint can't be applied before the local target is updated.
+                delay(1.hours)
+                users.expectNoEvents()
+
+                releaseCheckpointRequest.complete(Unit)
+                users.awaitItem() shouldBe listOf("from server")
+                users.cancelAndIgnoreRemainingEvents()
             }
         }
 }

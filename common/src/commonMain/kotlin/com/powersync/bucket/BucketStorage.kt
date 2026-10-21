@@ -63,8 +63,11 @@ internal class BucketStorage(
     }
 
     suspend fun updateLocalTarget(checkpointCallback: suspend () -> Long): Boolean {
-        val existingCheckpointRequest = db.readTransactionAsync { it.targetCheckpointRequestId() }
-        if (existingCheckpointRequest != MAX_OP_ID) {
+        val (existingCheckpointRequest, hasCrud) =
+            db.readTransactionAsync {
+                it.targetCheckpointRequestId() to hasCrud(it)
+            }
+        if (existingCheckpointRequest != MAX_OP_ID || hasCrud) {
             // Nothing to update
             return false
         }
