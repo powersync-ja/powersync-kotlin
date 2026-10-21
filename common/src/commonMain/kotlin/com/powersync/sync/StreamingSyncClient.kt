@@ -783,7 +783,11 @@ internal class StreamingSyncClient(
                 Instruction.CheckpointDelayedDueToLocalData -> {
                     // Error in download-only mode, which we don't support yet. Ignore.
                     if (uploader == null) {
-                        val message = "Applying checkpoint is blocked on local mutations, but no uploader is set. The sync client cannot proceed."
+                        val message =
+                            """
+                            Applying checkpoint is blocked on local mutations, but no uploader is
+                            set. The sync client cannot proceed.
+                            """.trimIndent()
 
                         logger.e { message }
                         status.update { copy(downloadError = PowerSyncException(message, null)) }
