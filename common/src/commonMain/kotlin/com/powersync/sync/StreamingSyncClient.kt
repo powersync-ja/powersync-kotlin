@@ -75,7 +75,7 @@ internal class StreamingSyncClient(
     private val status: SyncStatus,
     private val database: PowerSyncDatabaseImpl,
     internal val authenticator: Authenticator?,
-    private var uploader: MutationUploader?,
+    private val uploader: MutationUploader?,
     private val powerSyncUrl: String? = null,
     private val logger: Logger,
     val options: SyncOptions,
@@ -291,21 +291,18 @@ internal class StreamingSyncClient(
     }
 
     private suspend fun updateLocalTargetUntilSuccess() {
-        try {
-            while (true) {
-                try {
-                    updateLocalTarget()
-                    return
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    logger.e { "Error requesting checkpoint after crud upload: $e" }
-                    status.update { copy(uploadError = e) }
-                    delay(options.retryDelay)
-                }
+        while (true) {
+            try {
+                updateLocalTarget()
+                completedCrudUploads.send(Unit)
+                return
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logger.e { "Error requesting checkpoint after crud upload: $e" }
+                status.update { copy(uploadError = e) }
+                delay(options.retryDelay)
             }
-        } finally {
-            status.update { copy(uploadError = null) }
         }
     }
 
@@ -378,7 +375,7 @@ internal class StreamingSyncClient(
 
     private suspend fun requestCheckpointFromService(payload: CheckpointRequestPayload): Long {
         // First, check if we can use a custom checkpoint request implementation.
-        (uploader as? CustomCheckpointRequestConnector)?.let {
+        (authenticator as? CustomCheckpointRequestConnector)?.let {
             return it.postCheckpointRequest(payload.clientId, payload.checkpointRequestId)
         }
 
@@ -785,6 +782,12 @@ internal class StreamingSyncClient(
 
                 Instruction.CheckpointDelayedDueToLocalData -> {
                     // Error in download-only mode, which we don't support yet. Ignore.
+                    if (uploader == null) {
+                        val message = "Applying checkpoint is blocked on local mutations, but no uploader is set. The sync client cannot proceed."
+
+                        logger.e { message }
+                        status.update { copy(downloadError = PowerSyncException(message, null)) }
+                    }
                 }
 
                 is Instruction.UnknownInstruction -> {
