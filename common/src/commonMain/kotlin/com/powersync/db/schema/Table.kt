@@ -37,6 +37,21 @@ public data class Table(
      * Override the name for the view
      */
     internal val viewNameOverride: String? = null,
+    /**
+     * Marks this table as direct, meaning that it stores data directly as SQLite rows instead of
+     * using an intermediate view around a JSON store.
+     *
+     * Direct tables are still managed by the PowerSync SDK, which is responsible for creating,
+     * altering and dropping them.
+     * You can query direct tables like JSON-based tables, and mutations are consistently tracked as
+     * pending uploads.
+     * For more information on direct tables, see [the documentation](https://docs.powersync.com/client-sdks/advanced/performance-optimization#direct-tables).
+     *
+     * Direct tables can't use a view name override.
+     *
+     * Direct tables are currently experimental.
+     */
+    val direct: Boolean = false,
 ) : BaseTable {
     public constructor(
         name: String,
@@ -48,11 +63,13 @@ public data class Table(
         trackMetadata: Boolean = false,
         trackPreviousValues: TrackPreviousValuesOptions? = null,
         ignoreEmptyUpdates: Boolean = false,
+        direct: Boolean = false,
     ) : this(
         name = name,
         columns = columns,
         indexes = indexes,
         viewNameOverride = viewNameOverride,
+        direct = direct,
         options =
             TableOptions(
                 localOnly = localOnly,
@@ -217,6 +234,10 @@ public data class Table(
                 }
             }
         }
+
+        if (direct && viewNameOverride != null) {
+            throw AssertionError("Direct table $name can't use a view name override")
+        }
     }
 
     /**
@@ -254,6 +275,7 @@ internal object TableSerializer : OnlySerializer<Table>() {
             element<List<Column>>("columns")
             element<List<Index>>("indexes")
             element<String?>("view_name")
+            element<Boolean>("direct")
 
             // Flatten common TableOptions fields into this serializer
             TableOptions.addFields(this)
@@ -268,8 +290,9 @@ internal object TableSerializer : OnlySerializer<Table>() {
             encodeSerializableElement(descriptor, 1, serializer<List<Column>>(), value.columns)
             encodeSerializableElement(descriptor, 2, serializer<List<Index>>(), value.indexes)
             encodeSerializableElement(descriptor, 3, serializer<String?>(), value.viewNameOverride)
+            encodeBooleanElement(descriptor, 4, value.direct)
 
-            value.options.serialize(descriptor, 4, this)
+            value.options.serialize(descriptor, 5, this)
         }
     }
 }

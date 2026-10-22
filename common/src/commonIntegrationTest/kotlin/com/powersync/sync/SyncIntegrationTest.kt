@@ -10,17 +10,19 @@ import com.powersync.PowerSyncException
 import com.powersync.bucket.StreamPriority
 import com.powersync.bucket.WriteCheckpointData
 import com.powersync.bucket.WriteCheckpointResponse
-import com.powersync.connectors.Authenticator
 import com.powersync.connectors.CustomCheckpointRequestConnector
 import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.connectors.readCachedCredentials
 import com.powersync.db.PowerSyncDatabaseImpl
+import com.powersync.db.getString
+import com.powersync.db.schema.Column
 import com.powersync.db.schema.PendingStatement
 import com.powersync.db.schema.PendingStatementParameter
 import com.powersync.db.schema.RawTable
 import com.powersync.db.schema.RawTableSchema
 import com.powersync.db.schema.Schema
+import com.powersync.db.schema.Table
 import com.powersync.test.TestConnector
 import com.powersync.test.waitFor
 import com.powersync.testutils.BucketChecksum
@@ -1398,5 +1400,56 @@ class SyncIntegrationTest : AbstractSyncTest() {
                 users.awaitItem() shouldBe listOf("from server")
                 users.cancelAndIgnoreRemainingEvents()
             }
+        }
+
+    @Test
+    fun `direct tables`() =
+        databaseTest(createInitialDatabase = false) {
+            // This is mostly a smoke test, the core extension manages direct tables and covers things like migrations.
+            val db = openDatabase(Schema(Table("users", listOf(Column.text("name")), direct = true)))
+
+            db.get("pragma table_list(users)") { it.getString("type") } shouldBe "table"
+
+            db.connect(connector, options = getOptions())
+            syncLines.send(
+                SyncLine.FullCheckpoint(
+                    Checkpoint(
+                        lastOpId = "1",
+                        checksums = listOf(BucketChecksum("bucket", checksum = 0)),
+                    ),
+                ),
+            )
+            syncLines.send(
+                SyncDataBucket(
+                    bucket = "bucket",
+                    data =
+                        listOf(
+                            OplogEntry(
+                                checksum = 0L,
+                                data = JsonUtil.json.encodeToString(mapOf("name" to "synced user")),
+                                op = OpType.PUT,
+                                opId = "1",
+                                rowId = "user",
+                                rowType = "users",
+                            ),
+                        ),
+                ),
+            )
+            syncLines.send(SyncLine.CheckpointComplete("1"))
+            db.waitForFirstSync()
+
+            suspend fun readUser() = db.get("SELECT * FROM users") { it.getString("id") to it.getString("name") }
+
+            readUser() shouldBe ("user" to "synced user")
+            db.disconnect()
+
+            db.execute("UPDATE users SET name = ?", listOf("local user"))
+            readUser() shouldBe ("user" to "local user")
+
+            val tx = db.getNextCrudTransaction()!!
+            tx.crud shouldHaveSize 1
+            val entry = tx.crud[0]
+            entry.table shouldBe "users"
+            entry.opData shouldBe mapOf("name" to "local user")
         }
 }
