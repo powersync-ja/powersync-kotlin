@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.16.0 (unreleased)
+## 1.16.0
 
 - Deprecate `crudThrottleMs`, `retryDelayMs`, `params` and `appMetadata` parameters on
   `PowerSyncDatabase.connect()`. Pass them via the `SyncOptions` class instead.
@@ -10,7 +10,7 @@
   write could still be using it, which could corrupt SQLite's memory and crash the process. It now
   waits for the write to complete, and later writes throw a `PowerSyncException`.
 - Update PowerSync SQLite core extension to 0.5.4 ([release notes](https://github.com/powersync-ja/powersync-sqlite-core/releases/tag/v0.5.4)).
-- Support [direct tables](https://docs.powersync.com/client-sdks/advanced/performance-optimization#direct-tables).
+- Support [direct tables](https://docs.powersync.com/client-sdks/advanced/performance-optimization#managed-views-vs-managed-tables).
 
 ## 1.15.2
 
