@@ -11,6 +11,8 @@ import androidx.sqlite.async.step
 import com.powersync.db.driver.SQLiteConnectionLease
 import com.powersync.db.driver.SQLiteConnectionPool
 import com.powersync.db.schema.Schema
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
@@ -35,6 +37,7 @@ public class RoomConnectionPool(
 ) : SQLiteConnectionPool {
     private val _updates = MutableSharedFlow<Set<String>>()
     private var hasInstalledUpdateHook = false
+    private val updateCollectors = mutableListOf<Job>()
 
     init {
         schema?.let { syncRoomUpdatesToPowerSync(it) }
@@ -65,26 +68,28 @@ public class RoomConnectionPool(
 
     /**
      * Registers a Room listener on all tables mentioned in the [schema] and invokes
-     * [transferPendingRoomUpdatesToPowerSync] when they change.
+     * [transferPendingRoomUpdatesToPowerSync] when they change. The listener stops when this pool is
+     * closed.
      */
     public fun syncRoomUpdatesToPowerSync(schema: Schema) {
-        db.getCoroutineScope().launch {
-            val tables = schema.rawTables.map { it.name }.toTypedArray()
-            db.invalidationTracker.createFlow(*tables, emitInitialState = false).collect {
-                try {
-                    transferPendingRoomUpdatesToPowerSync()
-                } catch (e: SQLiteException) {
-                    // It can happen that we get an update shortly before the database is closed. Since this is
-                    // asynchronous, we'd then be using the database in a closed state, which fails. We handle that by
-                    // stopping the flow collection.
-                    if (e.message == "Connection pool is closed") {
-                        return@collect
-                    }
+        updateCollectors +=
+            db.getCoroutineScope().launch {
+                val tables = schema.rawTables.map { it.name }.toTypedArray()
+                db.invalidationTracker.createFlow(*tables, emitInitialState = false).collect {
+                    try {
+                        transferPendingRoomUpdatesToPowerSync()
+                    } catch (e: SQLiteException) {
+                        // It can happen that we get an update shortly before the database is closed. Since this is
+                        // asynchronous, we'd then be using the database in a closed state, which fails. We handle that by
+                        // stopping the flow collection.
+                        if (e.message == "Connection pool is closed") {
+                            return@collect
+                        }
 
-                    throw e
+                        throw e
+                    }
                 }
             }
-        }
     }
 
     override suspend fun <T> write(callback: suspend (SQLiteConnectionLease) -> T): T =
@@ -132,7 +137,10 @@ public class RoomConnectionPool(
         get() = _updates
 
     override suspend fun close() {
-        // Noop, Room database managed independently
+        // The Room database is managed independently, but it can close right after this. A collector
+        // that is still active would then use a connection while Room closes it.
+        updateCollectors.forEach { it.cancelAndJoin() }
+        updateCollectors.clear()
     }
 }
 
