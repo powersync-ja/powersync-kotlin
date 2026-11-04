@@ -10,10 +10,15 @@ import com.powersync.PowerSyncDatabase
 import com.powersync.db.getString
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.time.Duration.Companion.milliseconds
 
 class PowerSyncRoomTest {
     lateinit var database: TestDatabase
@@ -156,6 +161,35 @@ class PowerSyncRoomTest {
             // Room as that causes a crash. This also means that virtual table updates can't be watched
             // from Room, but that's a Room limitation.
             powersync.execute("INSERT into users_fts(id, name) VALUES (uuid(), ?)", listOf("test name"))
+        }
+
+    @Test
+    fun closeStopsCollectingRoomUpdates() =
+        runTest {
+            val pool = RoomConnectionPool(database, TestDatabase.schema)
+
+            turbineScope {
+                val before = pool.updates.testIn(this)
+
+                // The collector starts asynchronously, so it can miss the first writes.
+                var writes = 0
+                do {
+                    database.userDao().create(User("before-${writes++}", "name"))
+                } while (
+                    withContext(Dispatchers.Default) {
+                        withTimeoutOrNull(100.milliseconds) { before.awaitItem() }
+                    } == null
+                )
+                before.cancelAndIgnoreRemainingEvents()
+
+                pool.close()
+
+                val after = pool.updates.testIn(this)
+                database.userDao().create(User("after", "name"))
+                withContext(Dispatchers.Default) { delay(500.milliseconds) }
+                after.expectNoEvents()
+                after.cancel()
+            }
         }
 
     companion object {
