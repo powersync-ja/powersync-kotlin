@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import com.powersync.PowerSyncDatabase
+import com.powersync.androidexample.BuildConfig
 import com.powersync.attachments.AttachmentQueue
 import com.powersync.connector.supabase.SupabaseConnector
 import io.github.jan.supabase.auth.status.RefreshFailureCause
@@ -36,7 +37,11 @@ internal class AuthViewModel(
                     is SessionStatus.Authenticated -> {
                         _authState.value = AuthState.SignedIn
                         _userId.value = it.session.user?.id
-                        db.connect(supabase)
+                        db.connect(
+                            endpoint = BuildConfig.POWERSYNC_URL,
+                            authenticator = supabase,
+                            uploader = supabase,
+                        )
                         attachmentsQueue?.startSync()
                         if (navController.currentScreen.value is Screen.SignIn ||
                             navController.currentScreen.value is Screen.SignUp

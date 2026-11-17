@@ -53,7 +53,9 @@ internal class AuthViewModel(
                     when (it) {
                         is SessionStatus.Authenticated -> {
                             db.connect(
-                                supabase,
+                                endpoint = Config.POWERSYNC_URL,
+                                authenticator = supabase,
+                                uploader = supabase,
                                 options =
                                     SyncOptions(
                                         newClientImplementation = true,

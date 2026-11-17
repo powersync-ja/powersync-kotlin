@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import com.powersync.PowerSyncDatabase
 import com.powersync.compose.composeState
 import com.powersync.connector.supabase.SupabaseConnector
-import com.powersync.connectors.PowerSyncBackendConnector
 import com.powersync.db.schema.Schema
 import com.powersync.demos.components.EditDialog
 import com.powersync.demos.powersync.ListContent
@@ -30,9 +29,7 @@ import org.koin.compose.KoinApplication
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.KoinApplication
-import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.viewModelOf
-import org.koin.core.module.dsl.withOptions
 import org.koin.dsl.koinConfiguration
 import org.koin.dsl.module
 
@@ -41,11 +38,10 @@ val sharedAppModule = module {
     single { AuthOptions(connectFromViewModel = true) }
     single {
         SupabaseConnector(
-            powerSyncEndpoint = Config.POWERSYNC_URL,
             supabaseUrl = Config.SUPABASE_URL,
             supabaseKey = Config.SUPABASE_ANON_KEY,
         )
-    } withOptions { bind<PowerSyncBackendConnector>() }
+    }
 
     single { NavController(Screen.Home) }
     viewModelOf(::AuthViewModel)

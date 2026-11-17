@@ -14,6 +14,7 @@ import androidx.lifecycle.lifecycleScope
 import co.touchlab.kermit.Logger
 import com.powersync.PowerSyncDatabase
 import com.powersync.connector.supabase.SupabaseConnector
+import com.powersync.demos.Config
 import com.powersync.sync.SyncStatusData
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.CancellationException
@@ -66,7 +67,11 @@ class SyncService: LifecycleService() {
             connector.sessionStatus.collect {
                 when (it) {
                     is SessionStatus.Authenticated -> {
-                        database.connect(connector)
+                        database.connect(
+                            endpoint = Config.POWERSYNC_URL,
+                            authenticator = connector,
+                            uploader = connector,
+                        )
                     }
                     is SessionStatus.NotAuthenticated -> {
                         database.disconnectAndClear()

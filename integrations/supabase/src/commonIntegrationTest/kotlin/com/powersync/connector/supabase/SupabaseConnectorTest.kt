@@ -40,7 +40,7 @@ class SupabaseConnectorTest {
 
                 var calledErrorHandler = false
                 val connector =
-                    object : SupabaseConnector("", "", "") {
+                    object : SupabaseConnector("", "") {
                         override suspend fun uploadCrudEntry(entry: CrudEntry): Unit =
                             throw Exception("Expected exception, failing in uploadCrudEntry")
 
@@ -59,7 +59,7 @@ class SupabaseConnectorTest {
                         }
                     }
 
-                connector.uploadData(db)
+                connector.uploadMutations(db)
                 calledErrorHandler shouldBe true
             } finally {
                 db.close()

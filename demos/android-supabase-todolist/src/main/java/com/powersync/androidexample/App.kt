@@ -40,7 +40,6 @@ fun App(
     val supabase =
         remember {
             SupabaseConnector(
-                powerSyncEndpoint = BuildConfig.POWERSYNC_URL,
                 supabaseUrl = BuildConfig.SUPABASE_URL,
                 supabaseKey = BuildConfig.SUPABASE_ANON_KEY,
                 storageBucket = BuildConfig.SUPABASE_STORAGE_BUCKET,
