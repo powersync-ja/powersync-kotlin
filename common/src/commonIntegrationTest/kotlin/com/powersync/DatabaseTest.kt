@@ -57,6 +57,15 @@ class DatabaseTest {
         }
 
     @Test
+    fun testRecursiveTriggers() =
+        databaseTest {
+            database.get("PRAGMA recursive_triggers", mapper = { it.getLong(0)!! }) shouldBe 1
+            database.writeTransaction { tx ->
+                tx.get("PRAGMA recursive_triggers", mapper = { it.getLong(0)!! }) shouldBe 1
+            }
+        }
+
+    @Test
     fun testFTS() =
         databaseTest {
             val mode =
