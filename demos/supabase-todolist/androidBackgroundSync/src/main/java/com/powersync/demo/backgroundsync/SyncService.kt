@@ -17,6 +17,7 @@ import com.powersync.connector.supabase.SupabaseAuthenticator
 import com.powersync.connector.supabase.SupabaseUploader
 import com.powersync.demos.Config
 import com.powersync.sync.SyncStatusData
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -66,7 +67,7 @@ class SyncService: LifecycleService() {
         }
 
         lifecycleScope.launch {
-            connector.sessionStatus.collect {
+            connector.supabaseClient.auth.sessionStatus.collect {
                 when (it) {
                     is SessionStatus.Authenticated -> {
                         database.connect(

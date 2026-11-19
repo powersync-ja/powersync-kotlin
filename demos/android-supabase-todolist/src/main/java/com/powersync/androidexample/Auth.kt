@@ -8,6 +8,8 @@ import com.powersync.androidexample.BuildConfig
 import com.powersync.attachments.AttachmentQueue
 import com.powersync.connector.supabase.SupabaseAuthenticator
 import com.powersync.connector.supabase.SupabaseUploader
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.RefreshFailureCause
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +29,7 @@ internal class AuthViewModel(
     private val navController: NavController,
     private val attachmentsQueue: AttachmentQueue?,
 ) : ViewModel() {
+    private val auth = supabase.supabaseClient.auth
     private val _authState = MutableStateFlow<AuthState>(AuthState.SignedOut)
     val authState: StateFlow<AuthState> = _authState
     private val _userId = MutableStateFlow<String?>(null)
@@ -34,7 +37,7 @@ internal class AuthViewModel(
 
     init {
         viewModelScope.launch {
-            supabase.sessionStatus.collect {
+            auth.sessionStatus.collect {
                 when (it) {
                     is SessionStatus.Authenticated -> {
                         _authState.value = AuthState.SignedIn
@@ -72,7 +75,10 @@ internal class AuthViewModel(
         email: String,
         password: String,
     ) {
-        supabase.login(email, password)
+        auth.signInWith(Email) {
+            this.email = email
+            this.password = password
+        }
         _authState.value = AuthState.SignedIn
     }
 
@@ -80,7 +86,10 @@ internal class AuthViewModel(
         email: String,
         password: String,
     ) {
-        supabase.signUp(email, password)
+        auth.signUpWith(Email) {
+            this.email = email
+            this.password = password
+        }
         _authState.value = AuthState.SignedIn
     }
 
@@ -88,7 +97,7 @@ internal class AuthViewModel(
         try {
             attachmentsQueue?.clearQueue()
             attachmentsQueue?.close()
-            supabase.signOut()
+            auth.signOut()
         } catch (e: Exception) {
             Logger.e("Error signing out: $e")
         } finally {

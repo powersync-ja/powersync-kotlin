@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import com.powersync.connector.supabase.SupabaseAuthenticator
 import com.powersync.demos.AppContent
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
@@ -31,7 +32,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             // Watch the authentication state and start a sync foreground service once the user logs
             // in.
-            connector.sessionStatus.collect {
+            connector.supabaseClient.auth.sessionStatus.collect {
                 if (it is SessionStatus.Authenticated) {
                     startForegroundService(Intent().apply {
                         setClass(this@MainActivity, SyncService::class.java)
