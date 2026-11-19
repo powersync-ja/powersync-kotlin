@@ -17,8 +17,9 @@ import com.powersync.androidexample.ui.CameraService
 import com.powersync.attachments.AttachmentQueue
 import com.powersync.attachments.WatchedAttachmentItem
 import com.powersync.compose.rememberDatabaseDriverFactory
-import com.powersync.connector.supabase.SupabaseConnector
-import com.powersync.connector.supabase.SupabaseRemoteStorage
+import com.powersync.connector.supabase.SupabaseAuthenticator
+import com.powersync.connector.supabase.SupabaseBucketRemoteStorage
+import com.powersync.connector.supabase.SupabaseUploader
 import com.powersync.db.getString
 import com.powersync.demos.components.EditDialog
 import com.powersync.demos.powersync.ListContent
@@ -29,6 +30,11 @@ import com.powersync.demos.screens.HomeScreen
 import com.powersync.demos.screens.SignInScreen
 import com.powersync.demos.screens.SignUpScreen
 import com.powersync.demos.screens.TodosScreen
+import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.createSupabaseClient
+import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.storage.Storage
+import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.runBlocking
 
 @Composable
@@ -37,14 +43,19 @@ fun App(
     attachmentDirectory: String,
 ) {
     val driverFactory = rememberDatabaseDriverFactory()
-    val supabase =
+    val supabaseClient =
         remember {
-            SupabaseConnector(
-                supabaseUrl = BuildConfig.SUPABASE_URL,
-                supabaseKey = BuildConfig.SUPABASE_ANON_KEY,
-                storageBucket = BuildConfig.SUPABASE_STORAGE_BUCKET,
-            )
+            createSupabaseClient(BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_ANON_KEY) {
+                install(Auth)
+                install(Postgrest)
+                if (BuildConfig.SUPABASE_STORAGE_BUCKET != "null") {
+                    install(Storage)
+                }
+            }
         }
+
+    val supabase = remember { SupabaseAuthenticator(supabaseClient) }
+    val uploader = remember { SupabaseUploader(supabaseClient) }
 
     val db = remember { PowerSyncDatabase(driverFactory, schema) }
     val attachments =
@@ -52,7 +63,7 @@ fun App(
             if (BuildConfig.SUPABASE_STORAGE_BUCKET != "null") {
                 AttachmentQueue(
                     db = db,
-                    remoteStorage = SupabaseRemoteStorage(supabase),
+                    remoteStorage = SupabaseBucketRemoteStorage(supabaseClient.storage[BuildConfig.SUPABASE_STORAGE_BUCKET]),
                     attachmentsDirectory = attachmentDirectory,
                     watchAttachments = {
                         db.watch(
@@ -80,7 +91,7 @@ fun App(
 
     val authViewModel =
         remember {
-            AuthViewModel(supabase, db, navController, attachments)
+            AuthViewModel(supabase, uploader, db, navController, attachments)
         }
 
     val authState by authViewModel.authState.collectAsState()

@@ -6,7 +6,8 @@ import co.touchlab.kermit.Logger
 import com.powersync.PowerSyncDatabase
 import com.powersync.androidexample.BuildConfig
 import com.powersync.attachments.AttachmentQueue
-import com.powersync.connector.supabase.SupabaseConnector
+import com.powersync.connector.supabase.SupabaseAuthenticator
+import com.powersync.connector.supabase.SupabaseUploader
 import io.github.jan.supabase.auth.status.RefreshFailureCause
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +21,8 @@ sealed class AuthState {
 }
 
 internal class AuthViewModel(
-    private val supabase: SupabaseConnector,
+    private val supabase: SupabaseAuthenticator,
+    private val uploader: SupabaseUploader,
     private val db: PowerSyncDatabase,
     private val navController: NavController,
     private val attachmentsQueue: AttachmentQueue?,
@@ -40,7 +42,7 @@ internal class AuthViewModel(
                         db.connect(
                             endpoint = BuildConfig.POWERSYNC_URL,
                             authenticator = supabase,
-                            uploader = supabase,
+                            uploader = uploader,
                         )
                         attachmentsQueue?.startSync()
                         if (navController.currentScreen.value is Screen.SignIn ||

@@ -6,7 +6,8 @@ import co.touchlab.kermit.Logger
 import com.powersync.ExperimentalCheckpointRequestsApi
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
-import com.powersync.connector.supabase.SupabaseConnector
+import com.powersync.connector.supabase.SupabaseAuthenticator
+import com.powersync.connector.supabase.SupabaseUploader
 import com.powersync.sync.CheckpointMode
 import com.powersync.sync.SyncClientConfiguration
 import com.powersync.sync.SyncOptions
@@ -34,9 +35,9 @@ sealed class AuthState {
     data object SignedIn : AuthState()
 }
 
-@OptIn(ExperimentalPowerSyncAPI::class)
 internal class AuthViewModel(
-    private val supabase: SupabaseConnector,
+    private val supabase: SupabaseAuthenticator,
+    private val uploader: SupabaseUploader,
     private val db: PowerSyncDatabase,
     private val navController: NavController,
     authOptions: AuthOptions,
@@ -55,7 +56,7 @@ internal class AuthViewModel(
                             db.connect(
                                 endpoint = Config.POWERSYNC_URL,
                                 authenticator = supabase,
-                                uploader = supabase,
+                                uploader = uploader,
                                 options =
                                     SyncOptions(
                                         newClientImplementation = true,

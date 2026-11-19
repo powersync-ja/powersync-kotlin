@@ -13,7 +13,7 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
-import com.powersync.connector.supabase.SupabaseConnector
+import com.powersync.connector.supabase.SupabaseAuthenticator
 import com.powersync.demos.AppContent
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.launch
@@ -22,7 +22,7 @@ import org.koin.compose.KoinContext
 
 class MainActivity : ComponentActivity() {
 
-    private val connector: SupabaseConnector by inject()
+    private val connector: SupabaseAuthenticator by inject()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

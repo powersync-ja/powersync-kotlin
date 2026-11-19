@@ -2,8 +2,8 @@ package com.powersync.connector.supabase
 
 import co.touchlab.kermit.Logger
 import com.powersync.PowerSyncDatabase
-import com.powersync.connectors.Authenticator
-import com.powersync.connectors.MutationUploader
+import com.powersync.connectors.PowerSyncBackendConnector
+import com.powersync.connectors.PowerSyncCredentials
 import com.powersync.db.crud.CrudEntry
 import com.powersync.db.crud.CrudTransaction
 import com.powersync.db.crud.UpdateType
@@ -24,22 +24,22 @@ import io.github.jan.supabase.storage.storage
 import io.ktor.client.plugins.HttpSend
 import io.ktor.client.plugins.plugin
 import io.ktor.client.statement.bodyAsText
+import io.ktor.utils.io.InternalAPI
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.toString
 
 /**
- * Authenticates with a Supabase token and uploads local mutations through PostgREST.
- * Pass this connector as both the authenticator and uploader to [PowerSyncDatabase.connect],
- * along with the PowerSync endpoint.
+ * Get a Supabase token to authenticate against the PowerSync instance.
  */
+@Deprecated("Use SupabaseAuthenticator and SupabaseUploader with the split connect API instead.")
 @OptIn(SupabaseInternal::class)
 public open class SupabaseConnector(
     public val supabaseClient: SupabaseClient,
+    public val powerSyncEndpoint: String,
     private val storageBucket: String? = null,
-) : Authenticator,
-    MutationUploader {
+) : PowerSyncBackendConnector() {
     private val json = Json { coerceInputValues = true }
     private var errorCode: String? = null
 
@@ -71,6 +71,7 @@ public open class SupabaseConnector(
     public constructor(
         supabaseUrl: String,
         supabaseKey: String,
+        powerSyncEndpoint: String,
         storageBucket: String? = null,
     ) : this(
         supabaseClient =
@@ -81,6 +82,7 @@ public open class SupabaseConnector(
                     install(Storage)
                 }
             },
+        powerSyncEndpoint = powerSyncEndpoint,
         storageBucket = storageBucket,
     )
 
@@ -156,7 +158,7 @@ public open class SupabaseConnector(
     /**
      * Get credentials for PowerSync.
      */
-    override suspend fun resolveCredentials(): String =
+    override suspend fun fetchCredentials(): PowerSyncCredentials =
         runWrapped {
             check(supabaseClient.auth.sessionStatus.value is SessionStatus.Authenticated) { "Supabase client is not authenticated" }
 
@@ -166,13 +168,17 @@ public open class SupabaseConnector(
                     ?: error("Could not fetch Supabase credentials")
 
             check(session.user != null) { "No user data" }
-            session.accessToken
+
+            PowerSyncCredentials(
+                endpoint = powerSyncEndpoint,
+                token = session.accessToken, // Use the access token to authenticate against PowerSync
+            )
         }
 
     /**
      * Uses the PostgREST APIs to upload a given [entry] to the backend database.
      *
-     * This method should report errors during the upload as an exception that would be caught by [uploadMutations].
+     * This method should report errors during the upload as an exception that would be caught by [uploadData].
      */
     public open suspend fun uploadCrudEntry(entry: CrudEntry) {
         val table = supabaseClient.from(entry.table)
@@ -249,9 +255,9 @@ public open class SupabaseConnector(
      * This function is called whenever there is data to upload, whether the device is online or offline.
      * If this call throws an error, it is retried periodically.
      */
-    override suspend fun uploadMutations(onDatabase: PowerSyncDatabase) {
+    override suspend fun uploadData(database: PowerSyncDatabase) {
         return runWrapped {
-            val transaction = onDatabase.getNextCrudTransaction() ?: return@runWrapped
+            val transaction = database.getNextCrudTransaction() ?: return@runWrapped
 
             var lastEntry: CrudEntry? = null
             try {

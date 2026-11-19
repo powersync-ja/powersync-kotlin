@@ -13,7 +13,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import com.powersync.PowerSyncDatabase
 import com.powersync.compose.composeState
-import com.powersync.connector.supabase.SupabaseConnector
+import com.powersync.connector.supabase.SupabaseAuthenticator
+import com.powersync.connector.supabase.SupabaseUploader
 import com.powersync.db.schema.Schema
 import com.powersync.demos.components.EditDialog
 import com.powersync.demos.powersync.ListContent
@@ -24,6 +25,9 @@ import com.powersync.demos.screens.HomeScreen
 import com.powersync.demos.screens.SignInScreen
 import com.powersync.demos.screens.SignUpScreen
 import com.powersync.demos.screens.TodosScreen
+import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.createSupabaseClient
+import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.launch
 import org.koin.compose.KoinApplication
 import org.koin.compose.koinInject
@@ -37,11 +41,14 @@ val sharedAppModule = module {
     // This is overridden by the androidBackgroundSync example
     single { AuthOptions(connectFromViewModel = true) }
     single {
-        SupabaseConnector(
-            supabaseUrl = Config.SUPABASE_URL,
-            supabaseKey = Config.SUPABASE_ANON_KEY,
-        )
+        createSupabaseClient(Config.SUPABASE_URL, Config.SUPABASE_ANON_KEY) {
+            install(Auth)
+            install(Postgrest)
+        }
     }
+
+    single { SupabaseAuthenticator(get()) }
+    single { SupabaseUploader(get()) }
 
     single { NavController(Screen.Home) }
     viewModelOf(::AuthViewModel)

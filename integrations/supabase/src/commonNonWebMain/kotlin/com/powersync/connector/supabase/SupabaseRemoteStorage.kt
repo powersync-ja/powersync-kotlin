@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.flowOf
  *
  * @property connector The Supabase connector used to interact with the Supabase storage bucket.
  */
+@Deprecated("Use SupabaseBucketRemoteStorage with a Supabase storage bucket instead.")
 public class SupabaseRemoteStorage(
     public val connector: SupabaseConnector,
 ) : RemoteStorage {
