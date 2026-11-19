@@ -33,7 +33,8 @@ import kotlin.toString
 /**
  * Get a Supabase token to authenticate against the PowerSync instance.
  */
-@OptIn(SupabaseInternal::class, InternalAPI::class)
+@Deprecated("Use SupabaseAuthenticator and SupabaseUploader with the split connect API instead.")
+@OptIn(SupabaseInternal::class)
 public open class SupabaseConnector(
     public val supabaseClient: SupabaseClient,
     public val powerSyncEndpoint: String,

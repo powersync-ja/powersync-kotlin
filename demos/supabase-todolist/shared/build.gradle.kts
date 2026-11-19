@@ -91,7 +91,7 @@ val localProperties =
 
 buildkonfig {
     packageName = "com.powersync.demos"
-    objectName = "Config"
+    exposeObjectWithName = "Config"
 
     defaultConfigs {
         fun stringConfigField(name: String) {
