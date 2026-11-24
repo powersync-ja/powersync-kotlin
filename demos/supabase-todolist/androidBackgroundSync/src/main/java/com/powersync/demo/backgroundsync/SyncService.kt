@@ -13,8 +13,11 @@ import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import co.touchlab.kermit.Logger
 import com.powersync.PowerSyncDatabase
-import com.powersync.connector.supabase.SupabaseConnector
+import com.powersync.connector.supabase.SupabaseAuthenticator
+import com.powersync.connector.supabase.SupabaseUploader
+import com.powersync.demos.Config
 import com.powersync.sync.SyncStatusData
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -24,7 +27,8 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 class SyncService: LifecycleService() {
 
-    private val connector: SupabaseConnector by inject()
+    private val connector: SupabaseAuthenticator by inject()
+    private val uploader: SupabaseUploader by inject()
     private val database: PowerSyncDatabase by inject()
     private var holdsServiceLock = false
 
@@ -63,10 +67,14 @@ class SyncService: LifecycleService() {
         }
 
         lifecycleScope.launch {
-            connector.sessionStatus.collect {
+            connector.supabaseClient.auth.sessionStatus.collect {
                 when (it) {
                     is SessionStatus.Authenticated -> {
-                        database.connect(connector)
+                        database.connect(
+                            endpoint = Config.POWERSYNC_URL,
+                            authenticator = connector,
+                            uploader = uploader,
+                        )
                     }
                     is SessionStatus.NotAuthenticated -> {
                         database.disconnectAndClear()

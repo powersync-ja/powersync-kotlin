@@ -6,10 +6,13 @@ import co.touchlab.kermit.Logger
 import com.powersync.ExperimentalCheckpointRequestsApi
 import com.powersync.ExperimentalPowerSyncAPI
 import com.powersync.PowerSyncDatabase
-import com.powersync.connector.supabase.SupabaseConnector
+import com.powersync.connector.supabase.SupabaseAuthenticator
+import com.powersync.connector.supabase.SupabaseUploader
 import com.powersync.sync.CheckpointMode
 import com.powersync.sync.SyncClientConfiguration
 import com.powersync.sync.SyncOptions
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.RefreshFailureCause
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.ktor.client.plugins.logging.LogLevel
@@ -34,13 +37,14 @@ sealed class AuthState {
     data object SignedIn : AuthState()
 }
 
-@OptIn(ExperimentalPowerSyncAPI::class)
 internal class AuthViewModel(
-    private val supabase: SupabaseConnector,
+    private val supabase: SupabaseAuthenticator,
+    private val uploader: SupabaseUploader,
     private val db: PowerSyncDatabase,
     private val navController: NavController,
     authOptions: AuthOptions,
 ) : ViewModel() {
+    private val auth = supabase.supabaseClient.auth
     private val _authState = MutableStateFlow<AuthState>(AuthState.SignedOut)
     val authState: StateFlow<AuthState> = _authState
     private val _userId = MutableStateFlow<String?>(null)
@@ -49,11 +53,13 @@ internal class AuthViewModel(
     init {
         if (authOptions.connectFromViewModel) {
             viewModelScope.launch {
-                supabase.sessionStatus.collect {
+                auth.sessionStatus.collect {
                     when (it) {
                         is SessionStatus.Authenticated -> {
                             db.connect(
-                                supabase,
+                                endpoint = Config.POWERSYNC_URL,
+                                authenticator = supabase,
+                                uploader = uploader,
                                 options =
                                     SyncOptions(
                                         newClientImplementation = true,
@@ -96,7 +102,7 @@ internal class AuthViewModel(
         }
 
         viewModelScope.launch {
-            supabase.sessionStatus.collect {
+            auth.sessionStatus.collect {
                 when (it) {
                     is SessionStatus.Authenticated -> {
                         _authState.value = AuthState.SignedIn
@@ -125,7 +131,10 @@ internal class AuthViewModel(
         email: String,
         password: String,
     ) {
-        supabase.login(email, password)
+        auth.signInWith(Email) {
+            this.email = email
+            this.password = password
+        }
         _authState.value = AuthState.SignedIn
     }
 
@@ -133,13 +142,16 @@ internal class AuthViewModel(
         email: String,
         password: String,
     ) {
-        supabase.signUp(email, password)
+        auth.signUpWith(Email) {
+            this.email = email
+            this.password = password
+        }
         _authState.value = AuthState.SignedIn
     }
 
     suspend fun signOut() {
         try {
-            supabase.signOut()
+            auth.signOut()
         } catch (e: Exception) {
             Logger.e("Error signing out: $e")
         } finally {

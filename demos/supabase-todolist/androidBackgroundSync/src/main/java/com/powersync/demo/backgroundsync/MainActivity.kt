@@ -13,8 +13,9 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
-import com.powersync.connector.supabase.SupabaseConnector
+import com.powersync.connector.supabase.SupabaseAuthenticator
 import com.powersync.demos.AppContent
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
@@ -22,7 +23,7 @@ import org.koin.compose.KoinContext
 
 class MainActivity : ComponentActivity() {
 
-    private val connector: SupabaseConnector by inject()
+    private val connector: SupabaseAuthenticator by inject()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,7 +32,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             // Watch the authentication state and start a sync foreground service once the user logs
             // in.
-            connector.sessionStatus.collect {
+            connector.supabaseClient.auth.sessionStatus.collect {
                 if (it is SessionStatus.Authenticated) {
                     startForegroundService(Intent().apply {
                         setClass(this@MainActivity, SyncService::class.java)
