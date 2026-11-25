@@ -100,6 +100,9 @@ public class WebConnectionFactory internal constructor(
         val updateStreamId = (nextStreamId++).toString()
 
         val pool = DartWorkerDatabase(this, updateStreamId, opened)
+        // Run DELETE triggers for rows removed by REPLACE and allow triggers to fire recursively, so
+        // triggers behave the same across PowerSync SDKs.
+        pool.write { it.execSQL("pragma recursive_triggers = TRUE") }
         activeUpdateStreams[updateStreamId] = pool.updatesController
         opened
             .customRequest(
