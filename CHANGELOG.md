@@ -4,6 +4,7 @@
 
 - Fix closing a Room database after closing PowerSync: `RoomConnectionPool` kept collecting Room
   updates after `close()`. This could cause uncaught exceptions and crash the process.
+- Add Supabase integration of `Authenticator` and `MutationUploader` interfaces.
 
 ## 1.16.0
 
