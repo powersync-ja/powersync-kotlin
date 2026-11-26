@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.16.1 (unreleased)
+## 1.16.1
 
 - Fix closing a Room database after closing PowerSync: `RoomConnectionPool` kept collecting Room
   updates after `close()`. This could cause uncaught exceptions and crash the process.
